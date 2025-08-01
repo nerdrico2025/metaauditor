@@ -1,0 +1,232 @@
+Product Requirements Document (PRD)
+Título
+Ferramenta de Auditoria Automática de Criativos para Meta e Google Ads
+Visão Geral
+A ferramenta é uma aplicação web hospedada na nuvem que automatiza a auditoria de criativos (imagens, textos, banners, etc.) em campanhas digitais no Meta (Facebook/Instagram) e Google Ads. Ela se conecta diretamente às contas de anúncios, baixa os criativos ativos, analisa-os usando inteligência artificial (IA) com base em critérios de conformidade e performance definidos pela marca, e gera relatórios detalhados. A solução elimina a dependência de processos manuais, garantindo controle de qualidade escalável, eficiente e adaptável.
+Objetivos
+
+Automatizar a validação de criativos para reduzir erros e tempo de análise.
+Garantir conformidade com as diretrizes da marca em campanhas digitais.
+Identificar criativos de alta e baixa performance com base em critérios personalizáveis.
+Permitir pausamento automático de criativos de baixa performance com confirmação do usuário.
+Prover uma solução escalável para grandes volumes de dados e campanhas.
+Oferecer flexibilidade na gestão de políticas de validação e performance.
+
+
+Requisitos Funcionais
+
+Integração com Plataformas de Anúncios
+
+Conectar-se ao Meta Ads Manager e Google Campaign Manager usando credenciais fornecidas pelo usuário (login e senha).
+Listar campanhas ativas, pausadas e inativas.
+Baixar automaticamente criativos associados às campanhas (imagens, textos, etc.) e suas métricas de performance (impressões, cliques, CTR, conversões, etc.).
+
+
+Download e Análise Automática
+
+Realizar varreduras diárias (ou em periodicidade configurável) dos criativos ativos.
+Analisar criativos usando IA com base em critérios de conformidade, incluindo:
+
+Presença da logomarca correta (ex.: logo preto em Black Friday).
+Uso das cores da marca.
+Proporção e qualidade da imagem.
+Presença/ausência de textos específicos (ex.: proibir menção a “preço”).
+Elementos obrigatórios (ex.: CTA, imagem de pessoa).
+Detecção de afirmações duvidosas ou falsas (ex.: “instalação grátis”).
+
+
+Analisar performance com base em critérios personalizáveis (ex.: CTR mínimo, conversões mínimas).
+Classificar criativos como "alta performance" ou "baixa performance" com base em thresholds definidos.
+
+
+Pausamento de Criativos
+
+Identificar criativos de baixa performance com base nos critérios configurados.
+Apresentar uma interface para o usuário revisar e selecionar criativos de baixa performance para pausar.
+Executar pausas automáticas via APIs das plataformas (Meta/Google) após confirmação do usuário.
+
+
+Geração de Relatórios
+
+Produzir relatórios automáticos com:
+
+Criativos fora do padrão de conformidade.
+Criativos de baixa e alta performance.
+Campanhas associadas a criativos não conformes ou de baixa performance.
+Volume de impressões de cada criativo (para priorizar problemas críticos).
+Motivos detalhados da reprovação (ex.: “logomarca ausente”, “CTR abaixo do mínimo”).
+
+
+Permitir interação com criativos no relatório (ex.: zoom, visualização detalhada).
+
+
+Gerenciamento de Políticas
+
+Facilitar a criação e edição de políticas de validação (conformidade e performance).
+Suportar políticas sazonais ou específicas de campanhas.
+Armazenar históricos de políticas para rastreabilidade.
+
+
+Escalabilidade
+
+Processar grandes volumes de criativos, campanhas e métricas de forma eficiente.
+
+
+
+
+Requisitos Não Funcionais
+
+Segurança
+
+Proteger credenciais e dados sensíveis com criptografia (ex.: AES-256 para armazenamento).
+Garantir conformidade com normas de privacidade (ex.: GDPR, LGPD).
+
+
+Usabilidade
+
+Interface web intuitiva (React com Tailwind CSS) para configuração de políticas, revisão de relatórios e pausamento de criativos.
+Suporte a visualização interativa de criativos (ex.: zoom).
+
+
+Desempenho
+
+Tempo de resposta rápido para análises e geração de relatórios (<5 segundos para relatórios médios).
+Suporte a picos de demanda (ex.: milhares de criativos processados simultaneamente).
+
+
+Confiabilidade
+
+Alta disponibilidade (99,9% uptime).
+Recuperação automática de falhas na integração ou análise.
+
+
+Escalabilidade
+
+Arquitetura que suporte crescimento horizontal de usuários, campanhas e criativos.
+
+
+
+
+Schema do Banco de Dados (PostgreSQL)
+The database schema is designed to support user management, platform integration, creative auditing, performance tracking, and policy management.schema.sqlsql•
+Arquitetura do Sistema
+
+Frontend: Interface web desenvolvida em React com Tailwind CSS para configuração de políticas, visualização de relatórios e gerenciamento de pausamento.
+Backend: API RESTful (Node.js ou Python Flask) para gerenciar integração, análise de criativos e relatórios.
+Banco de Dados: PostgreSQL para armazenamento de dados estruturados (usuários, campanhas, criativos, políticas, auditorias).
+Serviços de IA: Modelos de visão computacional (ex.: TensorFlow para análise de imagens) e NLP (para análise de textos) integrados ao backend.
+Infraestrutura: Hospedagem em nuvem (AWS ou Google Cloud) com contêineres Docker e orquestração via Kubernetes para escalabilidade.
+
+
+Fluxo de Trabalho
+
+Configuração Inicial
+
+Usuário cria conta e adiciona credenciais de Meta e Google Ads.
+
+
+Sincronização
+
+Sistema baixa campanhas, criativos e métricas de performance periodicamente.
+
+
+Definição de Políticas
+
+Usuário configura critérios de conformidade e performance (ex.: CTR mínimo, presença de logomarca).
+
+
+Auditoria
+
+Sistema analisa criativos quanto à conformidade e performance, gerando relatórios detalhados.
+
+
+Revisão e Pausamento
+
+Usuário revisa relatórios, identifica criativos de baixa performance e seleciona quais pausar.
+Após confirmação, sistema pausa os criativos via APIs das plataformas.
+
+
+Ação
+
+Usuário corrige criativos não conformes ou ajusta campanhas com base nos relatórios.
+
+
+
+
+Tarefas para Conclusão (Sequência no Trae.ai)
+
+Configuração do Projeto
+
+Configurar repositório Git e ambiente de desenvolvimento (Docker, ferramentas CI/CD).
+
+
+Integração com APIs
+
+Implementar autenticação e acesso às APIs de Meta Ads e Google Ads para baixar criativos e métricas.
+
+
+Download de Criativos
+
+Desenvolver serviço para baixar e armazenar criativos e métricas no banco de dados.
+
+
+Modelos de IA
+
+Integrar ou treinar modelos de visão computacional e NLP para análise de conformidade e performance.
+
+
+Banco de Dados
+
+Criar e testar o schema PostgreSQL atualizado (incluindo métricas e critérios de performance).
+
+
+Backend
+
+Desenvolver API RESTful para gerenciar usuários, campanhas, políticas, auditorias e pausamento.
+
+
+Frontend
+
+Criar interface para configuração de políticas, visualização de relatórios e confirmação de pausamento.
+
+
+Testes
+
+Testar integração com APIs, análise de criativos, classificação de performance e pausamento.
+
+
+Deploy
+
+Implantar a aplicação em nuvem com suporte a escalabilidade (AWS/Google Cloud, Kubernetes).
+
+
+Documentação
+
+Fornecer guia de uso, documentação da API e suporte ao usuário.
+
+
+
+
+Aspectos Adicionais
+
+Notificações: Enviar alertas por email para criativos não conformes ou de baixa performance.
+Histórico: Armazenar versões de políticas (conformidade e performance) e auditorias para rastreabilidade.
+Expansão Futura: Suporte a outras plataformas de anúncios (ex.: TikTok Ads, LinkedIn Ads).
+Monitoramento: Dashboard com métricas de uso da ferramenta (ex.: número de auditorias, criativos processados).
+
+
+Desafios Técnicos
+
+Acesso às APIs: Dependência de permissões para baixar criativos e métricas, além de executar pausamento.
+IA: Garantir precisão na análise de conformidade (imagens e textos) e performance (métricas).
+Escalabilidade: Lidar com grandes volumes de criativos e métricas em tempo hábil.
+Segurança: Proteger credenciais e dados sensíveis durante integrações e armazenamento.
+
+
+Valor Gerado
+
+Controle de Qualidade: Auditoria automatizada e escalável para garantir conformidade com diretrizes da marca.
+Otimização de Performance: Identificação e pausamento de criativos de baixa performance, maximizando ROI.
+Eficiência: Redução de tempo e esforço em processos manuais de validação.
+Flexibilidade: Políticas de conformidade e performance ajustáveis para campanhas sazonais ou mudanças estratégicas.
+Escalabilidade: Suporte a operações internas e terceirizadas, incluindo afiliados.

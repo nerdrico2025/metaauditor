@@ -1,0 +1,182 @@
+import OpenAI from "openai";
+import type { Creative } from "@shared/schema";
+
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+export interface ComplianceAnalysis {
+  score: number;
+  issues: string[];
+  recommendations: string[];
+  analysis: {
+    logoCompliance: boolean;
+    colorCompliance: boolean;
+    textCompliance: boolean;
+    brandGuidelines: boolean;
+  };
+}
+
+export interface PerformanceAnalysis {
+  score: number;
+  performance: 'high' | 'medium' | 'low';
+  recommendations: string[];
+  metrics: {
+    ctrAnalysis: string;
+    conversionAnalysis: string;
+    costEfficiency: string;
+  };
+}
+
+export async function analyzeCreativeCompliance(
+  creative: Creative,
+  brandGuidelines?: any
+): Promise<ComplianceAnalysis> {
+  try {
+    const prompt = `Analyze this ad creative for brand compliance:
+    
+Creative Details:
+- Name: ${creative.name}
+- Type: ${creative.type}
+- Text: ${creative.text || 'N/A'}
+- Headline: ${creative.headline || 'N/A'}
+- Description: ${creative.description || 'N/A'}
+- Call to Action: ${creative.callToAction || 'N/A'}
+
+Brand Guidelines: ${JSON.stringify(brandGuidelines) || 'Standard professional guidelines'}
+
+Please analyze for:
+1. Text appropriateness and professional language
+2. Brand consistency
+3. Compliance with advertising standards
+4. Overall quality and effectiveness
+
+Respond with JSON in this format: {
+  "score": number (0-100),
+  "issues": ["issue1", "issue2"],
+  "recommendations": ["rec1", "rec2"],
+  "logoCompliance": boolean,
+  "colorCompliance": boolean,
+  "textCompliance": boolean,
+  "brandGuidelines": boolean
+}`;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      messages: [
+        {
+          role: "system",
+          content: "You are a brand compliance expert. Analyze ad creatives for compliance issues and provide actionable recommendations."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      response_format: { type: "json_object" },
+    });
+
+    const result = JSON.parse(response.choices[0].message.content || '{}');
+
+    return {
+      score: Math.max(0, Math.min(100, result.score || 0)),
+      issues: Array.isArray(result.issues) ? result.issues : [],
+      recommendations: Array.isArray(result.recommendations) ? result.recommendations : [],
+      analysis: {
+        logoCompliance: result.logoCompliance || false,
+        colorCompliance: result.colorCompliance || false,
+        textCompliance: result.textCompliance || false,
+        brandGuidelines: result.brandGuidelines || false,
+      }
+    };
+  } catch (error) {
+    console.error("AI compliance analysis failed:", error);
+    return {
+      score: 0,
+      issues: ["Analysis failed - unable to process creative"],
+      recommendations: ["Please review creative manually"],
+      analysis: {
+        logoCompliance: false,
+        colorCompliance: false,
+        textCompliance: false,
+        brandGuidelines: false,
+      }
+    };
+  }
+}
+
+export async function analyzeCreativePerformance(
+  creative: Creative
+): Promise<PerformanceAnalysis> {
+  try {
+    const ctr = parseFloat(creative.ctr || "0");
+    const cpc = parseFloat(creative.cpc || "0");
+    const conversions = creative.conversions || 0;
+    const clicks = creative.clicks || 1;
+    const conversionRate = conversions / Math.max(clicks, 1);
+
+    const prompt = `Analyze this ad creative's performance:
+
+Performance Metrics:
+- Impressions: ${creative.impressions}
+- Clicks: ${creative.clicks}
+- Conversions: ${creative.conversions}
+- CTR: ${ctr}%
+- CPC: $${cpc}
+- Conversion Rate: ${(conversionRate * 100).toFixed(2)}%
+
+Creative Details:
+- Type: ${creative.type}
+- Text: ${creative.text || 'N/A'}
+- Headline: ${creative.headline || 'N/A'}
+
+Analyze performance and provide recommendations for improvement.
+
+Respond with JSON in this format: {
+  "score": number (0-100),
+  "performance": "high|medium|low",
+  "recommendations": ["rec1", "rec2"],
+  "ctrAnalysis": "analysis text",
+  "conversionAnalysis": "analysis text", 
+  "costEfficiency": "analysis text"
+}`;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      messages: [
+        {
+          role: "system",
+          content: "You are a digital marketing performance analyst. Analyze ad performance metrics and provide actionable optimization recommendations."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      response_format: { type: "json_object" },
+    });
+
+    const result = JSON.parse(response.choices[0].message.content || '{}');
+
+    return {
+      score: Math.max(0, Math.min(100, result.score || 0)),
+      performance: ['high', 'medium', 'low'].includes(result.performance) ? result.performance : 'low',
+      recommendations: Array.isArray(result.recommendations) ? result.recommendations : [],
+      metrics: {
+        ctrAnalysis: result.ctrAnalysis || "No analysis available",
+        conversionAnalysis: result.conversionAnalysis || "No analysis available",
+        costEfficiency: result.costEfficiency || "No analysis available",
+      }
+    };
+  } catch (error) {
+    console.error("AI performance analysis failed:", error);
+    return {
+      score: 0,
+      performance: 'low',
+      recommendations: ["Analysis failed - please review performance manually"],
+      metrics: {
+        ctrAnalysis: "Analysis unavailable",
+        conversionAnalysis: "Analysis unavailable",
+        costEfficiency: "Analysis unavailable",
+      }
+    };
+  }
+}
