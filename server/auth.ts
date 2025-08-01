@@ -6,6 +6,15 @@ import type { User } from '@shared/schema';
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this-in-production';
 const JWT_EXPIRES_IN = '7d';
 
+// Extend Express Request type to include our user
+declare global {
+  namespace Express {
+    interface Request {
+      user?: User;
+    }
+  }
+}
+
 export interface AuthRequest extends Request {
   user?: User;
 }

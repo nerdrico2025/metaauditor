@@ -1,7 +1,18 @@
 import OpenAI from "openai";
 import type { Creative } from "@shared/schema";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+let openai: OpenAI | null = null;
+
+function getOpenAI(): OpenAI {
+  if (!openai) {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new Error('OPENAI_API_KEY is required for AI analysis features');
+    }
+    openai = new OpenAI({ apiKey });
+  }
+  return openai;
+}
 
 export interface ComplianceAnalysis {
   score: number;
@@ -59,7 +70,7 @@ Respond with JSON in this format: {
   "brandGuidelines": boolean
 }`;
 
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAI().chat.completions.create({
       model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
       messages: [
         {
@@ -139,7 +150,7 @@ Respond with JSON in this format: {
   "costEfficiency": "analysis text"
 }`;
 
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAI().chat.completions.create({
       model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
       messages: [
         {
