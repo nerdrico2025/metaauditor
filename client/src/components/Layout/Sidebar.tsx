@@ -24,14 +24,14 @@ export default function Sidebar() {
 
   return (
     <div className="hidden lg:flex lg:w-64 lg:flex-col">
-      <div className="flex flex-col flex-grow bg-white border-r border-slate-200 pt-5 pb-4 overflow-y-auto">
+      <div className="flex flex-col flex-grow bg-card border-r border-border pt-5 pb-4 overflow-y-auto">
         {/* Logo */}
         <div className="flex items-center flex-shrink-0 px-4">
           <div className="flex items-center">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <Search className="h-5 w-5 text-white" />
+              <Search className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="ml-3 text-xl font-semibold text-slate-900">Click Auditor</span>
+            <span className="ml-3 text-xl font-semibold text-foreground">Click Auditor</span>
           </div>
         </div>
 
@@ -45,13 +45,13 @@ export default function Sidebar() {
                 href={item.href}
                 className={cn(
                   isActive
-                    ? 'bg-primary-50 border-r-2 border-primary text-primary group flex items-center px-2 py-2 text-sm font-medium rounded-l-md'
-                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 group flex items-center px-2 py-2 text-sm font-medium rounded-md'
+                    ? 'bg-primary text-primary-foreground border-r-2 border-primary group flex items-center px-2 py-2 text-sm font-medium rounded-l-md'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground group flex items-center px-2 py-2 text-sm font-medium rounded-md'
                 )}
               >
                 <item.icon
                   className={cn(
-                    isActive ? 'text-primary' : 'text-slate-400 group-hover:text-slate-500',
+                    isActive ? 'text-primary-foreground' : 'text-muted-foreground group-hover:text-foreground',
                     'mr-3 h-5 w-5'
                   )}
                 />
@@ -63,7 +63,7 @@ export default function Sidebar() {
 
         {/* User Profile */}
         {user && (
-          <div className="flex-shrink-0 flex border-t border-slate-200 p-4">
+          <div className="flex-shrink-0 flex border-t border-border p-4">
             <div className="flex items-center w-full">
               <img
                 className="inline-block h-9 w-9 rounded-full object-cover"
@@ -71,16 +71,16 @@ export default function Sidebar() {
                 alt="User avatar"
               />
               <div className="ml-3 flex-1">
-                <p className="text-sm font-medium text-slate-700">
+                <p className="text-sm font-medium text-foreground">
                   {user.firstName && user.lastName 
                     ? `${user.firstName} ${user.lastName}` 
                     : user.firstName || user.email || 'Usuário'}
                 </p>
-                <p className="text-xs text-slate-500">{user.email}</p>
+                <p className="text-xs text-muted-foreground">{user.email}</p>
               </div>
               <button
                 onClick={handleLogout}
-                className="ml-2 text-slate-400 hover:text-slate-600"
+                className="ml-2 text-muted-foreground hover:text-foreground"
                 title="Logout"
               >
                 <LogOut className="h-4 w-4" />

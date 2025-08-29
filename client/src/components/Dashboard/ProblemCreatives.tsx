@@ -33,11 +33,11 @@ export default function ProblemCreatives() {
   const getIssueBadgeColor = (status: string) => {
     switch (status) {
       case 'non_compliant':
-        return 'bg-red-100 text-red-800';
+        return 'bg-destructive text-destructive-foreground';
       case 'low_performance':
-        return 'bg-amber-100 text-amber-800';
+        return 'bg-secondary text-secondary-foreground';
       default:
-        return 'bg-slate-100 text-slate-800';
+        return 'bg-muted text-muted-foreground';
     }
   };
 
@@ -53,9 +53,9 @@ export default function ProblemCreatives() {
 
   return (
     <>
-      <Card className="bg-white shadow-sm border border-slate-200">
-        <CardHeader className="px-6 py-4 border-b border-slate-200 flex flex-row items-center justify-between">
-          <CardTitle className="text-lg font-medium text-slate-900">
+      <Card className="bg-card shadow-sm border border-border">
+        <CardHeader className="px-6 py-4 border-b border-border flex flex-row items-center justify-between">
+          <CardTitle className="text-lg font-medium text-foreground">
             Criativos com Problemas
           </CardTitle>
           <Button variant="link" className="text-primary hover:text-primary/80 text-sm font-medium p-0">

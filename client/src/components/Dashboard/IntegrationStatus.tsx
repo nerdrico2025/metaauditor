@@ -30,22 +30,22 @@ export default function IntegrationStatus() {
     switch (status) {
       case 'active':
         return (
-          <Badge className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-            <span className="w-1.5 h-1.5 bg-green-600 rounded-full mr-1" />
+          <Badge className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary text-primary-foreground">
+            <span className="w-1.5 h-1.5 bg-primary rounded-full mr-1" />
             Conectado
           </Badge>
         );
       case 'error':
         return (
-          <Badge className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-            <span className="w-1.5 h-1.5 bg-red-600 rounded-full mr-1" />
+          <Badge className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-destructive text-destructive-foreground">
+            <span className="w-1.5 h-1.5 bg-destructive rounded-full mr-1" />
             Erro
           </Badge>
         );
       default:
         return (
-          <Badge className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-            <span className="w-1.5 h-1.5 bg-amber-600 rounded-full mr-1" />
+          <Badge className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-secondary text-secondary-foreground">
+            <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full mr-1" />
             Reconectando
           </Badge>
         );
@@ -55,9 +55,9 @@ export default function IntegrationStatus() {
   const getPlatformIcon = (platform: string) => {
     switch (platform) {
       case 'meta':
-        return <SiFacebook className="text-blue-600" />;
+        return <SiFacebook className="text-primary" />;
       case 'google':
-        return <SiGoogle className="text-red-600" />;
+        return <SiGoogle className="text-primary" />;
       default:
         return null;
     }
@@ -66,11 +66,11 @@ export default function IntegrationStatus() {
   const getPlatformBg = (platform: string) => {
     switch (platform) {
       case 'meta':
-        return 'bg-blue-100';
+        return 'bg-secondary';
       case 'google':
-        return 'bg-red-100';
+        return 'bg-secondary';
       default:
-        return 'bg-slate-100';
+        return 'bg-muted';
     }
   };
 

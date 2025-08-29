@@ -11,26 +11,26 @@ export default function RecentAudits() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'compliant':
-        return <CheckCircle className="h-5 w-5 text-green-600" />;
+        return <CheckCircle className="h-5 w-5 text-primary" />;
       case 'non_compliant':
-        return <AlertTriangle className="h-5 w-5 text-red-600" />;
+        return <AlertTriangle className="h-5 w-5 text-destructive" />;
       case 'low_performance':
-        return <Pause className="h-5 w-5 text-amber-600" />;
+        return <Pause className="h-5 w-5 text-primary" />;
       default:
-        return <Clock className="h-5 w-5 text-slate-400" />;
+        return <Clock className="h-5 w-5 text-muted-foreground" />;
     }
   };
 
   const getStatusBg = (status: string) => {
     switch (status) {
       case 'compliant':
-        return 'bg-green-100';
+        return 'bg-primary text-primary-foreground';
       case 'non_compliant':
-        return 'bg-red-100';
+        return 'bg-destructive text-destructive-foreground';
       case 'low_performance':
-        return 'bg-amber-100';
+        return 'bg-secondary text-secondary-foreground';
       default:
-        return 'bg-slate-100';
+        return 'bg-muted text-muted-foreground';
     }
   };
 

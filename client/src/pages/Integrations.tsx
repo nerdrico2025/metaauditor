@@ -148,11 +148,11 @@ export default function Integrations() {
   const getPlatformIcon = (platform: string) => {
     switch (platform) {
       case 'meta':
-        return <SiFacebook className="h-6 w-6 text-blue-600" />;
+        return <SiFacebook className="h-6 w-6 text-primary" />;
       case 'google':
-        return <SiGoogle className="h-6 w-6 text-red-600" />;
+        return <SiGoogle className="h-6 w-6 text-primary" />;
       default:
-        return <Settings className="h-6 w-6 text-slate-400" />;
+        return <Settings className="h-6 w-6 text-muted-foreground" />;
     }
   };
 
@@ -171,28 +171,28 @@ export default function Integrations() {
     switch (status) {
       case 'active':
         return (
-          <Badge className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+          <Badge className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary text-primary-foreground">
             <CheckCircle className="w-3 h-3 mr-1" />
             Conectado
           </Badge>
         );
       case 'error':
         return (
-          <Badge className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+          <Badge className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-destructive text-destructive-foreground">
             <AlertTriangle className="w-3 h-3 mr-1" />
             Erro
           </Badge>
         );
       case 'inactive':
         return (
-          <Badge className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
+          <Badge className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
             <Clock className="w-3 h-3 mr-1" />
             Inativo
           </Badge>
         );
       default:
         return (
-          <Badge className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+          <Badge className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-secondary text-secondary-foreground">
             <Clock className="w-3 h-3 mr-1" />
             Reconectando
           </Badge>
@@ -218,7 +218,7 @@ export default function Integrations() {
   };
 
   return (
-    <div className="flex h-screen bg-slate-50">
+    <div className="flex h-screen bg-background">
       <Sidebar />
       
       <div className="flex flex-col flex-1 overflow-hidden">

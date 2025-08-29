@@ -1,0 +1,38 @@
+You are an expert UI/UX designer and Tailwind CSS specialist. The application is a full-stack web app for automatic auditing of ad creatives for Meta (Facebook/Instagram) and Google Ads, built with React and TypeScript on the frontend (using Tailwind CSS for styling, Radix UI for components, React Hooks and Context API for state). The app includes pages like landing/login, dashboard, integrations, campaigns, creatives, policies, reports, history, and AI test. It is hosted on Replit Cloud.
+
+Task: Update the entire app's color palette to match the Click Hero company colors, ensuring visual harmony, sufficient contrast (aim for WCAG AA compliance, e.g., text contrast ratio of at least 4.5:1), and no elements "disappear" due to low contrast (e.g., avoid light text on light backgrounds). The new palette is:
+- Black: #0c0d0a (use for primary text, headers, borders)
+- White: #ecedef (use for primary backgrounds, cards, light surfaces)
+- Orange: #cf6f03 (use as accent color for buttons, highlights, calls-to-action, warnings)
+- Dark Gray: #2a2a2a (use for secondary text, sidebars, footers, or dark mode elements if applicable)
+- White 2: #e6e7e9 (use for subtle backgrounds, hover states, or secondary light surfaces)
+
+Based on the current app screenshots (login screen with light blue background, dark text, blue button; dashboard with blue header, white cards, gray text), map the new colors as follows to maintain harmony:
+- Replace primary backgrounds (e.g., light blue) with White (#ecedef) or White 2 (#e6e7e9) for a clean, neutral look.
+- Use Black (#0c0d0a) for all primary text, titles, and icons to ensure high contrast on light backgrounds.
+- Replace accent colors (e.g., blue buttons) with Orange (#cf6f03) for buttons, links, and interactive elements.
+- Use Dark Gray (#2a2a2a) for secondary text, navigation bars, sidebars, or borders to add depth without overwhelming.
+- For warnings or errors (e.g., "Criativos com Problemas" card), use Orange (#cf6f03) with White text for visibility.
+- Ensure hover/active states have subtle shifts (e.g., lighten Orange by 10-20% for hover).
+
+Steps to follow:
+1. Locate and update the Tailwind CSS configuration file (likely tailwind.config.js or similar in the frontend directory). Define custom colors in the theme.extend.colors section, e.g.:
+   - primary: '#ecedef' (White for backgrounds)
+   - secondary: '#e6e7e9' (White 2)
+   - text-primary: '#0c0d0a' (Black)
+   - accent: '#cf6f03' (Orange)
+   - neutral-dark: '#2a2a2a' (Dark Gray)
+   Extend with shades if needed (e.g., using Tailwind's color functions for hover states).
+
+2. Search the entire frontend codebase (src/components, src/pages, etc.) for color-related classes or inline styles (e.g., bg-blue-100, text-gray-800, border-blue-500). Replace them with new Tailwind classes based on the mapping above. For example:
+   - bg-[light blue] -> bg-primary (or custom class for #ecedef)
+   - text-[dark] -> text-text-primary (#0c0d0a)
+   - Button bg-blue-500 -> bg-accent (#cf6f03) with text-white for contrast.
+
+3. Update any Radix UI components or custom styles to use the new colors, ensuring themes are consistent (e.g., if there's a ThemeProvider or Context for dark/light mode, apply there).
+4. Check and adjust for accessibility: For each major element (headers, buttons, cards), verify contrast using a tool like WebAIM Contrast Checker. If needed, adjust (e.g., use Dark Gray text on White backgrounds if Black is too stark).
+5. Do not change backend code, functionality, or non-color styles. Preserve all layouts, spacing, and logic.
+6. Test visually: After changes, describe how the login screen and dashboard would look with the new palette (e.g., neutral white background, orange buttons, black text).
+7. Output: Provide updated code snippets for key files (e.g., tailwind.config.js, main CSS file, sample component like Login.tsx or Dashboard.tsx). List all modified files and any potential issues (e.g., low contrast spots).
+
+Ensure the update enhances the app's professional feel while aligning with Click Hero's brand. If any color causes visibility issues, suggest minor tweaks (e.g., a lighter shade of Orange for backgrounds).

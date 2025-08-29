@@ -11,6 +11,16 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       colors: {
+        // Click Hero brand colors
+        "click-hero": {
+          black: "#0c0d0a",
+          white: "#ecedef", 
+          orange: "#cf6f03",
+          "dark-gray": "#2a2a2a",
+          "white-2": "#e6e7e9",
+          "orange-light": "#e8a855", // Hover state for orange
+          "orange-dark": "#a85603", // Active state for orange
+        },
         background: "var(--background)",
         foreground: "var(--foreground)",
         card: {
