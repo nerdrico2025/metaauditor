@@ -99,7 +99,7 @@ export default function AITestingPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-slate-600 mb-4">
-                  Esta página permite testar a funcionalidade de análise de IA do Creative Audit Pro. 
+                  Esta página permite testar a funcionalidade de análise de IA do Click Auditor. 
                   Siga os passos abaixo para ver como a IA analisa criativos para conformidade e performance.
                 </p>
                 

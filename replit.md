@@ -1,8 +1,8 @@
-# Creative Audit Pro - Ferramenta de Auditoria Automática de Criativos
+# Click Auditor - Ferramenta de Auditoria Automática de Criativos
 
 ## Overview
 
-Creative Audit Pro is a cloud-based web application that automates the auditing of creatives (images, texts, banners, etc.) in digital campaigns on Meta (Facebook/Instagram) and Google Ads. The system uses AI to validate brand compliance and identify high/low-performing creatives based on customizable criteria, with automated pausing capabilities for underperforming content.
+Click Auditor is a cloud-based web application that automates the auditing of creatives (images, texts, banners, etc.) in digital campaigns on Meta (Facebook/Instagram) and Google Ads. The system uses AI to validate brand compliance and identify high/low-performing creatives based on customizable criteria, with automated pausing capabilities for underperforming content.
 
 ## User Preferences
 

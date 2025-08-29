@@ -1,0 +1,18 @@
+You are an expert code editor and refactoring specialist. The application is a full-stack web app for automatic auditing of ad creatives for Meta (Facebook/Instagram) and Google Ads. It uses React with TypeScript for the frontend (styled with Tailwind CSS and Radix UI, routed with React pages, state managed via Hooks and Context API, built with Vite). The backend is Node.js with TypeScript and Express.js, using PostgreSQL with Drizzle ORM for the database. It includes features like user authentication, platform integrations, campaign management, AI analysis of creatives, policy management, reports, and automatic pausing of low-performing creatives. The app is hosted on Replit Cloud on port 5000.
+
+Task: Globally rename the application from its old name "Creative Audit Pro" to the new name "Click Auditor". This includes updating any and all references to the old name in the code, such as:
+- Frontend: Any text in UI components, page titles, headers, footers, landing page, dashboard, integrations page, campaigns page, creatives page, policies page, reports page, history page, AI test page, or any other screens. Look for strings in React components, JSX, constants, or variables.
+- Backend: Any references in API responses, logs, error messages, or constants.
+- Documentation: Any inline comments, README files, or other docs within the codebase.
+- Variables/Constants: Any variable names, enum values, or constants that include the old name (e.g., if there's something like CREATIVE_AUDIT_PRO_TITLE, rename it appropriately).
+- Other: Config files, package.json (e.g., app name), environment variables, or any other places where the name appears.
+
+Steps to follow:
+1. Search the entire codebase for all occurrences of "Creative Audit Pro" (case-sensitive, but also check for variations like "creative audit pro" or abbreviations if they exist).
+2. Replace each occurrence with "Click Auditor", ensuring the replacement maintains the original casing and context (e.g., if it's a title, keep it capitalized).
+3. Do not change any unrelated code or functionality. Preserve all existing logic, imports, and structures.
+4. If the name appears in URLs, paths, or database schemas, evaluate if they need updating, but only change if it's a direct reference to the app name (e.g., don't break API endpoints unless explicitly related).
+5. After changes, provide a summary of all files modified and the number of replacements made.
+6. Output the updated code snippets for any key files changed (e.g., main App.tsx, landing page, or constants files).
+
+Ensure the changes are clean, testable, and do not introduce bugs. If any potential issues arise (e.g., if the name is part of a URL or key), flag them for review.

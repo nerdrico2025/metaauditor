@@ -11,7 +11,7 @@ export default function Landing() {
         <div className="space-y-8">
           <div className="space-y-4">
             <h1 className="text-4xl lg:text-6xl font-bold text-gray-900">
-              Creative Audit Pro
+              Click Auditor
             </h1>
             <p className="text-xl text-gray-600">
               Auditoria automática de criativos para Meta e Google Ads com IA avançada

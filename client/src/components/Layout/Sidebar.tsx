@@ -31,7 +31,7 @@ export default function Sidebar() {
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
               <Search className="h-5 w-5 text-white" />
             </div>
-            <span className="ml-3 text-xl font-semibold text-slate-900">CreativeAudit Pro</span>
+            <span className="ml-3 text-xl font-semibold text-slate-900">Click Auditor</span>
           </div>
         </div>
 

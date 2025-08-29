@@ -36,7 +36,7 @@ export default function RegisterForm({ onToggleMode }: RegisterFormProps) {
       <CardHeader className="space-y-1">
         <CardTitle className="text-2xl font-bold">Criar Conta</CardTitle>
         <CardDescription>
-          Crie sua conta para começar a usar o Creative Audit Pro
+          Crie sua conta para começar a usar o Click Auditor
         </CardDescription>
       </CardHeader>
       <CardContent>
