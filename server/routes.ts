@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { AuthService, authenticateToken, generateToken, hashPassword, comparePassword, type AuthRequest } from "./auth";
+import { AuthService, generateToken, hashPassword, comparePassword, type AuthRequest } from "./auth";
 import { 
   insertIntegrationSchema,
   insertCampaignSchema,
@@ -14,13 +14,16 @@ import {
   type User,
 } from "@shared/schema";
 import { analyzeCreativeCompliance, analyzeCreativePerformance } from "./services/aiAnalysis";
-import { registerRoutes as registerReplitAuthRoutes } from "./replitAuth";
+import { registerRoutes as registerReplitAuthRoutes, isAuthenticated } from "./replitAuth";
 import type { LoginData, RegisterData } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup storage in app locals for middleware access
   app.locals.storage = storage;
+  
+  // Setup Replit Auth first
+  await registerReplitAuthRoutes(app);
 
   // Custom Auth routes
   app.post('/api/auth/register', async (req, res) => {
@@ -45,9 +48,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/auth/user', authenticateToken, async (req: Request, res: Response) => {
+  app.get('/api/auth/user', isAuthenticated, async (req: Request, res: Response) => {
     try {
-      res.json(req.user);
+      // For Replit Auth, we need to get user data from claims
+      const user = req.user as any;
+      const userData = {
+        id: user.claims?.sub,
+        email: user.claims?.email,
+        firstName: user.claims?.first_name,
+        lastName: user.claims?.last_name,
+        profileImageUrl: user.claims?.profile_image_url,
+      };
+      res.json(userData);
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
@@ -55,7 +67,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Integration routes
-  app.get('/api/integrations', authenticateToken, async (req: Request, res: Response) => {
+  app.get('/api/integrations', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.user!.id;
       const integrations = await storage.getIntegrationsByUser(userId);
@@ -66,7 +78,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/integrations', authenticateToken, async (req: Request, res: Response) => {
+  app.post('/api/integrations', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.user!.id;
       const validatedData = insertIntegrationSchema.parse({
@@ -81,7 +93,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/integrations/:id', authenticateToken, async (req: Request, res: Response) => {
+  app.put('/api/integrations/:id', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const integrationId = req.params.id;
       const integration = await storage.updateIntegration(integrationId, req.body);
@@ -95,7 +107,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/integrations/:id', authenticateToken, async (req: Request, res: Response) => {
+  app.delete('/api/integrations/:id', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const integrationId = req.params.id;
       const userId = req.user!.id;
@@ -108,7 +120,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Policy routes
-  app.get('/api/policies', authenticateToken, async (req: Request, res: Response) => {
+  app.get('/api/policies', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.user!.id;
       const policies = await storage.getPoliciesByUser(userId);
@@ -119,7 +131,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/policies', authenticateToken, async (req: Request, res: Response) => {
+  app.post('/api/policies', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.user!.id;
       const validatedData = insertPolicySchema.parse({
@@ -134,7 +146,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/policies/:id', authenticateToken, async (req: AuthRequest, res) => {
+  app.get('/api/policies/:id', isAuthenticated, async (req: AuthRequest, res) => {
     try {
       const policyId = req.params.id;
       const policy = await storage.getPolicyById(policyId);
@@ -148,7 +160,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/policies/:id', authenticateToken, async (req: Request, res: Response) => {
+  app.put('/api/policies/:id', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const policyId = req.params.id;
       const policy = await storage.updatePolicy(policyId, req.body);
@@ -162,7 +174,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/policies/:id', authenticateToken, async (req: Request, res: Response) => {
+  app.delete('/api/policies/:id', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const policyId = req.params.id;
       const success = await storage.deletePolicy(policyId);
@@ -177,7 +189,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Campaign routes
-  app.get('/api/campaigns', authenticateToken, async (req: Request, res: Response) => {
+  app.get('/api/campaigns', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.user!.id;
       const campaigns = await storage.getCampaignsByUser(userId);
@@ -188,7 +200,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/campaigns', authenticateToken, async (req: Request, res: Response) => {
+  app.post('/api/campaigns', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.user!.id;
       const validatedData = insertCampaignSchema.parse({
@@ -204,7 +216,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Creative routes
-  app.get('/api/creatives', authenticateToken, async (req: Request, res: Response) => {
+  app.get('/api/creatives', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.user!.id;
       const creatives = await storage.getCreativesByUser(userId);
@@ -215,7 +227,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/creatives/:id', authenticateToken, async (req: AuthRequest, res) => {
+  app.get('/api/creatives/:id', isAuthenticated, async (req: AuthRequest, res) => {
     try {
       const creativeId = req.params.id;
       const creative = await storage.getCreativeById(creativeId);
@@ -229,7 +241,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/creatives', authenticateToken, async (req: Request, res: Response) => {
+  app.post('/api/creatives', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.user!.id;
       const validatedData = insertCreativeSchema.parse({
@@ -245,7 +257,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Audit routes
-  app.get('/api/audits', authenticateToken, async (req: Request, res: Response) => {
+  app.get('/api/audits', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.user!.id;
       const audits = await storage.getAuditsByUser(userId);
@@ -256,7 +268,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/audits', authenticateToken, async (req: Request, res: Response) => {
+  app.post('/api/audits', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.user!.id;
       const validatedData = insertAuditSchema.parse({
@@ -272,7 +284,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Audit Action routes
-  app.get('/api/audit-actions', authenticateToken, async (req: Request, res: Response) => {
+  app.get('/api/audit-actions', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.user!.id;
       const actions = await storage.getAuditActionsByUser(userId);
@@ -283,7 +295,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/audit-actions', authenticateToken, async (req: Request, res: Response) => {
+  app.post('/api/audit-actions', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.user!.id;
       const validatedData = insertAuditActionSchema.parse({
@@ -299,7 +311,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Dashboard routes
-  app.get('/api/dashboard/metrics', authenticateToken, async (req: Request, res: Response) => {
+  app.get('/api/dashboard/metrics', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.user!.id;
       const metrics = await storage.getDashboardMetrics(userId);
@@ -310,7 +322,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/dashboard/problem-creatives', authenticateToken, async (req: Request, res: Response) => {
+  app.get('/api/dashboard/problem-creatives', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.user!.id;
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
@@ -323,7 +335,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI Analysis routes
-  app.post('/api/analyze/compliance', authenticateToken, async (req: Request, res: Response) => {
+  app.post('/api/analyze/compliance', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { creativeContent, policyRules } = req.body;
       const result = await analyzeCreativeCompliance(creativeContent, policyRules);
@@ -334,7 +346,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/analyze/performance', authenticateToken, async (req: Request, res: Response) => {
+  app.post('/api/analyze/performance', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { creativeContent, platformData } = req.body;
       const result = await analyzeCreativePerformance(creativeContent, platformData);
@@ -345,12 +357,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Initialize Replit Auth (for production use)
-  try {
-    await registerReplitAuthRoutes(app);
-  } catch (error) {
-    console.log("Replit Auth not available in development mode");
-  }
+
 
 
 

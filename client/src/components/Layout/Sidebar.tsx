@@ -16,10 +16,10 @@ const navigation = [
 
 export default function Sidebar() {
   const [location] = useLocation();
-  const { user } = useAuth();
-
+  const { user, logout } = useAuth();
+  
   const handleLogout = () => {
-    window.location.href = "/api/logout";
+    logout();
   };
 
   return (

@@ -10,7 +10,7 @@ export function useAuth() {
     queryKey: ['/api/auth/user'],
     retry: false,
     staleTime: 5 * 60 * 1000,
-    enabled: !!localStorage.getItem('auth_token'), // Only query if token exists
+    // Always enabled for Replit Auth - no token needed in localStorage
   });
 
   const loginMutation = useMutation({
@@ -29,7 +29,8 @@ export function useAuth() {
       return response.json();
     },
     onSuccess: (data) => {
-      localStorage.setItem("auth_token", data.token);
+      // For Replit Auth, we don't use localStorage tokens
+      // Session is managed server-side
       queryClient.setQueryData(['/api/auth/user'], data.user);
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
     },
@@ -51,7 +52,8 @@ export function useAuth() {
       return response.json();
     },
     onSuccess: (data) => {
-      localStorage.setItem("auth_token", data.token);
+      // For Replit Auth, we don't use localStorage tokens
+      // Session is managed server-side
       queryClient.setQueryData(['/api/auth/user'], data.user);
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
     },
@@ -59,18 +61,14 @@ export function useAuth() {
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      await fetch(`${API_BASE}/logout`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
-        },
-      });
+      // For Replit Auth, we just redirect to logout endpoint
+      // The server will handle session destruction and OIDC logout
+      window.location.href = "/api/logout";
     },
     onSuccess: () => {
-      localStorage.removeItem("auth_token");
+      // Clear any cached data
       queryClient.setQueryData(['/api/auth/user'], null);
       queryClient.clear();
-      window.location.href = "/";
     },
   });
 
