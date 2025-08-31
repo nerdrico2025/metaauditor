@@ -10,7 +10,9 @@ export function useAuth() {
     queryKey: ['/api/auth/user'],
     retry: false,
     staleTime: 5 * 60 * 1000,
-    // Always enabled for Replit Auth - no token needed in localStorage
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
+    enabled: false, // Disabled by default - only enable after login redirect
   });
 
   const loginMutation = useMutation({

@@ -49,11 +49,24 @@ export default function Landing() {
         </div>
 
         <div className="flex justify-center lg:justify-end">
-          {isLoginMode ? (
-            <LoginForm onToggleMode={() => setIsLoginMode(false)} />
-          ) : (
-            <RegisterForm onToggleMode={() => setIsLoginMode(true)} />
-          )}
+          <div className="w-full max-w-md space-y-6">
+            <div className="bg-click-hero-white p-8 rounded-xl shadow-lg">
+              <h2 className="text-2xl font-bold text-click-hero-black mb-6 text-center">
+                Acesse sua conta
+              </h2>
+              
+              <button
+                onClick={() => window.location.href = '/api/login'}
+                className="w-full bg-click-hero-orange hover:bg-click-hero-orange/90 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+              >
+                Entrar com Replit
+              </button>
+              
+              <p className="text-center text-click-hero-dark-gray text-sm mt-4">
+                Use sua conta do Replit para acessar o Click Auditor
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
