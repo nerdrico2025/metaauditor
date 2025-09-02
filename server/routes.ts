@@ -188,7 +188,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Campaign routes
   app.get('/api/campaigns', async (req: Request, res: Response) => {
     try {
-      const userId = 'a65c7648-21a8-4c03-b1ad-6aba906c27c2'; // Demo mode - using existing test user
+      const userId = 'demo-user-real'; // Using real user with real campaign data
       const campaigns = await storage.getCampaignsByUser(userId);
       res.json(campaigns);
     } catch (error) {
@@ -199,7 +199,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/campaigns', async (req: Request, res: Response) => {
     try {
-      const userId = 'demo-user'; // Demo mode - no authentication required
+      const userId = 'demo-user-real'; // Using real user with real campaign data
       const validatedData = insertCampaignSchema.parse({
         ...req.body,
         userId,
@@ -215,7 +215,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Creative routes
   app.get('/api/creatives', async (req: Request, res: Response) => {
     try {
-      const userId = 'demo-user'; // Demo mode - no authentication required
+      const userId = 'demo-user-real'; // Using real user with real creative data
       const creatives = await storage.getCreativesByUser(userId);
       res.json(creatives);
     } catch (error) {
@@ -310,7 +310,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Dashboard routes
   app.get('/api/dashboard/metrics', async (req: Request, res: Response) => {
     try {
-      const userId = 'demo-user'; // Demo mode - no authentication required
+      const userId = 'demo-user-real'; // Using real user with real data
       const metrics = await storage.getDashboardMetrics(userId);
       res.json(metrics);
     } catch (error) {
