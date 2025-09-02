@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -14,15 +14,16 @@ import type { Creative, Audit } from "@shared/schema";
 interface CreativeAuditModalProps {
   creative: Creative;
   onClose: () => void;
+  autoAnalyze?: boolean;
 }
 
-export default function CreativeAuditModal({ creative, onClose }: CreativeAuditModalProps) {
+export default function CreativeAuditModal({ creative, onClose, autoAnalyze = false }: CreativeAuditModalProps) {
   const { toast } = useToast();
   const [selectedActions, setSelectedActions] = useState<string[]>([]);
   const [imageZoomed, setImageZoomed] = useState(false);
 
   // Fetch audit data for this creative
-  const { data: audits, isLoading: auditsLoading } = useQuery({
+  const { data: audits, isLoading: auditsLoading } = useQuery<Audit[]>({
     queryKey: ["/api/creatives", creative.id, "audits"],
   });
 
@@ -109,6 +110,13 @@ export default function CreativeAuditModal({ creative, onClose }: CreativeAuditM
     analyzeMutation.mutate();
   };
 
+  // Auto-analyze when modal opens if autoAnalyze is true
+  useEffect(() => {
+    if (autoAnalyze && !latestAudit && !analyzeMutation.isPending) {
+      analyzeMutation.mutate();
+    }
+  }, [autoAnalyze, latestAudit, analyzeMutation]);
+
   const handleExecuteActions = () => {
     if (selectedActions.length === 0) {
       toast({
@@ -166,7 +174,7 @@ export default function CreativeAuditModal({ creative, onClose }: CreativeAuditM
                   {creative.name}
                 </DialogTitle>
                 <p className="mt-1 text-sm text-slate-500">
-                  Campanha: {creative.campaign?.name || 'Não identificada'}
+                  Campaign ID: {creative.campaignId || 'Não identificado'}
                 </p>
               </div>
               <Button variant="ghost" size="sm" onClick={onClose}>

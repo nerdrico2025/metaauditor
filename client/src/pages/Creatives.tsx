@@ -19,6 +19,7 @@ export default function Creatives() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
   const [selectedCreative, setSelectedCreative] = useState<Creative | null>(null);
+  const [selectedCreativeForAnalysis, setSelectedCreativeForAnalysis] = useState<Creative | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
@@ -230,7 +231,13 @@ export default function Creatives() {
                               <Eye className="h-4 w-4 mr-1" />
                               Ver
                             </Button>
-                            <Button variant="outline" size="sm" className="flex-1">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="flex-1"
+                              onClick={() => setSelectedCreativeForAnalysis(creative)}
+                              data-testid={`button-analyze-${creative.id}`}
+                            >
                               <BarChart3 className="h-4 w-4 mr-1" />
                               Analisar
                             </Button>
@@ -266,6 +273,14 @@ export default function Creatives() {
         <CreativeAuditModal 
           creative={selectedCreative}
           onClose={() => setSelectedCreative(null)}
+        />
+      )}
+
+      {selectedCreativeForAnalysis && (
+        <CreativeAuditModal 
+          creative={selectedCreativeForAnalysis}
+          onClose={() => setSelectedCreativeForAnalysis(null)}
+          autoAnalyze={true}
         />
       )}
     </div>
