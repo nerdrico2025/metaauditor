@@ -43,7 +43,16 @@ export default function ProblemCreatives() {
 
   const getIssueText = (status: string, issues: any[]) => {
     if (status === 'non_compliant') {
-      return issues[0]?.description || 'Não conforme';
+      // Don't show technical error messages to users
+      const firstIssue = issues[0]?.description || '';
+      
+      // If it's a technical error, show a user-friendly message
+      if (firstIssue.includes('Analysis failed') || firstIssue.includes('análise falhou') || firstIssue.includes('unable to process')) {
+        return 'Requer revisão';
+      }
+      
+      // For other compliance issues, show them normally
+      return firstIssue || 'Não conforme';
     }
     if (status === 'low_performance') {
       return 'CTR baixo';

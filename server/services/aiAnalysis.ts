@@ -182,6 +182,9 @@ Respond with JSON in this format: {
       };
     }
     
+    // Log the error internally but don't expose technical details to users
+    console.error("OpenAI configuration issue - analysis fallback triggered");
+    
     return {
       score: 0,
       issues: ["Análise falhou - configuração da OpenAI necessária"],

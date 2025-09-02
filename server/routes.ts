@@ -540,20 +540,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       ];
 
-      // If AI analysis failed, override status to reflect failure
-      if (complianceResult.issues.includes("Analysis failed - unable to process creative")) {
-        status = 'non_compliant';
-        issues.push({
-          type: 'AI Analysis Error',
-          description: 'A análise de IA falhou. Verifique as configurações da OpenAI.',
-          severity: 'high'
+      // Handle AI analysis failures internally - don't expose technical errors to users
+      if (complianceResult.issues.includes("Analysis failed - unable to process creative") || 
+          complianceResult.issues.some(issue => issue.includes("Análise falhou"))) {
+        
+        // Log the error internally
+        console.log('🚨 AI Analysis Failed for creative:', creative.id, {
+          complianceScore: complianceResult.score,
+          issues: complianceResult.issues,
+          brandConfig: activeBrandConfig?.brandName,
+          contentCriteria: activeContentCriteria?.name
         });
         
-        // Mark all checks as failed when AI analysis fails
+        // Set status but don't add technical error to user-facing issues
+        status = 'non_compliant';
+        
+        // Add user-friendly issue instead of technical error
+        issues.push({
+          type: 'Revisão necessária',
+          description: 'Este criativo requer revisão manual de conformidade.',
+          severity: 'medium'
+        });
+        
+        // Update check details without technical error messages
         checks.forEach(check => {
           if (check.status === 'passed') {
             check.status = 'failed';
-            check.details += ' (Análise de IA falhou)';
+            check.details += ' - Requer verificação manual';
           }
         });
       }
