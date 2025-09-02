@@ -7,6 +7,8 @@ import {
   audits,
   auditActions,
   campaignMetrics,
+  brandConfigurations,
+  contentCriteria,
   type User,
   type UpsertUser,
   type Integration,
@@ -23,6 +25,10 @@ import {
   type InsertAuditAction,
   type CampaignMetrics,
   type InsertCampaignMetrics,
+  type BrandConfiguration,
+  type InsertBrandConfiguration,
+  type ContentCriteria,
+  type InsertContentCriteria,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, count, sql } from "drizzle-orm";
@@ -93,6 +99,20 @@ export interface IStorage {
     data: CampaignMetrics[];
     total: number;
   }>;
+
+  // Brand Configuration operations
+  createBrandConfiguration(brandConfig: InsertBrandConfiguration): Promise<BrandConfiguration>;
+  getBrandConfigurationsByUser(userId: string): Promise<BrandConfiguration[]>;
+  getBrandConfigurationById(id: string): Promise<BrandConfiguration | undefined>;
+  updateBrandConfiguration(id: string, data: Partial<InsertBrandConfiguration>): Promise<BrandConfiguration | undefined>;
+  deleteBrandConfiguration(id: string): Promise<boolean>;
+
+  // Content Criteria operations
+  createContentCriteria(contentCriteria: InsertContentCriteria): Promise<ContentCriteria>;
+  getContentCriteriaByUser(userId: string): Promise<ContentCriteria[]>;
+  getContentCriteriaById(id: string): Promise<ContentCriteria | undefined>;
+  updateContentCriteria(id: string, data: Partial<InsertContentCriteria>): Promise<ContentCriteria | undefined>;
+  deleteContentCriteria(id: string): Promise<boolean>;
 
   // Debug methods for campaign metrics verification
   getAllUsers(): Promise<User[]>;
@@ -454,6 +474,88 @@ export class DatabaseStorage implements IStorage {
       },
       sampleRecords
     };
+  }
+
+  // Brand Configuration operations
+  async createBrandConfiguration(brandConfig: InsertBrandConfiguration): Promise<BrandConfiguration> {
+    const [result] = await db
+      .insert(brandConfigurations)
+      .values(brandConfig)
+      .returning();
+    return result;
+  }
+
+  async getBrandConfigurationsByUser(userId: string): Promise<BrandConfiguration[]> {
+    return db
+      .select()
+      .from(brandConfigurations)
+      .where(eq(brandConfigurations.userId, userId))
+      .orderBy(desc(brandConfigurations.createdAt));
+  }
+
+  async getBrandConfigurationById(id: string): Promise<BrandConfiguration | undefined> {
+    const [result] = await db
+      .select()
+      .from(brandConfigurations)
+      .where(eq(brandConfigurations.id, id));
+    return result;
+  }
+
+  async updateBrandConfiguration(id: string, data: Partial<InsertBrandConfiguration>): Promise<BrandConfiguration | undefined> {
+    const [result] = await db
+      .update(brandConfigurations)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(brandConfigurations.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteBrandConfiguration(id: string): Promise<boolean> {
+    const result = await db
+      .delete(brandConfigurations)
+      .where(eq(brandConfigurations.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  // Content Criteria operations
+  async createContentCriteria(contentCriteriaData: InsertContentCriteria): Promise<ContentCriteria> {
+    const [result] = await db
+      .insert(contentCriteria)
+      .values(contentCriteriaData)
+      .returning();
+    return result;
+  }
+
+  async getContentCriteriaByUser(userId: string): Promise<ContentCriteria[]> {
+    return db
+      .select()
+      .from(contentCriteria)
+      .where(eq(contentCriteria.userId, userId))
+      .orderBy(desc(contentCriteria.createdAt));
+  }
+
+  async getContentCriteriaById(id: string): Promise<ContentCriteria | undefined> {
+    const [result] = await db
+      .select()
+      .from(contentCriteria)
+      .where(eq(contentCriteria.id, id));
+    return result;
+  }
+
+  async updateContentCriteria(id: string, data: Partial<InsertContentCriteria>): Promise<ContentCriteria | undefined> {
+    const [result] = await db
+      .update(contentCriteria)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(contentCriteria.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteContentCriteria(id: string): Promise<boolean> {
+    const result = await db
+      .delete(contentCriteria)
+      .where(eq(contentCriteria.id, id));
+    return (result.rowCount ?? 0) > 0;
   }
 }
 

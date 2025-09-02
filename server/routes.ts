@@ -9,6 +9,8 @@ import {
   insertPolicySchema,
   insertAuditSchema,
   insertAuditActionSchema,
+  insertBrandConfigurationSchema,
+  insertContentCriteriaSchema,
   registerSchema,
   loginSchema,
   type User,
@@ -182,6 +184,168 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting policy:", error);
       res.status(500).json({ message: "Failed to delete policy" });
+    }
+  });
+
+  // Brand Configuration routes
+  app.get('/api/brand-configurations', async (req: Request, res: Response) => {
+    try {
+      const userId = 'demo-user-real';
+      const brandConfigurations = await storage.getBrandConfigurationsByUser(userId);
+      res.json(brandConfigurations);
+    } catch (error) {
+      console.error("Error fetching brand configurations:", error);
+      res.status(500).json({ message: "Failed to fetch brand configurations" });
+    }
+  });
+
+  app.get('/api/brand-configurations/:id', async (req: Request, res: Response) => {
+    try {
+      const id = req.params.id;
+      const brandConfiguration = await storage.getBrandConfigurationById(id);
+      if (!brandConfiguration) {
+        return res.status(404).json({ message: "Brand configuration not found" });
+      }
+      res.json(brandConfiguration);
+    } catch (error) {
+      console.error("Error fetching brand configuration:", error);
+      res.status(500).json({ message: "Failed to fetch brand configuration" });
+    }
+  });
+
+  app.post('/api/brand-configurations', async (req: Request, res: Response) => {
+    try {
+      const userId = 'demo-user-real';
+      const validatedData = insertBrandConfigurationSchema.parse({
+        ...req.body,
+        userId,
+      });
+      const brandConfiguration = await storage.createBrandConfiguration(validatedData);
+      res.json(brandConfiguration);
+    } catch (error) {
+      console.error("Error creating brand configuration:", error);
+      res.status(500).json({ message: "Failed to create brand configuration" });
+    }
+  });
+
+  app.put('/api/brand-configurations/:id', async (req: Request, res: Response) => {
+    try {
+      const id = req.params.id;
+      const brandConfiguration = await storage.updateBrandConfiguration(id, req.body);
+      if (!brandConfiguration) {
+        return res.status(404).json({ message: "Brand configuration not found" });
+      }
+      res.json(brandConfiguration);
+    } catch (error) {
+      console.error("Error updating brand configuration:", error);
+      res.status(500).json({ message: "Failed to update brand configuration" });
+    }
+  });
+
+  app.delete('/api/brand-configurations/:id', async (req: Request, res: Response) => {
+    try {
+      const id = req.params.id;
+      const success = await storage.deleteBrandConfiguration(id);
+      if (!success) {
+        return res.status(404).json({ message: "Brand configuration not found" });
+      }
+      res.json({ message: "Brand configuration deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting brand configuration:", error);
+      res.status(500).json({ message: "Failed to delete brand configuration" });
+    }
+  });
+
+  // Content Criteria routes
+  app.get('/api/content-criteria', async (req: Request, res: Response) => {
+    try {
+      const userId = 'demo-user-real';
+      const contentCriteria = await storage.getContentCriteriaByUser(userId);
+      res.json(contentCriteria);
+    } catch (error) {
+      console.error("Error fetching content criteria:", error);
+      res.status(500).json({ message: "Failed to fetch content criteria" });
+    }
+  });
+
+  app.get('/api/content-criteria/:id', async (req: Request, res: Response) => {
+    try {
+      const id = req.params.id;
+      const contentCriteria = await storage.getContentCriteriaById(id);
+      if (!contentCriteria) {
+        return res.status(404).json({ message: "Content criteria not found" });
+      }
+      res.json(contentCriteria);
+    } catch (error) {
+      console.error("Error fetching content criteria:", error);
+      res.status(500).json({ message: "Failed to fetch content criteria" });
+    }
+  });
+
+  app.post('/api/content-criteria', async (req: Request, res: Response) => {
+    try {
+      const userId = 'demo-user-real';
+      const validatedData = insertContentCriteriaSchema.parse({
+        ...req.body,
+        userId,
+      });
+      const contentCriteria = await storage.createContentCriteria(validatedData);
+      res.json(contentCriteria);
+    } catch (error) {
+      console.error("Error creating content criteria:", error);
+      res.status(500).json({ message: "Failed to create content criteria" });
+    }
+  });
+
+  app.put('/api/content-criteria/:id', async (req: Request, res: Response) => {
+    try {
+      const id = req.params.id;
+      const contentCriteria = await storage.updateContentCriteria(id, req.body);
+      if (!contentCriteria) {
+        return res.status(404).json({ message: "Content criteria not found" });
+      }
+      res.json(contentCriteria);
+    } catch (error) {
+      console.error("Error updating content criteria:", error);
+      res.status(500).json({ message: "Failed to update content criteria" });
+    }
+  });
+
+  app.delete('/api/content-criteria/:id', async (req: Request, res: Response) => {
+    try {
+      const id = req.params.id;
+      const success = await storage.deleteContentCriteria(id);
+      if (!success) {
+        return res.status(404).json({ message: "Content criteria not found" });
+      }
+      res.json({ message: "Content criteria deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting content criteria:", error);
+      res.status(500).json({ message: "Failed to delete content criteria" });
+    }
+  });
+
+  // Object storage routes for brand logo upload
+  app.get('/api/objects/:objectPath(*)', async (req: Request, res: Response) => {
+    try {
+      // Simple implementation for brand logo serving
+      // This would be enhanced with proper object storage integration
+      res.status(200).json({ message: "Object serving endpoint ready" });
+    } catch (error) {
+      console.error("Error serving object:", error);
+      res.status(500).json({ message: "Failed to serve object" });
+    }
+  });
+
+  app.post('/api/objects/upload', async (req: Request, res: Response) => {
+    try {
+      // Simple implementation for brand logo upload
+      // This would be enhanced with proper object storage integration  
+      const uploadURL = `https://example.com/upload/${randomUUID()}`;
+      res.json({ uploadURL });
+    } catch (error) {
+      console.error("Error getting upload URL:", error);
+      res.status(500).json({ message: "Failed to get upload URL" });
     }
   });
 

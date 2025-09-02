@@ -130,6 +130,41 @@ export const auditActions = pgTable("audit_actions", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Brand Configurations
+export const brandConfigurations = pgTable("brand_configurations", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  logoUrl: text("logo_url"), // URL of uploaded brand logo
+  brandName: text("brand_name").notNull(),
+  primaryColor: varchar("primary_color", { length: 7 }), // Hex color code
+  secondaryColor: varchar("secondary_color", { length: 7 }),
+  accentColor: varchar("accent_color", { length: 7 }),
+  fontFamily: varchar("font_family"),
+  brandGuidelines: text("brand_guidelines"), // Text description of brand guidelines
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Content Criteria
+export const contentCriteria = pgTable("content_criteria", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  name: text("name").notNull(), // Name of the criteria set
+  description: text("description"),
+  requiredKeywords: jsonb("required_keywords"), // Array of required words/phrases
+  prohibitedKeywords: jsonb("prohibited_keywords"), // Array of prohibited words/phrases
+  requiredPhrases: jsonb("required_phrases"), // Array of required phrases
+  prohibitedPhrases: jsonb("prohibited_phrases"), // Array of prohibited phrases
+  minTextLength: integer("min_text_length"),
+  maxTextLength: integer("max_text_length"),
+  requiresLogo: boolean("requires_logo").default(false),
+  requiresBrandColors: boolean("requires_brand_colors").default(false),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Campaign Metrics from Google Sheets
 export const campaignMetrics = pgTable("campaign_metrics", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -167,6 +202,8 @@ export const usersRelations = relations(users, ({ many }) => ({
   audits: many(audits),
   auditActions: many(auditActions),
   campaignMetrics: many(campaignMetrics),
+  brandConfigurations: many(brandConfigurations),
+  contentCriteria: many(contentCriteria),
 }));
 
 export const integrationsRelations = relations(integrations, ({ one, many }) => ({
@@ -243,6 +280,20 @@ export const campaignMetricsRelations = relations(campaignMetrics, ({ one }) => 
   }),
 }));
 
+export const brandConfigurationsRelations = relations(brandConfigurations, ({ one }) => ({
+  user: one(users, {
+    fields: [brandConfigurations.userId],
+    references: [users.id],
+  }),
+}));
+
+export const contentCriteriaRelations = relations(contentCriteria, ({ one }) => ({
+  user: one(users, {
+    fields: [contentCriteria.userId],
+    references: [users.id],
+  }),
+}));
+
 // Insert schemas
 export const insertIntegrationSchema = createInsertSchema(integrations).omit({
   id: true,
@@ -284,6 +335,18 @@ export const insertCampaignMetricsSchema = createInsertSchema(campaignMetrics).o
   updatedAt: true,
 });
 
+export const insertBrandConfigurationSchema = createInsertSchema(brandConfigurations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertContentCriteriaSchema = createInsertSchema(contentCriteria).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Auth schemas
 export const registerSchema = z.object({
   email: z.string().email("Email inválido"),
@@ -316,3 +379,7 @@ export type InsertAuditAction = z.infer<typeof insertAuditActionSchema>;
 export type AuditAction = typeof auditActions.$inferSelect;
 export type InsertCampaignMetrics = z.infer<typeof insertCampaignMetricsSchema>;
 export type CampaignMetrics = typeof campaignMetrics.$inferSelect;
+export type InsertBrandConfiguration = z.infer<typeof insertBrandConfigurationSchema>;
+export type BrandConfiguration = typeof brandConfigurations.$inferSelect;
+export type InsertContentCriteria = z.infer<typeof insertContentCriteriaSchema>;
+export type ContentCriteria = typeof contentCriteria.$inferSelect;

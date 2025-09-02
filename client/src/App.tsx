@@ -12,6 +12,8 @@ import Policies from "@/pages/Policies";
 import History from "@/pages/History";
 import AITestingPage from "@/pages/AITestingPage";
 import Integrations from "@/pages/Integrations";
+import BrandSettings from "@/pages/BrandSettings";
+import ContentCriteria from "@/pages/ContentCriteria";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -25,6 +27,8 @@ function Router() {
       <Route path="/policies" component={Policies} />
       <Route path="/history" component={History} />
       <Route path="/integrations" component={Integrations} />
+      <Route path="/brand-settings" component={BrandSettings} />
+      <Route path="/content-criteria" component={ContentCriteria} />
       <Route path="/ai-testing" component={AITestingPage} />
       <Route component={NotFound} />
     </Switch>
