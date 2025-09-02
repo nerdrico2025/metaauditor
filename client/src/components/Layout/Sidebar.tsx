@@ -1,5 +1,5 @@
 import { useLocation } from "wouter";
-import { useAuth } from "@/hooks/useAuth";
+// Authentication removed
 import { cn } from "@/lib/utils";
 import { Search, BarChart3, BellRing, Image, FileText, Settings, History, LogOut, Zap, ExternalLink } from "lucide-react";
 
@@ -16,10 +16,18 @@ const navigation = [
 
 export default function Sidebar() {
   const [location] = useLocation();
-  const { user, logout } = useAuth();
+  
+  // Demo user data since authentication is disabled
+  const user = {
+    firstName: 'Demo',
+    lastName: 'User',
+    email: 'demo@clickauditor.com',
+    profileImageUrl: null
+  };
   
   const handleLogout = () => {
-    logout();
+    // Authentication disabled - just redirect to home
+    window.location.href = '/';
   };
 
   return (

@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { isUnauthorizedError } from "@/lib/authUtils";
+// Authentication removed
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Menu, Bell, RefreshCw } from "lucide-react";
 
@@ -28,17 +28,6 @@ export default function Header({ title }: HeaderProps) {
       queryClient.invalidateQueries({ queryKey: ["/api/creatives"] });
     },
     onError: (error) => {
-      if (isUnauthorizedError(error as Error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
       toast({
         title: "Erro na Sincronização",
         description: "Falha ao sincronizar dados",

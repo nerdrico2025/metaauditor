@@ -6,13 +6,23 @@ const API_BASE = "/api/auth";
 export function useAuth() {
   const queryClient = useQueryClient();
 
+  // Authentication disabled - always return demo user as authenticated
+  const demoUser = {
+    id: 'demo-user',
+    email: 'demo@clickauditor.com',
+    firstName: 'Demo',
+    lastName: 'User',
+    profileImageUrl: null,
+  };
+
   const { data: user, isLoading, error } = useQuery({
     queryKey: ['/api/auth/user'],
     retry: false,
     staleTime: 5 * 60 * 1000,
     refetchInterval: false,
     refetchOnWindowFocus: false,
-    enabled: false, // Disabled by default - only enable after login redirect
+    enabled: true, // Enable to get demo user data
+    queryFn: () => Promise.resolve(demoUser), // Always return demo user
   });
 
   const loginMutation = useMutation({
@@ -75,9 +85,9 @@ export function useAuth() {
   });
 
   return {
-    user: user as User | undefined,
-    isAuthenticated: !!user && !error,
-    isLoading,
+    user: demoUser as User, // Always return demo user
+    isAuthenticated: true, // Always authenticated
+    isLoading: false, // Never loading
     login: loginMutation.mutate,
     register: registerMutation.mutate,
     logout: logoutMutation.mutate,
