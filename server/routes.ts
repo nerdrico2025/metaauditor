@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { AuthService, generateToken, hashPassword, comparePassword, type AuthRequest } from "./auth";
+import { AuthService, generateToken, hashPassword, comparePassword } from "./auth";
 import { 
   insertIntegrationSchema,
   insertCampaignSchema,
@@ -14,7 +14,7 @@ import {
   type User,
 } from "@shared/schema";
 import { analyzeCreativeCompliance, analyzeCreativePerformance } from "./services/aiAnalysis";
-import { registerRoutes as registerReplitAuthRoutes, isAuthenticated } from "./replitAuth";
+import { registerRoutes as registerReplitAuthRoutes } from "./replitAuth";
 import type { LoginData, RegisterData } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { cronManager, triggerManualSync } from "./services/cronManager";
@@ -50,28 +50,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/auth/user', isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      // For Replit Auth, we need to get user data from claims
-      const user = req.user as any;
-      const userData = {
-        id: user.claims?.sub,
-        email: user.claims?.email,
-        firstName: user.claims?.first_name,
-        lastName: user.claims?.last_name,
-        profileImageUrl: user.claims?.profile_image_url,
-      };
-      res.json(userData);
-    } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
-    }
+  // Authentication disabled - this route is no longer needed
+  app.get('/api/auth/user', async (req: Request, res: Response) => {
+    // Return demo user data since authentication is disabled
+    const userData = {
+      id: 'demo-user',
+      email: 'demo@clickauditor.com',
+      firstName: 'Demo',
+      lastName: 'User',
+      profileImageUrl: null,
+    };
+    res.json(userData);
   });
 
   // Integration routes
-  app.get('/api/integrations', isAuthenticated, async (req: Request, res: Response) => {
+  app.get('/api/integrations', async (req: Request, res: Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = 'demo-user'; // Demo mode - no authentication required
       const integrations = await storage.getIntegrationsByUser(userId);
       res.json(integrations);
     } catch (error) {
@@ -80,9 +75,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/integrations', isAuthenticated, async (req: Request, res: Response) => {
+  app.post('/api/integrations', async (req: Request, res: Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = 'demo-user'; // Demo mode - no authentication required
       const validatedData = insertIntegrationSchema.parse({
         ...req.body,
         userId,
@@ -95,7 +90,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/integrations/:id', isAuthenticated, async (req: Request, res: Response) => {
+  app.put('/api/integrations/:id', async (req: Request, res: Response) => {
     try {
       const integrationId = req.params.id;
       const integration = await storage.updateIntegration(integrationId, req.body);
@@ -109,10 +104,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/integrations/:id', isAuthenticated, async (req: Request, res: Response) => {
+  app.delete('/api/integrations/:id', async (req: Request, res: Response) => {
     try {
       const integrationId = req.params.id;
-      const userId = req.user!.id;
+      const userId = 'demo-user'; // Demo mode - no authentication required
       await storage.deleteIntegration(integrationId, userId);
       res.json({ message: "Integration deleted successfully" });
     } catch (error) {
@@ -122,9 +117,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Policy routes
-  app.get('/api/policies', isAuthenticated, async (req: Request, res: Response) => {
+  app.get('/api/policies', async (req: Request, res: Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = 'demo-user'; // Demo mode - no authentication required
       const policies = await storage.getPoliciesByUser(userId);
       res.json(policies);
     } catch (error) {
@@ -133,9 +128,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/policies', isAuthenticated, async (req: Request, res: Response) => {
+  app.post('/api/policies', async (req: Request, res: Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = 'demo-user'; // Demo mode - no authentication required
       const validatedData = insertPolicySchema.parse({
         ...req.body,
         userId,
@@ -148,7 +143,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/policies/:id', isAuthenticated, async (req: AuthRequest, res) => {
+  app.get('/api/policies/:id', async (req: Request, res: Response) => {
     try {
       const policyId = req.params.id;
       const policy = await storage.getPolicyById(policyId);
@@ -162,7 +157,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/policies/:id', isAuthenticated, async (req: Request, res: Response) => {
+  app.put('/api/policies/:id', async (req: Request, res: Response) => {
     try {
       const policyId = req.params.id;
       const policy = await storage.updatePolicy(policyId, req.body);
@@ -176,7 +171,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/policies/:id', isAuthenticated, async (req: Request, res: Response) => {
+  app.delete('/api/policies/:id', async (req: Request, res: Response) => {
     try {
       const policyId = req.params.id;
       const success = await storage.deletePolicy(policyId);
@@ -191,9 +186,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Campaign routes
-  app.get('/api/campaigns', isAuthenticated, async (req: Request, res: Response) => {
+  app.get('/api/campaigns', async (req: Request, res: Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = 'demo-user'; // Demo mode - no authentication required
       const campaigns = await storage.getCampaignsByUser(userId);
       res.json(campaigns);
     } catch (error) {
@@ -202,9 +197,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/campaigns', isAuthenticated, async (req: Request, res: Response) => {
+  app.post('/api/campaigns', async (req: Request, res: Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = 'demo-user'; // Demo mode - no authentication required
       const validatedData = insertCampaignSchema.parse({
         ...req.body,
         userId,
@@ -218,9 +213,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Creative routes
-  app.get('/api/creatives', isAuthenticated, async (req: Request, res: Response) => {
+  app.get('/api/creatives', async (req: Request, res: Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = 'demo-user'; // Demo mode - no authentication required
       const creatives = await storage.getCreativesByUser(userId);
       res.json(creatives);
     } catch (error) {
@@ -229,7 +224,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/creatives/:id', isAuthenticated, async (req: AuthRequest, res) => {
+  app.get('/api/creatives/:id', async (req: Request, res: Response) => {
     try {
       const creativeId = req.params.id;
       const creative = await storage.getCreativeById(creativeId);
@@ -243,9 +238,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/creatives', isAuthenticated, async (req: Request, res: Response) => {
+  app.post('/api/creatives', async (req: Request, res: Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = 'demo-user'; // Demo mode - no authentication required
       const validatedData = insertCreativeSchema.parse({
         ...req.body,
         userId,
@@ -259,9 +254,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Audit routes
-  app.get('/api/audits', isAuthenticated, async (req: Request, res: Response) => {
+  app.get('/api/audits', async (req: Request, res: Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = 'demo-user'; // Demo mode - no authentication required
       const audits = await storage.getAuditsByUser(userId);
       res.json(audits);
     } catch (error) {
@@ -270,9 +265,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/audits', isAuthenticated, async (req: Request, res: Response) => {
+  app.post('/api/audits', async (req: Request, res: Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = 'demo-user'; // Demo mode - no authentication required
       const validatedData = insertAuditSchema.parse({
         ...req.body,
         userId,
@@ -286,9 +281,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Audit Action routes
-  app.get('/api/audit-actions', isAuthenticated, async (req: Request, res: Response) => {
+  app.get('/api/audit-actions', async (req: Request, res: Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = 'demo-user'; // Demo mode - no authentication required
       const actions = await storage.getAuditActionsByUser(userId);
       res.json(actions);
     } catch (error) {
@@ -297,9 +292,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/audit-actions', isAuthenticated, async (req: Request, res: Response) => {
+  app.post('/api/audit-actions', async (req: Request, res: Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = 'demo-user'; // Demo mode - no authentication required
       const validatedData = insertAuditActionSchema.parse({
         ...req.body,
         userId,
@@ -313,9 +308,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Dashboard routes
-  app.get('/api/dashboard/metrics', isAuthenticated, async (req: Request, res: Response) => {
+  app.get('/api/dashboard/metrics', async (req: Request, res: Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = 'demo-user'; // Demo mode - no authentication required
       const metrics = await storage.getDashboardMetrics(userId);
       res.json(metrics);
     } catch (error) {
@@ -324,9 +319,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/dashboard/problem-creatives', isAuthenticated, async (req: Request, res: Response) => {
+  app.get('/api/dashboard/problem-creatives', async (req: Request, res: Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = 'demo-user'; // Demo mode - no authentication required
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
       const problemCreatives = await storage.getProblemCreatives(userId, limit);
       res.json(problemCreatives);
@@ -337,7 +332,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI Analysis routes
-  app.post('/api/analyze/compliance', isAuthenticated, async (req: Request, res: Response) => {
+  app.post('/api/analyze/compliance', async (req: Request, res: Response) => {
     try {
       const { creativeContent, policyRules } = req.body;
       const result = await analyzeCreativeCompliance(creativeContent, policyRules);
@@ -348,7 +343,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/analyze/performance', isAuthenticated, async (req: Request, res: Response) => {
+  app.post('/api/analyze/performance', async (req: Request, res: Response) => {
     try {
       const { creativeContent, platformData } = req.body;
       const result = await analyzeCreativePerformance(creativeContent, platformData);
@@ -360,9 +355,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Google Sheets Sync routes
-  app.post('/api/sync-single-tab-now', isAuthenticated, async (req: Request, res: Response) => {
+  app.post('/api/sync-single-tab-now', async (req: Request, res: Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = 'demo-user'; // Demo mode - no authentication required
       console.log(`🔄 Manual sync triggered by user: ${userId}`);
       
       const result = await triggerManualSync();
@@ -402,10 +397,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/admin/sync-single-tab', isAuthenticated, async (req: Request, res: Response) => {
+  app.post('/api/admin/sync-single-tab', async (req: Request, res: Response) => {
     try {
       // TODO: Add admin role verification here
-      const userId = req.user!.id;
+      const userId = 'demo-user'; // Demo mode - no authentication required
       console.log(`🛠️ Admin sync triggered by user: ${userId}`);
       
       const result = await triggerManualSync();
@@ -433,9 +428,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/campaign-metrics', isAuthenticated, async (req: Request, res: Response) => {
+  app.get('/api/campaign-metrics', async (req: Request, res: Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = 'demo-user'; // Demo mode - no authentication required
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 50;
       const account = req.query.account as string;
@@ -498,7 +493,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/cron-jobs', isAuthenticated, async (req: Request, res: Response) => {
+  app.get('/api/cron-jobs', async (req: Request, res: Response) => {
     try {
       // TODO: Add admin role verification here
       const cronJobsStatus = cronManager.getJobStatus();
@@ -517,7 +512,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/cron-jobs/:jobId/run', isAuthenticated, async (req: Request, res: Response) => {
+  app.post('/api/cron-jobs/:jobId/run', async (req: Request, res: Response) => {
     try {
       // TODO: Add admin role verification here
       const jobId = req.params.jobId;
@@ -544,7 +539,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/cron-jobs/:jobId/enable', isAuthenticated, async (req: Request, res: Response) => {
+  app.post('/api/cron-jobs/:jobId/enable', async (req: Request, res: Response) => {
     try {
       // TODO: Add admin role verification here
       const jobId = req.params.jobId;
@@ -571,7 +566,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/cron-jobs/:jobId/disable', isAuthenticated, async (req: Request, res: Response) => {
+  app.post('/api/cron-jobs/:jobId/disable', async (req: Request, res: Response) => {
     try {
       // TODO: Add admin role verification here
       const jobId = req.params.jobId;
