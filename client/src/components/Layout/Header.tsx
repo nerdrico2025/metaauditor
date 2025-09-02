@@ -1,44 +1,11 @@
-import { useMutation } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
 // Authentication removed
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Menu, Bell, RefreshCw } from "lucide-react";
+import { Menu, Bell } from "lucide-react";
 
 interface HeaderProps {
   title: string;
 }
 
 export default function Header({ title }: HeaderProps) {
-  const { toast } = useToast();
-
-  const syncMutation = useMutation({
-    mutationFn: async () => {
-      // This would normally trigger sync for all integrations
-      // For now, we'll just show a success message
-      await new Promise(resolve => setTimeout(resolve, 2000));
-    },
-    onSuccess: () => {
-      toast({
-        title: "Sincronização Concluída",
-        description: "Dados atualizados com sucesso",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/creatives"] });
-    },
-    onError: (error) => {
-      toast({
-        title: "Erro na Sincronização",
-        description: "Falha ao sincronizar dados",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleSync = () => {
-    syncMutation.mutate();
-  };
 
   return (
     <div className="relative z-10 flex-shrink-0 flex h-16 bg-card shadow-sm border-b border-border">
@@ -58,24 +25,6 @@ export default function Header({ title }: HeaderProps) {
             <Bell className="h-5 w-5" />
           </button>
 
-          {/* Sync Button */}
-          <Button
-            onClick={handleSync}
-            disabled={syncMutation.isPending}
-            className="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-          >
-            {syncMutation.isPending ? (
-              <>
-                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                Sincronizando...
-              </>
-            ) : (
-              <>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Sincronizar
-              </>
-            )}
-          </Button>
         </div>
       </div>
     </div>

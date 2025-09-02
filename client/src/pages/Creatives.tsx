@@ -255,9 +255,6 @@ export default function Creatives() {
                       : 'Sincronize suas campanhas para começar a ver os criativos.'
                     }
                   </p>
-                  <Button variant="outline">
-                    Sincronizar Campanhas
-                  </Button>
                 </div>
               )}
             </div>
