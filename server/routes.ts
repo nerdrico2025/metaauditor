@@ -66,7 +66,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Integration routes
   app.get('/api/integrations', async (req: Request, res: Response) => {
     try {
-      const userId = 'demo-user'; // Demo mode - no authentication required
+      const userId = 'demo-user-real'; // Using real user with real data
       const integrations = await storage.getIntegrationsByUser(userId);
       res.json(integrations);
     } catch (error) {
@@ -77,7 +77,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/integrations', async (req: Request, res: Response) => {
     try {
-      const userId = 'demo-user'; // Demo mode - no authentication required
+      const userId = 'demo-user-real'; // Using real user with real data
       const validatedData = insertIntegrationSchema.parse({
         ...req.body,
         userId,
@@ -107,7 +107,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/integrations/:id', async (req: Request, res: Response) => {
     try {
       const integrationId = req.params.id;
-      const userId = 'demo-user'; // Demo mode - no authentication required
+      const userId = 'demo-user-real'; // Using real user with real data
       await storage.deleteIntegration(integrationId, userId);
       res.json({ message: "Integration deleted successfully" });
     } catch (error) {
@@ -119,7 +119,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Policy routes
   app.get('/api/policies', async (req: Request, res: Response) => {
     try {
-      const userId = 'demo-user'; // Demo mode - no authentication required
+      const userId = 'demo-user-real'; // Using real user with real data
       const policies = await storage.getPoliciesByUser(userId);
       res.json(policies);
     } catch (error) {
@@ -130,7 +130,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/policies', async (req: Request, res: Response) => {
     try {
-      const userId = 'demo-user'; // Demo mode - no authentication required
+      const userId = 'demo-user-real'; // Using real user with real data
       const validatedData = insertPolicySchema.parse({
         ...req.body,
         userId,
@@ -240,7 +240,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/creatives', async (req: Request, res: Response) => {
     try {
-      const userId = 'demo-user'; // Demo mode - no authentication required
+      const userId = 'demo-user-real'; // Using real user with real data
       const validatedData = insertCreativeSchema.parse({
         ...req.body,
         userId,
@@ -256,7 +256,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Audit routes
   app.get('/api/audits', async (req: Request, res: Response) => {
     try {
-      const userId = 'demo-user'; // Demo mode - no authentication required
+      const userId = 'demo-user-real'; // Using real user with real data
       const audits = await storage.getAuditsByUser(userId);
       res.json(audits);
     } catch (error) {
@@ -267,7 +267,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/audits', async (req: Request, res: Response) => {
     try {
-      const userId = 'demo-user'; // Demo mode - no authentication required
+      const userId = 'demo-user-real'; // Using real user with real data
       const validatedData = insertAuditSchema.parse({
         ...req.body,
         userId,
@@ -283,7 +283,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Audit Action routes
   app.get('/api/audit-actions', async (req: Request, res: Response) => {
     try {
-      const userId = 'demo-user'; // Demo mode - no authentication required
+      const userId = 'demo-user-real'; // Using real user with real data
       const actions = await storage.getAuditActionsByUser(userId);
       res.json(actions);
     } catch (error) {
@@ -294,7 +294,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/audit-actions', async (req: Request, res: Response) => {
     try {
-      const userId = 'demo-user'; // Demo mode - no authentication required
+      const userId = 'demo-user-real'; // Using real user with real data
       const validatedData = insertAuditActionSchema.parse({
         ...req.body,
         userId,
@@ -321,7 +321,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/dashboard/problem-creatives', async (req: Request, res: Response) => {
     try {
-      const userId = 'demo-user'; // Demo mode - no authentication required
+      const userId = 'demo-user-real'; // Using real user with real data
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
       const problemCreatives = await storage.getProblemCreatives(userId, limit);
       res.json(problemCreatives);
@@ -357,7 +357,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Google Sheets Sync routes
   app.post('/api/sync-single-tab-now', async (req: Request, res: Response) => {
     try {
-      const userId = 'demo-user'; // Demo mode - no authentication required
+      const userId = 'demo-user-real'; // Using real user with real data
       console.log(`🔄 Manual sync triggered by user: ${userId}`);
 
       const result = await triggerManualSync();
@@ -400,7 +400,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/admin/sync-single-tab', async (req: Request, res: Response) => {
     try {
       // TODO: Add admin role verification here
-      const userId = 'demo-user'; // Demo mode - no authentication required
+      const userId = 'demo-user-real'; // Using real user with real data
       console.log(`🛠️ Admin sync triggered by user: ${userId}`);
 
       const result = await triggerManualSync();
@@ -430,7 +430,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/campaign-metrics', async (req: Request, res: Response) => {
     try {
-      const userId = 'demo-user'; // Demo mode - no authentication required
+      const userId = 'demo-user-real'; // Using real user with real data
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 50;
       const account = req.query.account as string;
