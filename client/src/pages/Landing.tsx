@@ -52,18 +52,18 @@ export default function Landing() {
           <div className="w-full max-w-md space-y-6">
             <div className="bg-click-hero-white p-8 rounded-xl shadow-lg">
               <h2 className="text-2xl font-bold text-click-hero-black mb-6 text-center">
-                Acesse sua conta
+                Acesse a ferramenta
               </h2>
               
               <button
-                onClick={() => window.location.href = '/api/login'}
+                onClick={() => window.location.href = '/dashboard'}
                 className="w-full bg-click-hero-orange hover:bg-click-hero-orange/90 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
               >
-                Entrar com Replit
+                ENTRAR
               </button>
               
               <p className="text-center text-click-hero-dark-gray text-sm mt-4">
-                Use sua conta do Replit para acessar o Click Auditor
+                Acesse o Click Auditor sem necessidade de login
               </p>
             </div>
           </div>
