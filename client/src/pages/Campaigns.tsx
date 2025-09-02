@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -10,11 +10,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BellRing, Calendar, DollarSign, BarChart3 } from "lucide-react";
+import CampaignReportModal from "@/components/Modals/CampaignReportModal";
+import CampaignCreativesModal from "@/components/Modals/CampaignCreativesModal";
 import type { Campaign } from "@shared/schema";
 
 export default function Campaigns() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  const [selectedCampaignForReport, setSelectedCampaignForReport] = useState<Campaign | null>(null);
+  const [selectedCampaignForCreatives, setSelectedCampaignForCreatives] = useState<Campaign | null>(null);
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -157,11 +161,21 @@ export default function Campaigns() {
 
                         <div className="mt-4 pt-4 border-t border-slate-200">
                           <div className="flex space-x-2">
-                            <Button variant="outline" size="sm" className="flex-1">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="flex-1"
+                              onClick={() => setSelectedCampaignForCreatives(campaign)}
+                            >
                               <BellRing className="h-4 w-4 mr-2" />
                               Ver Criativos
                             </Button>
-                            <Button variant="outline" size="sm" className="flex-1">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="flex-1"
+                              onClick={() => setSelectedCampaignForReport(campaign)}
+                            >
                               <BarChart3 className="h-4 w-4 mr-2" />
                               Relatório
                             </Button>
@@ -189,6 +203,21 @@ export default function Campaigns() {
           </div>
         </main>
       </div>
+      
+      {/* Modals */}
+      {selectedCampaignForReport && (
+        <CampaignReportModal 
+          campaign={selectedCampaignForReport}
+          onClose={() => setSelectedCampaignForReport(null)}
+        />
+      )}
+      
+      {selectedCampaignForCreatives && (
+        <CampaignCreativesModal 
+          campaign={selectedCampaignForCreatives}
+          onClose={() => setSelectedCampaignForCreatives(null)}
+        />
+      )}
     </div>
   );
 }

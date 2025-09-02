@@ -401,6 +401,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/campaigns/:id/metrics - Get metrics for specific campaign
+  app.get('/api/campaigns/:id/metrics', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const userId = 'demo-user-real';
+      
+      // Get campaign details
+      const campaign = await storage.getCampaignById(id);
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+      
+      // Get campaign metrics from campaign_metrics table filtered by campaign name
+      const metrics = await storage.getCampaignMetrics(userId, {
+        page: 1,
+        limit: 1000,
+        campaign: campaign.name
+      });
+      
+      res.json({
+        campaign,
+        metrics: metrics.data
+      });
+    } catch (error) {
+      console.error("Error fetching campaign metrics:", error);
+      res.status(500).json({ message: "Failed to fetch campaign metrics" });
+    }
+  });
+
+  // GET /api/campaigns/:id/creatives - Get creatives for specific campaign
+  app.get('/api/campaigns/:id/creatives', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      
+      const creatives = await storage.getCreativesByCampaign(id);
+      res.json(creatives);
+    } catch (error) {
+      console.error("Error fetching campaign creatives:", error);
+      res.status(500).json({ message: "Failed to fetch campaign creatives" });
+    }
+  });
+
   // Creative routes
   app.get('/api/creatives', async (req: Request, res: Response) => {
     try {
