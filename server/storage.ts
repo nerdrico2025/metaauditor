@@ -6,6 +6,7 @@ import {
   policies,
   audits,
   auditActions,
+  campaignMetrics,
   type User,
   type UpsertUser,
   type Integration,
@@ -20,6 +21,8 @@ import {
   type InsertAudit,
   type AuditAction,
   type InsertAuditAction,
+  type CampaignMetrics,
+  type InsertCampaignMetrics,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, count, sql } from "drizzle-orm";
@@ -79,6 +82,17 @@ export interface IStorage {
 
   // Problem creatives
   getProblemCreatives(userId: string, limit?: number): Promise<(Creative & { audit: Audit })[]>;
+
+  // Campaign Metrics operations
+  getCampaignMetrics(userId: string, filters: {
+    page: number;
+    limit: number;
+    account?: string;
+    campaign?: string;
+  }): Promise<{
+    data: CampaignMetrics[];
+    total: number;
+  }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -319,6 +333,54 @@ export class DatabaseStorage implements IStorage {
       ...row.creatives,
       audit: row.audits,
     }));
+  }
+
+  // Campaign Metrics operations
+  async getCampaignMetrics(userId: string, filters: {
+    page: number;
+    limit: number;
+    account?: string;
+    campaign?: string;
+  }): Promise<{
+    data: CampaignMetrics[];
+    total: number;
+  }> {
+    const offset = (filters.page - 1) * filters.limit;
+    
+    // Build where conditions
+    const whereConditions = [];
+    
+    // For now, we'll get all records since campaign metrics are global data
+    // In a production system, you might want to filter by user's accessible accounts
+    if (filters.account) {
+      whereConditions.push(eq(campaignMetrics.nomeAconta, filters.account));
+    }
+    
+    if (filters.campaign) {
+      whereConditions.push(eq(campaignMetrics.campanha, filters.campaign));
+    }
+    
+    const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
+    
+    // Get total count
+    const [totalResult] = await db
+      .select({ count: count() })
+      .from(campaignMetrics)
+      .where(whereClause);
+    
+    // Get paginated data
+    const metricsData = await db
+      .select()
+      .from(campaignMetrics)
+      .where(whereClause)
+      .orderBy(desc(campaignMetrics.data))
+      .limit(filters.limit)
+      .offset(offset);
+    
+    return {
+      data: metricsData,
+      total: totalResult?.count || 0
+    };
   }
 }
 

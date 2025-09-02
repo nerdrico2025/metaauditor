@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import cors from "cors";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { cronManager } from "./services/cronManager";
 
 const app = express();
 
@@ -77,5 +78,15 @@ app.use((req, res, next) => {
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
+    
+    // Start cron jobs after server is running
+    setTimeout(() => {
+      try {
+        cronManager.startAll();
+        log(`🕐 Google Sheets sync cron jobs started successfully`);
+      } catch (error) {
+        console.error(`❌ Failed to start cron jobs:`, error);
+      }
+    }, 2000); // Wait 2 seconds for server to fully initialize
   });
 })();

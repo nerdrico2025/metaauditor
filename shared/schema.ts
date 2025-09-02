@@ -130,6 +130,34 @@ export const auditActions = pgTable("audit_actions", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Campaign Metrics from Google Sheets
+export const campaignMetrics = pgTable("campaign_metrics", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id, { onDelete: 'cascade' }),
+  data: timestamp("data").notNull(), // Date from sheet
+  nomeAconta: text("nome_conta").notNull(), // Account name
+  adUrl: text("ad_url"), // Ad URL (can be null/empty)
+  campanha: text("campanha").notNull(), // Campaign name
+  grupoAnuncios: text("grupo_anuncios").notNull(), // Ad group name
+  anuncios: text("anuncios").notNull(), // Ad name
+  impressoes: integer("impressoes").default(0), // Impressions
+  cliques: integer("cliques").default(0), // Clicks
+  cpm: decimal("cpm", { precision: 10, scale: 2 }).default("0"), // Cost per mille
+  cpc: decimal("cpc", { precision: 10, scale: 2 }).default("0"), // Cost per click
+  conversasIniciadas: integer("conversas_iniciadas").default(0), // Conversations started
+  custoConversa: decimal("custo_conversa", { precision: 10, scale: 2 }).default("0"), // Cost per conversation
+  investimento: decimal("investimento", { precision: 10, scale: 2 }).default("0"), // Investment
+  source: varchar("source").default('google_sheets'), // Data source
+  status: varchar("status").default('imported'), // 'imported', 'pending', 'failed'
+  syncBatch: varchar("sync_batch"), // Batch identifier for tracking
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_campaign_metrics_data").on(table.data),
+  index("IDX_campaign_metrics_account").on(table.nomeAconta),
+  index("IDX_campaign_metrics_sync_batch").on(table.syncBatch),
+]);
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   integrations: many(integrations),
@@ -138,6 +166,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   policies: many(policies),
   audits: many(audits),
   auditActions: many(auditActions),
+  campaignMetrics: many(campaignMetrics),
 }));
 
 export const integrationsRelations = relations(integrations, ({ one, many }) => ({
@@ -207,6 +236,13 @@ export const auditActionsRelations = relations(auditActions, ({ one }) => ({
   }),
 }));
 
+export const campaignMetricsRelations = relations(campaignMetrics, ({ one }) => ({
+  user: one(users, {
+    fields: [campaignMetrics.userId],
+    references: [users.id],
+  }),
+}));
+
 // Insert schemas
 export const insertIntegrationSchema = createInsertSchema(integrations).omit({
   id: true,
@@ -242,6 +278,12 @@ export const insertAuditActionSchema = createInsertSchema(auditActions).omit({
   createdAt: true,
 });
 
+export const insertCampaignMetricsSchema = createInsertSchema(campaignMetrics).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Auth schemas
 export const registerSchema = z.object({
   email: z.string().email("Email inválido"),
@@ -272,3 +314,5 @@ export type InsertAudit = z.infer<typeof insertAuditSchema>;
 export type Audit = typeof audits.$inferSelect;
 export type InsertAuditAction = z.infer<typeof insertAuditActionSchema>;
 export type AuditAction = typeof auditActions.$inferSelect;
+export type InsertCampaignMetrics = z.infer<typeof insertCampaignMetricsSchema>;
+export type CampaignMetrics = typeof campaignMetrics.$inferSelect;

@@ -17,6 +17,8 @@ import { analyzeCreativeCompliance, analyzeCreativePerformance } from "./service
 import { registerRoutes as registerReplitAuthRoutes, isAuthenticated } from "./replitAuth";
 import type { LoginData, RegisterData } from "@shared/schema";
 import { randomUUID } from "crypto";
+import { cronManager, triggerManualSync } from "./services/cronManager";
+import { getSyncStatus } from "./services/sheetsSingleTabSync";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup storage in app locals for middleware access
@@ -354,6 +356,245 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error analyzing performance:", error);
       res.status(500).json({ message: "Failed to analyze performance" });
+    }
+  });
+
+  // Google Sheets Sync routes
+  app.post('/api/sync-single-tab-now', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      console.log(`🔄 Manual sync triggered by user: ${userId}`);
+      
+      const result = await triggerManualSync();
+      
+      if (result.success) {
+        res.json({
+          success: true,
+          message: 'Sync completed successfully',
+          data: {
+            totalDownloaded: result.totalDownloaded,
+            totalProcessed: result.totalProcessed,
+            totalInserted: result.totalInserted,
+            completionPercentage: result.completionPercentage,
+            syncBatch: result.syncBatch
+          }
+        });
+      } else {
+        res.status(207).json({
+          success: false,
+          message: 'Sync completed with errors',
+          data: {
+            totalDownloaded: result.totalDownloaded,
+            totalProcessed: result.totalProcessed,
+            totalInserted: result.totalInserted,
+            completionPercentage: result.completionPercentage,
+            errors: result.errors
+          }
+        });
+      }
+    } catch (error) {
+      console.error("Error during manual sync:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to sync Google Sheets data",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  app.post('/api/admin/sync-single-tab', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      // TODO: Add admin role verification here
+      const userId = req.user!.id;
+      console.log(`🛠️ Admin sync triggered by user: ${userId}`);
+      
+      const result = await triggerManualSync();
+      
+      res.json({
+        success: result.success,
+        message: result.success ? 'Admin sync completed successfully' : 'Admin sync completed with errors',
+        data: {
+          totalDownloaded: result.totalDownloaded,
+          totalProcessed: result.totalProcessed,
+          totalInserted: result.totalInserted,
+          completionPercentage: result.completionPercentage,
+          batchResults: result.batchResults,
+          errors: result.errors,
+          syncBatch: result.syncBatch
+        }
+      });
+    } catch (error) {
+      console.error("Error during admin sync:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to execute admin sync",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  app.get('/api/campaign-metrics', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 50;
+      const account = req.query.account as string;
+      const campaign = req.query.campaign as string;
+      
+      // TODO: Implement getCampaignMetrics method in storage
+      // For now, return mock response
+      const metrics = await storage.getCampaignMetrics(userId, { page, limit, account, campaign });
+      
+      res.json({
+        success: true,
+        data: metrics.data,
+        pagination: {
+          page,
+          limit,
+          total: metrics.total,
+          totalPages: Math.ceil(metrics.total / limit)
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching campaign metrics:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to fetch campaign metrics",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  app.get('/api/sync/status', async (req: Request, res: Response) => {
+    try {
+      const syncStatus = await getSyncStatus();
+      const cronJobsStatus = cronManager.getJobStatus();
+      
+      res.json({
+        success: true,
+        data: {
+          syncStatus: {
+            recordCount: syncStatus.recordCount,
+            lastSyncBatch: syncStatus.lastSyncBatch,
+            latestRecord: syncStatus.latestRecord
+          },
+          cronJobs: cronJobsStatus.map(job => ({
+            name: job.name,
+            enabled: job.enabled,
+            status: job.status,
+            lastRun: job.lastRun,
+            nextRun: job.nextRun,
+            description: job.description
+          }))
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching sync status:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to fetch sync status",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  app.get('/api/cron-jobs', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      // TODO: Add admin role verification here
+      const cronJobsStatus = cronManager.getJobStatus();
+      
+      res.json({
+        success: true,
+        data: cronJobsStatus
+      });
+    } catch (error) {
+      console.error("Error fetching cron jobs status:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to fetch cron jobs status",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  app.post('/api/cron-jobs/:jobId/run', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      // TODO: Add admin role verification here
+      const jobId = req.params.jobId;
+      const result = await cronManager.runJobNow(jobId);
+      
+      if (result.success) {
+        res.json({
+          success: true,
+          message: result.message
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          message: result.message
+        });
+      }
+    } catch (error) {
+      console.error("Error running cron job:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to run cron job",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  app.post('/api/cron-jobs/:jobId/enable', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      // TODO: Add admin role verification here
+      const jobId = req.params.jobId;
+      const success = cronManager.enableJob(jobId);
+      
+      if (success) {
+        res.json({
+          success: true,
+          message: `Job ${jobId} enabled successfully`
+        });
+      } else {
+        res.status(404).json({
+          success: false,
+          message: `Job ${jobId} not found`
+        });
+      }
+    } catch (error) {
+      console.error("Error enabling cron job:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to enable cron job",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  app.post('/api/cron-jobs/:jobId/disable', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      // TODO: Add admin role verification here
+      const jobId = req.params.jobId;
+      const success = cronManager.disableJob(jobId);
+      
+      if (success) {
+        res.json({
+          success: true,
+          message: `Job ${jobId} disabled successfully`
+        });
+      } else {
+        res.status(404).json({
+          success: false,
+          message: `Job ${jobId} not found`
+        });
+      }
+    } catch (error) {
+      console.error("Error disabling cron job:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to disable cron job",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
 
