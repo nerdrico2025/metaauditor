@@ -188,7 +188,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Campaign routes
   app.get('/api/campaigns', async (req: Request, res: Response) => {
     try {
-      const userId = 'demo-user'; // Demo mode - no authentication required
+      const userId = 'a65c7648-21a8-4c03-b1ad-6aba906c27c2'; // Demo mode - using existing test user
       const campaigns = await storage.getCampaignsByUser(userId);
       res.json(campaigns);
     } catch (error) {
@@ -345,8 +345,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/analyze/performance', async (req: Request, res: Response) => {
     try {
-      const { creativeContent, platformData } = req.body;
-      const result = await analyzeCreativePerformance(creativeContent, platformData);
+      const { creative } = req.body;
+      const result = await analyzeCreativePerformance(creative);
       res.json(result);
     } catch (error) {
       console.error("Error analyzing performance:", error);
