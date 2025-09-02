@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { Search, BarChart3, BellRing, Image, FileText, Settings, History, LogOut, Zap, ExternalLink } from "lucide-react";
 
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: BarChart3 },
+  { name: 'Dashboard', href: '/dashboard', icon: BarChart3 },
   { name: 'Campanhas', href: '/campaigns', icon: BellRing },
   { name: 'Criativos', href: '/creatives', icon: Image },
   { name: 'Relatórios', href: '/reports', icon: FileText },
