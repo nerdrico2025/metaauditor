@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import type { Creative } from "@shared/schema";
+import type { Creative, BrandConfiguration, ContentCriteria } from "@shared/schema";
 
 let openai: OpenAI | null = null;
 
@@ -39,10 +39,34 @@ export interface PerformanceAnalysis {
 
 export async function analyzeCreativeCompliance(
   creative: Creative,
-  brandGuidelines?: any
+  brandConfig?: BrandConfiguration | null,
+  contentCriteria?: ContentCriteria | null
 ): Promise<ComplianceAnalysis> {
   try {
-    const prompt = `Analyze this ad creative for brand compliance:
+    // Build detailed brand and content requirements
+    const brandRequirements = brandConfig ? `
+Brand Requirements:
+- Brand Name: ${brandConfig.brandName}
+- Primary Color: ${brandConfig.primaryColor || 'Not specified'}
+- Secondary Color: ${brandConfig.secondaryColor || 'Not specified'}
+- Accent Color: ${brandConfig.accentColor || 'Not specified'}
+- Font Family: ${brandConfig.fontFamily || 'Not specified'}
+- Brand Guidelines: ${brandConfig.brandGuidelines || 'Not specified'}
+- Logo URL: ${brandConfig.logoUrl ? 'Logo provided' : 'No logo provided'}` : '\nNo brand configuration found.';
+    
+    const contentRequirements = contentCriteria ? `
+Content Criteria:
+- Criteria Name: ${contentCriteria.name}
+- Required Keywords: ${contentCriteria.requiredKeywords ? JSON.stringify(contentCriteria.requiredKeywords) : 'None'}
+- Prohibited Keywords: ${contentCriteria.prohibitedKeywords ? JSON.stringify(contentCriteria.prohibitedKeywords) : 'None'}
+- Required Phrases: ${contentCriteria.requiredPhrases ? JSON.stringify(contentCriteria.requiredPhrases) : 'None'}
+- Prohibited Phrases: ${contentCriteria.prohibitedPhrases ? JSON.stringify(contentCriteria.prohibitedPhrases) : 'None'}
+- Min Text Length: ${contentCriteria.minTextLength || 'Not specified'}
+- Max Text Length: ${contentCriteria.maxTextLength || 'Not specified'}
+- Requires Logo: ${contentCriteria.requiresLogo ? 'Yes' : 'No'}
+- Requires Brand Colors: ${contentCriteria.requiresBrandColors ? 'Yes' : 'No'}` : '\nNo content criteria found.';
+
+    const prompt = `Analyze this ad creative for brand compliance based on the user's specific brand configuration and content criteria:
     
 Creative Details:
 - Name: ${creative.name}
@@ -51,14 +75,20 @@ Creative Details:
 - Headline: ${creative.headline || 'N/A'}
 - Description: ${creative.description || 'N/A'}
 - Call to Action: ${creative.callToAction || 'N/A'}
+- Image URL: ${creative.imageUrl ? 'Image provided' : 'No image'}
+${brandRequirements}
+${contentRequirements}
 
-Brand Guidelines: ${JSON.stringify(brandGuidelines) || 'Standard professional guidelines'}
+IMPORTANT: Analyze compliance against the SPECIFIC brand colors, keywords, and criteria provided above. If brand colors are specified, check if the creative uses those exact colors. If required keywords are specified, verify they are present. If prohibited keywords/phrases are specified, check that they are NOT present.
 
 Please analyze for:
-1. Text appropriateness and professional language
-2. Brand consistency
-3. Compliance with advertising standards
-4. Overall quality and effectiveness
+1. Brand color compliance (against specific colors if provided)
+2. Logo presence and compliance (if required)
+3. Required keywords/phrases presence
+4. Prohibited keywords/phrases absence
+5. Text length compliance (if specified)
+6. Overall brand consistency
+7. Professional language and appropriateness
 
 Respond with JSON in this format: {
   "score": number (0-100),

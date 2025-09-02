@@ -442,6 +442,132 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Creative analysis endpoint
+  app.post('/api/creatives/:id/analyze', async (req: Request, res: Response) => {
+    try {
+      const creativeId = req.params.id;
+      const userId = 'demo-user-real'; // Using real user with real data
+
+      // Get the creative
+      const creative = await storage.getCreativeById(creativeId);
+      if (!creative) {
+        return res.status(404).json({ message: "Creative not found" });
+      }
+
+      // Get user's brand configurations and content criteria
+      const brandConfigs = await storage.getBrandConfigurationsByUser(userId);
+      const contentCriteria = await storage.getContentCriteriaByUser(userId);
+      const activeBrandConfig = brandConfigs.find(config => config.isActive) || brandConfigs[0];
+      const activeContentCriteria = contentCriteria.find(criteria => criteria.isActive) || contentCriteria[0];
+
+      // Perform compliance analysis with user's configurations
+      const complianceResult = await analyzeCreativeCompliance(
+        creative, 
+        activeBrandConfig, 
+        activeContentCriteria
+      );
+
+      // Perform performance analysis
+      const performanceResult = await analyzeCreativePerformance(creative);
+
+      // Combine results and determine overall status
+      let status: string = 'compliant';
+      const issues: any[] = [];
+      const recommendations: string[] = [];
+      let complianceScore = complianceResult.score;
+      let performanceScore = performanceResult.score;
+
+      // Process compliance issues
+      if (complianceResult.issues.length > 0) {
+        status = 'non_compliant';
+        issues.push(...complianceResult.issues.map(issue => ({
+          type: 'Compliance Issue',
+          description: issue,
+          severity: 'high'
+        })));
+      }
+
+      // Process performance issues  
+      if (performanceResult.performance === 'low') {
+        status = status === 'compliant' ? 'low_performance' : status;
+        issues.push({
+          type: 'Performance Issue',
+          description: `Performance is ${performanceResult.performance}. Consider optimization.`,
+          severity: 'medium'
+        });
+      }
+
+      // Combine recommendations
+      recommendations.push(...complianceResult.recommendations);
+      recommendations.push(...performanceResult.recommendations);
+
+      // Create detailed analysis with checks
+      const checks = [
+        {
+          category: 'Conformidade da marca',
+          description: 'Verificação de logo e cores da marca',
+          status: complianceResult.analysis.logoCompliance && complianceResult.analysis.colorCompliance ? 'passed' : 'failed',
+          details: activeBrandConfig ? `Verificado contra: ${activeBrandConfig.brandName}` : 'Nenhuma configuração de marca encontrada'
+        },
+        {
+          category: 'Conteúdo textual',
+          description: 'Análise do texto e call-to-action',
+          status: complianceResult.analysis.textCompliance ? 'passed' : 'warning',
+          details: activeContentCriteria ? `Verificado contra critérios: ${activeContentCriteria.name}` : 'Nenhum critério de conteúdo encontrado'
+        },
+        {
+          category: 'Performance',
+          description: 'Métricas de CTR e conversão', 
+          status: performanceResult.performance === 'high' ? 'passed' : performanceResult.performance === 'medium' ? 'warning' : 'failed',
+          details: `CTR: ${creative.ctr}%, Conversões: ${creative.conversions}`
+        }
+      ];
+
+      // Create audit record
+      const auditData = {
+        userId,
+        creativeId,
+        status,
+        complianceScore: complianceScore.toString(),
+        performanceScore: performanceScore.toString(),
+        issues: JSON.stringify(issues),
+        recommendations: JSON.stringify(recommendations),
+        aiAnalysis: JSON.stringify({
+          checks,
+          summary: issues.length === 0 ? 'Criativo conforme com todas as verificações' : `${issues.length} problema(s) identificado(s)`,
+          brandConfig: activeBrandConfig ? {
+            name: activeBrandConfig.brandName,
+            primaryColor: activeBrandConfig.primaryColor,
+            secondaryColor: activeBrandConfig.secondaryColor
+          } : null,
+          contentCriteria: activeContentCriteria ? {
+            name: activeContentCriteria.name,
+            hasRequiredKeywords: !!activeContentCriteria.requiredKeywords,
+            hasProhibitedKeywords: !!activeContentCriteria.prohibitedKeywords
+          } : null
+        }),
+      };
+
+      const audit = await storage.createAudit(auditData);
+      res.json(audit);
+    } catch (error) {
+      console.error("Error analyzing creative:", error);
+      res.status(500).json({ message: "Failed to analyze creative" });
+    }
+  });
+
+  // Get audits for a specific creative
+  app.get('/api/creatives/:id/audits', async (req: Request, res: Response) => {
+    try {
+      const creativeId = req.params.id;
+      const audits = await storage.getAuditsByCreative(creativeId);
+      res.json(audits);
+    } catch (error) {
+      console.error("Error fetching creative audits:", error);
+      res.status(500).json({ message: "Failed to fetch creative audits" });
+    }
+  });
+
   // Audit routes
   app.get('/api/audits', async (req: Request, res: Response) => {
     try {
