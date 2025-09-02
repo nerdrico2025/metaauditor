@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { AuthService, generateToken, hashPassword, comparePassword } from "./auth";
-import { 
+import {
   insertIntegrationSchema,
   insertCampaignSchema,
   insertCreativeSchema,
@@ -23,7 +23,7 @@ import { getSyncStatus } from "./services/sheetsSingleTabSync";
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup storage in app locals for middleware access
   app.locals.storage = storage;
-  
+
   // Setup Replit Auth first
   await registerReplitAuthRoutes(app);
 
@@ -359,9 +359,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = 'demo-user'; // Demo mode - no authentication required
       console.log(`🔄 Manual sync triggered by user: ${userId}`);
-      
+
       const result = await triggerManualSync();
-      
+
       if (result.success) {
         res.json({
           success: true,
@@ -389,8 +389,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (error) {
       console.error("Error during manual sync:", error);
-      res.status(500).json({ 
-        success: false, 
+      res.status(500).json({
+        success: false,
         message: "Failed to sync Google Sheets data",
         error: error instanceof Error ? error.message : 'Unknown error'
       });
@@ -402,9 +402,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // TODO: Add admin role verification here
       const userId = 'demo-user'; // Demo mode - no authentication required
       console.log(`🛠️ Admin sync triggered by user: ${userId}`);
-      
+
       const result = await triggerManualSync();
-      
+
       res.json({
         success: result.success,
         message: result.success ? 'Admin sync completed successfully' : 'Admin sync completed with errors',
@@ -420,8 +420,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error during admin sync:", error);
-      res.status(500).json({ 
-        success: false, 
+      res.status(500).json({
+        success: false,
         message: "Failed to execute admin sync",
         error: error instanceof Error ? error.message : 'Unknown error'
       });
@@ -435,11 +435,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const limit = parseInt(req.query.limit as string) || 50;
       const account = req.query.account as string;
       const campaign = req.query.campaign as string;
-      
+
       // TODO: Implement getCampaignMetrics method in storage
       // For now, return mock response
       const metrics = await storage.getCampaignMetrics(userId, { page, limit, account, campaign });
-      
+
       res.json({
         success: true,
         data: metrics.data,
@@ -452,8 +452,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error fetching campaign metrics:", error);
-      res.status(500).json({ 
-        success: false, 
+      res.status(500).json({
+        success: false,
         message: "Failed to fetch campaign metrics",
         error: error instanceof Error ? error.message : 'Unknown error'
       });
@@ -464,7 +464,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const syncStatus = await getSyncStatus();
       const cronJobsStatus = cronManager.getJobStatus();
-      
+
       res.json({
         success: true,
         data: {
@@ -485,8 +485,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error fetching sync status:", error);
-      res.status(500).json({ 
-        success: false, 
+      res.status(500).json({
+        success: false,
         message: "Failed to fetch sync status",
         error: error instanceof Error ? error.message : 'Unknown error'
       });
@@ -497,15 +497,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // TODO: Add admin role verification here
       const cronJobsStatus = cronManager.getJobStatus();
-      
+
       res.json({
         success: true,
         data: cronJobsStatus
       });
     } catch (error) {
       console.error("Error fetching cron jobs status:", error);
-      res.status(500).json({ 
-        success: false, 
+      res.status(500).json({
+        success: false,
         message: "Failed to fetch cron jobs status",
         error: error instanceof Error ? error.message : 'Unknown error'
       });
@@ -517,7 +517,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // TODO: Add admin role verification here
       const jobId = req.params.jobId;
       const result = await cronManager.runJobNow(jobId);
-      
+
       if (result.success) {
         res.json({
           success: true,
@@ -531,8 +531,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (error) {
       console.error("Error running cron job:", error);
-      res.status(500).json({ 
-        success: false, 
+      res.status(500).json({
+        success: false,
         message: "Failed to run cron job",
         error: error instanceof Error ? error.message : 'Unknown error'
       });
@@ -544,7 +544,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // TODO: Add admin role verification here
       const jobId = req.params.jobId;
       const success = cronManager.enableJob(jobId);
-      
+
       if (success) {
         res.json({
           success: true,
@@ -558,8 +558,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (error) {
       console.error("Error enabling cron job:", error);
-      res.status(500).json({ 
-        success: false, 
+      res.status(500).json({
+        success: false,
         message: "Failed to enable cron job",
         error: error instanceof Error ? error.message : 'Unknown error'
       });
@@ -571,7 +571,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // TODO: Add admin role verification here
       const jobId = req.params.jobId;
       const success = cronManager.disableJob(jobId);
-      
+
       if (success) {
         res.json({
           success: true,
@@ -585,17 +585,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (error) {
       console.error("Error disabling cron job:", error);
-      res.status(500).json({ 
-        success: false, 
+      res.status(500).json({
+        success: false,
         message: "Failed to disable cron job",
         error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   });
 
+  // Debug endpoint to list users (development only)
+  app.get('/api/debug/users', async (req: Request, res: Response) => {
+    try {
+      if (process.env.NODE_ENV === 'production') {
+        return res.status(404).json({ message: "Not found" });
+      }
+      const users = await storage.getAllUsers();
+      res.json(users.map(user => ({
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        createdAt: user.createdAt
+      })));
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
 
+  // Debug endpoint to check campaign metrics data (development only)
+  app.get('/api/debug/campaign-metrics-count', async (req: Request, res: Response) => {
+    try {
+      if (process.env.NODE_ENV === 'production') {
+        return res.status(404).json({ message: "Not found" });
+      }
 
+      const metrics = await storage.getCampaignMetricsDebug();
+      res.json({
+        totalRecords: metrics.totalRecords,
+        recordsBySource: metrics.recordsBySource,
+        latestSyncBatch: metrics.latestSyncBatch,
+        dateRange: metrics.dateRange,
+        sampleRecords: metrics.sampleRecords
+      });
+    } catch (error) {
+      console.error("Error fetching campaign metrics debug info:", error);
+      res.status(500).json({ message: "Failed to fetch campaign metrics debug info" });
+    }
+  });
 
+  // Debug endpoint to compare sheet data vs database data
+  app.get('/api/debug/compare-sheet-data', async (req: Request, res: Response) => {
+    try {
+      if (process.env.NODE_ENV === 'production') {
+        return res.status(404).json({ message: "Not found" });
+      }
+
+      // Import the function here to avoid circular dependencies
+      const { fetchSingleTabData } = await import('./services/sheetsSingleTabSync');
+
+      const sheetData = await fetchSingleTabData();
+      const dbMetrics = await storage.getCampaignMetricsDebug();
+
+      res.json({
+        sheetData: {
+          success: sheetData.success,
+          totalRecords: sheetData.data.length,
+          error: sheetData.error
+        },
+        databaseData: {
+          totalRecords: dbMetrics.totalRecords,
+          latestSyncBatch: dbMetrics.latestSyncBatch,
+          recordsBySource: dbMetrics.recordsBySource
+        },
+        comparison: {
+          dataMatches: sheetData.data.length === dbMetrics.totalRecords,
+          difference: sheetData.data.length - dbMetrics.totalRecords
+        }
+      });
+    } catch (error) {
+      console.error("Error comparing sheet and database data:", error);
+      res.status(500).json({ message: "Failed to compare data" });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

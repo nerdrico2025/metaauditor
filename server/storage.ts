@@ -93,6 +93,16 @@ export interface IStorage {
     data: CampaignMetrics[];
     total: number;
   }>;
+
+  // Debug methods for campaign metrics verification
+  getAllUsers(): Promise<User[]>;
+  getCampaignMetricsDebug(): Promise<{
+    totalRecords: number;
+    recordsBySource: { source: string; count: number }[];
+    latestSyncBatch: string | null;
+    dateRange: { earliest: Date | null; latest: Date | null };
+    sampleRecords: CampaignMetrics[];
+  }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -192,7 +202,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(creatives).where(eq(creatives.userId, userId));
   }
 
-  async getCreativesByCampaign(campaignId: string): Promise<Creative[]> {
+  async getCreativesByCampaign(campaignId: string): Promise<Creative[]>> {
     return await db.select().from(creatives).where(eq(creatives.campaignId, campaignId));
   }
 
@@ -346,28 +356,28 @@ export class DatabaseStorage implements IStorage {
     total: number;
   }> {
     const offset = (filters.page - 1) * filters.limit;
-    
+
     // Build where conditions
     const whereConditions = [];
-    
+
     // For now, we'll get all records since campaign metrics are global data
     // In a production system, you might want to filter by user's accessible accounts
     if (filters.account) {
       whereConditions.push(eq(campaignMetrics.nomeAconta, filters.account));
     }
-    
+
     if (filters.campaign) {
       whereConditions.push(eq(campaignMetrics.campanha, filters.campaign));
     }
-    
+
     const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
-    
+
     // Get total count
     const [totalResult] = await db
       .select({ count: count() })
       .from(campaignMetrics)
       .where(whereClause);
-    
+
     // Get paginated data
     const metricsData = await db
       .select()
@@ -376,10 +386,73 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(campaignMetrics.data))
       .limit(filters.limit)
       .offset(offset);
-    
+
     return {
       data: metricsData,
       total: totalResult?.count || 0
+    };
+  }
+
+  // Debug methods for campaign metrics verification
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users);
+  }
+
+  async getCampaignMetricsDebug(): Promise<{
+    totalRecords: number;
+    recordsBySource: { source: string; count: number }[];
+    latestSyncBatch: string | null;
+    dateRange: { earliest: Date | null; latest: Date | null };
+    sampleRecords: CampaignMetrics[];
+  }> {
+    // Get total count
+    const [totalResult] = await db
+      .select({ count: count() })
+      .from(campaignMetrics);
+
+    // Get count by source
+    const sourceResults = await db
+      .select({
+        source: campaignMetrics.source,
+        count: count()
+      })
+      .from(campaignMetrics)
+      .groupBy(campaignMetrics.source);
+
+    // Get latest sync batch
+    const [latestBatchResult] = await db
+      .select({ syncBatch: campaignMetrics.syncBatch })
+      .from(campaignMetrics)
+      .orderBy(desc(campaignMetrics.createdAt))
+      .limit(1);
+
+    // Get date range
+    const [dateRangeResult] = await db
+      .select({
+        earliest: sql<Date>`min(${campaignMetrics.data})`,
+        latest: sql<Date>`max(${campaignMetrics.data})`
+      })
+      .from(campaignMetrics);
+
+    // Get sample records (latest 5)
+    const sampleRecords = await db
+      .select()
+      .from(campaignMetrics)
+      .orderBy(desc(campaignMetrics.createdAt))
+      .limit(5);
+
+    return {
+      totalRecords: totalResult?.count || 0,
+      recordsBySource: sourceResults.map(r => ({
+        source: r.source || 'unknown',
+        count: r.count
+      })),
+      latestSyncBatch: latestBatchResult?.syncBatch || null,
+      dateRange: {
+        earliest: dateRangeResult?.earliest || null,
+        latest: dateRangeResult?.latest || null
+      },
+      sampleRecords
     };
   }
 }
