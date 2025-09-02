@@ -202,7 +202,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(creatives).where(eq(creatives.userId, userId));
   }
 
-  async getCreativesByCampaign(campaignId: string): Promise<Creative[]>> {
+  async getCreativesByCampaign(campaignId: string): Promise<Creative[]> {
     return await db.select().from(creatives).where(eq(creatives.campaignId, campaignId));
   }
 
