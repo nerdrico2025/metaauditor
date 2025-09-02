@@ -1,0 +1,54 @@
+Você é um desenvolvedor experiente em Node.js, TypeScript, Express.js e Drizzle ORM com PostgreSQL. Baseado na arquitetura de uma aplicação web full-stack para auditoria automática de criativos em Meta e Google Ads (hospedada no Replit Cloud na porta 5000, com frontend em React + TypeScript + Tailwind CSS + Radix UI, backend em Express.js, autenticação via Replit Auth, e funcionalidades como gerenciamento de campanhas, análise de criativos por IA, políticas de conformidade, relatórios e pausamento automático), crie uma implementação completa e detalhada de um novo processo de importação automática de dados de uma planilha do Google Sheets para o banco de dados PostgreSQL.
+
+O processo deve ser uma variação simplificada do sistema existente de sincronização (como em sheetsSync.ts ou sheetsMultiTabSync.ts), mas com as seguintes diferenças chave:
+
+Use apenas uma planilha única com 1 aba de dados. O link da planilha é: https://docs.google.com/spreadsheets/d/1mOPjhRhBUP60GzZm0NAuUSYGzlE1bDbi414iYtlwZkA/edit?usp=sharing
+Extraia o SHEET_ID do link (1mOPjhRhBUP60GzZm0NAuUSYGzlE1bDbi414iYtlwZkA) e determine o GID da aba única acessando "View > Source" na planilha para encontrar gid=[NUMERO].
+As colunas da aba representam métricas e informações de campanhas, e devem ser mapeadas para campos no banco de dados. As colunas são: data, nome_conta, ad_url, campanha, grupo_anuncios, anuncios, impressoes, cliques, cpm, cpc, conversas_iniciadas, custo_conversa, investimento.
+Mantenha compatibilidade com as tecnologias existentes: Drizzle ORM para queries, PostgreSQL (Neon Database ou similar no Replit), cron jobs para automação, endpoints RESTful em Express.js, logging com emojis para debug, retry com backoff, e batch processing para inserções.
+A planilha contém um volume grande de dados (potencialmente milhares ou dezenas de milhares de linhas), e todos os registros devem ser importados para o banco de dados sem exceção. Em hipótese alguma use dados simulados ou fictícios no código ou testes; extraia e processe apenas dados reais da planilha via API do Google Sheets.
+Regras de Importação para Evitar Importações Incompletas:
+Realize uma contagem inicial de todos os registros baixados da planilha e compare com a contagem de registros inseridos no banco ao final do processo. Se houver discrepância, registre um erro crítico e tente retry automático do processo inteiro.
+Processe dados em batches de 1000 registros, com retry individual por batch (até 3 tentativas com backoff exponencial) se houver falha em um batch.
+Valide cada registro individualmente durante o processamento (ex.: checar se todos os campos obrigatórios estão presentes e formatados corretamente); se um registro falhar na validação, registre o erro mas continue com os demais, e ao final, tente reprocessar apenas os registros falhados em um batch separado.
+Implemente um mecanismo de transação no Drizzle ORM para garantir atomicidade por batch: se um batch falhar, reverta e retry apenas aquele batch.
+Adicione logging detalhado para cada etapa (download, processamento, inserção), incluindo contagens parciais e totais, para permitir debug e auditoria de completude.
+Se o processo falhar completamente após retries, envie uma notificação via log ou endpoint (ex.: health check) sem pausar a execução do app, mas marque os dados como "incompletos" no banco.
+Estrutura a implementação e a documentação no formato abaixo, incluindo código TypeScript relevante (em arquivos como sheetsSingleTabSync.ts), interfaces, funções e integrações. Certifique-se de que o processo integre-se ao fluxo de trabalho do app (sincronização de campanhas, análise de performance e relatórios).
+
+Arquitetura Geral
+Descreva uma sincronização simples para uma planilha única com 1 aba (sheetsSingleTabSync.ts), focada em métricas de campanhas para auditoria de criativos em Meta e Google Ads.
+Integre com o backend existente em Express.js, usando middleware de logging e autenticação Replit Auth.
+Enfatize o suporte a grandes volumes com batches, retries e verificações de completude para garantir que 100% dos dados reais sejam importados.
+Configuração da Base de Dados
+Use Drizzle ORM com PostgreSQL.
+Defina ou estenda tabelas existentes como: partners (para nome_conta), campaigns (para campanha, grupo_anuncios, anuncios), metrics (para impressoes, cliques, cpm, cpc, conversas_iniciadas, custo_conversa, investimento, data, ad_url).
+Crie schema com campos mapeados das colunas da planilha, incluindo tipos (ex.: data como timestamp, investimento como decimal). Adicione um campo de status (ex.: 'imported' ou 'pending') para rastrear completude.
+Processo de Importação Single-Tab (Principal)
+3.1 Configuração da Planilha e Aba
+Defina constantes como:
+const SHEET_ID = '1mOPjhRhBUP60GzZm0NAuUSYGzlE1bDbi414iYtlwZkA';
+const TAB_GID = '[GID_DA_ABA_UNICA]'; // Obter via View > Source.
+Mapeie colunas para campos do banco.
+3.2 Download dos Dados
+Crie função fetchSingleTabData() para download da aba usando URL: https://docs.google.com/spreadsheets/d/[SHEET_ID]/export?format=csv&gid=[TAB_GID].
+Inclua timeout de 120 segundos (ou mais para volumes grandes), headers com User-Agent para evitar bloqueios, e verificação se o retorno é HTML (erro de acesso). Conte o número total de linhas baixadas e logue para verificação inicial.
+3.3 Processamento dos Dados
+Crie função processCampaignMetricsData() para processar a aba única.
+Interface RawMetricsData: { 'data': string; 'nome_conta': string; 'ad_url': string; 'campanha': string; 'grupo_anuncios': string; 'anuncios': string; 'impressoes': string; 'cliques': string; 'cpm': string; 'cpc': string; 'conversas_iniciadas': string; 'custo_conversa': string; 'investimento': string; }
+Aplicar transformações: Converter moeda brasileira (ex.: "R$ 45,67" para 45.67), percentuais para decimais, tratar nulos/vazios, mapear colunas em português para campos do banco (ex.: 'impressoes' para impressions como number). Valide cada registro e colete falhas para reprocessamento.
+3.4 Inserção no Banco (Upsert Strategy)
+Para cada conjunto de dados: Delete dados existentes para a aba (ex.: await db.delete(metrics).where(eq(metrics.source, 'single_tab'));) e insira novos em lotes de 1000.
+Use batchSize = 1000; for loops para slices e db.insert(metrics).values(batch) dentro de transações. Após cada batch, verifique a contagem inserida. Ao final, compare total baixado vs. total inserido e retry se necessário.
+Automatização com Cron Jobs
+Integre com cron.schedule para sync diário às 8:00 AM e a cada 30 minutos em dev: cron.schedule("0 8 * * *", async () => { await cronManager.syncSingleTabWithLogging(); });
+Endpoints da API
+POST /api/sync-single-tab-now: Sync manual público.
+POST /api/admin/sync-single-tab: Sync manual admin.
+GET /api/campaign-metrics: Busca métricas importadas.
+Tratamento de Erros e Retry
+Implemente retry com 3 tentativas e backoff, timeouts de 120s, logging com emojis, validação de dados (pular inválidos temporariamente e reprocessar), e detecção de HTML vs CSV. Adicione verificação de completude para garantir 100% de importação.
+Para Replicar ou Integrar no App
+Passos: Configure tabelas em Drizzle, identifique GID da aba, mapeie colunas, implemente download/processamento/inserção, adicione cron e endpoints, teste com logging e health checks.
+O sistema deve processar volumes de dados em lotes, integrando com análise de performance para auditoria de criativos.
+Gere código TypeScript completo para sheetsSingleTabSync.ts, incluindo imports de Drizzle, Express e cron, e integre com o app existente para sincronização de campanhas e métricas. Use apenas dados reais da planilha em todos os exemplos e testes.
