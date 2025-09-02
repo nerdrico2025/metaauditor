@@ -460,6 +460,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const activeBrandConfig = brandConfigs.find(config => config.isActive) || brandConfigs[0];
       const activeContentCriteria = contentCriteria.find(criteria => criteria.isActive) || contentCriteria[0];
 
+      // Debug logging
+      console.log('📊 Analysis Debug Info:');
+      console.log(`- Brand configs found: ${brandConfigs.length}`);
+      console.log(`- Content criteria found: ${contentCriteria.length}`);
+      console.log(`- Active brand config:`, activeBrandConfig ? {
+        name: activeBrandConfig.brandName,
+        primaryColor: activeBrandConfig.primaryColor,
+        secondaryColor: activeBrandConfig.secondaryColor,
+        isActive: activeBrandConfig.isActive
+      } : 'None found');
+      console.log(`- Active content criteria:`, activeContentCriteria ? {
+        name: activeContentCriteria.name,
+        requiredKeywords: activeContentCriteria.requiredKeywords,
+        prohibitedKeywords: activeContentCriteria.prohibitedKeywords,
+        isActive: activeContentCriteria.isActive
+      } : 'None found');
+
       // Perform compliance analysis with user's configurations
       const complianceResult = await analyzeCreativeCompliance(
         creative, 
