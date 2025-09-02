@@ -524,12 +524,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           category: 'Conformidade da marca',
           description: 'Verificação de logo e cores da marca',
           status: complianceResult.analysis.logoCompliance && complianceResult.analysis.colorCompliance ? 'passed' : 'failed',
-          details: activeBrandConfig ? `Verificado contra: ${activeBrandConfig.brandName}` : 'Nenhuma configuração de marca encontrada'
+          details: activeBrandConfig ? `Verificado contra: ${activeBrandConfig.brandName} - Cores: ${activeBrandConfig.primaryColor}, ${activeBrandConfig.secondaryColor}, ${activeBrandConfig.accentColor}` : 'Nenhuma configuração de marca encontrada'
         },
         {
           category: 'Conteúdo textual',
           description: 'Análise do texto e call-to-action',
-          status: complianceResult.analysis.textCompliance ? 'passed' : 'warning',
+          status: complianceResult.analysis.textCompliance ? 'passed' : 'failed',
           details: activeContentCriteria ? `Verificado contra critérios: ${activeContentCriteria.name}` : 'Nenhum critério de conteúdo encontrado'
         },
         {
@@ -539,6 +539,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
           details: `CTR: ${creative.ctr}%, Conversões: ${creative.conversions}`
         }
       ];
+
+      // If AI analysis failed, override status to reflect failure
+      if (complianceResult.issues.includes("Analysis failed - unable to process creative")) {
+        status = 'non_compliant';
+        issues.push({
+          type: 'AI Analysis Error',
+          description: 'A análise de IA falhou. Verifique as configurações da OpenAI.',
+          severity: 'high'
+        });
+        
+        // Mark all checks as failed when AI analysis fails
+        checks.forEach(check => {
+          if (check.status === 'passed') {
+            check.status = 'failed';
+            check.details += ' (Análise de IA falhou)';
+          }
+        });
+      }
 
       // Create audit record
       const auditData = {
