@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -10,9 +10,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BellRing, Calendar, DollarSign, BarChart3 } from "lucide-react";
-import CampaignReportModal from "@/components/Modals/CampaignReportModal";
-import CampaignCreativesModal from "@/components/Modals/CampaignCreativesModal";
 import type { Campaign } from "@shared/schema";
+
+// Lazy load modals to reduce chunk size
+const CampaignReportModal = lazy(() => import("@/components/Modals/CampaignReportModal"));
+const CampaignCreativesModal = lazy(() => import("@/components/Modals/CampaignCreativesModal"));
 
 export default function Campaigns() {
   const { toast } = useToast();
@@ -205,19 +207,21 @@ export default function Campaigns() {
       </div>
       
       {/* Modals */}
-      {selectedCampaignForReport && (
-        <CampaignReportModal 
-          campaign={selectedCampaignForReport}
-          onClose={() => setSelectedCampaignForReport(null)}
-        />
-      )}
-      
-      {selectedCampaignForCreatives && (
-        <CampaignCreativesModal 
-          campaign={selectedCampaignForCreatives}
-          onClose={() => setSelectedCampaignForCreatives(null)}
-        />
-      )}
+      <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div></div>}>
+        {selectedCampaignForReport && (
+          <CampaignReportModal 
+            campaign={selectedCampaignForReport}
+            onClose={() => setSelectedCampaignForReport(null)}
+          />
+        )}
+        
+        {selectedCampaignForCreatives && (
+          <CampaignCreativesModal 
+            campaign={selectedCampaignForCreatives}
+            onClose={() => setSelectedCampaignForCreatives(null)}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }

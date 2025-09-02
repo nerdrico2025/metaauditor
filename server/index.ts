@@ -54,8 +54,12 @@ app.use((req, res, next) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
-    res.status(status).json({ message });
-    throw err;
+    console.error("Server error:", err);
+    
+    // Ensure response is sent and don't throw in production
+    if (!res.headersSent) {
+      res.status(status).json({ message });
+    }
   });
 
   // importantly only setup vite in development and after
@@ -79,14 +83,18 @@ app.use((req, res, next) => {
   }, () => {
     log(`serving on port ${port}`);
     
-    // Start cron jobs after server is running
-    setTimeout(() => {
-      try {
-        cronManager.startAll();
-        log(`🕐 Google Sheets sync cron jobs started successfully`);
-      } catch (error) {
-        console.error(`❌ Failed to start cron jobs:`, error);
-      }
-    }, 2000); // Wait 2 seconds for server to fully initialize
+    // Start cron jobs after server is running (only in development)
+    if (process.env.NODE_ENV !== 'production') {
+      setTimeout(() => {
+        try {
+          cronManager.startAll();
+          log(`🕐 Google Sheets sync cron jobs started successfully`);
+        } catch (error) {
+          console.error(`❌ Failed to start cron jobs:`, error);
+        }
+      }, 2000); // Wait 2 seconds for server to fully initialize
+    } else {
+      log(`🚀 Production server ready - cron jobs disabled in production`);
+    }
   });
 })();

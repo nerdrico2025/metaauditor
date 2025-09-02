@@ -24,7 +24,7 @@ import {
   Download,
   X,
 } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, LineChart, Line } from 'recharts';
 import type { Campaign, CampaignMetrics } from "@shared/schema";
 
 interface CampaignReportModalProps {
@@ -95,12 +95,14 @@ export default function CampaignReportModal({
       conversations: metric.conversasIniciadas || 0,
     })) || [];
 
-  // Performance indicators
-  const performanceData = [
-    { name: 'Alto', value: ctr > 2 ? 1 : 0, color: '#10b981' },
-    { name: 'Médio', value: ctr >= 1 && ctr <= 2 ? 1 : 0, color: '#f59e0b' },
-    { name: 'Baixo', value: ctr < 1 ? 1 : 0, color: '#ef4444' },
-  ];
+  // Performance indicators (simplified for deployment)
+  const getPerformanceLabel = () => {
+    if (ctr > 2) return { label: 'Alto', color: 'text-green-600' };
+    if (ctr >= 1) return { label: 'Médio', color: 'text-yellow-600' };
+    return { label: 'Baixo', color: 'text-red-600' };
+  };
+  
+  const performance = getPerformanceLabel();
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
@@ -233,56 +235,60 @@ export default function CampaignReportModal({
               </div>
 
               {/* Performance Chart */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg font-semibold">Performance ao Longo do Tempo</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="date" />
-                        <YAxis />
-                        <Line 
-                          type="monotone" 
-                          dataKey="impressions" 
-                          stroke="#cf6f03" 
-                          strokeWidth={2}
-                          name="Impressões"
-                        />
-                        <Line 
-                          type="monotone" 
-                          dataKey="clicks" 
-                          stroke="#10b981" 
-                          strokeWidth={2}
-                          name="Cliques"
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
+              {chartData.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg font-semibold">Performance ao Longo do Tempo</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-80">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={chartData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="date" />
+                          <YAxis />
+                          <Line 
+                            type="monotone" 
+                            dataKey="impressions" 
+                            stroke="#cf6f03" 
+                            strokeWidth={2}
+                            name="Impressões"
+                          />
+                          <Line 
+                            type="monotone" 
+                            dataKey="clicks" 
+                            stroke="#10b981" 
+                            strokeWidth={2}
+                            name="Cliques"
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Investment Chart */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg font-semibold">Investimento e Conversações</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="date" />
-                        <YAxis />
-                        <Bar dataKey="investment" fill="#cf6f03" name="Investimento (R$)" />
-                        <Bar dataKey="conversations" fill="#10b981" name="Conversações" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
+              {chartData.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg font-semibold">Investimento e Conversações</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-80">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={chartData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="date" />
+                          <YAxis />
+                          <Bar dataKey="investment" fill="#cf6f03" name="Investimento (R$)" />
+                          <Bar dataKey="conversations" fill="#10b981" name="Conversações" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Additional Metrics */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
