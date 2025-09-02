@@ -328,9 +328,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Object storage routes for brand logo upload
   app.get('/api/objects/:objectPath(*)', async (req: Request, res: Response) => {
     try {
-      // Simple implementation for brand logo serving
-      // This would be enhanced with proper object storage integration
-      res.status(200).json({ message: "Object serving endpoint ready" });
+      const objectPath = req.params.objectPath;
+      // For now, redirect to public assets or return placeholder
+      res.status(200).json({ 
+        message: "Object serving endpoint ready", 
+        objectPath: objectPath,
+        url: `/public-objects/${objectPath}`
+      });
     } catch (error) {
       console.error("Error serving object:", error);
       res.status(500).json({ message: "Failed to serve object" });
@@ -339,13 +343,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/objects/upload', async (req: Request, res: Response) => {
     try {
-      // Simple implementation for brand logo upload
-      // This would be enhanced with proper object storage integration  
-      const uploadURL = `https://example.com/upload/${randomUUID()}`;
-      res.json({ uploadURL });
+      // Generate a unique filename for the logo
+      const fileExtension = req.body.fileType?.split('/')[1] || 'png';
+      const filename = `logos/${randomUUID()}.${fileExtension}`;
+      
+      // Create a mock presigned URL for now
+      // In production, this would integrate with the actual object storage
+      const uploadURL = `https://storage.googleapis.com/replit-objstore-3a4bda15-c9f7-47e3-844a-a44e681f9f17/public/${filename}`;
+      
+      res.json({ 
+        method: "PUT" as const,
+        url: uploadURL,
+        objectPath: `/objects/${filename}`
+      });
     } catch (error) {
       console.error("Error getting upload URL:", error);
       res.status(500).json({ message: "Failed to get upload URL" });
+    }
+  });
+
+  // Serve public assets
+  app.get('/public-objects/:filePath(*)', async (req: Request, res: Response) => {
+    try {
+      const filePath = req.params.filePath;
+      // This would integrate with actual object storage
+      res.status(404).json({ message: "Public object not found", filePath });
+    } catch (error) {
+      console.error("Error serving public object:", error);
+      res.status(500).json({ message: "Failed to serve public object" });
     }
   });
 

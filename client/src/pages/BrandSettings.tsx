@@ -17,7 +17,9 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Palette, Upload, Edit2, Trash2, Plus, Image } from "lucide-react";
+import { ObjectUploader } from "@/components/ObjectUploader";
 import type { BrandConfiguration } from "@shared/schema";
+import type { UploadResult } from "@uppy/core";
 
 const brandConfigSchema = z.object({
   brandName: z.string().min(1, "Nome da marca é obrigatório"),
@@ -182,6 +184,42 @@ export default function BrandSettings() {
       brandGuidelines: config.brandGuidelines || "",
       logoUrl: config.logoUrl || "",
     });
+  };
+
+  const handleLogoUpload = async () => {
+    try {
+      const response = await apiRequest("POST", "/api/objects/upload", {
+        fileType: "image/png"
+      });
+      const data = await response.json();
+      return {
+        method: data.method as "PUT",
+        url: data.url
+      };
+    } catch (error) {
+      console.error("Error getting upload URL:", error);
+      toast({
+        title: "Erro",
+        description: "Falha ao obter URL de upload",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
+  const handleUploadComplete = (result: { successful: Array<{ uploadURL: string }> }) => {
+    if (result.successful && result.successful.length > 0) {
+      const uploadedFile = result.successful[0];
+      const logoUrl = uploadedFile.uploadURL;
+      
+      if (logoUrl) {
+        form.setValue("logoUrl", logoUrl);
+        toast({
+          title: "Sucesso",
+          description: "Logo enviado com sucesso!",
+        });
+      }
+    }
   };
 
   const onSubmit = (data: BrandConfigFormData) => {
@@ -352,10 +390,28 @@ export default function BrandSettings() {
                               className="flex-1"
                               data-testid="input-logo-url"
                             />
-                            <Button type="button" variant="outline" size="icon">
+                            <ObjectUploader
+                              maxNumberOfFiles={1}
+                              maxFileSize={5242880} // 5MB
+                              onGetUploadParameters={handleLogoUpload}
+                              onComplete={handleUploadComplete}
+                              buttonClassName="h-10 px-3"
+                            >
                               <Upload className="h-4 w-4" />
-                            </Button>
+                            </ObjectUploader>
                           </div>
+                          {form.watch("logoUrl") && (
+                            <div className="mt-2">
+                              <img 
+                                src={form.watch("logoUrl")} 
+                                alt="Preview do logo" 
+                                className="w-16 h-16 object-contain border border-slate-300 rounded"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                              />
+                            </div>
+                          )}
                         </div>
 
                         <div>
