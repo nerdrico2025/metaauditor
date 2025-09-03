@@ -121,8 +121,8 @@ export async function seedDatabase() {
           impressions: Math.floor(Math.random() * 10000) + 1000,
           clicks: Math.floor(Math.random() * 500) + 50,
           conversions: Math.floor(Math.random() * 50) + 5,
-          ctr: (Math.random() * 5 + 0.5).toFixed(3),
-          cpc: (Math.random() * 3 + 0.5).toFixed(2)
+          ctr: (Math.random() * 4.999).toFixed(3),
+          cpc: (Math.random() * 9 + 1).toFixed(2)
         }).returning();
         creativeIds.push(creative.id);
       }
@@ -194,8 +194,8 @@ export async function seedDatabase() {
         creativeId,
         policyId: policy.id,
         status,
-        complianceScore: (Math.random() * 100).toFixed(0),
-        performanceScore: (Math.random() * 100).toFixed(0),
+        complianceScore: (Math.random() * 9.99).toFixed(2),
+        performanceScore: (Math.random() * 9.99).toFixed(2),
         issues: JSON.stringify(status === 'compliant' ? [] : ['Logo não identificado', 'Cores fora do padrão']),
         recommendations: JSON.stringify(['Ajustar cores da marca', 'Incluir logo oficial']),
         aiAnalysis: JSON.stringify({
@@ -241,11 +241,11 @@ export async function seedDatabase() {
         anuncios: `Anúncio Demo ${i + 1}`,
         impressoes: Math.floor(Math.random() * 10000) + 1000,
         cliques: Math.floor(Math.random() * 500) + 50,
-        cpm: (Math.random() * 20 + 5).toFixed(2),
-        cpc: (Math.random() * 5 + 1).toFixed(2),
+        cpm: (Math.random() * 15 + 5).toFixed(2),
+        cpc: (Math.random() * 4 + 1).toFixed(2),
         conversasIniciadas: Math.floor(Math.random() * 100) + 10,
-        custoConversa: (Math.random() * 15 + 3).toFixed(2),
-        investimento: (Math.random() * 1000 + 200).toFixed(2),
+        custoConversa: (Math.random() * 12 + 3).toFixed(2),
+        investimento: (Math.random() * 800 + 200).toFixed(2),
         source: 'google_sheets',
         status: 'imported',
         syncBatch: 'seed_batch_001'
