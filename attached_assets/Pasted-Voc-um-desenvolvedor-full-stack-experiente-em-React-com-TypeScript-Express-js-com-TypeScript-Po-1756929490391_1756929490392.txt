@@ -1,0 +1,23 @@
+Você é um desenvolvedor full-stack experiente em React com TypeScript, Express.js com TypeScript, PostgreSQL com Drizzle ORM, Tailwind CSS e Radix UI. Baseado na arquitetura técnica de uma aplicação web full-stack para auditoria automática de criativos em Meta e Google Ads (hospedada na Replit Cloud, com frontend em React/Vite, backend em Express.js, e banco de dados PostgreSQL), implemente um sistema de autenticação simples de usuários com login e senha. Não inclua uma tela de cadastro pública; o cadastro de novos usuários deve ser feito apenas por administradores via uma tela de gerenciamento.
+
+Requisitos principais:
+- **Níveis de usuários**: Crie dois níveis: "administrador" (com acesso total, incluindo gerenciamento de usuários) e "operador" (acesso limitado às telas principais do app, sem gerenciamento de usuários).
+- **Usuário master**: Crie um usuário master pré-cadastrado com login: "rafael@clickhero.com.br", senha: "X@drez13" e nível: "administrador". Esse usuário deve ser imutável em termos de nível de acesso – ele nunca pode ser rebaixado para "operador" ou removido.
+- **Autenticação**: Implemente uma tela de login simples (com campos para email/login e senha). Use hashing seguro para senhas (ex: bcrypt no backend). Após login bem-sucedido, gere um token JWT para gerenciamento de sessões e autenticação em rotas protegidas. Integre com o sistema de autenticação existente (Replit Auth, se aplicável, mas priorize um sistema próprio simples).
+- **Tela de configurações**: Crie uma tela de configurações acessível após login, com:
+  - Uma aba para edição de perfil: Permitir que o usuário edite seus próprios dados (ex: nome, email, senha). Use formulários com validação (ex: Radix UI para componentes como Dialog e Form).
+  - Uma aba extra para "Gestão de Usuários": Disponível apenas para usuários com nível "administrador". Nessa aba, o admin pode:
+    - Adicionar novos usuários (com campos para login/email, senha inicial, e nível de acesso: administrador ou operador).
+    - Editar usuários existentes (alterar login, senha, ou nível de acesso, exceto para o usuário master).
+    - Remover usuários (exceto o usuário master).
+    - Mudar o nível de acesso de usuários (de operador para administrador ou vice-versa, exceto para o usuário master, que deve permanecer sempre administrador).
+  - Garanta que operadores não vejam ou acessem a aba de gestão de usuários (use verificações de permissão no frontend e backend).
+- **Integração com arquitetura existente**:
+  - **Banco de Dados**: Atualize o schema do PostgreSQL via Drizzle ORM para incluir uma tabela "users" com colunas: id (UUID), email (unique), password_hash (string), role (enum: 'administrador' | 'operador'), created_at (timestamp), updated_at (timestamp). Insira o usuário master como seed inicial no banco.
+  - **Backend**: Crie rotas RESTful em Express.js para: POST /login (autenticação), GET/POST/PUT/DELETE /users (protegidas por middleware de autenticação JWT e verificação de role 'administrador' para gerenciamento). Use middleware de logging personalizado para auditoria.
+  - **Frontend**: Use React Hooks e Context API para gerenciar estado de autenticação (ex: AuthContext para armazenar token e role). Crie páginas/rotas para login e configurações, com estilização Tailwind CSS e componentes Radix UI. Proteja rotas com verificações de autenticação (ex: redirecione para login se não autenticado).
+  - **Segurança**: Use criptografia AES-256 para dados sensíveis, conformidade com GDPR/LGPD, e logs de auditoria para ações de login e gerenciamento de usuários. Evite rate limits em autenticação.
+  - **Fluxo**: Após login, redirecione para o dashboard. Na tela de configurações, use tabs (Radix UI Tabs) para separar perfil e gestão de usuários. Para o usuário master, desabilite opções de edição de role ou remoção.
+- **Outros detalhes**: A implementação deve ser escalável, com processamento assíncrono se necessário. Forneça o código completo para frontend (componentes React), backend (rotas Express e schema Drizzle), e instruções para seed do banco com o usuário master. Teste para garantir que apenas admins acessem gerenciamento e que o master seja protegido.
+
+Gere o código completo e funcional, pronto para deploy na Replit Cloud (porta 5000 no backend).
