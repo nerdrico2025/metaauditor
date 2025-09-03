@@ -3,6 +3,7 @@ import cors from "cors";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { cronManager } from "./services/cronManager";
+import { checkIfDatabaseEmpty, seedDatabase } from "./seedData";
 
 const app = express();
 
@@ -80,8 +81,20 @@ app.use((req, res, next) => {
     port,
     host: "0.0.0.0",
     reusePort: true,
-  }, () => {
+  }, async () => {
     log(`serving on port ${port}`);
+    
+    // Check if database needs seeding (production environment with empty database)
+    try {
+      const isEmpty = await checkIfDatabaseEmpty();
+      if (isEmpty) {
+        log(`🌱 Database is empty - seeding with demo data...`);
+        await seedDatabase();
+        log(`✅ Database seeded successfully for production demo`);
+      }
+    } catch (error) {
+      console.error(`⚠️ Database seeding failed:`, error);
+    }
     
     // Start cron jobs after server is running (only in development)
     if (process.env.NODE_ENV !== 'production') {
