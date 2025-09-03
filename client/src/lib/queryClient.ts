@@ -61,23 +61,26 @@ export const queryClient = new QueryClient({
     queries: {
       queryFn: async ({ queryKey, signal }) => {
         const url = queryKey[0] as string;
+        const token = getToken();
 
         const headers: Record<string, string> = {
           'Content-Type': 'application/json',
         };
 
-        // For Replit Auth, we rely on session cookies, no Authorization header needed
+        if (token) {
+          headers.Authorization = `Bearer ${token}`;
+        }
 
         const response = await fetch(url, {
           headers,
           signal,
-          credentials: 'include', // Include cookies for session-based auth
+          credentials: 'include',
         });
 
         if (!response.ok) {
           if (response.status === 401 || response.status === 403) {
-            // For Replit Auth, don't redirect immediately on 401
-            // Let the component handle the unauthenticated state
+            localStorage.removeItem('auth_token');
+            window.location.href = '/login';
           }
           throw new Error(await response.text());
         }

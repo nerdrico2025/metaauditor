@@ -39,6 +39,9 @@ export interface IStorage {
   getUserById(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(data: Omit<UpsertUser, 'id'>): Promise<User>;
+  updateUser(id: string, data: Partial<UpsertUser>): Promise<User | undefined>;
+  deleteUser(id: string): Promise<boolean>;
+  getAllUsers(): Promise<User[]>;
   upsertUser(user: UpsertUser): Promise<User>;
 
   // Integration operations
@@ -146,6 +149,26 @@ export class DatabaseStorage implements IStorage {
       .values(data)
       .returning();
     return user;
+  }
+
+  async updateUser(id: string, data: Partial<UpsertUser>): Promise<User | undefined> {
+    const [updated] = await db
+      .update(users)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteUser(id: string): Promise<boolean> {
+    // Prevent deletion of master user
+    const user = await this.getUserById(id);
+    if (user && user.email === 'rafael@clickhero.com.br') {
+      throw new Error('Cannot delete master user');
+    }
+    
+    const result = await db.delete(users).where(eq(users.id, id));
+    return (result.rowCount ?? 0) > 0;
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {

@@ -3,7 +3,10 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { AuthProvider, ProtectedRoute } from "@/contexts/AuthContext";
 import Landing from "@/pages/Landing";
+import Login from "@/pages/Login";
+import Settings from "@/pages/Settings";
 import Dashboard from "@/pages/Dashboard";
 import Campaigns from "@/pages/Campaigns";
 import Creatives from "@/pages/Creatives";
@@ -20,16 +23,62 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Landing} />
-      <Route path="/dashboard" component={Dashboard} />
-      <Route path="/campaigns" component={Campaigns} />
-      <Route path="/creatives" component={Creatives} />
-      <Route path="/reports" component={Reports} />
-      <Route path="/policies" component={Policies} />
-      <Route path="/history" component={History} />
-      <Route path="/integrations" component={Integrations} />
-      <Route path="/brand-settings" component={BrandSettings} />
-      <Route path="/content-criteria" component={ContentCriteria} />
-      <Route path="/ai-testing" component={AITestingPage} />
+      <Route path="/login" component={Login} />
+      <Route path="/settings">
+        <ProtectedRoute>
+          <Settings />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard">
+        <ProtectedRoute>
+          <Dashboard />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/campaigns">
+        <ProtectedRoute>
+          <Campaigns />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/creatives">
+        <ProtectedRoute>
+          <Creatives />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/reports">
+        <ProtectedRoute>
+          <Reports />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/policies">
+        <ProtectedRoute>
+          <Policies />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/history">
+        <ProtectedRoute>
+          <History />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/integrations">
+        <ProtectedRoute>
+          <Integrations />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/brand-settings">
+        <ProtectedRoute>
+          <BrandSettings />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/content-criteria">
+        <ProtectedRoute>
+          <ContentCriteria />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/ai-testing">
+        <ProtectedRoute>
+          <AITestingPage />
+        </ProtectedRoute>
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );
@@ -38,10 +87,12 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+        </TooltipProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

@@ -1,7 +1,22 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import type { Request, Response, NextFunction } from 'express';
-import type { User } from '@shared/schema';
+import type { User as SchemaUser } from '@shared/schema';
+
+// Extended User interface that matches our database schema
+export interface User {
+  id: string;
+  email: string;
+  password: string;
+  firstName: string | null;
+  lastName: string | null;
+  role: 'administrador' | 'operador';
+  profileImageUrl: string | null;
+  isActive: boolean | null;
+  lastLoginAt: Date | null;
+  createdAt: Date | null;
+  updatedAt: Date | null;
+}
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this-in-production';
 const JWT_EXPIRES_IN = '7d';
@@ -9,6 +24,19 @@ const JWT_EXPIRES_IN = '7d';
 // Extend Express Request type to include our user
 declare global {
   namespace Express {
+    interface User {
+      id: string;
+      email: string;
+      password: string;
+      firstName: string | null;
+      lastName: string | null;
+      role: 'administrador' | 'operador';
+      profileImageUrl: string | null;
+      isActive: boolean | null;
+      lastLoginAt: Date | null;
+      createdAt: Date | null;
+      updatedAt: Date | null;
+    }
     interface Request {
       user?: User;
     }
@@ -91,7 +119,7 @@ export const optionalAuth = async (
 
 // AuthService class for compatibility
 export class AuthService {
-  static async register(data: { email: string; password: string; firstName: string; lastName: string }) {
+  static async register(data: { email: string; password: string; firstName: string; lastName: string; role?: 'administrador' | 'operador' }) {
     const { storage } = await import('./storage');
     
     // Check if user already exists
@@ -109,6 +137,7 @@ export class AuthService {
       password: hashedPassword,
       firstName: data.firstName,
       lastName: data.lastName,
+      role: data.role || 'operador',
     });
 
     // Generate token
@@ -120,6 +149,7 @@ export class AuthService {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
+        role: user.role,
       },
       token,
     };
@@ -130,7 +160,7 @@ export class AuthService {
     
     // Get user by email
     const user = await storage.getUserByEmail(data.email);
-    if (!user) {
+    if (!user || !user.isActive) {
       throw new Error('Invalid credentials');
     }
 
@@ -139,6 +169,9 @@ export class AuthService {
     if (!isValid) {
       throw new Error('Invalid credentials');
     }
+
+    // Update last login time
+    await storage.updateUser(user.id, { lastLoginAt: new Date() });
 
     // Generate token
     const token = generateToken(user.id);
@@ -149,6 +182,7 @@ export class AuthService {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
+        role: user.role,
       },
       token,
     };

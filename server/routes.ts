@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { AuthService, generateToken, hashPassword, comparePassword } from "./auth";
+import { AuthService, generateToken, hashPassword, comparePassword, authenticateToken, type User } from "./auth";
 import {
   insertIntegrationSchema,
   insertCampaignSchema,
@@ -13,11 +13,15 @@ import {
   insertContentCriteriaSchema,
   registerSchema,
   loginSchema,
-  type User,
+  createUserSchema,
+  updateUserSchema,
+  updateProfileSchema,
+  changePasswordSchema,
+  type UserRole,
 } from "@shared/schema";
 import { analyzeCreativeCompliance, analyzeCreativePerformance } from "./services/aiAnalysis";
 import { registerRoutes as registerReplitAuthRoutes } from "./replitAuth";
-import type { LoginData, RegisterData } from "@shared/schema";
+import type { LoginData, RegisterData, CreateUserData, UpdateUserData, UpdateProfileData, ChangePasswordData } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { cronManager, triggerManualSync } from "./services/cronManager";
 import { getSyncStatus } from "./services/sheetsSingleTabSync";
@@ -52,17 +56,223 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Authentication disabled - this route is no longer needed
-  app.get('/api/auth/user', async (req: Request, res: Response) => {
-    // Return demo user data since authentication is disabled
-    const userData = {
-      id: 'demo-user',
-      email: 'demo@clickauditor.com',
-      firstName: 'Demo',
-      lastName: 'User',
-      profileImageUrl: null,
-    };
-    res.json(userData);
+  app.post('/api/auth/logout', async (req, res) => {
+    // JWT is stateless, so logout is handled on the client
+    res.json({ message: 'Logout realizado com sucesso' });
+  });
+
+  // Role-based authorization middleware
+  const requireAdmin = (req: Request, res: Response, next: any) => {
+    if (req.user?.role !== 'administrador') {
+      return res.status(403).json({ message: 'Acesso negado. Apenas administradores podem realizar esta ação.' });
+    }
+    next();
+  };
+
+  // User Management routes (Admin only)
+  app.get('/api/users', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const users = await storage.getAllUsers();
+      const safeUsers = users.map(user => ({
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        isActive: user.isActive,
+        lastLoginAt: user.lastLoginAt,
+        createdAt: user.createdAt,
+      }));
+      res.json(safeUsers);
+    } catch (error: any) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Erro ao buscar usuários" });
+    }
+  });
+
+  app.post('/api/users', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const validatedData = createUserSchema.parse(req.body);
+      
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(validatedData.email);
+      if (existingUser) {
+        return res.status(400).json({ message: 'Usuário com este email já existe' });
+      }
+
+      // Hash password
+      const hashedPassword = await hashPassword(validatedData.password);
+
+      // Create user
+      const user = await storage.createUser({
+        email: validatedData.email,
+        password: hashedPassword,
+        firstName: validatedData.firstName,
+        lastName: validatedData.lastName,
+        role: validatedData.role,
+      });
+
+      // Return safe user data
+      res.json({
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        isActive: user.isActive,
+        createdAt: user.createdAt,
+      });
+    } catch (error: any) {
+      console.error("Error creating user:", error);
+      res.status(400).json({ message: error.message || "Erro ao criar usuário" });
+    }
+  });
+
+  app.put('/api/users/:id', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const userId = req.params.id;
+      const validatedData = updateUserSchema.parse(req.body);
+
+      // Check if trying to modify master user role
+      const targetUser = await storage.getUserById(userId);
+      if (targetUser?.email === 'rafael@clickhero.com.br' && validatedData.role && validatedData.role !== 'administrador') {
+        return res.status(400).json({ message: 'Não é possível alterar o nível do usuário master' });
+      }
+
+      // Update user
+      const updatedUser = await storage.updateUser(userId, validatedData);
+      if (!updatedUser) {
+        return res.status(404).json({ message: 'Usuário não encontrado' });
+      }
+
+      // Return safe user data
+      res.json({
+        id: updatedUser.id,
+        email: updatedUser.email,
+        firstName: updatedUser.firstName,
+        lastName: updatedUser.lastName,
+        role: updatedUser.role,
+        isActive: updatedUser.isActive,
+        createdAt: updatedUser.createdAt,
+        updatedAt: updatedUser.updatedAt,
+      });
+    } catch (error: any) {
+      console.error("Error updating user:", error);
+      res.status(400).json({ message: error.message || "Erro ao atualizar usuário" });
+    }
+  });
+
+  app.delete('/api/users/:id', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const userId = req.params.id;
+      
+      // Prevent deletion of current user
+      if (userId === req.user?.id) {
+        return res.status(400).json({ message: 'Você não pode deletar sua própria conta' });
+      }
+
+      // Check if trying to delete master user
+      const targetUser = await storage.getUserById(userId);
+      if (targetUser?.email === 'rafael@clickhero.com.br') {
+        return res.status(400).json({ message: 'Não é possível deletar o usuário master' });
+      }
+
+      const success = await storage.deleteUser(userId);
+      if (!success) {
+        return res.status(404).json({ message: 'Usuário não encontrado' });
+      }
+
+      res.json({ message: 'Usuário removido com sucesso' });
+    } catch (error: any) {
+      console.error("Error deleting user:", error);
+      res.status(400).json({ message: error.message || "Erro ao remover usuário" });
+    }
+  });
+
+  // Profile Management routes (for current user)
+  app.get('/api/profile', authenticateToken, async (req: Request, res: Response) => {
+    try {
+      res.json({
+        id: req.user!.id,
+        email: req.user!.email,
+        firstName: req.user!.firstName,
+        lastName: req.user!.lastName,
+        role: req.user!.role,
+        profileImageUrl: req.user!.profileImageUrl,
+        lastLoginAt: req.user!.lastLoginAt,
+        createdAt: req.user!.createdAt,
+      });
+    } catch (error: any) {
+      console.error("Error fetching profile:", error);
+      res.status(500).json({ message: "Erro ao buscar perfil" });
+    }
+  });
+
+  app.put('/api/profile', authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const validatedData = updateProfileSchema.parse(req.body);
+      
+      // Update user profile
+      const updatedUser = await storage.updateUser(req.user!.id, validatedData);
+      if (!updatedUser) {
+        return res.status(404).json({ message: 'Usuário não encontrado' });
+      }
+
+      // Return safe user data
+      res.json({
+        id: updatedUser.id,
+        email: updatedUser.email,
+        firstName: updatedUser.firstName,
+        lastName: updatedUser.lastName,
+        role: updatedUser.role,
+        profileImageUrl: updatedUser.profileImageUrl,
+        updatedAt: updatedUser.updatedAt,
+      });
+    } catch (error: any) {
+      console.error("Error updating profile:", error);
+      res.status(400).json({ message: error.message || "Erro ao atualizar perfil" });
+    }
+  });
+
+  app.put('/api/profile/password', authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const validatedData = changePasswordSchema.parse(req.body);
+      
+      // Get current user with password
+      const currentUser = await storage.getUserById(req.user!.id);
+      if (!currentUser) {
+        return res.status(404).json({ message: 'Usuário não encontrado' });
+      }
+
+      // Verify current password
+      const isCurrentPasswordValid = await comparePassword(validatedData.currentPassword, currentUser.password);
+      if (!isCurrentPasswordValid) {
+        return res.status(400).json({ message: 'Senha atual incorreta' });
+      }
+
+      // Hash new password
+      const hashedNewPassword = await hashPassword(validatedData.newPassword);
+
+      // Update password
+      await storage.updateUser(req.user!.id, { password: hashedNewPassword });
+
+      res.json({ message: 'Senha alterada com sucesso' });
+    } catch (error: any) {
+      console.error("Error changing password:", error);
+      res.status(400).json({ message: error.message || "Erro ao alterar senha" });
+    }
+  });
+
+  // Get current authenticated user
+  app.get('/api/auth/user', authenticateToken, async (req: Request, res: Response) => {
+    res.json({
+      id: req.user!.id,
+      email: req.user!.email,
+      firstName: req.user!.firstName,
+      lastName: req.user!.lastName,
+      role: req.user!.role,
+      profileImageUrl: req.user!.profileImageUrl,
+    });
   });
 
   // Integration routes
