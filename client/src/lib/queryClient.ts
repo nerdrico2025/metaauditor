@@ -53,7 +53,7 @@ export async function apiRequest(
     throw new Error(await response.text());
   }
 
-  return response;
+  return response.json();
 };
 
 export const queryClient = new QueryClient({
