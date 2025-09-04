@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import session from "express-session";
 import { storage } from "./storage";
-import { AuthService, generateToken, hashPassword, comparePassword, authenticateToken, type User } from "./auth";
+import { AuthService, generateToken, hashPassword, comparePassword, authenticateToken, type User, type AuthRequest } from "./auth";
 import {
   insertIntegrationSchema,
   insertCampaignSchema,
@@ -355,7 +355,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Integration routes
   app.get('/api/integrations', async (req: Request, res: Response) => {
     try {
-      const userId = 'demo-user-real'; // Using real user with real data
+      const userId = req.user!.id;
       const integrations = await storage.getIntegrationsByUser(userId);
       res.json(integrations);
     } catch (error) {
@@ -366,7 +366,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/integrations', async (req: Request, res: Response) => {
     try {
-      const userId = 'demo-user-real'; // Using real user with real data
+      const userId = req.user!.id;
       const validatedData = insertIntegrationSchema.parse({
         ...req.body,
         userId,
@@ -396,7 +396,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/integrations/:id', async (req: Request, res: Response) => {
     try {
       const integrationId = req.params.id;
-      const userId = 'demo-user-real'; // Using real user with real data
+      const userId = req.user!.id;
       await storage.deleteIntegration(integrationId, userId);
       res.json({ message: "Integration deleted successfully" });
     } catch (error) {
@@ -408,7 +408,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Policy routes
   app.get('/api/policies', async (req: Request, res: Response) => {
     try {
-      const userId = 'demo-user-real'; // Using real user with real data
+      const userId = req.user!.id;
       const policies = await storage.getPoliciesByUser(userId);
       res.json(policies);
     } catch (error) {
@@ -419,7 +419,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/policies', async (req: Request, res: Response) => {
     try {
-      const userId = 'demo-user-real'; // Using real user with real data
+      const userId = req.user!.id;
       const validatedData = insertPolicySchema.parse({
         ...req.body,
         userId,
@@ -662,9 +662,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Campaign routes
-  app.get('/api/campaigns', async (req: Request, res: Response) => {
+  app.get('/api/campaigns', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
-      const userId = 'demo-user-real'; // Using real user with real campaign data
+      const userId = req.user!.id;
       const campaigns = await storage.getCampaignsByUser(userId);
       res.json(campaigns);
     } catch (error) {
@@ -673,9 +673,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/campaigns', async (req: Request, res: Response) => {
+  app.post('/api/campaigns', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
-      const userId = 'demo-user-real'; // Using real user with real campaign data
+      const userId = req.user!.id;
       const validatedData = insertCampaignSchema.parse({
         ...req.body,
         userId,
@@ -689,10 +689,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/campaigns/:id/metrics - Get metrics for specific campaign
-  app.get('/api/campaigns/:id/metrics', async (req: Request, res: Response) => {
+  app.get('/api/campaigns/:id/metrics', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const { id } = req.params;
-      const userId = 'demo-user-real';
+      const userId = req.user!.id;
       
       // Get campaign details
       const campaign = await storage.getCampaignById(id);
@@ -731,9 +731,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Creative routes
-  app.get('/api/creatives', async (req: Request, res: Response) => {
+  app.get('/api/creatives', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
-      const userId = 'demo-user-real'; // Using real user with real creative data
+      const userId = req.user!.id;
       const creatives = await storage.getCreativesByUser(userId);
       res.json(creatives);
     } catch (error) {
@@ -756,9 +756,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/creatives', async (req: Request, res: Response) => {
+  app.post('/api/creatives', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
-      const userId = 'demo-user-real'; // Using real user with real data
+      const userId = req.user!.id;
       const validatedData = insertCreativeSchema.parse({
         ...req.body,
         userId,
@@ -775,7 +775,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/creatives/:id/analyze', async (req: Request, res: Response) => {
     try {
       const creativeId = req.params.id;
-      const userId = 'demo-user-real'; // Using real user with real data
+      const userId = req.user!.id;
 
       // Get the creative
       const creative = await storage.getCreativeById(creativeId);
@@ -948,7 +948,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Audit routes
   app.get('/api/audits', async (req: Request, res: Response) => {
     try {
-      const userId = 'demo-user-real'; // Using real user with real data
+      const userId = req.user!.id;
       const audits = await storage.getAuditsByUser(userId);
       res.json(audits);
     } catch (error) {
@@ -959,7 +959,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/audits', async (req: Request, res: Response) => {
     try {
-      const userId = 'demo-user-real'; // Using real user with real data
+      const userId = req.user!.id;
       const validatedData = insertAuditSchema.parse({
         ...req.body,
         userId,
@@ -975,7 +975,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Audit Action routes
   app.get('/api/audit-actions', async (req: Request, res: Response) => {
     try {
-      const userId = 'demo-user-real'; // Using real user with real data
+      const userId = req.user!.id;
       const actions = await storage.getAuditActionsByUser(userId);
       res.json(actions);
     } catch (error) {
@@ -986,7 +986,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/audit-actions', async (req: Request, res: Response) => {
     try {
-      const userId = 'demo-user-real'; // Using real user with real data
+      const userId = req.user!.id;
       const validatedData = insertAuditActionSchema.parse({
         ...req.body,
         userId,
@@ -1002,7 +1002,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Dashboard routes
   app.get('/api/dashboard/metrics', async (req: Request, res: Response) => {
     try {
-      const userId = 'demo-user-real'; // Using real user with real data
+      const userId = req.user!.id;
       const metrics = await storage.getDashboardMetrics(userId);
       res.json(metrics);
     } catch (error) {
@@ -1013,7 +1013,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/dashboard/problem-creatives', async (req: Request, res: Response) => {
     try {
-      const userId = 'demo-user-real'; // Using real user with real data
+      const userId = req.user!.id;
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
       const problemCreatives = await storage.getProblemCreatives(userId, limit);
       res.json(problemCreatives);
@@ -1049,7 +1049,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Google Sheets Sync routes
   app.post('/api/sync-single-tab-now', async (req: Request, res: Response) => {
     try {
-      const userId = 'demo-user-real'; // Using real user with real data
+      const userId = req.user!.id;
       console.log(`🔄 Manual sync triggered by user: ${userId}`);
 
       const result = await triggerManualSync();
@@ -1092,7 +1092,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/admin/sync-single-tab', async (req: Request, res: Response) => {
     try {
       // TODO: Add admin role verification here
-      const userId = 'demo-user-real'; // Using real user with real data
+      const userId = req.user!.id;
       console.log(`🛠️ Admin sync triggered by user: ${userId}`);
 
       const result = await triggerManualSync();
@@ -1122,7 +1122,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/campaign-metrics', async (req: Request, res: Response) => {
     try {
-      const userId = 'demo-user-real'; // Using real user with real data
+      const userId = req.user!.id;
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 50;
       const account = req.query.account as string;
