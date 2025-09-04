@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -149,13 +149,6 @@ export default function Landing() {
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Automatically redirect to dashboard if already authenticated
-  useEffect(() => {
-    if (!isLoading && isAuthenticated) {
-      setLocation('/dashboard');
-    }
-  }, [isAuthenticated, isLoading, setLocation]);
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-click-hero-white-2 to-click-hero-white flex items-center justify-center p-4">
       <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
@@ -206,15 +199,27 @@ export default function Landing() {
                 Acesse a ferramenta
               </h2>
               
-              <LoginFormComponent 
-                error={error}
-                setError={setError}
-                showPassword={showPassword}
-                setShowPassword={setShowPassword}
-                login={login}
-                setLocation={setLocation}
-                isLoading={isLoading || isAuthenticated}
-              />
+              {isAuthenticated ? (
+                <div className="text-center">
+                  <p className="text-click-hero-dark-gray mb-4">Você já está logado!</p>
+                  <Button
+                    onClick={() => setLocation('/dashboard')}
+                    className="w-full bg-click-hero-orange hover:bg-click-hero-orange/90 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+                  >
+                    IR PARA DASHBOARD
+                  </Button>
+                </div>
+              ) : (
+                <LoginFormComponent 
+                  error={error}
+                  setError={setError}
+                  showPassword={showPassword}
+                  setShowPassword={setShowPassword}
+                  login={login}
+                  setLocation={setLocation}
+                  isLoading={isLoading}
+                />
+              )}
             </div>
           </div>
         </div>
