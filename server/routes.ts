@@ -432,7 +432,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/policies/:id', async (req: Request, res: Response) => {
+  app.get('/api/policies/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const policyId = req.params.id;
       const policy = await storage.getPolicyById(policyId);
@@ -486,7 +486,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/brand-configurations/:id', async (req: Request, res: Response) => {
+  app.get('/api/brand-configurations/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const id = req.params.id;
       const brandConfiguration = await storage.getBrandConfigurationById(id);
@@ -555,7 +555,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/content-criteria/:id', async (req: Request, res: Response) => {
+  app.get('/api/content-criteria/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const id = req.params.id;
       const contentCriteria = await storage.getContentCriteriaById(id);
@@ -718,7 +718,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/campaigns/:id/creatives - Get creatives for specific campaign
-  app.get('/api/campaigns/:id/creatives', async (req: Request, res: Response) => {
+  app.get('/api/campaigns/:id/creatives', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const { id } = req.params;
       
@@ -742,7 +742,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/creatives/:id', async (req: Request, res: Response) => {
+  app.get('/api/creatives/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const creativeId = req.params.id;
       const creative = await storage.getCreativeById(creativeId);
@@ -934,7 +934,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get audits for a specific creative
-  app.get('/api/creatives/:id/audits', async (req: Request, res: Response) => {
+  app.get('/api/creatives/:id/audits', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const creativeId = req.params.id;
       const audits = await storage.getAuditsByCreative(creativeId);
@@ -946,7 +946,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Audit routes
-  app.get('/api/audits', async (req: Request, res: Response) => {
+  app.get('/api/audits', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const userId = req.user!.id;
       const audits = await storage.getAuditsByUser(userId);
@@ -957,7 +957,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/audits', async (req: Request, res: Response) => {
+  app.post('/api/audits', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const userId = req.user!.id;
       const validatedData = insertAuditSchema.parse({
