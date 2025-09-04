@@ -149,6 +149,12 @@ export default function Landing() {
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
+  // Redirect if already authenticated
+  if (isAuthenticated && !isLoading) {
+    setLocation('/dashboard');
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-click-hero-white-2 to-click-hero-white flex items-center justify-center p-4">
       <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">

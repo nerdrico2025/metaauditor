@@ -353,7 +353,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Integration routes
-  app.get('/api/integrations', async (req: Request, res: Response) => {
+  app.get('/api/integrations', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const userId = req.user!.id;
       const integrations = await storage.getIntegrationsByUser(userId);
@@ -364,7 +364,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/integrations', async (req: Request, res: Response) => {
+  app.post('/api/integrations', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const userId = req.user!.id;
       const validatedData = insertIntegrationSchema.parse({
@@ -406,7 +406,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Policy routes
-  app.get('/api/policies', async (req: Request, res: Response) => {
+  app.get('/api/policies', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const userId = req.user!.id;
       const policies = await storage.getPoliciesByUser(userId);
@@ -417,7 +417,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/policies', async (req: Request, res: Response) => {
+  app.post('/api/policies', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const userId = req.user!.id;
       const validatedData = insertPolicySchema.parse({
@@ -475,7 +475,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Brand Configuration routes
-  app.get('/api/brand-configurations', async (req: Request, res: Response) => {
+  app.get('/api/brand-configurations', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const userId = 'demo-user-real';
       const brandConfigurations = await storage.getBrandConfigurationsByUser(userId);
@@ -500,7 +500,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/brand-configurations', async (req: Request, res: Response) => {
+  app.post('/api/brand-configurations', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const userId = 'demo-user-real';
       const validatedData = insertBrandConfigurationSchema.parse({
@@ -544,7 +544,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Content Criteria routes
-  app.get('/api/content-criteria', async (req: Request, res: Response) => {
+  app.get('/api/content-criteria', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const userId = 'demo-user-real';
       const contentCriteria = await storage.getContentCriteriaByUser(userId);
@@ -569,7 +569,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/content-criteria', async (req: Request, res: Response) => {
+  app.post('/api/content-criteria', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const userId = 'demo-user-real';
       const validatedData = insertContentCriteriaSchema.parse({
@@ -1000,7 +1000,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Dashboard routes
-  app.get('/api/dashboard/metrics', async (req: Request, res: Response) => {
+  app.get('/api/dashboard/metrics', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const userId = req.user!.id;
       const metrics = await storage.getDashboardMetrics(userId);
@@ -1011,7 +1011,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/dashboard/problem-creatives', async (req: Request, res: Response) => {
+  app.get('/api/dashboard/problem-creatives', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const userId = req.user!.id;
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
