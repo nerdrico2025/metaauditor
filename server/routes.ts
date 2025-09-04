@@ -1,5 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
+import session from "express-session";
 import { storage } from "./storage";
 import { AuthService, generateToken, hashPassword, comparePassword, authenticateToken, type User } from "./auth";
 import {
@@ -30,8 +31,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup storage in app locals for middleware access
   app.locals.storage = storage;
 
-  // Setup Replit Auth first
-  await registerReplitAuthRoutes(app);
+  // Setup Replit Auth conditionally - DISABLE in deployment to fix "helium" error
+  const isDeployment = !!(
+    process.env.REPLIT_DEPLOYMENT ||
+    process.env.REPLIT_ENVIRONMENT === 'production' ||
+    process.env.REPLIT_HELIUM_ENABLED === 'true'
+  );
+  
+  if (!isDeployment) {
+    console.log('🔗 DEVELOPMENT: Setting up Replit Auth');
+    try {
+      await registerReplitAuthRoutes(app);
+    } catch (error) {
+      console.warn('⚠️ Replit Auth setup failed, continuing with JWT-only:', error);
+    }
+  } else {
+    console.log('🚀 DEPLOYMENT: Skipping Replit Auth to avoid "helium" DNS lookup');
+    // Add minimal session support for JWT-only mode
+    app.use(session({
+      secret: process.env.SESSION_SECRET || 'dev-session-secret-change-in-production',
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week
+      },
+    }));
+  }
 
   // Custom Auth routes
   app.post('/api/auth/register', async (req, res) => {
@@ -59,6 +86,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/auth/logout', async (req, res) => {
     // JWT is stateless, so logout is handled on the client
     res.json({ message: 'Logout realizado com sucesso' });
+  });
+
+  // Get current user route for JWT auth
+  app.get('/api/auth/user', authenticateToken, async (req: Request, res: Response) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Não autenticado' });
+      }
+
+      // Return safe user data without password
+      res.json({
+        id: req.user.id,
+        email: req.user.email,
+        firstName: req.user.firstName,
+        lastName: req.user.lastName,
+        role: req.user.role,
+        isActive: req.user.isActive,
+        lastLoginAt: req.user.lastLoginAt,
+        profileImageUrl: req.user.profileImageUrl,
+      });
+    } catch (error: any) {
+      console.error("Error fetching current user:", error);
+      res.status(500).json({ message: "Erro ao buscar dados do usuário" });
+    }
   });
 
   // Role-based authorization middleware

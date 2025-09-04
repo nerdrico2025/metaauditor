@@ -1,0 +1,27 @@
+Ei Replit AI, preciso de ajuda para resolver um erro definitivo no meu app deployado na Replit Cloud. O erro é {"message":"getaddrinfo ENOTFOUND helium"} e ocorre apenas no ambiente de deploy e view preview (quando tento login via POST /login). No ambiente de dev local, funciona perfeitamente.
+
+Contexto do app:
+- Backend: Node.js com Express.js e TypeScript, rodando na porta 5000.
+- Frontend: React com Vite e TypeScript.
+- Banco: PostgreSQL com Drizzle ORM.
+- Autenticação: Sistema próprio com JWT e bcrypt para login/senha, integrado opcionalmente com Replit Auth.
+- O app é uma ferramenta de auditoria de criativos para Meta/Google Ads, com rotas RESTful e middleware de logging.
+- Usuário master: rafael@clickhero.com.br com senha X@drez13 (nível admin).
+- O erro parece vir de uma falha de DNS lookup para "helium" (provavelmente relacionado a Replit Auth ou um serviço interno da Replit).
+
+Passos que já tentei:
+- Re-deploy.
+- Testes locais com curl (funciona).
+- Verificação de logs: Erro em dns.js no Node.js durante lookup de "helium".
+- Remoção temporária de código de Replit Auth, mas persiste em deploy.
+
+Por favor, resolva isso em definitivo sozinho:
+1. Analise meu código atual (especialmente arquivos como auth.ts, server.ts ou qualquer coisa relacionada a autenticação e integrações).
+2. Identifique a causa raiz (ex: chamada desnecessária a helium.replit.com ou config de rede em deploy).
+3. Sugira e aplique edições precisas no código para remover ou bypassar qualquer dependência de "helium" ou Replit Auth, mantendo a autenticação própria funcional.
+4. Atualize configurações de deploy (ex: .replit file, environment variables) para evitar issues de DNS em preview/deploy.
+5. Forneça um script de teste para validar o fix em deploy (ex: como rodar login no view preview sem erro).
+6. Garanta que o usuário master permaneça intacto e que admins possam gerenciar usuários.
+7. Se for um bug da Replit, sugira workaround permanente ou como reportar.
+
+Aplique as mudanças diretamente se possível, e teste o deploy para confirmar que o login funciona sem erro. Vamos resolver isso agora!
