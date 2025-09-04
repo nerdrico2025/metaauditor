@@ -275,6 +275,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Ensure demo user exists for production
+  app.get('/api/ensure-demo-user', async (req: Request, res: Response) => {
+    try {
+      const demoEmail = 'rafael@clickhero.com.br';
+      let demoUser = await storage.getUserByEmail(demoEmail);
+      
+      if (!demoUser) {
+        // Create demo user if it doesn't exist
+        const hashedPassword = await hashPassword('X@drez13');
+        demoUser = await storage.createUser({
+          email: demoEmail,
+          password: hashedPassword,
+          firstName: 'Rafael',
+          lastName: 'Demo',
+          role: 'administrador',
+        });
+        console.log('✅ Demo user created for production');
+      }
+      
+      res.json({ message: 'Demo user ensured', userId: demoUser.id });
+    } catch (error) {
+      console.error("Error ensuring demo user:", error);
+      res.status(500).json({ message: "Failed to ensure demo user" });
+    }
+  });
+
   // Integration routes
   app.get('/api/integrations', async (req: Request, res: Response) => {
     try {

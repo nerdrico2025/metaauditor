@@ -56,7 +56,7 @@ app.use((req, res, next) => {
     const message = err.message || "Internal Server Error";
 
     console.error("Server error:", err);
-    
+
     // Ensure response is sent and don't throw in production
     if (!res.headersSent) {
       res.status(status).json({ message });
@@ -76,14 +76,29 @@ app.use((req, res, next) => {
   // Other ports are firewalled. Default to 5000 if not specified.
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || '5000', 10);
+  const PORT = parseInt(process.env.PORT || '5000', 10);
+
+  // Initialize demo user for production
+  async function initializeDemoUser() {
+    try {
+      if (process.env.NODE_ENV !== 'development') {
+        const response = await fetch(`http://0.0.0.0:${PORT}/api/ensure-demo-user`);
+        if (response.ok) {
+          console.log('✅ Demo user initialized for production');
+        }
+      }
+    } catch (error) {
+      console.log('⚠️ Could not initialize demo user:', error);
+    }
+  }
+
   server.listen({
-    port,
+    port: PORT,
     host: "0.0.0.0",
     reusePort: true,
   }, async () => {
-    log(`serving on port ${port}`);
-    
+    log(`serving on port ${PORT}`);
+
     // Check if database needs seeding (production environment with empty database)
     try {
       const isEmpty = await checkIfDatabaseEmpty();
@@ -95,7 +110,7 @@ app.use((req, res, next) => {
     } catch (error) {
       console.error(`⚠️ Database seeding failed:`, error);
     }
-    
+
     // Start cron jobs after server is running (only in development)
     if (process.env.NODE_ENV !== 'production') {
       setTimeout(() => {
@@ -109,5 +124,8 @@ app.use((req, res, next) => {
     } else {
       log(`🚀 Production server ready - cron jobs disabled in production`);
     }
+
+    // Initialize demo user after server starts
+    setTimeout(initializeDemoUser, 2000);
   });
 })();
