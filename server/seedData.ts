@@ -1,5 +1,6 @@
 import { drizzle } from 'drizzle-orm/neon-http';
 import { neon } from '@neondatabase/serverless';
+import { eq } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import {
   users,
@@ -31,22 +32,29 @@ export async function seedDatabase() {
   console.log('🌱 Starting database seeding for production environment...');
   
   try {
-    // Create test user
-    const hashedPassword = await bcrypt.hash('TesteFacebook2025!', 10);
-    const [testUser] = await db.insert(users).values({
-      id: 'test-user-id',
-      email: 'usuario.teste@clickauditor-demo.com',
-      password: hashedPassword,
-      firstName: 'Usuário',
-      lastName: 'Teste',
-      profileImageUrl: null
-    }).returning();
+    // Use existing rafael user instead of creating test user
+    const existingUsers = await db.select().from(users).where(eq(users.email, 'rafael@clickhero.com.br'));
+    let rafaelUser;
     
-    console.log('✅ Test user created');
+    if (existingUsers.length === 0) {
+      // Create rafael user if it doesn't exist
+      const hashedPassword = await bcrypt.hash('X@drez13', 12);
+      [rafaelUser] = await db.insert(users).values({
+        email: 'rafael@clickhero.com.br',
+        password: hashedPassword,
+        firstName: 'Rafael',
+        lastName: 'Master',
+        role: 'administrador'
+      }).returning();
+      console.log('✅ Rafael master user created');
+    } else {
+      rafaelUser = existingUsers[0];
+      console.log('✅ Using existing Rafael master user');
+    }
 
     // Create integrations
     const [metaIntegration] = await db.insert(integrations).values({
-      userId: testUser.id,
+      userId: rafaelUser.id,
       platform: 'meta',
       accessToken: 'demo_meta_token',
       accountId: '123456789',
@@ -55,7 +63,7 @@ export async function seedDatabase() {
     }).returning();
 
     const [googleIntegration] = await db.insert(integrations).values({
-      userId: testUser.id,
+      userId: rafaelUser.id,
       platform: 'google',
       accessToken: 'demo_google_token',
       accountId: '987654321',
@@ -77,7 +85,7 @@ export async function seedDatabase() {
     const campaignIds = [];
     for (const camp of campaignList) {
       const [campaign] = await db.insert(campaigns).values({
-        userId: testUser.id,
+        userId: rafaelUser.id,
         integrationId: camp.integrationId,
         externalId: `ext_${Math.random().toString(36).substr(2, 9)}`,
         name: camp.name,
@@ -107,7 +115,7 @@ export async function seedDatabase() {
     for (const campaignId of campaignIds) {
       for (let i = 0; i < 4; i++) {
         const [creative] = await db.insert(creatives).values({
-          userId: testUser.id,
+          userId: rafaelUser.id,
           campaignId,
           externalId: `creative_${Math.random().toString(36).substr(2, 9)}`,
           name: creativeNames[Math.floor(Math.random() * creativeNames.length)],
@@ -132,7 +140,7 @@ export async function seedDatabase() {
 
     // Create brand configuration
     await db.insert(brandConfigurations).values({
-      userId: testUser.id,
+      userId: rafaelUser.id,
       brandName: 'Click Auditor Demo',
       primaryColor: '#cf6f03',
       secondaryColor: '#0c0d0a',
@@ -146,7 +154,7 @@ export async function seedDatabase() {
 
     // Create content criteria
     await db.insert(contentCriteria).values({
-      userId: testUser.id,
+      userId: rafaelUser.id,
       name: 'Critérios Padrão de Marca',
       description: 'Validação automática de compliance da marca',
       requiredKeywords: JSON.stringify(['promoção', 'desconto', 'oferta']),
@@ -164,7 +172,7 @@ export async function seedDatabase() {
 
     // Create policies
     const [policy] = await db.insert(policies).values({
-      userId: testUser.id,
+      userId: rafaelUser.id,
       name: 'Política de Compliance Padrão',
       description: 'Política principal para validação de criativos',
       rules: JSON.stringify({
@@ -190,7 +198,7 @@ export async function seedDatabase() {
     for (const creativeId of creativeIds.slice(0, 15)) {
       const status = auditStatuses[Math.floor(Math.random() * auditStatuses.length)];
       const [audit] = await db.insert(audits).values({
-        userId: testUser.id,
+        userId: rafaelUser.id,
         creativeId,
         policyId: policy.id,
         status,
@@ -213,7 +221,7 @@ export async function seedDatabase() {
     // Create sample audit actions
     for (const auditId of auditIds.slice(0, 8)) {
       await db.insert(auditActions).values({
-        userId: testUser.id,
+        userId: rafaelUser.id,
         auditId,
         action: Math.random() > 0.5 ? 'pause' : 'flag_review',
         status: Math.random() > 0.3 ? 'executed' : 'pending',
@@ -232,7 +240,7 @@ export async function seedDatabase() {
       randomDate.setDate(randomDate.getDate() - Math.floor(Math.random() * 30));
       
       await db.insert(campaignMetrics).values({
-        userId: testUser.id,
+        userId: rafaelUser.id,
         data: randomDate,
         nomeAconta: accountNames[Math.floor(Math.random() * accountNames.length)],
         adUrl: Math.random() > 0.3 ? `https://demo-ad-url-${i}.com` : null,
@@ -254,7 +262,7 @@ export async function seedDatabase() {
 
     console.log('✅ Campaign metrics created');
     console.log('🎉 Database seeding completed successfully!');
-    console.log(`📊 Production demo data created for: ${testUser.email}`);
+    console.log(`📊 Production demo data created for: ${rafaelUser.email}`);
     
     return true;
   } catch (error) {

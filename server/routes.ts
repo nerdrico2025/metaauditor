@@ -339,7 +339,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           email: demoEmail,
           password: hashedPassword,
           firstName: 'Rafael',
-          lastName: 'Demo',
+          lastName: 'Master',
           role: 'administrador',
         });
         console.log('✅ Demo user created for production');
@@ -349,6 +349,101 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error ensuring demo user:", error);
       res.status(500).json({ message: "Failed to ensure demo user" });
+    }
+  });
+
+  // Force seed demo data for current user
+  app.get('/api/seed-demo-data', async (req: Request, res: Response) => {
+    try {
+      const rafaelUser = await storage.getUserByEmail('rafael@clickhero.com.br');
+      if (!rafaelUser) {
+        return res.status(404).json({ message: 'Rafael user not found' });
+      }
+
+      // Create integrations
+      const metaIntegration = await storage.createIntegration({
+        userId: rafaelUser.id,
+        platform: 'meta',
+        accessToken: 'demo_meta_token',
+        accountId: '123456789',
+        status: 'active',
+        lastSync: new Date()
+      });
+
+      const googleIntegration = await storage.createIntegration({
+        userId: rafaelUser.id,
+        platform: 'google', 
+        accessToken: 'demo_google_token',
+        accountId: '987654321',
+        status: 'active',
+        lastSync: new Date()
+      });
+
+      // Create campaigns
+      const campaignList = [
+        { name: 'Black Friday Promoções', platform: 'meta', budget: '5000.00', integrationId: metaIntegration.id },
+        { name: 'Produtos Verão 2025', platform: 'meta', budget: '3500.00', integrationId: metaIntegration.id },
+        { name: 'Liquidação Janeiro', platform: 'google', budget: '2500.00', integrationId: googleIntegration.id }
+      ];
+
+      const campaignIds = [];
+      for (const camp of campaignList) {
+        const campaign = await storage.createCampaign({
+          userId: rafaelUser.id,
+          integrationId: camp.integrationId,
+          externalId: `ext_${Math.random().toString(36).substr(2, 9)}`,
+          name: camp.name,
+          platform: camp.platform as 'meta' | 'google',
+          status: 'active',
+          budget: camp.budget
+        });
+        campaignIds.push(campaign.id);
+      }
+
+      // Create creatives
+      const creativeNames = ['Criativo Desconto 50%', 'Banner Produto Principal', 'Vídeo Demonstração'];
+      for (const campaignId of campaignIds) {
+        for (let i = 0; i < 2; i++) {
+          await storage.createCreative({
+            userId: rafaelUser.id,
+            campaignId,
+            externalId: `creative_${Math.random().toString(36).substr(2, 9)}`,
+            name: creativeNames[i % creativeNames.length],
+            type: 'image',
+            imageUrl: 'https://via.placeholder.com/800x600/cf6f03/ffffff?text=Demo+Creative',
+            text: 'Descubra nossa incrível promoção!',
+            headline: 'Oferta Imperdível!',
+            status: 'active',
+            impressions: Math.floor(Math.random() * 10000) + 1000,
+            clicks: Math.floor(Math.random() * 500) + 50,
+            conversions: Math.floor(Math.random() * 50) + 5
+          });
+        }
+      }
+
+      // Create default policy
+      await storage.createPolicy({
+        userId: rafaelUser.id,
+        name: 'Política de Compliance Padrão',
+        description: 'Política principal para validação de criativos',
+        rules: JSON.stringify({
+          brandCompliance: true,
+          contentValidation: true,
+          performanceMonitoring: true
+        }),
+        performanceThresholds: JSON.stringify({
+          minCTR: 1.0,
+          maxCPC: 5.0,
+          minConversions: 5
+        }),
+        status: 'active',
+        isDefault: true
+      });
+
+      res.json({ message: 'Demo data seeded successfully', userId: rafaelUser.id });
+    } catch (error) {
+      console.error("Error seeding demo data:", error);
+      res.status(500).json({ message: "Failed to seed demo data" });
     }
   });
 
