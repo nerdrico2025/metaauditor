@@ -147,7 +147,7 @@ export default function Landing() {
   const [location, setLocation] = useLocation();
   const { login, isAuthenticated, isLoading } = useAuth();
   const [error, setError] = useState<string | null>(null);
-  const [showPassword, setShowPassword] = useState(false);e);
+  const [showPassword, setShowPassword] = useState(false);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-click-hero-white-2 to-click-hero-white flex items-center justify-center p-4">
