@@ -1,0 +1,25 @@
+Ei Replit AI, preciso corrigir três erros de autenticação no meu app (ferramenta de auditoria de criativos para Meta/Google Ads), mas **MANTENDO TODOS OS DADOS EXISTENTES NO BANCO DE DADOS INTACTOS**. Isso inclui campanhas, criativos, auditorias, políticas, integrações, relatórios e qualquer histórico – nada deve ser deletado ou alterado além do estritamente necessário para os fixes descritos. Se houver associações de dados (ex: foreign keys com user_id), preserve-as reatribuindo para o usuário master se preciso. Faça uma verificação prévia e um backup do banco antes de qualquer mudança no schema ou dados.
+
+O app usa React com TypeScript no frontend (Vite, Tailwind, Radix UI, Context API para estado), Express.js com TypeScript no backend (porta 5000), PostgreSQL com Drizzle ORM, e autenticação própria com JWT e bcrypt. Há um usuário master: rafael@clickhero.com.br (senha X@drez13, role 'administrador'). Analise meu código atual (especialmente AuthContext, rotas de login/logoff, componentes de login, dashboard e rodapé) e resolva os seguintes problemas em definitivo, aplicando edições diretamente nos arquivos relevantes. Teste as mudanças em dev e deploy para confirmar, sem afetar dados existentes.
+
+Problema 1: A tela de login não mostra os campos de email e senha. Em vez disso, mostra uma mensagem de que o usuário já está logado e um botão "ENTRAR". O correto é: se o usuário já estiver logado (token válido no localStorage ou AuthContext), redirecione automaticamente para o dashboard (/dashboard). Só mostre os campos de login se não houver sessão ativa.
+
+Problema 2: Dentro do app, ao clicar no botão de sair/logoff, o usuário não é desconectado. O logoff deve limpar o token do localStorage, resetar o estado no AuthContext, e redirecionar para a tela de login.
+
+Problema 3: Mesmo logando com rafael@clickhero.com.br, o rodapé do menu mostra que o usuário conectado é "demo@clickauditor.com". Esse usuário demo não é mais necessário, mas **NÃO DELETE NADA QUE AFETE DADOS ASSOCIADOS**. Primeiro, verifique se há dados ligados a "demo@clickauditor.com" (ex: campanhas, criativos via foreign key user_id nas tabelas relevantes). Se houver, reatribua todos esses dados para o usuário master "rafael@clickhero.com.br" (atualize os campos user_id para o ID de rafael). Só após reatribuição e confirmação de que nenhum dado será perdido, delete o usuário "demo@clickauditor.com" do banco via Drizzle ORM. Garanta que o rodapé exiba o email correto do usuário logado atual (do token JWT ou AuthContext), não hardcode. O usuário rafael@clickhero.com.br deve permanecer intacto e ser o principal.
+
+Instruções para resolver sozinho:
+1. Analise arquivos como Login.tsx, AuthContext.tsx, App.tsx (para roteamento com useNavigate), server.ts (para rota de logoff se existir), schema.ts (para banco), e o componente de rodapé.
+2. Faça um backup do banco atual (ex: exporte via Drizzle ou pg_dump) antes de qualquer mudança.
+3. Para Problema 1: No componente de login, adicione uma verificação no useEffect: se token existir e for válido (verifique com jwt-decode ou API), use useNavigate para redirecionar para dashboard. Remova qualquer mensagem/button incorreto.
+4. Para Problema 2: Crie ou atualize a função de logoff no AuthContext: limpe localStorage.removeItem('token'), reset state (setUser(null)), e redirecione para /login. Se houver rota backend para logoff, chame-a para invalidar token server-side.
+5. Para Problema 3: 
+   - Rode uma query de verificação com Drizzle: selecione e liste qualquer dado associado a "demo@clickauditor.com" (ex: db.select().from(campanhas).where(eq(campanhas.user_id, demoUserId))).
+   - Se encontrar associações, atualize-as: ex: await db.update(campanhas).set({ user_id: masterUserId }).where(eq(campanhas.user_id, demoUserId)) para todas as tabelas relevantes (campanhas, criativos, auditorias, etc.).
+   - Após reatribuição, delete apenas o usuário: await db.delete(users).where(eq(users.email, 'demo@clickauditor.com')).
+   - Atualize o rodapé para puxar o email do estado atual (AuthContext) dinamicamente.
+6. Atualize qualquer seed inicial para incluir apenas o usuário rafael@clickhero.com.br, sem recriar ou deletar dados existentes.
+7. Forneça código editado para cada fix e um teste: ex., logue com rafael, verifique redirecionamento, rodapé correto, logoff funcional, e confirme que todos os dados de campanhas/criativos permanecem intactos em dev e deploy.
+8. Se precisar de dependências (ex: jwt-decode), instale-as via package.json.
+
+Aplique as mudanças diretamente nos arquivos, confirme a preservação de dados com queries, e teste tudo para garantir que o histórico do app fique intacto. Vamos fixar isso agora sem perda de dados!
