@@ -192,7 +192,7 @@ class CronManager {
       console.log(`❤️ Health check - Records: ${status.recordCount}, Last batch: ${status.lastSyncBatch || 'none'}`);
       
       // Check if sync is overdue (more than 25 hours since last sync in production)
-      if (this.isProduction && status.latestRecord) {
+      if (this.isProduction && status.latestRecord && status.latestRecord instanceof Date) {
         const hoursSinceLastSync = (Date.now() - status.latestRecord.getTime()) / (1000 * 60 * 60);
         
         if (hoursSinceLastSync > 25) {
