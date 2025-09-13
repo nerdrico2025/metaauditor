@@ -426,3 +426,42 @@ export type InsertBrandConfiguration = z.infer<typeof insertBrandConfigurationSc
 export type BrandConfiguration = typeof brandConfigurations.$inferSelect;
 export type InsertContentCriteria = z.infer<typeof insertContentCriteriaSchema>;
 export type ContentCriteria = typeof contentCriteria.$inferSelect;
+
+// Unified Settings DTO Schema
+export const settingsDTO = z.object({
+  brand: z.object({
+    logoUrl: z.string().url().nullable().optional(),
+    primaryColor: z.string().nullable().optional(),
+    secondaryColor: z.string().nullable().optional(),
+    accentColor: z.string().nullable().optional(),
+    fontFamily: z.string().nullable().optional(),
+    visualGuidelines: z.string().nullable().optional()
+  }),
+  brandPolicies: z.object({
+    autoApproval: z.boolean(),
+    autoActions: z.object({
+      pauseOnViolation: z.boolean(),
+      sendForReview: z.boolean(),
+      autoFixMinor: z.boolean()
+    })
+  }),
+  validationCriteria: z.object({
+    requiredKeywords: z.array(z.string()),
+    forbiddenTerms: z.array(z.string()),
+    requiredPhrases: z.array(z.string()),
+    charLimits: z.object({
+      min: z.number().int().positive().nullable().optional(),
+      max: z.number().int().positive().nullable().optional(),
+    }),
+    brandRequirements: z.object({
+      requireLogo: z.boolean(),
+      requireBrandColors: z.boolean()
+    })
+  })
+});
+
+// Settings DTO types
+export type SettingsDTO = z.infer<typeof settingsDTO>;
+export type BrandSettings = SettingsDTO['brand'];
+export type BrandPolicySettings = SettingsDTO['brandPolicies'];
+export type ValidationCriteriaSettings = SettingsDTO['validationCriteria'];
