@@ -326,7 +326,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Force clear session cache for production
+  // Force clear ALL cache and session data for production
   app.post('/api/clear-session', async (req: Request, res: Response) => {
     try {
       // Clear session data
@@ -338,11 +338,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Clear all possible cookies
       res.clearCookie('connect.sid');
-      res.json({ message: 'Session cleared successfully' });
+      res.clearCookie('token');
+      res.clearCookie('auth-token');
+      
+      // Force cache headers to prevent caching
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      res.setHeader('Surrogate-Control', 'no-store');
+      
+      res.json({ message: 'All session and cache cleared successfully', timestamp: new Date().toISOString() });
     } catch (error) {
       console.error("Error clearing session:", error);
       res.status(500).json({ message: "Failed to clear session" });
+    }
+  });
+
+  // Force refresh user data endpoint 
+  app.get('/api/force-refresh-user', async (req: Request, res: Response) => {
+    try {
+      // Get fresh user data directly from database
+      const demoEmail = 'rafael@clickhero.com.br';
+      const user = await storage.getUserByEmail(demoEmail);
+      
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.json({ 
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+          profileImageUrl: user.profileImageUrl,
+          lastLoginAt: user.lastLoginAt,
+          createdAt: user.createdAt,
+        },
+        fresh: true,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Error getting fresh user data:", error);
+      res.status(500).json({ message: "Failed to get fresh user data" });
     }
   });
 
