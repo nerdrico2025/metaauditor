@@ -1,6 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import session from "express-session";
+import ConnectPgSimple from "connect-pg-simple";
 import { storage } from "./storage";
 import { AuthService, generateToken, hashPassword, comparePassword, authenticateToken, type User, type AuthRequest } from "./auth";
 import {
@@ -47,8 +48,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   } else {
     console.log('🚀 DEPLOYMENT: Skipping Replit Auth to avoid "helium" DNS lookup');
-    // Add minimal session support for JWT-only mode
+    // Add PostgreSQL session support for JWT-only mode  
+    const PostgreSQLStore = ConnectPgSimple(session);
+    
     app.use(session({
+      store: new PostgreSQLStore({
+        conString: process.env.DATABASE_URL,
+        createTableIfMissing: true,
+        tableName: 'session'
+      }),
       secret: process.env.SESSION_SECRET || 'dev-session-secret-change-in-production',
       resave: false,
       saveUninitialized: false,
@@ -89,7 +97,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get current user route for JWT auth
-  app.get('/api/auth/user', authenticateToken, async (req: Request, res: Response) => {
+  app.get('/api/auth/user', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       if (!req.user) {
         return res.status(401).json({ message: 'Não autenticado' });
@@ -129,7 +137,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   // User Management routes (Admin only)
-  app.get('/api/users', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
+  app.get('/api/users', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
     try {
       const users = await storage.getAllUsers();
       const safeUsers = users.map(user => ({
@@ -149,7 +157,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/users', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
+  app.post('/api/users', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
     try {
       const validatedData = createUserSchema.parse(req.body);
       
@@ -187,7 +195,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/users/:id', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
+  app.put('/api/users/:id', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
     try {
       const userId = req.params.id;
       const validatedData = updateUserSchema.parse(req.body);
@@ -221,7 +229,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/users/:id', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
+  app.delete('/api/users/:id', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
     try {
       const userId = req.params.id;
       
@@ -249,7 +257,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Profile Management routes (for current user)
-  app.get('/api/profile', authenticateToken, async (req: Request, res: Response) => {
+  app.get('/api/profile', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       res.json({
         id: req.user!.id,
@@ -267,7 +275,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/profile', authenticateToken, async (req: Request, res: Response) => {
+  app.put('/api/profile', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const validatedData = updateProfileSchema.parse(req.body);
       
@@ -293,7 +301,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/profile/password', authenticateToken, async (req: Request, res: Response) => {
+  app.put('/api/profile/password', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const validatedData = changePasswordSchema.parse(req.body);
       
@@ -405,7 +413,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/integrations/:id', async (req: Request, res: Response) => {
+  app.delete('/api/integrations/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const integrationId = req.params.id;
       const userId = req.user!.id;
@@ -458,7 +466,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/policies/:id', async (req: Request, res: Response) => {
+  app.put('/api/policies/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const policyId = req.params.id;
       const policy = await storage.updatePolicy(policyId, req.body);
@@ -472,7 +480,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/policies/:id', async (req: Request, res: Response) => {
+  app.delete('/api/policies/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const policyId = req.params.id;
       const success = await storage.deletePolicy(policyId);
@@ -489,7 +497,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Brand Configuration routes
   app.get('/api/brand-configurations', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
-      const userId = 'demo-user-real';
+      const userId = req.user!.id;
       const brandConfigurations = await storage.getBrandConfigurationsByUser(userId);
       res.json(brandConfigurations);
     } catch (error) {
@@ -514,7 +522,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/brand-configurations', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
-      const userId = 'demo-user-real';
+      const userId = req.user!.id;
       const validatedData = insertBrandConfigurationSchema.parse({
         ...req.body,
         userId,
@@ -527,7 +535,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/brand-configurations/:id', async (req: Request, res: Response) => {
+  app.put('/api/brand-configurations/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const id = req.params.id;
       const brandConfiguration = await storage.updateBrandConfiguration(id, req.body);
@@ -541,7 +549,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/brand-configurations/:id', async (req: Request, res: Response) => {
+  app.delete('/api/brand-configurations/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const id = req.params.id;
       const success = await storage.deleteBrandConfiguration(id);
@@ -558,7 +566,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Content Criteria routes
   app.get('/api/content-criteria', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
-      const userId = 'demo-user-real';
+      const userId = req.user!.id;
       const contentCriteria = await storage.getContentCriteriaByUser(userId);
       res.json(contentCriteria);
     } catch (error) {
@@ -583,7 +591,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/content-criteria', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
-      const userId = 'demo-user-real';
+      const userId = req.user!.id;
       const validatedData = insertContentCriteriaSchema.parse({
         ...req.body,
         userId,
@@ -596,7 +604,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/content-criteria/:id', async (req: Request, res: Response) => {
+  app.put('/api/content-criteria/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const id = req.params.id;
       const contentCriteria = await storage.updateContentCriteria(id, req.body);
@@ -610,7 +618,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/content-criteria/:id', async (req: Request, res: Response) => {
+  app.delete('/api/content-criteria/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const id = req.params.id;
       const success = await storage.deleteContentCriteria(id);
@@ -640,7 +648,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/objects/upload', async (req: Request, res: Response) => {
+  app.post('/api/objects/upload', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       // Generate a unique filename for the logo
       const fileExtension = req.body.fileType?.split('/')[1] || 'png';
@@ -784,7 +792,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Creative analysis endpoint
-  app.post('/api/creatives/:id/analyze', async (req: Request, res: Response) => {
+  app.post('/api/creatives/:id/analyze', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const creativeId = req.params.id;
       const userId = req.user!.id;
@@ -985,7 +993,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Audit Action routes
-  app.get('/api/audit-actions', async (req: Request, res: Response) => {
+  app.get('/api/audit-actions', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const userId = req.user!.id;
       const actions = await storage.getAuditActionsByUser(userId);
@@ -996,7 +1004,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/audit-actions', async (req: Request, res: Response) => {
+  app.post('/api/audit-actions', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const userId = req.user!.id;
       const validatedData = insertAuditActionSchema.parse({

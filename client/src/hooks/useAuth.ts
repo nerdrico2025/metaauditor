@@ -17,7 +17,7 @@ export function useAuth() {
     refetchOnWindowFocus: false,
     enabled: true,
     queryFn: async () => {
-      // ALWAYS use real authentication - no more demo mode
+      // Try to get JWT token first
       const token = localStorage.getItem('auth_token');
       if (!token) {
         throw new Error('No authentication token');
@@ -43,7 +43,7 @@ export function useAuth() {
 
   const loginMutation = useMutation({
     mutationFn: async (data: LoginData) => {
-      const response = await fetch(`${API_BASE}/login`, {
+      const response = await fetch('/api/auth/login', {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -57,8 +57,12 @@ export function useAuth() {
       return response.json();
     },
     onSuccess: (data) => {
-      // For Replit Auth, we don't use localStorage tokens
-      // Session is managed server-side
+      // Store JWT token from login response  
+      if (data.token) {
+        localStorage.setItem('auth_token', data.token);
+      }
+      
+      // Update user data in cache
       queryClient.setQueryData(['/api/auth/user'], data.user);
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
     },
@@ -66,7 +70,7 @@ export function useAuth() {
 
   const registerMutation = useMutation({
     mutationFn: async (data: RegisterData) => {
-      const response = await fetch(`${API_BASE}/register`, {
+      const response = await fetch('/api/auth/register', {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -80,8 +84,12 @@ export function useAuth() {
       return response.json();
     },
     onSuccess: (data) => {
-      // For Replit Auth, we don't use localStorage tokens
-      // Session is managed server-side
+      // Store JWT token from register response
+      if (data.token) {
+        localStorage.setItem('auth_token', data.token);
+      }
+      
+      // Update user data in cache
       queryClient.setQueryData(['/api/auth/user'], data.user);
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
     },
@@ -89,9 +97,14 @@ export function useAuth() {
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      // For Replit Auth, we just redirect to logout endpoint
-      // The server will handle session destruction and OIDC logout
-      window.location.href = "/api/logout";
+      // Clear JWT token from localStorage
+      localStorage.removeItem('auth_token');
+      
+      // Call logout endpoint to clean up server-side session
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
     },
     onSuccess: () => {
       // Clear any cached data
