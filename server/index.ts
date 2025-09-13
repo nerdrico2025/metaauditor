@@ -92,6 +92,8 @@ app.use((req, res, next) => {
     }
   }
 
+  const isPreview = process.env.REPLIT_PREVIEW === 'true' || process.env.REPLIT_DEPLOYMENT === 'preview';
+  
   server.listen({
     port: PORT,
     host: "0.0.0.0",
@@ -99,33 +101,39 @@ app.use((req, res, next) => {
   }, async () => {
     log(`serving on port ${PORT}`);
 
-    // Check if database needs seeding (production environment with empty database)
-    try {
-      const isEmpty = await checkIfDatabaseEmpty();
-      if (isEmpty) {
-        log(`🌱 Database is empty - seeding with demo data...`);
-        await seedDatabase();
-        log(`✅ Database seeded successfully for production demo`);
-      }
-    } catch (error) {
-      console.error(`⚠️ Database seeding failed:`, error);
+    if (isPreview) {
+      log(`🔍 PREVIEW mode detected - skipping heavy operations for faster startup`);
+      return;
     }
 
-    // Start cron jobs after server is running (only in development)
-    if (process.env.NODE_ENV !== 'production') {
-      setTimeout(() => {
+    // Defer heavy operations to allow quick server startup
+    setTimeout(async () => {
+      // Check if database needs seeding (production environment with empty database)
+      try {
+        const isEmpty = await checkIfDatabaseEmpty();
+        if (isEmpty) {
+          log(`🌱 Database is empty - seeding with demo data...`);
+          await seedDatabase();
+          log(`✅ Database seeded successfully for production demo`);
+        }
+      } catch (error) {
+        console.error(`⚠️ Database seeding failed:`, error);
+      }
+
+      // Start cron jobs after server is running (only in development)
+      if (process.env.NODE_ENV !== 'production') {
         try {
           cronManager.startAll();
           log(`🕐 Google Sheets sync cron jobs started successfully`);
         } catch (error) {
           console.error(`❌ Failed to start cron jobs:`, error);
         }
-      }, 2000); // Wait 2 seconds for server to fully initialize
-    } else {
-      log(`🚀 Production server ready - cron jobs disabled in production`);
-    }
+      } else {
+        log(`🚀 Production server ready - cron jobs disabled in production`);
+      }
 
-    // Initialize demo user after server starts
-    setTimeout(initializeDemoUser, 2000);
+      // Initialize demo user after server starts
+      setTimeout(initializeDemoUser, 1000);
+    }, isPreview ? 0 : 3000); // No delay for preview, 3s delay for normal startup
   });
 })();

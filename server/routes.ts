@@ -1361,6 +1361,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Replit deploy readiness endpoints
+  app.get('/healthz', (req, res) => {
+    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+  });
+
+  app.head('/healthz', (req, res) => {
+    res.status(200).end();
+  });
+
+  // General health check endpoint
+  app.head('/api', (req, res) => {
+    res.status(200).end();
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
