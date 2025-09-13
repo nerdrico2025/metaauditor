@@ -79,7 +79,7 @@ export default function Settings() {
   });
 
   // Fetch current user profile
-  const { data: profile } = useQuery({
+  const { data: profile } = useQuery<User>({
     queryKey: ['/api/profile'],
     enabled: !!user,
   });
