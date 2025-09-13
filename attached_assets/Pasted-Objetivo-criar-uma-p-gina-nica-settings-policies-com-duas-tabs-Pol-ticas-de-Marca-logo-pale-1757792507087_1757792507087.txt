@@ -1,0 +1,202 @@
+Objetivo: criar uma página única “/settings/policies” com duas tabs:
+
+Políticas de Marca: logo, paleta de cores, tipografia, diretrizes visuais, critérios automáticos (aprovação/ações).
+Critérios de Validação: palavras obrigatórias, termos proibidos, frases requeridas, limites de caracteres, requisitos de logo/cores.
+Inclui:
+
+UI com shadcn/ui (Tabs, Card, Form, Input, Textarea, Switch, Select, Badge).
+Data fetching com TanStack Query.
+Mutations com validação otimista.
+Roteamento com Wouter.
+Cole no Replit e rode o comando que você já usa para o client.
+
+Prompt:
+
+Quero criar uma página única de Configurações de Auditoria em /settings/policies, substituindo as páginas antigas (“Políticas”, “Configurações de Marca”, “Critérios de Conteúdo”).
+
+Faça:
+1) Criar o arquivo src/routes/SettingsPolicies.tsx com:
+- Tabs: “Políticas de Marca” e “Critérios de Validação”
+- Cada aba dentro de um <Card> com formulários separados e botões “Salvar”
+- shadcn/ui: use Tabs, Card, Button, Input, Textarea, Switch, Select
+- Integração com TanStack Query:
+  - GET /api/policies/settings -> carrega shape unificado:
+    {
+      brand: {
+        logoUrl: string | null,
+        primaryColor: string | null,
+        secondaryColor: string | null,
+        accentColor: string | null,
+        fontFamily: string | null,
+        visualGuidelines: string | null
+      },
+      brandPolicies: {
+        autoApproval: boolean,
+        autoActions: { pauseOnViolation: boolean, sendForReview: boolean, autoFixMinor: boolean }
+      },
+      validationCriteria: {
+        requiredKeywords: string[],
+        forbiddenTerms: string[],
+        requiredPhrases: string[],
+        charLimits: { min?: number | null, max?: number | null },
+        brandRequirements: { requireLogo: boolean, requireBrandColors: boolean }
+      }
+    }
+  - PUT /api/policies/settings -> salva exatamente esse shape
+- Form UX:
+  - Políticas de Marca:
+    - Upload de logo: campo texto logoUrl (por ora)
+    - Cores: primaryColor, secondaryColor, accentColor
+    - Tipografia: fontFamily
+    - Diretrizes visuais: visualGuidelines (textarea)
+    - Aprovação automática (Switch)
+    - Ações automáticas (Switches): pauseOnViolation, sendForReview, autoFixMinor
+  - Critérios de Validação:
+    - requiredKeywords, forbiddenTerms, requiredPhrases como chips editáveis (enter/adicionar, backspace/remove)
+    - charLimits.min e charLimits.max (número)
+    - requireLogo e requireBrandColors (Switch)
+- Feedback: toast de sucesso/erro; estado de carregando/disabled ao salvar; validação mínima (ex: cores em formato #RRGGBB se começar com #).
+- A página deve exportar por default o componente. 
+
+2) Atualizar o roteamento em src/main.tsx (ou onde configuramos Wouter) para adicionar:
+  <Route path="/settings/policies" component={SettingsPolicies} />
+
+3) Criar hooks de API em src/api/policies.ts:
+- getPoliciesSettings(): Promise<SettingsDTO>
+- updatePoliciesSettings(payload: SettingsDTO): Promise<SettingsDTO>
+
+4) Componente de “chips input” simples em src/components/ChipsInput.tsx com:
+- Input + lista de badges removíveis
+- onChange recebe string[]
+
+5) Estilo: usar classes Tailwind basilares e componentes shadcn/ui.
+
+6) Remover/ocultar rotas antigas (Políticas, Configurações de Marca, Critérios) e redirecionar para /settings/policies caso acessem URLs antigas.
+2) Prompt para refatorar o backend (endpoint unificado)
+Objetivo: expor GET/PUT /api/policies/settings retornando/salvando um único payload, mapeando para as tabelas existentes:
+
+brand_configurations
+policies
+content_criteria
+Cole no Replit no serviço do backend (Express + Drizzle).
+
+Prompt:
+
+Quero unificar três domínios (brand_configurations, policies, content_criteria) em um endpoint único:
+
+Rotas:
+- GET /api/policies/settings
+- PUT /api/policies/settings
+
+Detalhes:
+1) Criar src/routes/policiesSettings.ts com:
+- Zod schema SettingsDTO:
+  const SettingsDTO = z.object({
+    brand: z.object({
+      logoUrl: z.string().url().nullable(),
+      primaryColor: z.string().nullable(),
+      secondaryColor: z.string().nullable(),
+      accentColor: z.string().nullable(),
+      fontFamily: z.string().nullable(),
+      visualGuidelines: z.string().nullable()
+    }),
+    brandPolicies: z.object({
+      autoApproval: z.boolean(),
+      autoActions: z.object({
+        pauseOnViolation: z.boolean(),
+        sendForReview: z.boolean(),
+        autoFixMinor: z.boolean()
+      })
+    }),
+    validationCriteria: z.object({
+      requiredKeywords: z.array(z.string()),
+      forbiddenTerms: z.array(z.string()),
+      requiredPhrases: z.array(z.string()),
+      charLimits: z.object({
+        min: z.number().int().positive().nullable().optional(),
+        max: z.number().int().positive().nullable().optional(),
+      }),
+      brandRequirements: z.object({
+        requireLogo: z.boolean(),
+        requireBrandColors: z.boolean()
+      })
+    })
+  });
+
+2) Implementar GET:
+- Carregar do Drizzle:
+  - brand_configurations (para o tenant atual via user/org)
+  - policies (autoApproval, autoActions)
+  - content_criteria (requiredKeywords, forbiddenTerms, requiredPhrases, charLimits, brandRequirements)
+- Montar o objeto SettingsDTO com defaults se null.
+- Retornar 200 com JSON.
+
+3) Implementar PUT:
+- Validar body com SettingsDTO.
+- Iniciar transaction.
+- Upsert nos três agregados:
+  - brand_configurations: logoUrl, primaryColor, secondaryColor, accentColor, fontFamily, visualGuidelines
+  - policies: autoApproval, autoActions.pauseOnViolation, autoActions.sendForReview, autoActions.autoFixMinor
+  - content_criteria: requiredKeywords (JSONB text[]), forbiddenTerms (JSONB text[]), requiredPhrases (JSONB text[]),
+    charLimits.min, charLimits.max, brandRequirements.requireLogo, brandRequirements.requireBrandColors
+- Commit e retornar o payload salvo.
+- Erros: 400 p/ validação, 500 p/ inesperados.
+
+4) Autorização:
+- Middleware de autenticação (JWT ou Replit Auth conforme ambiente) já usado no app.
+- Checar role “administrador” para PUT.
+- GET permitido para admin e operador (somente leitura).
+
+5) Registro das rotas no app:
+- app.use("/api/policies/settings", policiesSettingsRouter)
+
+6) Atualizar OpenAPI/README interno se existir.
+
+Observações:
+- Usar Drizzle ORM com prepared statements, tipos fortes e transactions.
+- Respeitar tenantId/organizationId do usuário corrente.
+3) Prompt para migração lógica suave (sem alterar schema físico agora)
+Objetivo: manter o schema atual, apenas consolidando leitura/escrita via o endpoint unificado, sem dropar tabelas. Opcionalmente, adicionar views ou funções utilitárias.
+
+Prompt:
+
+Quero manter o schema físico atual, mas padronizar o acesso via o endpoint unificado. Faça:
+- Criar serviços src/services/policiesSettingsService.ts com funções:
+  - loadSettings(tenantId): Promise<SettingsDTO>
+  - saveSettings(tenantId, dto: SettingsDTO): Promise<SettingsDTO>
+- Essas funções encapsulam os acessos a brand_configurations, policies, content_criteria e aplicam defaults.
+- Atualizar o router para depender desse service.
+- Adicionar testes unitários básicos dos serviços (mocks do Drizzle).
+4) Prompt para deprecar rotas antigas e redirecionar
+Objetivo: evitar breaking changes no frontend antigo e limpar a UX.
+
+Prompt:
+
+No backend:
+- Adicionar 301/308 das rotas antigas:
+  - GET/PUT /api/brand-config -> 308 para /api/policies/settings
+  - GET/PUT /api/content-criteria -> 308 para /api/policies/settings
+  - GET/PUT /api/policies -> 308 para /api/policies/settings
+- Logar warning “Deprecated route accessed” com tenantId, userId.
+
+No frontend:
+- Se rotas antigas existirem (ex: /settings/brand, /settings/criteria, /settings/policies-legacy):
+  - Redirecionar com navigate("/settings/policies") no mount.
+- Remover entradas do menu e deixar apenas “Configurações -> Políticas & Critérios”.
+5) Prompt para ajustar o Dashboard e permissão
+Objetivo: refletir a nova fonte de verdade.
+
+Prompt:
+
+- Atualizar componentes do Dashboard que exibem status de políticas/critério para usar GET /api/policies/settings.
+- Ajustar RBAC:
+  - Admin: leitura/escrita em /api/policies/settings
+  - Operador: somente leitura
+- Adicionar feature flag “unifiedPoliciesPage=true” (opcional) para rollout gradual.
+6) Prompt para validações de UI rápidas
+Prompt:
+
+- Validar cores hex se começarem com "#": regex ^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{3})$
+- charLimits: se min e max definidos, exigir min <= max
+- Mostrar contadores de caracteres nos campos de texto longos (visualGuidelines)
+- Em chips: normalizar espaços, impedir duplicados (case-insensitive)
