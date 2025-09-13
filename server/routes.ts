@@ -57,7 +57,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createTableIfMissing: true,
         tableName: 'session'
       }),
-      secret: process.env.SESSION_SECRET || 'dev-session-secret-change-in-production',
+      secret: (() => {
+        const secret = process.env.SESSION_SECRET;
+        if (!secret) {
+          console.error('🚨 CRITICAL: SESSION_SECRET environment variable is required!');
+          if (process.env.NODE_ENV === 'production') {
+            console.error('🚨 Production startup failed: Missing SESSION_SECRET');
+            process.exit(1);
+          }
+          console.warn('⚠️ Development: Using fallback session secret (INSECURE!)');
+          return 'development-only-fallback';
+        }
+        return secret;
+      })(),
       resave: false,
       saveUninitialized: false,
       cookie: {
@@ -200,10 +212,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.params.id;
       const validatedData = updateUserSchema.parse(req.body);
 
-      // Check if trying to modify master user role
+      // Check if trying to modify admin user role to non-admin
       const targetUser = await storage.getUserById(userId);
-      if (targetUser?.email === 'rafael@clickhero.com.br' && validatedData.role && validatedData.role !== 'administrador') {
-        return res.status(400).json({ message: 'Não é possível alterar o nível do usuário master' });
+      if (targetUser?.role === 'administrador' && validatedData.role && validatedData.role !== 'administrador') {
+        return res.status(400).json({ message: 'Não é possível alterar o nível de administrador' });
       }
 
       // Update user
@@ -238,10 +250,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Você não pode deletar sua própria conta' });
       }
 
-      // Check if trying to delete master user
+      // Check if trying to delete admin user
       const targetUser = await storage.getUserById(userId);
-      if (targetUser?.email === 'rafael@clickhero.com.br') {
-        return res.status(400).json({ message: 'Não é possível deletar o usuário master' });
+      if (targetUser?.role === 'administrador') {
+        return res.status(400).json({ message: 'Não é possível deletar usuários administradores' });
       }
 
       const success = await storage.deleteUser(userId);
@@ -334,7 +346,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // REMOVED: Duplicate endpoint - keeping the one with better error handling above
 
   // Force clear ALL cache and session data for production
-  app.post('/api/clear-session', async (req: Request, res: Response) => {
+  app.post('/api/clear-session', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       // Clear session data
       if (req.session) {
@@ -402,6 +414,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/integrations/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const integrationId = req.params.id;
+      const userId = req.user!.id;
+      
+      // Verify ownership
+      const existingIntegration = await storage.getIntegrationById(integrationId);
+      if (!existingIntegration || existingIntegration.userId !== userId) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
       const integration = await storage.updateIntegration(integrationId, req.body);
       if (!integration) {
         return res.status(404).json({ message: "Integration not found" });
@@ -455,7 +475,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/policies/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const policyId = req.params.id;
+      const userId = req.user!.id;
       const policy = await storage.getPolicyById(policyId);
+      
+      // Verify ownership
+      if (!policy || policy.userId !== userId) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
@@ -469,6 +495,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/policies/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const policyId = req.params.id;
+      const userId = req.user!.id;
+      
+      // Verify ownership  
+      const existingPolicy = await storage.getPolicyById(policyId);
+      if (!existingPolicy || existingPolicy.userId !== userId) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
       const policy = await storage.updatePolicy(policyId, req.body);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
@@ -483,6 +517,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/policies/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const policyId = req.params.id;
+      const userId = req.user!.id;
+      
+      // Verify ownership
+      const existingPolicy = await storage.getPolicyById(policyId);
+      if (!existingPolicy || existingPolicy.userId !== userId) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
       const success = await storage.deletePolicy(policyId);
       if (!success) {
         return res.status(404).json({ message: "Policy not found" });
@@ -509,7 +551,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/brand-configurations/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const id = req.params.id;
+      const userId = req.user!.id;
       const brandConfiguration = await storage.getBrandConfigurationById(id);
+      
+      // Verify ownership
+      if (!brandConfiguration || brandConfiguration.userId !== userId) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
       if (!brandConfiguration) {
         return res.status(404).json({ message: "Brand configuration not found" });
       }
@@ -538,6 +586,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/brand-configurations/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const id = req.params.id;
+      const userId = req.user!.id;
+      
+      // Verify ownership
+      const existing = await storage.getBrandConfigurationById(id);
+      if (!existing || existing.userId !== userId) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
       const brandConfiguration = await storage.updateBrandConfiguration(id, req.body);
       if (!brandConfiguration) {
         return res.status(404).json({ message: "Brand configuration not found" });
@@ -552,6 +608,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/brand-configurations/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const id = req.params.id;
+      const userId = req.user!.id;
+      
+      // Verify ownership
+      const existing = await storage.getBrandConfigurationById(id);
+      if (!existing || existing.userId !== userId) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
       const success = await storage.deleteBrandConfiguration(id);
       if (!success) {
         return res.status(404).json({ message: "Brand configuration not found" });
@@ -578,7 +642,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/content-criteria/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const id = req.params.id;
+      const userId = req.user!.id;
       const contentCriteria = await storage.getContentCriteriaById(id);
+      
+      // Verify ownership
+      if (!contentCriteria || contentCriteria.userId !== userId) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
       if (!contentCriteria) {
         return res.status(404).json({ message: "Content criteria not found" });
       }
@@ -607,6 +677,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/content-criteria/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const id = req.params.id;
+      const userId = req.user!.id;
+      
+      // Verify ownership
+      const existing = await storage.getContentCriteriaById(id);
+      if (!existing || existing.userId !== userId) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
       const contentCriteria = await storage.updateContentCriteria(id, req.body);
       if (!contentCriteria) {
         return res.status(404).json({ message: "Content criteria not found" });
@@ -621,6 +699,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/content-criteria/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const id = req.params.id;
+      const userId = req.user!.id;
+      
+      // Verify ownership
+      const existing = await storage.getContentCriteriaById(id);
+      if (!existing || existing.userId !== userId) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
       const success = await storage.deleteContentCriteria(id);
       if (!success) {
         return res.status(404).json({ message: "Content criteria not found" });
@@ -765,7 +851,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/creatives/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const creativeId = req.params.id;
+      const userId = req.user!.id;
       const creative = await storage.getCreativeById(creativeId);
+      
+      // Verify ownership
+      if (!creative || creative.userId !== userId) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
       if (!creative) {
         return res.status(404).json({ message: "Creative not found" });
       }

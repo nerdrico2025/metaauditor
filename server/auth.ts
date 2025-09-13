@@ -18,7 +18,19 @@ export interface User {
   updatedAt: Date | null;
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this-in-production';
+const JWT_SECRET = (() => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    console.error('🚨 CRITICAL: JWT_SECRET environment variable is required!');
+    if (process.env.NODE_ENV === 'production') {
+      console.error('🚨 Production startup failed: Missing JWT_SECRET');
+      process.exit(1);
+    }
+    console.warn('⚠️ Development: Using fallback JWT secret (INSECURE!)');
+    return 'development-only-fallback-insecure';
+  }
+  return secret;
+})();
 const JWT_EXPIRES_IN = '7d';
 
 // Extend Express Request type to include our user
