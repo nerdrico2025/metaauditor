@@ -93,7 +93,7 @@ export default function ProblemCreatives() {
             <div className="space-y-4">
               {problemCreatives.map((item: ProblemCreative) => (
                 <div 
-                  key={item.id} 
+                  key={`problem-creative-${item.id}-${item.audit?.id || 'unknown'}`} 
                   className="flex items-center space-x-4 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors"
                   onClick={() => setSelectedCreative(item)}
                 >
@@ -121,12 +121,12 @@ export default function ProblemCreatives() {
                       {item.name}
                     </p>
                     <p className="text-sm text-slate-500">
-                      Campanha: {item.campaign?.name || 'Campanha não identificada'}
+                      ID da Campanha: {item.campaignId || 'Não identificada'}
                     </p>
                     <div className="flex items-center mt-1">
                       <Badge className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getIssueBadgeColor(item.audit.status)}`}>
                         {getIssueIcon(item.audit.status)}
-                        {getIssueText(item.audit.status, item.audit.issues || [])}
+                        {getIssueText(item.audit.status, Array.isArray(item.audit.issues) ? item.audit.issues : [])}
                       </Badge>
                     </div>
                   </div>

@@ -356,36 +356,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Force refresh user data endpoint 
-  app.get('/api/force-refresh-user', async (req: Request, res: Response) => {
-    try {
-      // Get fresh user data directly from database
-      const demoEmail = 'rafael@clickhero.com.br';
-      const user = await storage.getUserByEmail(demoEmail);
-      
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-      
-      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-      res.json({ 
-        user: {
-          id: user.id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          role: user.role,
-          profileImageUrl: user.profileImageUrl,
-          lastLoginAt: user.lastLoginAt,
-          createdAt: user.createdAt,
-        },
-        fresh: true,
-        timestamp: new Date().toISOString()
-      });
-    } catch (error) {
-      console.error("Error getting fresh user data:", error);
-      res.status(500).json({ message: "Failed to get fresh user data" });
-    }
-  });
+  // REMOVED: /api/force-refresh-user endpoint - SECURITY VIOLATION ELIMINATED
+  // This endpoint was publicly accessible without authentication and leaked sensitive user data
+  // Use proper authenticated endpoints instead
 
   // REMOVED: /api/ensure-demo-user endpoint - SECURITY RISK ELIMINATED
   // This endpoint was creating accounts with known passwords and was publicly accessible

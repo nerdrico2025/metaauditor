@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -149,9 +149,27 @@ export default function Landing() {
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Redirect if already authenticated
-  if (isAuthenticated && !isLoading) {
-    setLocation('/dashboard');
+  // Redirect if already authenticated - moved to useEffect to avoid render-time state changes
+  useEffect(() => {
+    if (isAuthenticated && !isLoading) {
+      setLocation('/dashboard');
+    }
+  }, [isAuthenticated, isLoading, setLocation]);
+
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-click-hero-white-2 to-click-hero-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-click-hero-orange mx-auto"></div>
+          <p className="mt-2 text-click-hero-dark-gray">Verificando autenticação...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render anything if user is authenticated (redirect happening)
+  if (isAuthenticated) {
     return null;
   }
 
