@@ -3,6 +3,8 @@ import { createServer, type Server } from "http";
 import session from "express-session";
 import ConnectPgSimple from "connect-pg-simple";
 import { storage } from "./storage";
+import { db } from "./db";
+import { eq, desc } from "drizzle-orm";
 import { AuthService, generateToken, hashPassword, comparePassword, authenticateToken, type User, type AuthRequest } from "./auth";
 import {
   insertIntegrationSchema,
@@ -19,7 +21,12 @@ import {
   updateUserSchema,
   updateProfileSchema,
   changePasswordSchema,
+  settingsDTO,
+  brandConfigurations,
+  policies,
+  contentCriteria,
   type UserRole,
+  type SettingsDTO,
 } from "@shared/schema";
 import { analyzeCreativeCompliance, analyzeCreativePerformance } from "./services/aiAnalysis";
 import { registerRoutes as registerReplitAuthRoutes } from "./replitAuth";
@@ -416,9 +423,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const integrationId = req.params.id;
       const userId = req.user!.id;
       
-      // Verify ownership
-      const existingIntegration = await storage.getIntegrationById(integrationId);
-      if (!existingIntegration || existingIntegration.userId !== userId) {
+      // Verify ownership by getting user integrations and finding the specific one
+      const userIntegrations = await storage.getIntegrationsByUser(userId);
+      const existingIntegration = userIntegrations.find(integration => integration.id === integrationId);
+      if (!existingIntegration) {
         return res.status(403).json({ message: 'Access denied' });
       }
       
@@ -533,6 +541,270 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting policy:", error);
       res.status(500).json({ message: "Failed to delete policy" });
+    }
+  });
+
+  // Unified Policies Settings routes
+  app.get('/api/policies/settings', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      
+      // Load data from all three tables
+      const [brandConfigs, policies, contentCriterias] = await Promise.all([
+        storage.getBrandConfigurationsByUser(userId),
+        storage.getPoliciesByUser(userId),
+        storage.getContentCriteriaByUser(userId)
+      ]);
+
+      // Get the first/active configuration for each type (or use defaults)
+      const brandConfig = brandConfigs.find(b => b.isActive) || brandConfigs[0];
+      const policy = policies.find(p => p.isDefault || p.status === 'active') || policies[0];
+      const contentCriteria = contentCriterias.find(c => c.isActive) || contentCriterias[0];
+
+      // Map to SettingsDTO format
+      const settings: SettingsDTO = {
+        brand: {
+          logoUrl: brandConfig?.logoUrl || null,
+          primaryColor: brandConfig?.primaryColor || null,
+          secondaryColor: brandConfig?.secondaryColor || null,
+          accentColor: brandConfig?.accentColor || null,
+          fontFamily: brandConfig?.fontFamily || null,
+          visualGuidelines: brandConfig?.brandGuidelines || null,
+        },
+        brandPolicies: {
+          autoApproval: Boolean(policy?.rules && typeof policy.rules === 'object' && 
+                               (policy.rules as any).autoApproval === true),
+          autoActions: {
+            pauseOnViolation: Boolean(policy?.rules && typeof policy.rules === 'object' && 
+                                     (policy.rules as any).pauseOnViolation === true),
+            sendForReview: Boolean(policy?.rules && typeof policy.rules === 'object' && 
+                                  (policy.rules as any).sendForReview === true),
+            autoFixMinor: Boolean(policy?.rules && typeof policy.rules === 'object' && 
+                                 (policy.rules as any).autoFixMinor === true),
+          },
+        },
+        validationCriteria: {
+          requiredKeywords: contentCriteria?.requiredKeywords && Array.isArray(contentCriteria.requiredKeywords) ? 
+                            contentCriteria.requiredKeywords as string[] : [],
+          forbiddenTerms: contentCriteria?.prohibitedKeywords && Array.isArray(contentCriteria.prohibitedKeywords) ? 
+                          contentCriteria.prohibitedKeywords as string[] : [],
+          requiredPhrases: contentCriteria?.requiredPhrases && Array.isArray(contentCriteria.requiredPhrases) ? 
+                           contentCriteria.requiredPhrases as string[] : [],
+          charLimits: {
+            min: contentCriteria?.minTextLength || null,
+            max: contentCriteria?.maxTextLength || null,
+          },
+          brandRequirements: {
+            requireLogo: contentCriteria?.requiresLogo || false,
+            requireBrandColors: contentCriteria?.requiresBrandColors || false,
+          },
+        },
+      };
+
+      res.json(settings);
+    } catch (error) {
+      console.error("Error fetching settings:", error);
+      res.status(500).json({ message: "Failed to fetch settings" });
+    }
+  });
+
+  app.put('/api/policies/settings', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      
+      // Validate request body against SettingsDTO schema
+      const validatedSettings = settingsDTO.parse(req.body);
+      
+      // Execute all operations within a single transaction to ensure atomicity
+      const result = await db.transaction(async (tx) => {
+        // Load existing data with deterministic ordering within transaction
+        const [brandConfigs, userPolicies, userContentCriteria] = await Promise.all([
+          tx.select()
+            .from(brandConfigurations)
+            .where(eq(brandConfigurations.userId, userId))
+            .orderBy(desc(brandConfigurations.updatedAt)), // Deterministic ordering by updatedAt
+          tx.select()
+            .from(policies)
+            .where(eq(policies.userId, userId))
+            .orderBy(desc(policies.updatedAt)), // Deterministic ordering by updatedAt  
+          tx.select()
+            .from(contentCriteria)
+            .where(eq(contentCriteria.userId, userId))
+            .orderBy(desc(contentCriteria.updatedAt)) // Deterministic ordering by updatedAt
+        ]);
+
+        // Deterministic record selection - prefer active/default, then most recent
+        let brandConfig = brandConfigs.find((b: any) => b.isActive) || brandConfigs[0];
+        let policy = userPolicies.find((p: any) => p.isDefault || p.status === 'active') || userPolicies[0];
+        let contentCriteriaRecord = userContentCriteria.find((c: any) => c.isActive) || userContentCriteria[0];
+
+        // Update or create brand configuration
+        if (brandConfig) {
+          const [updatedBrandConfig] = await tx
+            .update(brandConfigurations)
+            .set({
+              logoUrl: validatedSettings.brand.logoUrl,
+              primaryColor: validatedSettings.brand.primaryColor,
+              secondaryColor: validatedSettings.brand.secondaryColor,
+              accentColor: validatedSettings.brand.accentColor,
+              fontFamily: validatedSettings.brand.fontFamily,
+              brandGuidelines: validatedSettings.brand.visualGuidelines,
+              updatedAt: new Date()
+            })
+            .where(eq(brandConfigurations.id, brandConfig.id))
+            .returning();
+          
+          if (!updatedBrandConfig) {
+            throw new Error("Failed to update brand configuration");
+          }
+          brandConfig = updatedBrandConfig;
+        } else {
+          const [newBrandConfig] = await tx
+            .insert(brandConfigurations)
+            .values({
+              userId,
+              brandName: "Default Brand",
+              logoUrl: validatedSettings.brand.logoUrl,
+              primaryColor: validatedSettings.brand.primaryColor,
+              secondaryColor: validatedSettings.brand.secondaryColor,
+              accentColor: validatedSettings.brand.accentColor,
+              fontFamily: validatedSettings.brand.fontFamily,
+              brandGuidelines: validatedSettings.brand.visualGuidelines,
+              isActive: true,
+            })
+            .returning();
+          brandConfig = newBrandConfig;
+        }
+
+        // Update or create policy
+        const policyRules = {
+          autoApproval: validatedSettings.brandPolicies.autoApproval,
+          pauseOnViolation: validatedSettings.brandPolicies.autoActions.pauseOnViolation,
+          sendForReview: validatedSettings.brandPolicies.autoActions.sendForReview,
+          autoFixMinor: validatedSettings.brandPolicies.autoActions.autoFixMinor,
+        };
+
+        if (policy) {
+          const [updatedPolicy] = await tx
+            .update(policies)
+            .set({
+              rules: policyRules,
+              updatedAt: new Date()
+            })
+            .where(eq(policies.id, policy.id))
+            .returning();
+          
+          if (!updatedPolicy) {
+            throw new Error("Failed to update policy");
+          }
+          policy = updatedPolicy;
+        } else {
+          const [newPolicy] = await tx
+            .insert(policies)
+            .values({
+              userId,
+              name: "Default Policy",
+              description: "Auto-generated default policy for brand settings",
+              rules: policyRules,
+              status: 'active',
+              isDefault: true,
+            })
+            .returning();
+          policy = newPolicy;
+        }
+
+        // Update or create content criteria
+        if (contentCriteriaRecord) {
+          const [updatedContentCriteria] = await tx
+            .update(contentCriteria)
+            .set({
+              requiredKeywords: validatedSettings.validationCriteria.requiredKeywords,
+              prohibitedKeywords: validatedSettings.validationCriteria.forbiddenTerms,
+              requiredPhrases: validatedSettings.validationCriteria.requiredPhrases,
+              minTextLength: validatedSettings.validationCriteria.charLimits.min,
+              maxTextLength: validatedSettings.validationCriteria.charLimits.max,
+              requiresLogo: validatedSettings.validationCriteria.brandRequirements.requireLogo,
+              requiresBrandColors: validatedSettings.validationCriteria.brandRequirements.requireBrandColors,
+              updatedAt: new Date()
+            })
+            .where(eq(contentCriteria.id, contentCriteriaRecord.id))
+            .returning();
+          
+          if (!updatedContentCriteria) {
+            throw new Error("Failed to update content criteria");
+          }
+          contentCriteriaRecord = updatedContentCriteria;
+        } else {
+          const [newContentCriteria] = await tx
+            .insert(contentCriteria)
+            .values({
+              userId,
+              name: "Default Criteria",
+              description: "Auto-generated default validation criteria",
+              requiredKeywords: validatedSettings.validationCriteria.requiredKeywords,
+              prohibitedKeywords: validatedSettings.validationCriteria.forbiddenTerms,
+              requiredPhrases: validatedSettings.validationCriteria.requiredPhrases,
+              minTextLength: validatedSettings.validationCriteria.charLimits.min,
+              maxTextLength: validatedSettings.validationCriteria.charLimits.max,
+              requiresLogo: validatedSettings.validationCriteria.brandRequirements.requireLogo,
+              requiresBrandColors: validatedSettings.validationCriteria.brandRequirements.requireBrandColors,
+              isActive: true,
+            })
+            .returning();
+          contentCriteriaRecord = newContentCriteria;
+        }
+
+        // Return the actual updated SettingsDTO from database within transaction
+        const updatedSettings: SettingsDTO = {
+          brand: {
+            logoUrl: brandConfig.logoUrl || null,
+            primaryColor: brandConfig.primaryColor || null,
+            secondaryColor: brandConfig.secondaryColor || null,
+            accentColor: brandConfig.accentColor || null,
+            fontFamily: brandConfig.fontFamily || null,
+            visualGuidelines: brandConfig.brandGuidelines || null,
+          },
+          brandPolicies: {
+            autoApproval: Boolean(policy?.rules && typeof policy.rules === 'object' && 
+                                  (policy.rules as any).autoApproval === true),
+            autoActions: {
+              pauseOnViolation: Boolean(policy?.rules && typeof policy.rules === 'object' && 
+                                      (policy.rules as any).pauseOnViolation === true),
+              sendForReview: Boolean(policy?.rules && typeof policy.rules === 'object' && 
+                                    (policy.rules as any).sendForReview === true),
+              autoFixMinor: Boolean(policy?.rules && typeof policy.rules === 'object' && 
+                                   (policy.rules as any).autoFixMinor === true),
+            },
+          },
+          validationCriteria: {
+            requiredKeywords: contentCriteriaRecord?.requiredKeywords && Array.isArray(contentCriteriaRecord.requiredKeywords) ? 
+                              contentCriteriaRecord.requiredKeywords as string[] : [],
+            forbiddenTerms: contentCriteriaRecord?.prohibitedKeywords && Array.isArray(contentCriteriaRecord.prohibitedKeywords) ? 
+                            contentCriteriaRecord.prohibitedKeywords as string[] : [],
+            requiredPhrases: contentCriteriaRecord?.requiredPhrases && Array.isArray(contentCriteriaRecord.requiredPhrases) ? 
+                             contentCriteriaRecord.requiredPhrases as string[] : [],
+            charLimits: {
+              min: contentCriteriaRecord?.minTextLength || null,
+              max: contentCriteriaRecord?.maxTextLength || null,
+            },
+            brandRequirements: {
+              requireLogo: contentCriteriaRecord?.requiresLogo || false,
+              requireBrandColors: contentCriteriaRecord?.requiresBrandColors || false,
+            },
+          },
+        };
+        
+        return updatedSettings;
+      });
+
+      // Return the updated settings from the transaction
+      res.json(result);
+    } catch (error) {
+      console.error("Error updating settings:", error);
+      if (error instanceof Error && error.name === 'ZodError') {
+        return res.status(400).json({ message: "Invalid settings data", errors: (error as any).errors });
+      }
+      res.status(500).json({ message: "Failed to update settings" });
     }
   });
 

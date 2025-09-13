@@ -17,6 +17,7 @@ import AITestingPage from "@/pages/AITestingPage";
 import Integrations from "@/pages/Integrations";
 import BrandSettings from "@/pages/BrandSettings";
 import ContentCriteria from "@/pages/ContentCriteria";
+import SettingsPolicies from "@/pages/SettingsPolicies";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -82,6 +83,11 @@ function Router() {
       <Route path="/ai-testing">
         <ProtectedRoute>
           <AITestingPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/settings/policies">
+        <ProtectedRoute>
+          <SettingsPolicies />
         </ProtectedRoute>
       </Route>
       <Route component={NotFound} />
