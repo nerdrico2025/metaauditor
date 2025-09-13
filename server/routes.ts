@@ -391,7 +391,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/integrations/:id', async (req: Request, res: Response) => {
+  app.put('/api/integrations/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const integrationId = req.params.id;
       const integration = await storage.updateIntegration(integrationId, req.body);
