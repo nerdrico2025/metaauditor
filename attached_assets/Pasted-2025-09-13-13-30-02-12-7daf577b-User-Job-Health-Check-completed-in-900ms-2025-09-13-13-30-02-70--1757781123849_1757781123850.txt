@@ -1,0 +1,88 @@
+2025-09-13 13:30:02.12
+7daf577b
+User
+✅ Job 'Health Check' completed in 900ms
+2025-09-13 13:30:02.70
+7daf577b
+User
+🔍 Auth user request - ID: 8faf38ee-ad81-4a94-8268-0a71bd6e648c, Email: rafael@clickhero.com.br, Name: Rafael Demo
+2025-09-13 13:30:02.70
+7daf577b
+User
+4:30:02 PM [express] GET /api/auth/user 304 in 56ms :: {"id":"8faf38ee-ad81-4a94-8268-0a71bd6e648c",…
+2025-09-13 13:30:02.93
+7daf577b
+User
+4:30:02 PM [express] GET /api/dashboard/recent-audits 200 in 8ms
+2025-09-13 13:30:02.94
+7daf577b
+User
+🔍 Dashboard metrics request - UserID: 8faf38ee-ad81-4a94-8268-0a71bd6e648c
+2025-09-13 13:30:03.04
+7daf577b
+User
+✅ Database connected successfully in DEPLOYMENT environment
+2025-09-13 13:30:03.05
+7daf577b
+User
+✅ Database connected successfully in DEPLOYMENT environment
+2025-09-13 13:30:03.05
+7daf577b
+User
+✅ Database connected successfully in DEPLOYMENT environment
+2025-09-13 13:30:03.13
+7daf577b
+User
+📊 Metrics result - Campaigns: 0, Analyzed: 0
+2025-09-13 13:30:03.14
+7daf577b
+User
+4:30:03 PM [express] GET /api/dashboard/metrics 304 in 242ms :: {"activeCampaigns":0,"creativesAnaly…
+2025-09-13 13:30:03.15
+7daf577b
+User
+4:30:03 PM [express] GET /api/policies 304 in 250ms :: []
+2025-09-13 13:30:03.16
+7daf577b
+User
+4:30:03 PM [express] GET /api/dashboard/problem-creatives 304 in 249ms :: []
+2025-09-13 13:30:03.17
+7daf577b
+User
+4:30:03 PM [express] GET /api/integrations 304 in 251ms :: []
+2025-09-13 13:30:04.10
+7daf577b
+User
+4:30:04 PM [express] GET /api/dashboard/recent-audits 304 in 2ms
+2025-09-13 13:30:11.23
+7daf577b
+User
+4:30:11 PM [express] POST /api/auth/login 200 in 575ms :: {"user":{"id":"8faf38ee-ad81-4a94-8268-0a7…
+2025-09-13 13:30:11.43
+7daf577b
+User
+4:30:11 PM [express] GET /api/dashboard/recent-audits 304 in 3ms
+2025-09-13 13:30:11.46
+7daf577b
+User
+🔍 Dashboard metrics request - UserID: 8faf38ee-ad81-4a94-8268-0a71bd6e648c
+2025-09-13 13:30:11.47
+7daf577b
+User
+🔍 Auth user request - ID: 8faf38ee-ad81-4a94-8268-0a71bd6e648c, Email: rafael@clickhero.com.br, Name: Rafael Demo
+2025-09-13 13:30:11.47
+7daf577b
+User
+4:30:11 PM [express] GET /api/auth/user 200 in 47ms :: {"id":"8faf38ee-ad81-4a94-8268-0a71bd6e648c",…
+2025-09-13 13:30:11.52
+7daf577b
+User
+4:30:11 PM [express] GET /api/policies 304 in 93ms :: []
+2025-09-13 13:30:11.53
+7daf577b
+User
+4:30:11 PM [express] GET /api/integrations 304 in 95ms :: []
+2025-09-13 13:30:11.57
+7daf577b
+User
+✅ Database connected successfully in DEPLOYMENT environment

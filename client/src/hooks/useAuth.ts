@@ -6,17 +6,8 @@ const API_BASE = "/api/auth";
 export function useAuth() {
   const queryClient = useQueryClient();
 
-  // Check if we're in development mode
-  const isDevelopment = import.meta.env.DEV;
-
-  // Demo user for development only
-  const demoUser = {
-    id: 'demo-user',
-    email: 'demo@clickauditor.com',
-    firstName: 'Demo',
-    lastName: 'User',
-    profileImageUrl: null,
-  };
+  // REMOVED: Demo user logic - production should always use real authentication
+  // No more development/demo mode - always use real API authentication
 
   const { data: user, isLoading, error } = useQuery({
     queryKey: ['/api/auth/user'],
@@ -26,12 +17,7 @@ export function useAuth() {
     refetchOnWindowFocus: false,
     enabled: true,
     queryFn: async () => {
-      // In development, return demo user
-      if (isDevelopment) {
-        return demoUser;
-      }
-      
-      // In production, check for real authentication
+      // ALWAYS use real authentication - no more demo mode
       const token = localStorage.getItem('auth_token');
       if (!token) {
         throw new Error('No authentication token');
@@ -41,6 +27,8 @@ export function useAuth() {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
         },
       });
       
@@ -113,9 +101,9 @@ export function useAuth() {
   });
 
   return {
-    user: isDevelopment ? demoUser as User : user as User,
-    isAuthenticated: isDevelopment ? true : !!user,
-    isLoading: isDevelopment ? false : isLoading,
+    user: user as User,
+    isAuthenticated: !!user,
+    isLoading: isLoading,
     login: loginMutation.mutate,
     register: registerMutation.mutate,
     logout: logoutMutation.mutate,
