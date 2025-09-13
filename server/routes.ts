@@ -387,55 +387,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Ensure demo user exists for production
-  app.get('/api/ensure-demo-user', async (req: Request, res: Response) => {
-    try {
-      const demoEmail = 'rafael@clickhero.com.br';
-      let demoUser = await storage.getUserByEmail(demoEmail);
-      
-      if (!demoUser) {
-        // Create demo user if it doesn't exist
-        const hashedPassword = await hashPassword('X@drez13');
-        demoUser = await storage.createUser({
-          email: demoEmail,
-          password: hashedPassword,
-          firstName: 'Rafael',
-          lastName: 'Master',
-          role: 'administrador',
-        });
-        console.log('✅ Demo user created for production:', demoUser.email);
-      } else {
-        console.log('✅ Demo user already exists:', demoUser.email);
-      }
-      
-      // Also ensure test user exists
-      const testEmail = 'usuario.teste@clickauditor-demo.com';
-      let testUser = await storage.getUserByEmail(testEmail);
-      
-      if (!testUser) {
-        const testHashedPassword = await hashPassword('TesteFacebook2025!');
-        testUser = await storage.createUser({
-          email: testEmail,
-          password: testHashedPassword,
-          firstName: 'Usuário',
-          lastName: 'Teste',
-          role: 'operador',
-        });
-        console.log('✅ Test user created for production:', testUser.email);
-      }
-      
-      res.json({ 
-        message: 'Demo users ensured', 
-        users: [
-          { email: demoUser.email, id: demoUser.id },
-          { email: testUser?.email, id: testUser?.id }
-        ]
-      });
-    } catch (error) {
-      console.error("Error ensuring demo user:", error);
-      res.status(500).json({ message: "Failed to ensure demo user" });
-    }
-  });
+  // REMOVED: /api/ensure-demo-user endpoint - SECURITY RISK ELIMINATED
+  // This endpoint was creating accounts with known passwords and was publicly accessible
+  // Real users exist in database and are managed via proper authentication
 
   // Integration routes
   app.get('/api/integrations', authenticateToken, async (req: AuthRequest, res: Response) => {
