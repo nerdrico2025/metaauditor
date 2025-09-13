@@ -1088,7 +1088,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/dashboard/metrics', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const userId = req.user!.id;
+      
+      // CRITICAL: Force no-cache to prevent serving stale demo data
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      res.setHeader('Vary', 'Authorization');
+      
+      console.log(`🔍 Dashboard metrics request - UserID: ${userId}`);
+      
       const metrics = await storage.getDashboardMetrics(userId);
+      
+      console.log(`📊 Metrics result - Campaigns: ${metrics.activeCampaigns}, Analyzed: ${metrics.creativesAnalyzed}`);
+      
       res.json(metrics);
     } catch (error) {
       console.error("Error fetching dashboard metrics:", error);
