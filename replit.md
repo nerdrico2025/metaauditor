@@ -116,6 +116,14 @@ The system is designed to handle enterprise-scale creative auditing with automat
 
 ## Recent Updates (January 2025)
 
+### Simplified Policies Page (Completed - September 13, 2025)
+- Replaced complex multi-policy interface with unified settings page
+- New simplified two-tab interface: "Políticas de Marca" and "Critérios de Validação"  
+- Consolidated three separate pages (Brand Settings, Policies, Content Criteria) into single interface
+- Implemented ChipsInput component for managing keywords and terms
+- Added atomic database transactions for consistent updates across tables
+- All brand policies and validation criteria now managed in one unified interface
+
 ### Color Palette Update (Completed - January 31, 2025)
 - Successfully migrated entire application to Click Hero brand colors
 - Updated CSS variables and Tailwind configuration with:
