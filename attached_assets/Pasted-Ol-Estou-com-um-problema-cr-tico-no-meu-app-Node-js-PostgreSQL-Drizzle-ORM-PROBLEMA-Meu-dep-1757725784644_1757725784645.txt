@@ -1,0 +1,179 @@
+Olá! Estou com um problema crítico no meu app Node.js + PostgreSQL + Drizzle ORM.
+
+PROBLEMA: Meu deploy está falando com erro "getaddrinfo ENOTFOUND helium" e não consegue migrar dados do banco developer para production.
+
+HISTÓRICO: O app funcionava normalmente até eu pedir para remover o sistema de login. Depois disso, o deploy sempre falha.
+
+DIAGNÓSTICO: Acredito que existem dados órfãos no banco sem associação a usuário, e referências quebradas ao sistema de auth do Replit que causam o erro "helium".
+
+OBJETIVO: Preciso criar um usuário superadmin "rafael@clickhero.com.br" e associar todos os dados órfãos a ele, além de limpar referências do Replit Auth.
+
+Você pode me ajudar a resolver isso passo a passo?
+
+
+---
+
+## 🔍 PASSO 1 - DIAGNÓSTICO DO BANCO
+
+**PROMPT 2 - DIAGNÓSTICO:**
+Primeiro, preciso fazer um diagnóstico do banco de dados. Crie um script que:
+
+Conecte ao banco PostgreSQL usando a variável DATABASE_URL
+Verifique se existe a tabela 'users' e sua estrutura
+Liste todos os usuários existentes
+Verifique se existe o usuário "rafael@clickhero.com.br"
+Conte quantos registros órfãos existem nas tabelas principais (campaigns, ads, audits, projects) onde user_id ou owner_id são NULL
+Exiba um relatório completo do diagnóstico
+Use postgres.js e drizzle-orm para as conexões. Salve como 'diagnostic.js' e execute.
+
+
+---
+
+## 👑 PASSO 2 - CRIAR SUPERADMIN
+
+**PROMPT 3 - CRIAR USUÁRIO:**
+Agora preciso criar o usuário superadmin. Crie um script que:
+
+Conecte ao banco PostgreSQL
+Crie a tabela 'users' se não existir com estas colunas:
+id (SERIAL PRIMARY KEY)
+email (VARCHAR UNIQUE NOT NULL)
+password (VARCHAR NOT NULL)
+name (VARCHAR)
+role (VARCHAR DEFAULT 'user')
+is_active (BOOLEAN DEFAULT true)
+created_at (TIMESTAMP DEFAULT CURRENT_TIMESTAMP)
+updated_at (TIMESTAMP DEFAULT CURRENT_TIMESTAMP)
+Crie ou atualize o usuário:
+Email: "rafael@clickhero.com.br"
+Senha: "ClickHero2024!" (use bcrypt hash com salt 12)
+Nome: "Rafael - ClickHero Admin"
+Role: "superadmin"
+is_active: true
+Retorne o ID do usuário criado
+Use bcrypt para hash da senha
+Salve como 'create-superadmin.js' e execute.
+
+
+---
+
+## 🔗 PASSO 3 - ASSOCIAR DADOS ÓRFÃOS
+
+**PROMPT 4 - ASSOCIAR DADOS:**
+Preciso associar todos os dados órfãos ao superadmin criado. Crie um script que:
+
+Conecte ao banco e busque o ID do usuário "rafael@clickhero.com.br"
+Para cada uma dessas tabelas, atualize registros onde o campo de usuário é NULL:
+campaigns (campo: user_id)
+ads (campo: user_id)
+audits (campo: user_id)
+projects (campo: owner_id)
+reports (campo: created_by)
+Para cada tabela:
+Conte quantos registros órfãos existem
+Atualize todos para o ID do superadmin
+Exiba quantos foram atualizados
+Adicione updated_at = CURRENT_TIMESTAMP
+Exiba um resumo total de registros associados
+Se alguma tabela não existir, apenas pule e continue com as outras.
+
+Salve como 'associate-data.js' e execute.
+
+
+---
+
+## 🧹 PASSO 4 - LIMPAR REFERÊNCIAS REPLIT
+
+**PROMPT 5 - LIMPEZA:**
+Preciso limpar todas as referências ao sistema de auth do Replit que causam o erro "helium". Crie um script que:
+
+Conecte ao banco PostgreSQL
+Execute estas limpezas (ignore erros se colunas/tabelas não existirem):
+Remova colunas: replit_token, replit_user_id, replit_username da tabela users
+Delete registros da tabela sessions onde provider contém 'replit'
+Delete registros da tabela app_settings onde key contém 'replit' ou 'helium'
+Remova qualquer referência a 'helium' em configurações
+Procure no código por referências a:
+"helium"
+"replit.com"
+"replit auth"
+"@replit/auth"
+Exiba um relatório do que foi limpo
+Salve como 'cleanup-replit.js' e execute.
+
+
+---
+
+## 🔐 PASSO 5 - IMPLEMENTAR AUTENTICAÇÃO
+
+**PROMPT 6 - SISTEMA DE AUTH:**
+Preciso implementar um sistema de autenticação próprio para substituir o Replit Auth. Crie:
+
+Middleware de autenticação (middleware/auth.js):
+Função authenticateToken que verifica JWT
+Extrai token do header Authorization
+Valida usando JWT_SECRET
+Adiciona req.user com dados do usuário
+Rota de login (routes/auth.js):
+POST /login que recebe email e password
+Busca usuário no banco
+Compara senha com bcrypt
+Gera JWT token com expiração 24h
+Retorna token e dados do usuário
+Atualizar app principal:
+Adicione rota /api/auth/login (sem middleware)
+Proteja outras rotas com authenticateToken
+Adicione rota de teste /api/test (protegida)
+Variáveis de ambiente necessárias:
+JWT_SECRET (gere uma chave forte)
+DATABASE_URL (já existe)
+Implemente tudo e teste o login localmente.
+
+
+---
+
+## ✅ PASSO 6 - VALIDAÇÃO FINAL
+
+**PROMPT 7 - VALIDAÇÃO:**
+Preciso validar se tudo está pronto para deploy. Crie um script de validação que:
+
+Conecte ao banco e verifique:
+Se o superadmin "rafael@clickhero.com.br" existe com role 'superadmin'
+Se não há dados órfãos (user_id NULL) nas tabelas principais
+Se a estrutura de autenticação está completa
+Teste o sistema de auth:
+Tente fazer login com as credenciais do superadmin
+Verifique se o JWT é gerado corretamente
+Teste uma rota protegida
+Procure por referências restantes:
+Busque "helium" em todo o código
+Busque "replit" em configurações
+Verifique se não há imports do @replit/auth
+Exiba um relatório final:
+✅ ou ❌ para cada verificação
+Status geral: PRONTO PARA DEPLOY ou NECESSITA CORREÇÕES
+Salve como 'validate-deploy.js' e execute.
+
+
+---
+
+## 🚀 PASSO 7 - DEPLOY
+
+**PROMPT 8 - EXECUTAR DEPLOY:**
+Agora que tudo foi validado, preciso fazer o deploy.
+
+Primeiro, confirme que todas as validações passaram
+Verifique se estas variáveis de ambiente estão configuradas:
+DATABASE_URL
+JWT_SECRET
+NODE_ENV=production
+Execute o deploy do app
+Após o deploy, teste:
+Se a URL pública carrega sem erro
+Se o login funciona na versão deployada
+Se não há mais erro "getaddrinfo ENOTFOUND helium"
+Se der erro, mostre os logs completos do deploy
+CREDENCIAIS PARA TESTE:
+
+Email: rafael@clickhero.com.br
+Senha: ClickHero2024!
