@@ -326,6 +326,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Force clear session cache for production
+  app.post('/api/clear-session', async (req: Request, res: Response) => {
+    try {
+      // Clear session data
+      if (req.session) {
+        req.session.destroy((err) => {
+          if (err) {
+            console.error('Session destroy error:', err);
+          }
+        });
+      }
+      
+      res.clearCookie('connect.sid');
+      res.json({ message: 'Session cleared successfully' });
+    } catch (error) {
+      console.error("Error clearing session:", error);
+      res.status(500).json({ message: "Failed to clear session" });
+    }
+  });
+
   // Ensure demo user exists for production
   app.get('/api/ensure-demo-user', async (req: Request, res: Response) => {
     try {
