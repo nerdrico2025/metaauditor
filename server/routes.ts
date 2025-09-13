@@ -480,71 +480,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/policies/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
-    try {
-      const policyId = req.params.id;
-      const userId = req.user!.id;
-      const policy = await storage.getPolicyById(policyId);
-      
-      // Verify ownership
-      if (!policy || policy.userId !== userId) {
-        return res.status(403).json({ message: 'Access denied' });
-      }
-      if (!policy) {
-        return res.status(404).json({ message: "Policy not found" });
-      }
-      res.json(policy);
-    } catch (error) {
-      console.error("Error fetching policy:", error);
-      res.status(500).json({ message: "Failed to fetch policy" });
-    }
-  });
-
-  app.put('/api/policies/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
-    try {
-      const policyId = req.params.id;
-      const userId = req.user!.id;
-      
-      // Verify ownership  
-      const existingPolicy = await storage.getPolicyById(policyId);
-      if (!existingPolicy || existingPolicy.userId !== userId) {
-        return res.status(403).json({ message: 'Access denied' });
-      }
-      
-      const policy = await storage.updatePolicy(policyId, req.body);
-      if (!policy) {
-        return res.status(404).json({ message: "Policy not found" });
-      }
-      res.json(policy);
-    } catch (error) {
-      console.error("Error updating policy:", error);
-      res.status(500).json({ message: "Failed to update policy" });
-    }
-  });
-
-  app.delete('/api/policies/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
-    try {
-      const policyId = req.params.id;
-      const userId = req.user!.id;
-      
-      // Verify ownership
-      const existingPolicy = await storage.getPolicyById(policyId);
-      if (!existingPolicy || existingPolicy.userId !== userId) {
-        return res.status(403).json({ message: 'Access denied' });
-      }
-      
-      const success = await storage.deletePolicy(policyId);
-      if (!success) {
-        return res.status(404).json({ message: "Policy not found" });
-      }
-      res.json({ message: "Policy deleted successfully" });
-    } catch (error) {
-      console.error("Error deleting policy:", error);
-      res.status(500).json({ message: "Failed to delete policy" });
-    }
-  });
-
-  // Unified Policies Settings routes
+  // Unified Policies Settings routes - MUST come before parametrized routes
   app.get('/api/policies/settings', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const userId = req.user!.id;
@@ -805,6 +741,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid settings data", errors: (error as any).errors });
       }
       res.status(500).json({ message: "Failed to update settings" });
+    }
+  });
+
+  app.get('/api/policies/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      const policyId = req.params.id;
+      const userId = req.user!.id;
+      const policy = await storage.getPolicyById(policyId);
+      
+      // Verify ownership
+      if (!policy || policy.userId !== userId) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      if (!policy) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      res.json(policy);
+    } catch (error) {
+      console.error("Error fetching policy:", error);
+      res.status(500).json({ message: "Failed to fetch policy" });
+    }
+  });
+
+  app.put('/api/policies/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      const policyId = req.params.id;
+      const userId = req.user!.id;
+      
+      // Verify ownership  
+      const existingPolicy = await storage.getPolicyById(policyId);
+      if (!existingPolicy || existingPolicy.userId !== userId) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
+      const policy = await storage.updatePolicy(policyId, req.body);
+      if (!policy) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      res.json(policy);
+    } catch (error) {
+      console.error("Error updating policy:", error);
+      res.status(500).json({ message: "Failed to update policy" });
+    }
+  });
+
+  app.delete('/api/policies/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      const policyId = req.params.id;
+      const userId = req.user!.id;
+      
+      // Verify ownership
+      const existingPolicy = await storage.getPolicyById(policyId);
+      if (!existingPolicy || existingPolicy.userId !== userId) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
+      const success = await storage.deletePolicy(policyId);
+      if (!success) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+      res.json({ message: "Policy deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting policy:", error);
+      res.status(500).json({ message: "Failed to delete policy" });
     }
   });
 
