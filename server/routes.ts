@@ -95,6 +95,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: 'Não autenticado' });
       }
 
+      // CRITICAL: Force no-cache to prevent serving stale demo data
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      res.setHeader('Vary', 'Authorization');
+      
+      console.log(`🔍 Auth user request - ID: ${req.user.id}, Email: ${req.user.email}, Name: ${req.user.firstName} ${req.user.lastName}`);
+
       // Return safe user data without password
       res.json({
         id: req.user.id,
@@ -315,16 +323,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get current authenticated user
-  app.get('/api/auth/user', authenticateToken, async (req: Request, res: Response) => {
-    res.json({
-      id: req.user!.id,
-      email: req.user!.email,
-      firstName: req.user!.firstName,
-      lastName: req.user!.lastName,
-      role: req.user!.role,
-      profileImageUrl: req.user!.profileImageUrl,
-    });
-  });
+  // REMOVED: Duplicate endpoint - keeping the one with better error handling above
 
   // Force clear ALL cache and session data for production
   app.post('/api/clear-session', async (req: Request, res: Response) => {

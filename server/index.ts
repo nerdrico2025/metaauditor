@@ -78,18 +78,12 @@ app.use((req, res, next) => {
   // It is the only port that is not firewalled.
   const PORT = parseInt(process.env.PORT || '5000', 10);
 
-  // Initialize demo user for production
+  // Initialize demo user for production - DISABLED TO FIX DATA INCONSISTENCY
   async function initializeDemoUser() {
-    try {
-      if (process.env.NODE_ENV !== 'development') {
-        const response = await fetch(`http://0.0.0.0:${PORT}/api/ensure-demo-user`);
-        if (response.ok) {
-          console.log('✅ Demo user initialized for production');
-        }
-      }
-    } catch (error) {
-      console.log('⚠️ Could not initialize demo user:', error);
-    }
+    // DISABLED: This was causing "Rafael Demo" to appear in production
+    // The real user "Rafael Master" exists in the database
+    console.log('🚫 Demo user initialization DISABLED in production to prevent data conflicts');
+    return;
   }
 
   const isPreview = process.env.REPLIT_PREVIEW === 'true' || process.env.REPLIT_DEPLOYMENT === 'preview';
@@ -132,9 +126,9 @@ app.use((req, res, next) => {
         log(`🚀 Production server ready - cron jobs disabled in production`);
       }
 
-      // Initialize demo user after server starts
+      // Production startup - sync data only, NO demo user bootstrap
       setTimeout(async () => {
-        await initializeDemoUser();
+        // REMOVED: await initializeDemoUser() - was causing Rafael Demo to appear
         
         // Force sync to ensure production user sees all data
         log(`🔄 Starting production data sync...`);
