@@ -29,6 +29,11 @@ function Router() {
           <Settings />
         </ProtectedRoute>
       </Route>
+      <Route path="/profile">
+        <ProtectedRoute>
+          <Settings />
+        </ProtectedRoute>
+      </Route>
       <Route path="/dashboard">
         <ProtectedRoute>
           <Dashboard />
