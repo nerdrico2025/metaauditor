@@ -339,13 +339,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
           email: demoEmail,
           password: hashedPassword,
           firstName: 'Rafael',
-          lastName: 'Demo',
+          lastName: 'Master',
           role: 'administrador',
         });
-        console.log('✅ Demo user created for production');
+        console.log('✅ Demo user created for production:', demoUser.email);
+      } else {
+        console.log('✅ Demo user already exists:', demoUser.email);
       }
       
-      res.json({ message: 'Demo user ensured', userId: demoUser.id });
+      // Also ensure test user exists
+      const testEmail = 'usuario.teste@clickauditor-demo.com';
+      let testUser = await storage.getUserByEmail(testEmail);
+      
+      if (!testUser) {
+        const testHashedPassword = await hashPassword('TesteFacebook2025!');
+        testUser = await storage.createUser({
+          email: testEmail,
+          password: testHashedPassword,
+          firstName: 'Usuário',
+          lastName: 'Teste',
+          role: 'operador',
+        });
+        console.log('✅ Test user created for production:', testUser.email);
+      }
+      
+      res.json({ 
+        message: 'Demo users ensured', 
+        users: [
+          { email: demoUser.email, id: demoUser.id },
+          { email: testUser?.email, id: testUser?.id }
+        ]
+      });
     } catch (error) {
       console.error("Error ensuring demo user:", error);
       res.status(500).json({ message: "Failed to ensure demo user" });

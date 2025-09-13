@@ -2,7 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import cors from "cors";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { cronManager } from "./services/cronManager";
+import { cronManager, triggerManualSync } from "./services/cronManager";
 import { checkIfDatabaseEmpty, seedDatabase } from "./seedData";
 
 const app = express();
@@ -133,7 +133,18 @@ app.use((req, res, next) => {
       }
 
       // Initialize demo user after server starts
-      setTimeout(initializeDemoUser, 1000);
+      setTimeout(async () => {
+        await initializeDemoUser();
+        
+        // Force sync to ensure production user sees all data
+        log(`🔄 Starting production data sync...`);
+        try {
+          await triggerManualSync();
+          log(`✅ Production data sync completed`);
+        } catch (error) {
+          console.error(`⚠️ Production sync failed:`, error);
+        }
+      }, 1000);
     }, isPreview ? 0 : 3000); // No delay for preview, 3s delay for normal startup
   });
 })();
