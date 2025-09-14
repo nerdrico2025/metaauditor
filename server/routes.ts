@@ -1443,9 +1443,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Google Sheets Sync routes
-  app.post('/api/sync-single-tab-now', async (req: Request, res: Response) => {
+  app.post('/api/sync-single-tab-now', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
-      const userId = req.user!.id;
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message: "Authentication required"
+        });
+      }
+      
+      const userId = req.user.id;
       console.log(`🔄 Manual sync triggered by user: ${userId}`);
 
       const result = await triggerManualSync();
@@ -1769,6 +1776,119 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // General health check endpoint
   app.head('/api', (req, res) => {
     res.status(200).end();
+  });
+
+  // Test data population endpoint for AI testing
+  app.post('/api/test/populate-sample-data', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const userId = req.user.id;
+      console.log(`🧪 Creating test data for user: ${userId}`);
+
+      // Create sample policy
+      const samplePolicy = await storage.createPolicy({
+        name: "Política de Teste IA",
+        description: "Política criada para teste de análise de IA",
+        rules: ["Não usar palavras ofensivas", "Incluir logo da marca", "Usar cores da marca"],
+        isActive: true,
+        userId
+      });
+
+      // Create sample campaigns
+      const campaigns = [];
+      for (let i = 1; i <= 2; i++) {
+        const campaign = await storage.createCampaign({
+          name: `Campanha Teste ${i}`,
+          platform: i === 1 ? 'meta' : 'google',
+          status: 'ativa',
+          startDate: new Date(),
+          endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+          userId
+        });
+        campaigns.push(campaign);
+      }
+
+      // Create sample creatives
+      const creatives = [];
+      const creativeData = [
+        {
+          name: "Criativo Bom",
+          type: "image",
+          headline: "Oferta Especial - 50% de Desconto",
+          text: "Aproveite nossa promoção imperdível. Produtos de qualidade com preços incríveis!",
+          callToAction: "Compre Agora",
+          imageUrl: "https://example.com/image1.jpg",
+          impressions: 10000,
+          clicks: 500,
+          ctr: "5.0",
+          cpc: "0.50",
+          conversions: 25
+        },
+        {
+          name: "Criativo Problemático", 
+          type: "image",
+          headline: "MEGA PROMOÇÃO LIMITADA!!!",
+          text: "COMPRE AGORA OU PERCA PARA SEMPRE! Últimas unidades disponíveis. Não perca esta oportunidade única!",
+          callToAction: "COMPRE JÁ",
+          imageUrl: "https://example.com/image2.jpg",
+          impressions: 8000,
+          clicks: 120,
+          ctr: "1.5",
+          cpc: "1.20",
+          conversions: 5
+        },
+        {
+          name: "Criativo Baixa Performance",
+          type: "video", 
+          headline: "Produto Interessante",
+          text: "Veja nosso produto. Pode ser útil para você.",
+          callToAction: "Saiba Mais",
+          imageUrl: "https://example.com/video1.jpg",
+          impressions: 15000,
+          clicks: 30,
+          ctr: "0.2",
+          cpc: "2.50",
+          conversions: 1
+        }
+      ];
+
+      for (let i = 0; i < creativeData.length; i++) {
+        const data = creativeData[i];
+        const creative = await storage.createCreative({
+          ...data,
+          campaignId: campaigns[i % campaigns.length].id,
+          userId
+        });
+        creatives.push(creative);
+      }
+
+      const result = {
+        success: true,
+        message: "Dados de teste criados com sucesso",
+        policy: samplePolicy,
+        campaigns,
+        creatives,
+        summary: {
+          policies: 1,
+          campaigns: campaigns.length,
+          creatives: creatives.length
+        }
+      };
+
+      console.log(`✅ Test data created: ${creatives.length} creatives, ${campaigns.length} campaigns`);
+      res.json(result);
+
+    } catch (error) {
+      console.error("Error creating test data:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to create test data",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
   });
 
   const httpServer = createServer(app);

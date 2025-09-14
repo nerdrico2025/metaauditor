@@ -113,6 +113,8 @@ Respond with JSON in this format: {
         }
       ],
       response_format: { type: "json_object" },
+    }, {
+      timeout: 30000, // 30 second timeout for compliance analysis
     });
 
     const result = JSON.parse(response.choices[0].message.content || '{}');
@@ -248,6 +250,8 @@ Respond with JSON in this format: {
         }
       ],
       response_format: { type: "json_object" },
+    }, {
+      timeout: 30000, // 30 second timeout for performance analysis  
     });
 
     const result = JSON.parse(response.choices[0].message.content || '{}');
