@@ -56,7 +56,8 @@ export default function Integrations() {
   const { data: syncStatus, isLoading: statusLoading, error } = useQuery<{ data: { syncStatus: SyncStatus } }>({
     queryKey: ["/api/sync/status"],
     enabled: isAuthenticated,
-    refetchInterval: 30000, // Refresh every 30 seconds
+    staleTime: 2 * 60 * 1000, // Consider data fresh for 2 minutes
+    // Removed refetchInterval to prevent unnecessary API calls every 30 seconds
   });
 
   const syncMutation = useMutation({

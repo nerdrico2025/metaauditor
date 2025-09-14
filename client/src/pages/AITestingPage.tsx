@@ -62,8 +62,25 @@ export default function AITestingPage() {
     if (!testResults?.creatives) return;
     
     setAnalysisResults([]);
-    for (const creative of testResults.creatives) {
-      await analyzeCreativeMutation.mutateAsync(creative.id);
+    
+    // Process creatives with better error handling and progress tracking
+    const creatives = testResults.creatives;
+    let completed = 0;
+    
+    for (const creative of creatives) {
+      try {
+        await analyzeCreativeMutation.mutateAsync(creative.id);
+        completed++;
+        
+        // Optional: Add progress feedback
+        toast({
+          title: "Progresso",
+          description: `Analisado ${completed}/${creatives.length} criativos`,
+        });
+      } catch (error) {
+        console.error(`Failed to analyze creative ${creative.id}:`, error);
+        // Continue with next creative instead of stopping entire process
+      }
     }
   };
 
