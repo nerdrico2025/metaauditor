@@ -82,10 +82,11 @@ function parseDate(dateStr: string): Date {
   return isNaN(date.getTime()) ? new Date() : date;
 }
 
-// Validation function
+// Validation function - More lenient to handle partial data
 function validateRecord(raw: RawMetricsData): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
   
+  // Only require essential fields for data integrity
   if (!raw.data || raw.data.trim() === '') {
     errors.push('Date is required');
   }
@@ -98,13 +99,8 @@ function validateRecord(raw: RawMetricsData): { valid: boolean; errors: string[]
     errors.push('Campaign name is required');
   }
   
-  if (!raw.grupo_anuncios || raw.grupo_anuncios.trim() === '') {
-    errors.push('Ad group name is required');
-  }
-  
-  if (!raw.anuncios || raw.anuncios.trim() === '') {
-    errors.push('Ad name is required');
-  }
+  // Ad group and ad name are now optional - allow partial data
+  // This prevents rejection of entire records for missing non-critical fields
   
   return {
     valid: errors.length === 0,
@@ -127,8 +123,8 @@ function transformRecord(raw: RawMetricsData, syncBatch: string, userId?: string
       nomeAconta: raw.nome_conta.trim(),
       adUrl: raw.ad_url?.trim() || null,
       campanha: raw.campanha.trim(),
-      grupoAnuncios: raw.grupo_anuncios.trim(),
-      anuncios: raw.anuncios.trim(),
+      grupoAnuncios: raw.grupo_anuncios?.trim() || 'Não especificado',
+      anuncios: raw.anuncios?.trim() || 'Anúncio não especificado',
       impressoes: parseInteger(raw.impressoes),
       cliques: parseInteger(raw.cliques),
       cpm: parseBrazilianCurrency(raw.cpm),
