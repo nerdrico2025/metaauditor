@@ -1111,11 +1111,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Creative routes
+  // Creative routes - Modified to use campaign metrics data
   app.get('/api/creatives', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const userId = req.user!.id;
-      const creatives = await storage.getCreativesByUser(userId);
+      // Get campaign metrics data and transform to creative format
+      const metrics = await storage.getCampaignMetrics(userId, { 
+        page: 1, 
+        limit: 1000, // Get all records for now
+      });
+      
+      // Helper function to validate if URL could be an image
+      const isValidImageUrl = (url: string | null): boolean => {
+        if (!url) return false;
+        try {
+          const urlObj = new URL(url);
+          // Check if it's an HTTP(S) URL and has image-like patterns
+          return (urlObj.protocol === 'http:' || urlObj.protocol === 'https:') &&
+                 (url.includes('scontent') || // Facebook CDN
+                  url.includes('googleadservices') || // Google Ads
+                  /\.(jpg|jpeg|png|gif|webp|bmp)(\?|$)/i.test(url)); // Image extensions
+        } catch {
+          return false;
+        }
+      };
+      
+      // Group and deduplicate by ad URL to avoid duplicates
+      const uniqueAds = new Map<string, any>();
+      
+      metrics.data.forEach(metric => {
+        const key = metric.adUrl || metric.anuncios || metric.id;
+        
+        // Only include if we have a valid image URL or if we haven't seen this ad before
+        if (!uniqueAds.has(key) || isValidImageUrl(metric.adUrl)) {
+          uniqueAds.set(key, metric);
+        }
+      });
+      
+      // Transform unique campaign metrics to creative-like objects
+      const creatives = Array.from(uniqueAds.values())
+        .slice(0, 50) // Limit to reasonable number for UI performance
+        .map(metric => ({
+          id: metric.id,
+          userId: userId,
+          campaignId: null, // Set to null since we don't have valid campaign table references
+          externalId: `metric_${metric.id}`,
+          name: metric.anuncios || 'Anúncio sem nome', // Ad name with fallback
+          type: 'image' as const,
+          imageUrl: isValidImageUrl(metric.adUrl) ? metric.adUrl : null, // Only set if valid
+          videoUrl: null,
+          text: null,
+          headline: metric.anuncios || 'Anúncio',
+          description: `Campaign: ${metric.campanha || 'N/A'}`,
+          callToAction: null,
+          status: 'active' as const,
+          impressions: metric.impressoes || 0,
+          clicks: metric.cliques || 0,
+          conversions: 0,
+          ctr: (metric.cliques && metric.impressoes && metric.impressoes > 0) ? 
+            Number((metric.cliques / metric.impressoes * 100).toFixed(3)) : 0,
+          cpc: (metric.cpc && !isNaN(Number(metric.cpc))) ? Number(metric.cpc) : 0,
+          createdAt: metric.createdAt || new Date(),
+          updatedAt: metric.updatedAt || new Date(),
+          // Additional fields for debugging
+          sourceUrl: metric.adUrl, // Keep original URL for reference
+          campaignName: metric.campanha,
+          accountName: metric.nomeAconta,
+        }));
+      
       res.json(creatives);
     } catch (error) {
       console.error("Error fetching creatives:", error);
