@@ -11,6 +11,7 @@ import {
   boolean,
   uuid,
   pgEnum,
+  serial,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";

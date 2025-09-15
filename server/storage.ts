@@ -9,6 +9,7 @@ import {
   campaignMetrics,
   brandConfigurations,
   contentCriteria,
+  performanceBenchmarks,
   type User,
   type UpsertUser,
   type Integration,
@@ -29,6 +30,8 @@ import {
   type InsertBrandConfiguration,
   type ContentCriteria,
   type InsertContentCriteria,
+  type PerformanceBenchmarks,
+  type InsertPerformanceBenchmarks,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, count, sql } from "drizzle-orm";
@@ -116,6 +119,11 @@ export interface IStorage {
   getContentCriteriaById(id: string): Promise<ContentCriteria | undefined>;
   updateContentCriteria(id: string, data: Partial<InsertContentCriteria>): Promise<ContentCriteria | undefined>;
   deleteContentCriteria(id: string): Promise<boolean>;
+
+  // Performance Benchmark operations
+  createOrUpdatePerformanceBenchmarks(userId: string, benchmarks: InsertPerformanceBenchmarks): Promise<PerformanceBenchmarks>;
+  getPerformanceBenchmarksByUser(userId: string): Promise<PerformanceBenchmarks | undefined>;
+  deletePerformanceBenchmarks(userId: string): Promise<boolean>;
 
   // Debug methods for campaign metrics verification
   getAllUsers(): Promise<User[]>;
@@ -582,6 +590,44 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(contentCriteria)
       .where(eq(contentCriteria.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  // Performance Benchmark operations
+  async createOrUpdatePerformanceBenchmarks(userId: string, benchmarks: InsertPerformanceBenchmarks): Promise<PerformanceBenchmarks> {
+    // First try to get existing benchmarks for this user
+    const existing = await this.getPerformanceBenchmarksByUser(userId);
+    
+    if (existing) {
+      // Update existing benchmarks
+      const [result] = await db
+        .update(performanceBenchmarks)
+        .set({ ...benchmarks, updatedAt: new Date() })
+        .where(eq(performanceBenchmarks.userId, userId))
+        .returning();
+      return result;
+    } else {
+      // Create new benchmarks
+      const [result] = await db
+        .insert(performanceBenchmarks)
+        .values({ ...benchmarks, userId })
+        .returning();
+      return result;
+    }
+  }
+
+  async getPerformanceBenchmarksByUser(userId: string): Promise<PerformanceBenchmarks | undefined> {
+    const [result] = await db
+      .select()
+      .from(performanceBenchmarks)
+      .where(eq(performanceBenchmarks.userId, userId));
+    return result;
+  }
+
+  async deletePerformanceBenchmarks(userId: string): Promise<boolean> {
+    const result = await db
+      .delete(performanceBenchmarks)
+      .where(eq(performanceBenchmarks.userId, userId));
     return (result.rowCount ?? 0) > 0;
   }
 }
