@@ -1778,6 +1778,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.status(200).end();
   });
 
+  // Clean all Google Sheets data endpoint (admin only)
+  app.post('/api/admin/clean-sheets-data', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Check if user is admin
+      if (req.user.role !== 'administrador') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      console.log(`🧹 Admin ${req.user.email} initiating complete Google Sheets data cleanup`);
+
+      // Get current count before deletion
+      const beforeStats = await storage.getCampaignMetricsDebug();
+      const recordsToDelete = beforeStats.totalRecords;
+
+      // Delete all Google Sheets data
+      await db.delete(campaignMetrics).where(eq(campaignMetrics.source, 'google_sheets'));
+
+      // Verify deletion
+      const afterStats = await storage.getCampaignMetricsDebug();
+      const remainingRecords = afterStats.totalRecords;
+
+      console.log(`✅ Google Sheets data cleanup completed:`);
+      console.log(`   Records deleted: ${recordsToDelete}`);
+      console.log(`   Remaining records: ${remainingRecords}`);
+
+      res.json({
+        success: true,
+        message: "Google Sheets data cleaned successfully",
+        recordsDeleted: recordsToDelete,
+        remainingRecords: remainingRecords,
+        timestamp: new Date().toISOString()
+      });
+
+    } catch (error) {
+      console.error("Error cleaning Google Sheets data:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to clean Google Sheets data",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Force full re-sync endpoint (admin only)
+  app.post('/api/admin/force-full-resync', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Check if user is admin
+      if (req.user.role !== 'administrador') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      console.log(`🔄 Admin ${req.user.email} initiating forced full re-sync`);
+
+      // Import the sync function
+      const { syncSingleTabWithLogging } = await import('./services/sheetsSingleTabSync');
+      
+      // Execute full sync
+      const result = await syncSingleTabWithLogging(req.user.id);
+
+      console.log(`✅ Forced full re-sync completed:`);
+      console.log(`   Success: ${result.success}`);
+      console.log(`   Downloaded: ${result.totalDownloaded}`);
+      console.log(`   Processed: ${result.totalProcessed}`);
+      console.log(`   Inserted: ${result.totalInserted}`);
+      console.log(`   Completion: ${result.completionPercentage}%`);
+
+      res.json({
+        success: result.success,
+        message: "Full re-sync completed",
+        stats: {
+          downloaded: result.totalDownloaded,
+          processed: result.totalProcessed,
+          inserted: result.totalInserted,
+          completion: result.completionPercentage,
+          errors: result.errors.length
+        },
+        syncBatch: result.syncBatch,
+        timestamp: new Date().toISOString()
+      });
+
+    } catch (error) {
+      console.error("Error during forced full re-sync:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to execute full re-sync",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   // Test data population endpoint for AI testing
   app.post('/api/test/populate-sample-data', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {

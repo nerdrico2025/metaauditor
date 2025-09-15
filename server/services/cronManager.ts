@@ -23,23 +23,14 @@ class CronManager {
   private initializeJobs() {
     console.log(`🕐 Initializing cron jobs (${this.isProduction ? 'production' : 'development'} mode)`);
 
-    // Daily sync at 8:00 AM (production)
+    // Daily sync at 8:00 AM (UTC-3) - Always enabled
     this.scheduleJob('daily_sync', {
       name: 'Daily Google Sheets Sync',
-      schedule: '0 8 * * *', // 8:00 AM every day
-      enabled: this.isProduction,
-      description: 'Daily synchronization of campaign metrics from Google Sheets',
+      schedule: '0 8 * * *', // 8:00 AM every day (UTC-3)
+      enabled: true, // Always enabled regardless of environment
+      description: 'Daily synchronization of campaign metrics from Google Sheets at 8:00 AM UTC-3',
       status: 'idle'
     }, this.runDailySync.bind(this));
-
-    // Development sync every 30 minutes
-    this.scheduleJob('dev_sync', {
-      name: 'Development Sync',
-      schedule: '*/30 * * * *', // Every 30 minutes
-      enabled: !this.isProduction,
-      description: 'Frequent sync for development testing',
-      status: 'idle'
-    }, this.runDevSync.bind(this));
 
     // Health check every 5 minutes
     this.scheduleJob('health_check', {
