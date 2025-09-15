@@ -339,10 +339,14 @@ export class DatabaseStorage implements IStorage {
     nonCompliant: number;
     lowPerformance: number;
   }> {
+    // Count distinct campaigns from Google Sheets data (campaignMetrics)
+    // This reflects the actual data being synced from the spreadsheet
+    // For now, return global count from sheets since campaignMetrics doesn't have userId
+    // TODO: Add userId to campaignMetrics during sync for proper user scoping
     const [activeCampaignsResult] = await db
-      .select({ count: count() })
-      .from(campaigns)
-      .where(and(eq(campaigns.userId, userId), eq(campaigns.status, 'active')));
+      .select({ count: sql<number>`COUNT(DISTINCT campanha)` })
+      .from(campaignMetrics)
+      .where(eq(campaignMetrics.source, 'google_sheets'));
 
     const [creativesAnalyzedResult] = await db
       .select({ count: count() })
