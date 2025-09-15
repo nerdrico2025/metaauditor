@@ -25,6 +25,7 @@ import {
   brandConfigurations,
   policies,
   contentCriteria,
+  campaignMetrics,
   type UserRole,
   type SettingsDTO,
 } from "@shared/schema";
@@ -1778,6 +1779,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.status(200).end();
   });
 
+  // Simple sync trigger for admin (no auth needed for this operation)
+  app.post('/api/admin/simple-sync', async (req: Request, res: Response) => {
+    try {
+      console.log(`🔄 Simple sync trigger requested`);
+      
+      // Import the sync function
+      const { syncSingleTabWithLogging } = await import('./services/sheetsSingleTabSync');
+      
+      // Execute sync
+      const result = await syncSingleTabWithLogging();
+
+      res.json({
+        success: result.success,
+        message: "Sync completed",
+        stats: {
+          downloaded: result.totalDownloaded,
+          processed: result.totalProcessed,
+          inserted: result.totalInserted,
+          completion: result.completionPercentage,
+          errors: result.errors.length
+        },
+        syncBatch: result.syncBatch
+      });
+
+    } catch (error) {
+      console.error("Error during simple sync:", error);
+      res.status(500).json({
+        success: false,
+        message: "Sync failed",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   // Clean all Google Sheets data endpoint (admin only)
   app.post('/api/admin/clean-sheets-data', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
@@ -1891,7 +1926,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         name: "Política de Teste IA",
         description: "Política criada para teste de análise de IA",
         rules: ["Não usar palavras ofensivas", "Incluir logo da marca", "Usar cores da marca"],
-        isActive: true,
         userId
       });
 
@@ -1902,8 +1936,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           name: `Campanha Teste ${i}`,
           platform: i === 1 ? 'meta' : 'google',
           status: 'ativa',
-          startDate: new Date(),
-          endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
           userId
         });
         campaigns.push(campaign);
@@ -1956,7 +1988,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (let i = 0; i < creativeData.length; i++) {
         const data = creativeData[i];
         const creative = await storage.createCreative({
-          ...data,
+          name: data.name,
+          type: data.type,
+          status: 'ativa',
+          externalId: `test-${Date.now()}-${i}`,
+          headline: data.headline,
+          text: data.text,
+          callToAction: data.callToAction,
+          imageUrl: data.imageUrl,
+          impressions: data.impressions.toString(),
+          clicks: data.clicks.toString(),
+          ctr: data.ctr,
+          cpc: data.cpc,
+          conversions: data.conversions.toString(),
           campaignId: campaigns[i % campaigns.length].id,
           userId
         });
