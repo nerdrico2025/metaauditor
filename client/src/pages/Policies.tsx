@@ -24,13 +24,12 @@ import { Palette, Shield, Save, Upload } from "lucide-react";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import type { SettingsDTO } from "@shared/schema";
 
-// Brand Policies form schema
+// Brand Policies form schema (removed fontFamily as per requirements)
 const brandPoliciesSchema = z.object({
   logoUrl: z.string().url().optional().or(z.literal("")),
   primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Cor deve estar no formato #RRGGBB").optional().or(z.literal("")),
   secondaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Cor deve estar no formato #RRGGBB").optional().or(z.literal("")),
   accentColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Cor deve estar no formato #RRGGBB").optional().or(z.literal("")),
-  fontFamily: z.string().optional().or(z.literal("")),
   visualGuidelines: z.string().optional().or(z.literal("")),
   autoApproval: z.boolean(),
   pauseOnViolation: z.boolean(),
@@ -38,23 +37,12 @@ const brandPoliciesSchema = z.object({
   autoFixMinor: z.boolean(),
 });
 
-// Validation Criteria form schema
+// Validation Criteria form schema (simplified - removed character limits and required phrases)
 const validationCriteriaSchema = z.object({
   requiredKeywords: z.array(z.string()),
   forbiddenTerms: z.array(z.string()),
-  requiredPhrases: z.array(z.string()),
-  charLimitsMin: z.coerce.number().int().positive().optional().or(z.literal(undefined)),
-  charLimitsMax: z.coerce.number().int().positive().optional().or(z.literal(undefined)),
   requireLogo: z.boolean(),
   requireBrandColors: z.boolean(),
-}).refine((data) => {
-  if (data.charLimitsMin && data.charLimitsMax) {
-    return data.charLimitsMin <= data.charLimitsMax;
-  }
-  return true;
-}, {
-  message: "Limite mínimo deve ser menor ou igual ao máximo",
-  path: ["charLimitsMax"],
 });
 
 type BrandPoliciesFormData = z.infer<typeof brandPoliciesSchema>;
@@ -73,7 +61,6 @@ export default function Policies() {
       primaryColor: "",
       secondaryColor: "",
       accentColor: "",
-      fontFamily: "",
       visualGuidelines: "",
       autoApproval: false,
       pauseOnViolation: false,
@@ -82,15 +69,12 @@ export default function Policies() {
     },
   });
 
-  // Validation Criteria form
+  // Validation Criteria form (simplified - removed character limits and required phrases)
   const criteriaForm = useForm<ValidationCriteriaFormData>({
     resolver: zodResolver(validationCriteriaSchema),
     defaultValues: {
       requiredKeywords: [],
       forbiddenTerms: [],
-      requiredPhrases: [],
-      charLimitsMin: undefined,
-      charLimitsMax: undefined,
       requireLogo: false,
       requireBrandColors: false,
     },
@@ -119,13 +103,12 @@ export default function Policies() {
   // Load data into forms when settings are fetched
   useEffect(() => {
     if (settings) {
-      // Load brand policies form
+      // Load brand policies form (removed fontFamily)
       brandForm.reset({
         logoUrl: settings.brand.logoUrl || "",
         primaryColor: settings.brand.primaryColor || "",
         secondaryColor: settings.brand.secondaryColor || "",
         accentColor: settings.brand.accentColor || "",
-        fontFamily: settings.brand.fontFamily || "",
         visualGuidelines: settings.brand.visualGuidelines || "",
         autoApproval: settings.brandPolicies.autoApproval,
         pauseOnViolation: settings.brandPolicies.autoActions.pauseOnViolation,
@@ -133,13 +116,10 @@ export default function Policies() {
         autoFixMinor: settings.brandPolicies.autoActions.autoFixMinor,
       });
 
-      // Load validation criteria form
+      // Load validation criteria form (removed character limits and required phrases)
       criteriaForm.reset({
         requiredKeywords: settings.validationCriteria.requiredKeywords,
         forbiddenTerms: settings.validationCriteria.forbiddenTerms,
-        requiredPhrases: settings.validationCriteria.requiredPhrases,
-        charLimitsMin: settings.validationCriteria.charLimits.min || undefined,
-        charLimitsMax: settings.validationCriteria.charLimits.max || undefined,
         requireLogo: settings.validationCriteria.brandRequirements.requireLogo,
         requireBrandColors: settings.validationCriteria.brandRequirements.requireBrandColors,
       });
@@ -226,7 +206,6 @@ export default function Policies() {
         primaryColor: data.primaryColor || null,
         secondaryColor: data.secondaryColor || null,
         accentColor: data.accentColor || null,
-        fontFamily: data.fontFamily || null,
         visualGuidelines: data.visualGuidelines || null,
       },
       brandPolicies: {
@@ -238,6 +217,14 @@ export default function Policies() {
         },
       },
       validationCriteria: settings.validationCriteria, // Keep existing validation criteria
+      performanceBenchmarks: settings.performanceBenchmarks || {
+        ctrMin: null,
+        ctrTarget: null,
+        cpcMax: null,
+        cpcTarget: null,
+        conversionsMin: null,
+        conversionsTarget: null,
+      },
     };
 
     updateMutation.mutate(updatedSettings);
@@ -253,15 +240,18 @@ export default function Policies() {
       validationCriteria: {
         requiredKeywords: data.requiredKeywords,
         forbiddenTerms: data.forbiddenTerms,
-        requiredPhrases: data.requiredPhrases,
-        charLimits: {
-          min: data.charLimitsMin || null,
-          max: data.charLimitsMax || null,
-        },
         brandRequirements: {
           requireLogo: data.requireLogo,
           requireBrandColors: data.requireBrandColors,
         },
+      },
+      performanceBenchmarks: settings.performanceBenchmarks || {
+        ctrMin: null,
+        ctrTarget: null,
+        cpcMax: null,
+        cpcTarget: null,
+        conversionsMin: null,
+        conversionsTarget: null,
       },
     };
 
