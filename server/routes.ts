@@ -4,7 +4,7 @@ import session from "express-session";
 import ConnectPgSimple from "connect-pg-simple";
 import { storage } from "./storage";
 import { db } from "./db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql, count, and } from "drizzle-orm";
 import { AuthService, generateToken, hashPassword, comparePassword, authenticateToken, type User, type AuthRequest } from "./auth";
 import {
   insertIntegrationSchema,
@@ -26,6 +26,7 @@ import {
   policies,
   contentCriteria,
   campaignMetrics,
+  campaigns,
   type UserRole,
   type SettingsDTO,
 } from "@shared/schema";
@@ -1911,6 +1912,132 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Debug reconciliation endpoint (admin only)
+  app.get('/api/debug/reconciliation', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Check if user is admin
+      if (req.user.role !== 'administrador') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      console.log(`🔍 Admin ${req.user.email} requesting reconciliation debug data`);
+
+      // Get campaign counts from both sources
+      const [campaignsTableResult] = await db
+        .select({ 
+          total: sql<number>`COUNT(*)`,
+          active: sql<number>`COUNT(CASE WHEN status = 'active' THEN 1 END)`
+        })
+        .from(campaigns);
+
+      const [campaignMetricsResult] = await db
+        .select({ 
+          distinctCampaigns: sql<number>`COUNT(DISTINCT campanha)`,
+          totalRecords: sql<number>`COUNT(*)`
+        })
+        .from(campaignMetrics)
+        .where(eq(campaignMetrics.source, 'google_sheets'));
+
+      // Get sample records with image mapping
+      const sampleRecords = await db
+        .select({
+          campanha: campaignMetrics.campanha,
+          nomeAconta: campaignMetrics.nomeAconta,
+          adUrl: campaignMetrics.adUrl,
+          anuncios: campaignMetrics.anuncios,
+          data: campaignMetrics.data,
+          impressoes: campaignMetrics.impressoes,
+          cliques: campaignMetrics.cliques,
+          syncBatch: campaignMetrics.syncBatch
+        })
+        .from(campaignMetrics)
+        .where(eq(campaignMetrics.source, 'google_sheets'))
+        .orderBy(desc(campaignMetrics.data))
+        .limit(5);
+
+      // Get latest sync information
+      const [latestSyncResult] = await db
+        .select({
+          syncBatch: campaignMetrics.syncBatch,
+          recordCount: sql<number>`COUNT(*)`,
+          latestDate: sql<Date>`MAX(created_at)`
+        })
+        .from(campaignMetrics)
+        .where(eq(campaignMetrics.source, 'google_sheets'))
+        .groupBy(campaignMetrics.syncBatch)
+        .orderBy(sql`MAX(created_at) DESC`)
+        .limit(1);
+
+      // Check for unique campaigns vs account combinations
+      const campaignAccountCombos = await db
+        .select({
+          campanha: campaignMetrics.campanha,
+          nomeAconta: campaignMetrics.nomeAconta,
+          recordCount: sql<number>`COUNT(*)`
+        })
+        .from(campaignMetrics)
+        .where(eq(campaignMetrics.source, 'google_sheets'))
+        .groupBy(campaignMetrics.campanha, campaignMetrics.nomeAconta)
+        .orderBy(desc(sql`COUNT(*)`))
+        .limit(10);
+
+      const reconciliationData = {
+        timestamp: new Date().toISOString(),
+        campaignCounts: {
+          campaignsTable: {
+            total: campaignsTableResult.total,
+            active: campaignsTableResult.active,
+            source: "Meta/Google integrations"
+          },
+          campaignMetricsTable: {
+            distinctCampaigns: campaignMetricsResult.distinctCampaigns,
+            totalRecords: campaignMetricsResult.totalRecords,
+            source: "Google Sheets sync"
+          }
+        },
+        latestSync: latestSyncResult ? {
+          syncBatch: latestSyncResult.syncBatch,
+          recordCount: latestSyncResult.recordCount,
+          syncDate: latestSyncResult.latestDate
+        } : null,
+        sampleRecords: sampleRecords.map(record => ({
+          ...record,
+          hasAdUrl: !!record.adUrl,
+          adUrlPreview: record.adUrl ? record.adUrl.substring(0, 50) + '...' : null
+        })),
+        campaignAccountCombinations: campaignAccountCombos,
+        diagnostics: {
+          discrepancy: campaignMetricsResult.distinctCampaigns - campaignsTableResult.active,
+          expectedDashboardCount: campaignsTableResult.active,
+          actualSheetsCount: campaignMetricsResult.distinctCampaigns,
+          imageMapping: {
+            planilhaField: "ad_url",
+            bancoField: "adUrl", 
+            frontendExpected: "imageUrl",
+            problem: "ad_url é URL do anúncio, não da imagem"
+          }
+        }
+      };
+
+      res.json({
+        success: true,
+        data: reconciliationData
+      });
+
+    } catch (error) {
+      console.error("Error in reconciliation debug:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to generate reconciliation debug data",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   // Test data population endpoint for AI testing
   app.post('/api/test/populate-sample-data', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
@@ -1936,7 +2063,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           name: `Campanha Teste ${i}`,
           platform: i === 1 ? 'meta' : 'google',
           status: 'ativa',
-          userId
+          userId,
+          integrationId: randomUUID(), // Mock integration ID
+          externalId: `test-campaign-${Date.now()}-${i}`,
+          budget: "1000.00"
         });
         campaigns.push(campaign);
       }
@@ -1996,11 +2126,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           text: data.text,
           callToAction: data.callToAction,
           imageUrl: data.imageUrl,
-          impressions: data.impressions.toString(),
-          clicks: data.clicks.toString(),
+          impressions: data.impressions,
+          clicks: data.clicks,
           ctr: data.ctr,
           cpc: data.cpc,
-          conversions: data.conversions.toString(),
+          conversions: data.conversions,
           campaignId: campaigns[i % campaigns.length].id,
           userId
         });
