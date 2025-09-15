@@ -427,14 +427,34 @@ export type BrandConfiguration = typeof brandConfigurations.$inferSelect;
 export type InsertContentCriteria = z.infer<typeof insertContentCriteriaSchema>;
 export type ContentCriteria = typeof contentCriteria.$inferSelect;
 
-// Unified Settings DTO Schema
+// Performance Benchmarks table
+export const performanceBenchmarks = pgTable('performance_benchmarks', {
+  id: serial('id').primaryKey(),
+  userId: varchar('user_id').notNull().references(() => users.id),
+  ctrMin: decimal('ctr_min', { precision: 5, scale: 3 }), // Minimum CTR threshold
+  ctrTarget: decimal('ctr_target', { precision: 5, scale: 3 }), // Target CTR
+  cpcMax: decimal('cpc_max', { precision: 10, scale: 2 }), // Maximum CPC allowed
+  cpcTarget: decimal('cpc_target', { precision: 10, scale: 2 }), // Target CPC
+  conversionsMin: integer('conversions_min'), // Minimum conversions
+  conversionsTarget: integer('conversions_target'), // Target conversions
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// Performance Benchmarks schemas
+export const insertPerformanceBenchmarksSchema = createInsertSchema(performanceBenchmarks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Unified Settings DTO Schema (updated without character limits and required phrases)
 export const settingsDTO = z.object({
   brand: z.object({
     logoUrl: z.string().url().nullable().optional(),
     primaryColor: z.string().nullable().optional(),
     secondaryColor: z.string().nullable().optional(),
     accentColor: z.string().nullable().optional(),
-    fontFamily: z.string().nullable().optional(),
     visualGuidelines: z.string().nullable().optional()
   }),
   brandPolicies: z.object({
@@ -448,20 +468,29 @@ export const settingsDTO = z.object({
   validationCriteria: z.object({
     requiredKeywords: z.array(z.string()),
     forbiddenTerms: z.array(z.string()),
-    requiredPhrases: z.array(z.string()),
-    charLimits: z.object({
-      min: z.number().int().positive().nullable().optional(),
-      max: z.number().int().positive().nullable().optional(),
-    }),
     brandRequirements: z.object({
       requireLogo: z.boolean(),
       requireBrandColors: z.boolean()
     })
+  }),
+  performanceBenchmarks: z.object({
+    ctrMin: z.number().nullable().optional(),
+    ctrTarget: z.number().nullable().optional(),
+    cpcMax: z.number().nullable().optional(),
+    cpcTarget: z.number().nullable().optional(),
+    conversionsMin: z.number().int().nullable().optional(),
+    conversionsTarget: z.number().int().nullable().optional()
   })
 });
+
+// Settings DTO types
+// Additional types for performance benchmarks
+export type InsertPerformanceBenchmarks = z.infer<typeof insertPerformanceBenchmarksSchema>;
+export type PerformanceBenchmarks = typeof performanceBenchmarks.$inferSelect;
 
 // Settings DTO types
 export type SettingsDTO = z.infer<typeof settingsDTO>;
 export type BrandSettings = SettingsDTO['brand'];
 export type BrandPolicySettings = SettingsDTO['brandPolicies'];
 export type ValidationCriteriaSettings = SettingsDTO['validationCriteria'];
+export type PerformanceBenchmarksSettings = SettingsDTO['performanceBenchmarks'];
