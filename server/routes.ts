@@ -36,6 +36,7 @@ import type { LoginData, RegisterData, CreateUserData, UpdateUserData, UpdatePro
 import { randomUUID } from "crypto";
 import { cronManager, triggerManualSync } from "./services/cronManager";
 import { getSyncStatus } from "./services/sheetsSingleTabSync";
+import fetch from "node-fetch";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup storage in app locals for middleware access
@@ -2160,6 +2161,209 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Failed to create test data",
         error: error instanceof Error ? error.message : 'Unknown error'
       });
+    }
+  });
+
+  // Image proxy endpoint for Facebook URLs
+  app.get('/api/image-proxy', async (req: Request, res: Response) => {
+    try {
+      const { url } = req.query;
+      
+      if (!url || typeof url !== 'string') {
+        return res.status(400).json({ error: 'URL parameter is required' });
+      }
+
+      // Parse and validate URL
+      let parsedUrl: URL;
+      try {
+        parsedUrl = new URL(url);
+      } catch (e) {
+        return res.status(400).json({ error: 'Invalid URL format' });
+      }
+
+      // Security: Only allow HTTPS and validate Facebook/CDN domains
+      if (parsedUrl.protocol !== 'https:') {
+        return res.status(400).json({ error: 'Only HTTPS URLs are allowed' });
+      }
+
+      // Strict allowlist of trusted Facebook/CDN domains
+      const allowedHosts = [
+        'scontent.xx.fbcdn.net',
+        'scontent.fgru1-1.fna.fbcdn.net',
+        'scontent.fsdu1-1.fna.fbcdn.net',
+        'external.xx.fbcdn.net',
+        'fbcdn.net'
+      ];
+
+      const isAllowedHost = allowedHosts.some(allowedHost => 
+        parsedUrl.hostname === allowedHost || 
+        parsedUrl.hostname.endsWith('.' + allowedHost)
+      );
+
+      if (!isAllowedHost) {
+        return res.status(400).json({ error: 'URL not from allowed domains' });
+      }
+
+      // Prevent internal network access
+      if (parsedUrl.hostname === 'localhost' || 
+          parsedUrl.hostname.startsWith('127.') ||
+          parsedUrl.hostname.startsWith('10.') ||
+          parsedUrl.hostname.startsWith('192.168.') ||
+          parsedUrl.hostname.match(/^172\.(1[6-9]|2[0-9]|3[01])\./)) {
+        return res.status(400).json({ error: 'Access to internal networks not allowed' });
+      }
+
+      console.log(`🖼️ Proxying image request: ${url}`);
+      
+      // Create abort controller for timeout handling
+      const abortController = new AbortController();
+      const timeout = setTimeout(() => {
+        abortController.abort();
+      }, 10000); // 10 second timeout
+      
+      // Fetch the image with proper headers and prevent redirects
+      const imageResponse = await fetch(url, {
+        redirect: 'manual', // Prevent redirect attacks
+        signal: abortController.signal,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Referer': 'https://www.facebook.com/'
+        }
+      });
+      
+      clearTimeout(timeout);
+
+      // Handle redirects manually with validation
+      if (imageResponse.status >= 300 && imageResponse.status < 400) {
+        const location = imageResponse.headers.get('location');
+        if (location) {
+          try {
+            const redirectUrl = new URL(location, url);
+            // Re-validate redirect destination
+            const isRedirectAllowed = allowedHosts.some(allowedHost => 
+              redirectUrl.hostname === allowedHost || 
+              redirectUrl.hostname.endsWith('.' + allowedHost)
+            );
+            if (!isRedirectAllowed) {
+              return res.status(400).json({ error: 'Redirect to unauthorized domain' });
+            }
+          } catch (e) {
+            return res.status(400).json({ error: 'Invalid redirect URL' });
+          }
+        }
+        return res.status(403).json({ error: `Redirect not followed: ${imageResponse.status}` });
+      }
+      
+      if (!imageResponse.ok) {
+        console.log(`❌ Image fetch failed: ${imageResponse.status} ${imageResponse.statusText}`);
+        return res.status(imageResponse.status).json({ 
+          error: `Failed to fetch image: ${imageResponse.status} ${imageResponse.statusText}` 
+        });
+      }
+
+      // Validate content type
+      const contentType = imageResponse.headers.get('content-type') || '';
+      if (!contentType.startsWith('image/')) {
+        return res.status(400).json({ error: 'Response is not an image' });
+      }
+
+      // Check content length limit (10MB)
+      const contentLength = imageResponse.headers.get('content-length');
+      if (contentLength && parseInt(contentLength) > 10 * 1024 * 1024) {
+        return res.status(400).json({ error: 'Image too large' });
+      }
+      
+      // Set response headers
+      res.set({
+        'Content-Type': contentType,
+        'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
+        'Access-Control-Allow-Origin': '*'
+      });
+      
+      if (contentLength) {
+        res.set('Content-Length', contentLength);
+      }
+      
+      // Stream the image with proper error handling and size limits
+      if (imageResponse.body) {
+        const reader = imageResponse.body.getReader();
+        let bytesRead = 0;
+        const maxSize = 10 * 1024 * 1024; // 10MB limit
+        let isAborted = false;
+        
+        // Handle client disconnect
+        const cleanup = () => {
+          if (!isAborted) {
+            isAborted = true;
+            reader.cancel().catch(() => {}); // Ignore cancel errors
+            abortController.abort();
+          }
+        };
+        
+        req.on('close', cleanup);
+        req.on('error', cleanup);
+        
+        const pump = async () => {
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              
+              if (isAborted) break;
+              
+              // Check size limit
+              bytesRead += value.length;
+              if (bytesRead > maxSize) {
+                cleanup();
+                if (!res.headersSent) {
+                  return res.status(413).json({ error: 'Image too large' });
+                }
+                return;
+              }
+              
+              res.write(value);
+            }
+            
+            if (!isAborted) {
+              res.end();
+              console.log(`✅ Image proxy successful: ${contentType}, ${bytesRead} bytes`);
+            }
+          } catch (error) {
+            console.error('Stream error:', error);
+            cleanup();
+            if (!res.headersSent) {
+              if (error.name === 'AbortError') {
+                res.status(408).json({ error: 'Request timeout' });
+              } else {
+                res.status(500).json({ error: 'Stream error' });
+              }
+            }
+            res.end();
+          }
+        };
+        
+        pump();
+      } else {
+        res.status(500).json({ error: 'No image data received' });
+      }
+      
+    } catch (error) {
+      console.error('❌ Image proxy error:', error);
+      
+      if (!res.headersSent) {
+        if (error.name === 'AbortError') {
+          res.status(408).json({ error: 'Request timeout' });
+        } else if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
+          res.status(502).json({ error: 'Failed to connect to image server' });
+        } else {
+          res.status(500).json({ 
+            error: 'Failed to proxy image',
+            details: error instanceof Error ? error.message : 'Unknown error'
+          });
+        }
+      }
     }
   });
 

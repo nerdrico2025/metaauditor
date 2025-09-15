@@ -48,6 +48,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/memoizee": "^0.4.12",
     "@types/node-cron": "^3.0.11",
+    "@types/node-fetch": "^2.6.13",
     "@types/papaparse": "^5.3.16",
     "@uppy/aws-s3": "^5.0.0",
     "@uppy/core": "^5.0.1",

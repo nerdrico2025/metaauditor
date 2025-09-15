@@ -124,12 +124,22 @@ export const CreativeImage = ({
     );
   }
 
+  // Determine if we need to use proxy for Facebook URLs
+  const needsProxy = creative.imageUrl && (
+    creative.imageUrl.includes('fbcdn.net') || 
+    creative.imageUrl.includes('facebook.com')
+  );
+  
+  const imageUrl = needsProxy 
+    ? `/api/image-proxy?url=${encodeURIComponent(creative.imageUrl)}`
+    : creative.imageUrl;
+
   // Render image
   const imageClassName = className || `${config.container} object-cover rounded-lg`;
   
   return (
     <img 
-      src={creative.imageUrl}
+      src={imageUrl}
       alt={creative.name}
       className={imageClassName}
       onError={() => setImageError(true)}
