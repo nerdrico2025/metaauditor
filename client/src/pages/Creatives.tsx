@@ -161,17 +161,38 @@ export default function Creatives() {
                         {/* Creative Preview */}
                         <div className="relative mb-4">
                           {creative.imageUrl ? (
-                            <img 
-                              src={creative.imageUrl}
-                              alt={creative.name}
-                              className="w-full h-32 object-cover rounded-lg"
-                              onError={(e) => {
-                                e.currentTarget.src = 'https://images.unsplash.com/photo-1557804506-669a67965ba0?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=400&h=300';
-                              }}
-                            />
+                            <div className="relative">
+                              <img 
+                                src={creative.imageUrl}
+                                alt={creative.name}
+                                className="w-full h-32 object-cover rounded-lg"
+                                onError={(e) => {
+                                  const target = e.currentTarget;
+                                  const parent = target.parentElement;
+                                  if (parent) {
+                                    parent.innerHTML = `
+                                      <div class="w-full h-32 bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg flex flex-col items-center justify-center border-2 border-dashed border-orange-200">
+                                        <svg class="h-6 w-6 text-orange-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                        </svg>
+                                        <span class="text-xs text-orange-600 text-center px-2">
+                                          ${creative.name}<br/>
+                                          <span class="text-orange-400">URL expirada</span>
+                                        </span>
+                                      </div>
+                                    `;
+                                  }
+                                }}
+                                data-testid={`img-creative-${creative.id}`}
+                              />
+                            </div>
                           ) : (
-                            <div className="w-full h-32 bg-slate-100 rounded-lg flex items-center justify-center">
-                              <Image className="h-8 w-8 text-slate-400" />
+                            <div className="w-full h-32 bg-gradient-to-br from-slate-50 to-slate-100 rounded-lg flex flex-col items-center justify-center border-2 border-dashed border-slate-200">
+                              <Image className="h-6 w-6 text-slate-400 mb-2" />
+                              <span className="text-xs text-slate-500 text-center px-2">
+                                {creative.name}<br/>
+                                <span className="text-slate-400">Sem imagem</span>
+                              </span>
                             </div>
                           )}
                           <div className="absolute top-2 right-2">
