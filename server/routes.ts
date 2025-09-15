@@ -2215,16 +2215,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`🖼️ Proxying image request: ${url}`);
       
-      // Create abort controller for timeout handling
-      const abortController = new AbortController();
-      const timeout = setTimeout(() => {
-        abortController.abort();
-      }, 10000); // 10 second timeout
-      
-      // Fetch the image with proper headers and prevent redirects
+      // Fetch the image with proper headers
       const imageResponse = await fetch(url, {
-        redirect: 'manual', // Prevent redirect attacks
-        signal: abortController.signal,
         headers: {
           'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
           'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
@@ -2232,30 +2224,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           'Referer': 'https://www.facebook.com/'
         }
       });
-      
-      clearTimeout(timeout);
 
-      // Handle redirects manually with validation
-      if (imageResponse.status >= 300 && imageResponse.status < 400) {
-        const location = imageResponse.headers.get('location');
-        if (location) {
-          try {
-            const redirectUrl = new URL(location, url);
-            // Re-validate redirect destination
-            const isRedirectAllowed = allowedHosts.some(allowedHost => 
-              redirectUrl.hostname === allowedHost || 
-              redirectUrl.hostname.endsWith('.' + allowedHost)
-            );
-            if (!isRedirectAllowed) {
-              return res.status(400).json({ error: 'Redirect to unauthorized domain' });
-            }
-          } catch (e) {
-            return res.status(400).json({ error: 'Invalid redirect URL' });
-          }
-        }
-        return res.status(403).json({ error: `Redirect not followed: ${imageResponse.status}` });
-      }
-      
       if (!imageResponse.ok) {
         console.log(`❌ Image fetch failed: ${imageResponse.status} ${imageResponse.statusText}`);
         return res.status(imageResponse.status).json({ 
@@ -2263,17 +2232,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Validate content type
-      const contentType = imageResponse.headers.get('content-type') || '';
-      if (!contentType.startsWith('image/')) {
-        return res.status(400).json({ error: 'Response is not an image' });
-      }
-
-      // Check content length limit (10MB)
+      // Get content type and size
+      const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
       const contentLength = imageResponse.headers.get('content-length');
-      if (contentLength && parseInt(contentLength) > 10 * 1024 * 1024) {
-        return res.status(400).json({ error: 'Image too large' });
-      }
       
       // Set response headers
       res.set({
@@ -2286,65 +2247,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.set('Content-Length', contentLength);
       }
       
-      // Stream the image with proper error handling and size limits
+      // Simple pipe for now
       if (imageResponse.body) {
-        const reader = imageResponse.body.getReader();
-        let bytesRead = 0;
-        const maxSize = 10 * 1024 * 1024; // 10MB limit
-        let isAborted = false;
-        
-        // Handle client disconnect
-        const cleanup = () => {
-          if (!isAborted) {
-            isAborted = true;
-            reader.cancel().catch(() => {}); // Ignore cancel errors
-            abortController.abort();
-          }
-        };
-        
-        req.on('close', cleanup);
-        req.on('error', cleanup);
-        
-        const pump = async () => {
-          try {
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-              
-              if (isAborted) break;
-              
-              // Check size limit
-              bytesRead += value.length;
-              if (bytesRead > maxSize) {
-                cleanup();
-                if (!res.headersSent) {
-                  return res.status(413).json({ error: 'Image too large' });
-                }
-                return;
-              }
-              
-              res.write(value);
-            }
-            
-            if (!isAborted) {
-              res.end();
-              console.log(`✅ Image proxy successful: ${contentType}, ${bytesRead} bytes`);
-            }
-          } catch (error) {
-            console.error('Stream error:', error);
-            cleanup();
-            if (!res.headersSent) {
-              if (error.name === 'AbortError') {
-                res.status(408).json({ error: 'Request timeout' });
-              } else {
-                res.status(500).json({ error: 'Stream error' });
-              }
-            }
-            res.end();
-          }
-        };
-        
-        pump();
+        imageResponse.body.pipe(res);
+        console.log(`✅ Image proxy successful: ${contentType}`);
       } else {
         res.status(500).json({ error: 'No image data received' });
       }
