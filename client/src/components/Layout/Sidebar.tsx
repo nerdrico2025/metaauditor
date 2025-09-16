@@ -1,7 +1,7 @@
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
-import { Search, BarChart3, BellRing, Image, FileText, Settings, History, LogOut, Zap, ExternalLink } from "lucide-react";
+import { Search, BarChart3, BellRing, Image, FileText, Settings, History, LogOut, ExternalLink } from "lucide-react";
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: BarChart3 },
@@ -11,7 +11,6 @@ const navigation = [
   { name: 'Políticas', href: '/policies', icon: Settings },
   { name: 'Histórico', href: '/history', icon: History },
   { name: 'Integrações', href: '/integrations', icon: ExternalLink },
-  { name: 'Teste IA', href: '/ai-testing', icon: Zap },
 ];
 
 export default function Sidebar() {

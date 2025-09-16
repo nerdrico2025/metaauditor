@@ -13,7 +13,6 @@ import Creatives from "@/pages/Creatives";
 import Reports from "@/pages/Reports";
 import Policies from "@/pages/Policies";
 import History from "@/pages/History";
-import AITestingPage from "@/pages/AITestingPage";
 import Integrations from "@/pages/Integrations";
 import NotFound from "@/pages/not-found";
 
@@ -65,11 +64,6 @@ function Router() {
       <Route path="/integrations">
         <ProtectedRoute>
           <Integrations />
-        </ProtectedRoute>
-      </Route>
-      <Route path="/ai-testing">
-        <ProtectedRoute>
-          <AITestingPage />
         </ProtectedRoute>
       </Route>
       <Route component={NotFound} />

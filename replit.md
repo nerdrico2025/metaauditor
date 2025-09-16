@@ -37,7 +37,6 @@ This is a full-stack TypeScript application using a modern React frontend with a
 - **Policies**: Brand compliance rules configuration
 - **History**: Audit history and action logs
 - **Integrations**: Ad account connection interface (Meta/Google Ads)
-- **AI Testing**: Development tool for testing AI analysis functionality
 
 ### Backend Architecture
 - **Runtime**: Node.js with Express.js framework
