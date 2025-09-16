@@ -55,11 +55,12 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
 
   // Fetch audit data for this creative
   const { data: audits, isLoading: auditsLoading } = useQuery<ExtendedAudit[]>({
-    queryKey: ["/api/creatives", creative.id, "audits"],
+    queryKey: [`/api/creatives/${creative.id}/audits`],
   });
 
   // Get the latest audit
   const latestAudit = audits && audits.length > 0 ? audits[0] : null;
+
 
   // Create audit analysis mutation
   const analyzeMutation = useMutation({
@@ -72,7 +73,9 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
         title: "Análise Concluída",
         description: "Criativo analisado com sucesso",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/creatives", creative.id, "audits"] });
+      // Update the audit data immediately with the fresh analysis result
+      queryClient.setQueryData([`/api/creatives/${creative.id}/audits`], [newAudit]);
+      queryClient.invalidateQueries({ queryKey: [`/api/creatives/${creative.id}/audits`] });
     },
     onError: (error) => {
       if (isUnauthorizedError(error as Error)) {
@@ -354,14 +357,51 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
                   </div>
                 ) : latestAudit ? (
                   <div className="space-y-4">
-                    {/* Audit Summary */}
-                    <div className="space-y-3">
-                      {latestAudit.issues && Array.isArray(latestAudit.issues) && latestAudit.issues.length > 0 ? (
-                        latestAudit.issues.map((issue, index) => (
-                          <div key={index} className={`border rounded-lg p-3 ${getStatusColor(issue.severity || latestAudit.status)}`}>
+                    {/* Real Audit Scores */}
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div className="bg-slate-50 p-3 rounded-lg">
+                        <p className="text-xs text-slate-500">Score de Conformidade</p>
+                        <p className="text-lg font-semibold text-slate-900">
+                          {latestAudit.complianceScore ? Number(latestAudit.complianceScore).toFixed(1) : '0.0'}/100
+                        </p>
+                      </div>
+                      <div className="bg-slate-50 p-3 rounded-lg">
+                        <p className="text-xs text-slate-500">Score de Performance</p>
+                        <p className="text-lg font-semibold text-slate-900">
+                          {latestAudit.performanceScore ? Number(latestAudit.performanceScore).toFixed(1) : '0.0'}/100
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Audit Status */}
+                    <div className={`border rounded-lg p-3 ${getStatusColor(latestAudit.status)}`}>
+                      <div className="flex items-start">
+                        {getStatusIcon(latestAudit.status)}
+                        <div className="ml-2">
+                          <p className="text-sm font-medium text-slate-800">
+                            {latestAudit.status === 'compliant' ? 'Criativo Conforme' : 
+                             latestAudit.status === 'non_compliant' ? 'Não Conforme' : 
+                             latestAudit.status === 'low_performance' ? 'Performance Baixa' : 'Status Desconhecido'}
+                          </p>
+                          <p className="text-xs text-slate-600 mt-1">
+                            {latestAudit.aiAnalysis?.summary || 
+                             (latestAudit.issues && Array.isArray(latestAudit.issues) && latestAudit.issues.length > 0 ? 
+                              `${latestAudit.issues.length} problema(s) identificado(s)` : 
+                              'Nenhum problema identificado na auditoria')}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Audit Issues */}
+                    {latestAudit.issues && Array.isArray(latestAudit.issues) && latestAudit.issues.length > 0 && (
+                      <div className="space-y-3">
+                        <h5 className="text-sm font-medium text-slate-900">Problemas Identificados</h5>
+                        {latestAudit.issues.map((issue, index) => (
+                          <div key={index} className={`border rounded-lg p-3 ${getStatusColor(issue.severity || 'medium')}`}>
                             <div className="flex items-start">
-                              {getStatusIcon(latestAudit.status)}
-                              <div className="ml-2">
+                              <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 mr-2" />
+                              <div>
                                 <p className="text-sm font-medium text-slate-800">
                                   {issue.type || 'Problema Identificado'}
                                 </p>
@@ -371,21 +411,9 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
                               </div>
                             </div>
                           </div>
-                        ))
-                      ) : (
-                        <div className="border border-green-200 rounded-lg p-3 bg-green-50">
-                          <div className="flex items-start">
-                            <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 mr-2" />
-                            <div>
-                              <p className="text-sm font-medium text-green-800">Criativo Conforme</p>
-                              <p className="text-xs text-green-600 mt-1">
-                                Nenhum problema identificado na auditoria
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                        ))}
+                      </div>
+                    )}
 
                     {/* Audit Checklist */}
                     <div>

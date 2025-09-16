@@ -1534,7 +1534,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/creatives/:id/audits', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const creativeId = req.params.id;
-      const audits = await storage.getAuditsByCreative(creativeId);
+      const userId = req.user?.id;
+      
+      console.log('🔍 GET /api/creatives/:id/audits DEBUG:', {
+        creativeId,
+        userId,
+        hasUser: !!req.user,
+        authHeader: req.headers.authorization ? 'Bearer ***' : 'None'
+      });
+      
+      const rawAudits = await storage.getAuditsByCreative(creativeId);
+      
+      // ✅ Fix: Ensure decimal scores are properly converted to numbers
+      const audits = rawAudits.map(audit => ({
+        ...audit,
+        complianceScore: audit.complianceScore ? Number(audit.complianceScore) : 0,
+        performanceScore: audit.performanceScore ? Number(audit.performanceScore) : 0,
+      }));
+      
+      console.log('✅ Audits response:', {
+        creativeId,
+        auditCount: audits.length,
+        firstAuditScores: audits[0] ? {
+          compliance: audits[0].complianceScore,
+          performance: audits[0].performanceScore,
+          status: audits[0].status
+        } : null
+      });
+      
       res.json(audits);
     } catch (error) {
       console.error("Error fetching creative audits:", error);
