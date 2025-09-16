@@ -18,6 +18,33 @@
     "loginSuccess": "Login realizado com sucesso",
     "registerSuccess": "Cadastro realizado com sucesso"
   },
+  "login": {
+    "title": "Entrar",
+    "description": "Digite suas credenciais para acessar sua conta",
+    "emailLabel": "Email",
+    "emailPlaceholder": "Digite seu email",
+    "passwordLabel": "Senha",
+    "passwordPlaceholder": "Digite sua senha",
+    "loginButton": "Entrar",
+    "registerLink": "Não tem uma conta? Cadastre-se aqui"
+  },
+  "register": {
+    "title": "Criar Conta",
+    "description": "Preencha os dados abaixo para criar sua conta",
+    "firstNameLabel": "Nome",
+    "firstNamePlaceholder": "Digite seu nome",
+    "lastNameLabel": "Sobrenome", 
+    "lastNamePlaceholder": "Digite seu sobrenome",
+    "emailLabel": "Email",
+    "emailPlaceholder": "Digite seu email",
+    "passwordLabel": "Senha",
+    "passwordPlaceholder": "Digite sua senha",
+    "confirmPasswordLabel": "Confirmar Senha",
+    "confirmPasswordPlaceholder": "Confirme sua senha",
+    "registerButton": "Cadastrar",
+    "loginLink": "Já tem uma conta? Entre aqui",
+    "passwordsDoNotMatch": "As senhas não coincidem"
+  },
   "navigation": {
     "dashboard": "Dashboard",
     "campaigns": "Campanhas",

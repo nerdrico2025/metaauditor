@@ -6,17 +6,20 @@ import RecentAudits from "@/components/Dashboard/RecentAudits";
 import ProblemCreatives from "@/components/Dashboard/ProblemCreatives";
 import PolicyManagement from "@/components/Dashboard/PolicyManagement";
 import IntegrationStatus from "@/components/Dashboard/IntegrationStatus";
+import { useTranslation } from 'react-i18next';
 
 export default function Dashboard() {
+  const { t } = useTranslation();
+
   // Authentication removed - direct access to dashboard
 
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />
-      
+
       <div className="flex flex-col flex-1 overflow-hidden">
         <Header title="Dashboard" />
-        
+
         <main className="flex-1 overflow-y-auto">
           <div className="py-6">
             {/* Metrics Cards */}

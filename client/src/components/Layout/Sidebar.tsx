@@ -2,6 +2,7 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { Search, BarChart3, BellRing, Image, FileText, Settings, History, LogOut, ExternalLink } from "lucide-react";
+import { useTranslation } from 'react-i18next';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: BarChart3 },
@@ -16,7 +17,8 @@ const navigation = [
 export default function Sidebar() {
   const [location] = useLocation();
   const { user, logout } = useAuth();
-  
+  const { t } = useTranslation();
+
   const handleLogout = () => {
     logout();
   };
@@ -71,9 +73,9 @@ export default function Sidebar() {
               />
               <div className="ml-3 flex-1">
                 <p className="text-sm font-medium text-foreground">
-                  {user.firstName && user.lastName 
-                    ? `${user.firstName} ${user.lastName}` 
-                    : user.firstName || user.email || 'Usuário'}
+                  {user.firstName && user.lastName
+                    ? `${user.firstName} ${user.lastName}`
+                    : user.firstName || user.email || t('user.guest')}
                 </p>
                 <p className="text-xs text-muted-foreground">{user.email}</p>
               </div>

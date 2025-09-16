@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface RegisterFormProps {
   onToggleMode: () => void;
@@ -18,6 +19,7 @@ export default function RegisterForm({ onToggleMode }: RegisterFormProps) {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const { register, isRegisterPending, registerError } = useAuth();
+  const { t } = useTranslation();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,20 +36,20 @@ export default function RegisterForm({ onToggleMode }: RegisterFormProps) {
   return (
     <Card className="w-full max-w-md">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold">Criar Conta</CardTitle>
+        <CardTitle className="text-2xl font-bold">{t("register.title")}</CardTitle>
         <CardDescription>
-          Crie sua conta para começar a usar o Click Auditor
+          {t("register.description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="firstName">Nome</Label>
+              <Label htmlFor="firstName">{t("register.firstNameLabel")}</Label>
               <Input
                 id="firstName"
                 type="text"
-                placeholder="Seu nome"
+                placeholder={t("register.firstNamePlaceholder")}
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 required
@@ -55,11 +57,11 @@ export default function RegisterForm({ onToggleMode }: RegisterFormProps) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="lastName">Sobrenome</Label>
+              <Label htmlFor="lastName">{t("register.lastNameLabel")}</Label>
               <Input
                 id="lastName"
                 type="text"
-                placeholder="Seu sobrenome"
+                placeholder={t("register.lastNamePlaceholder")}
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 required
@@ -68,11 +70,11 @@ export default function RegisterForm({ onToggleMode }: RegisterFormProps) {
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t("register.emailLabel")}</Label>
             <Input
               id="email"
               type="email"
-              placeholder="seu@email.com"
+              placeholder={t("register.emailPlaceholder")}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -80,11 +82,11 @@ export default function RegisterForm({ onToggleMode }: RegisterFormProps) {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Senha</Label>
+            <Label htmlFor="password">{t("register.passwordLabel")}</Label>
             <Input
               id="password"
               type="password"
-              placeholder="Mínimo 6 caracteres"
+              placeholder={t("register.passwordPlaceholder")}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -93,18 +95,18 @@ export default function RegisterForm({ onToggleMode }: RegisterFormProps) {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirmar Senha</Label>
+            <Label htmlFor="confirmPassword">{t("register.confirmPasswordLabel")}</Label>
             <Input
               id="confirmPassword"
               type="password"
-              placeholder="Confirme sua senha"
+              placeholder={t("register.confirmPasswordPlaceholder")}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
               disabled={isRegisterPending}
             />
             {passwordMismatch && (
-              <p className="text-sm text-red-500">As senhas não coincidem</p>
+              <p className="text-sm text-red-500">{t("register.passwordMismatch")}</p>
             )}
           </div>
 
@@ -120,7 +122,7 @@ export default function RegisterForm({ onToggleMode }: RegisterFormProps) {
             disabled={isRegisterPending || passwordMismatch}
           >
             {isRegisterPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            Criar Conta
+            {t("register.registerButton")}
           </Button>
 
           <div className="text-center">
@@ -130,7 +132,7 @@ export default function RegisterForm({ onToggleMode }: RegisterFormProps) {
               onClick={onToggleMode}
               disabled={isRegisterPending}
             >
-              Já tem uma conta? Entre
+              {t("register.loginLink")}
             </Button>
           </div>
         </form>
