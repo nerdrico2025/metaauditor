@@ -1235,9 +1235,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Creative not found" });
       }
 
-      // Get user's brand configurations and content criteria
+      // Get user's brand configurations, content criteria, and performance benchmarks
       const brandConfigs = await storage.getBrandConfigurationsByUser(userId);
       const contentCriteria = await storage.getContentCriteriaByUser(userId);
+      const performanceBenchmarks = await storage.getPerformanceBenchmarksByUser(userId);
       const activeBrandConfig = brandConfigs.find(config => config.isActive) || brandConfigs[0];
       const activeContentCriteria = contentCriteria.find(criteria => criteria.isActive) || contentCriteria[0];
 
@@ -1245,6 +1246,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('📊 Analysis Debug Info:');
       console.log(`- Brand configs found: ${brandConfigs.length}`);
       console.log(`- Content criteria found: ${contentCriteria.length}`);
+      console.log(`- Performance benchmarks found:`, performanceBenchmarks ? 'Yes' : 'None');
       console.log(`- Active brand config:`, activeBrandConfig ? {
         name: activeBrandConfig.brandName,
         primaryColor: activeBrandConfig.primaryColor,
@@ -1265,8 +1267,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         activeContentCriteria
       );
 
-      // Perform performance analysis
-      const performanceResult = await analyzeCreativePerformance(creative);
+      // Perform performance analysis with benchmarks
+      const performanceResult = await analyzeCreativePerformance(creative, performanceBenchmarks);
 
       // Combine results and determine overall status
       let status: string = 'compliant';
@@ -2122,7 +2124,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId
       });
 
-      // Create sample campaigns
+      // Create sample integrations first
+      const metaIntegration = await storage.createIntegration({
+        userId,
+        platform: 'meta',
+        accessToken: 'demo_meta_token_test',
+        accountId: `demo_meta_${Date.now()}`,
+        status: 'active'
+      });
+
+      const googleIntegration = await storage.createIntegration({
+        userId,
+        platform: 'google',
+        accessToken: 'demo_google_token_test',
+        accountId: `demo_google_${Date.now()}`,
+        status: 'active'
+      });
+
+      // Create sample campaigns with valid integration IDs
       const campaigns = [];
       for (let i = 1; i <= 2; i++) {
         const campaign = await storage.createCampaign({
@@ -2130,7 +2149,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           platform: i === 1 ? 'meta' : 'google',
           status: 'ativa',
           userId,
-          integrationId: randomUUID(), // Mock integration ID
+          integrationId: i === 1 ? metaIntegration.id : googleIntegration.id, // Use real integration IDs
           externalId: `test-campaign-${Date.now()}-${i}`,
           budget: "1000.00"
         });
@@ -2207,10 +2226,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: true,
         message: "Dados de teste criados com sucesso",
         policy: samplePolicy,
+        integrations: [metaIntegration, googleIntegration],
         campaigns,
         creatives,
         summary: {
           policies: 1,
+          integrations: 2,
           campaigns: campaigns.length,
           creatives: creatives.length
         }

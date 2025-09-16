@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import type { Creative, BrandConfiguration, ContentCriteria } from "@shared/schema";
+import type { Creative, BrandConfiguration, ContentCriteria, PerformanceBenchmarks } from "@shared/schema";
 
 let openai: OpenAI | null = null;
 
@@ -50,7 +50,6 @@ Brand Requirements:
 - Primary Color: ${brandConfig.primaryColor || 'Not specified'}
 - Secondary Color: ${brandConfig.secondaryColor || 'Not specified'}
 - Accent Color: ${brandConfig.accentColor || 'Not specified'}
-- Font Family: ${brandConfig.fontFamily || 'Not specified'}
 - Brand Guidelines: ${brandConfig.brandGuidelines || 'Not specified'}
 - Logo URL: ${brandConfig.logoUrl ? 'Logo provided' : 'No logo provided'}` : '\nNo brand configuration found.';
     
@@ -59,10 +58,6 @@ Content Criteria:
 - Criteria Name: ${contentCriteria.name}
 - Required Keywords: ${contentCriteria.requiredKeywords ? JSON.stringify(contentCriteria.requiredKeywords) : 'None'}
 - Prohibited Keywords: ${contentCriteria.prohibitedKeywords ? JSON.stringify(contentCriteria.prohibitedKeywords) : 'None'}
-- Required Phrases: ${contentCriteria.requiredPhrases ? JSON.stringify(contentCriteria.requiredPhrases) : 'None'}
-- Prohibited Phrases: ${contentCriteria.prohibitedPhrases ? JSON.stringify(contentCriteria.prohibitedPhrases) : 'None'}
-- Min Text Length: ${contentCriteria.minTextLength || 'Not specified'}
-- Max Text Length: ${contentCriteria.maxTextLength || 'Not specified'}
 - Requires Logo: ${contentCriteria.requiresLogo ? 'Yes' : 'No'}
 - Requires Brand Colors: ${contentCriteria.requiresBrandColors ? 'Yes' : 'No'}` : '\nNo content criteria found.';
 
@@ -202,7 +197,8 @@ Respond with JSON in this format: {
 }
 
 export async function analyzeCreativePerformance(
-  creative: Creative
+  creative: Creative,
+  performanceBenchmarks?: PerformanceBenchmarks | null
 ): Promise<PerformanceAnalysis> {
   try {
     const ctr = parseFloat(creative.ctr || "0");
@@ -211,22 +207,35 @@ export async function analyzeCreativePerformance(
     const clicks = creative.clicks || 1;
     const conversionRate = conversions / Math.max(clicks, 1);
 
-    const prompt = `Analyze this ad creative's performance:
+    // Build performance benchmarks context
+    const benchmarksContext = performanceBenchmarks ? `
+Performance Benchmarks (user-defined thresholds):
+- CTR Minimum: ${performanceBenchmarks.ctrMin || 'Not set'}%
+- CTR Target: ${performanceBenchmarks.ctrTarget || 'Not set'}%
+- CPC Maximum: $${performanceBenchmarks.cpcMax || 'Not set'}
+- CPC Target: $${performanceBenchmarks.cpcTarget || 'Not set'}
+- Conversions Minimum: ${performanceBenchmarks.conversionsMin || 'Not set'}
+- Conversions Target: ${performanceBenchmarks.conversionsTarget || 'Not set'}
 
-Performance Metrics:
+IMPORTANT: Compare this creative's metrics against the user's specific benchmarks above. Flag if performance is below minimums or suggest optimizations to reach targets.` : '\nNo performance benchmarks configured.';
+
+    const prompt = `Analyze this ad creative's performance against user-defined benchmarks:
+
+Current Performance Metrics:
 - Impressions: ${creative.impressions}
 - Clicks: ${creative.clicks}
 - Conversions: ${creative.conversions}
 - CTR: ${ctr}%
 - CPC: $${cpc}
 - Conversion Rate: ${(conversionRate * 100).toFixed(2)}%
+${benchmarksContext}
 
 Creative Details:
 - Type: ${creative.type}
 - Text: ${creative.text || 'N/A'}
 - Headline: ${creative.headline || 'N/A'}
 
-Analyze performance and provide recommendations for improvement.
+Analyze performance against the benchmarks (if provided) and provide recommendations for improvement. If benchmarks are set, clearly indicate whether this creative meets/exceeds thresholds or falls short.
 
 Respond with JSON in this format: {
   "score": number (0-100),
