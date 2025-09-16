@@ -119,8 +119,8 @@ export const audits = pgTable("audits", {
   creativeId: uuid("creative_id").notNull().references(() => creatives.id, { onDelete: 'cascade' }),
   policyId: uuid("policy_id").references(() => policies.id),
   status: varchar("status").notNull(), // 'compliant', 'non_compliant', 'low_performance', 'needs_review'
-  complianceScore: decimal("compliance_score", { precision: 3, scale: 2 }).default("0"),
-  performanceScore: decimal("performance_score", { precision: 3, scale: 2 }).default("0"),
+  complianceScore: decimal("compliance_score", { precision: 5, scale: 2 }).notNull(),
+  performanceScore: decimal("performance_score", { precision: 5, scale: 2 }).notNull(),
   issues: jsonb("issues"), // Array of detected issues
   recommendations: jsonb("recommendations"), // Array of recommended actions
   aiAnalysis: jsonb("ai_analysis"), // Full AI analysis results
