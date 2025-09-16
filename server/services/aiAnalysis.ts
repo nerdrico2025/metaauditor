@@ -115,7 +115,7 @@ Respond with JSON in this format: {
     const result = JSON.parse(response.choices[0].message.content || '{}');
 
     return {
-      score: Math.max(0, Math.min(100, result.score || 0)),
+      score: Math.max(0, Math.min(100, Math.round(parseFloat(result.score) || 0))),
       issues: Array.isArray(result.issues) ? result.issues : [],
       recommendations: Array.isArray(result.recommendations) ? result.recommendations : [],
       analysis: {
@@ -266,7 +266,7 @@ Respond with JSON in this format: {
     const result = JSON.parse(response.choices[0].message.content || '{}');
 
     return {
-      score: Math.max(0, Math.min(100, result.score || 0)),
+      score: Math.max(0, Math.min(100, Math.round(parseFloat(result.score) || 0))),
       performance: ['high', 'medium', 'low'].includes(result.performance) ? result.performance : 'low',
       recommendations: Array.isArray(result.recommendations) ? result.recommendations : [],
       metrics: {

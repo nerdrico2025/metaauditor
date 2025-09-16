@@ -1414,34 +1414,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ];
 
       // Handle AI analysis failures internally - don't expose technical errors to users
-      if (complianceResult.issues.includes("Analysis failed - unable to process creative") || 
-          complianceResult.issues.some(issue => issue.includes("Análise falhou"))) {
-        
+      const hasAnalysisErrors = complianceResult.issues.some(issue => 
+        issue.includes("Análise falhou") || 
+        issue.includes("configuração da OpenAI") ||
+        issue.includes("Analysis failed")
+      );
+
+      if (hasAnalysisErrors) {
         // Log the error internally
         console.log('🚨 AI Analysis Failed for creative:', creative.id, {
           complianceScore: complianceResult.score,
-          issues: complianceResult.issues,
+          performanceScore: performanceResult.score,
           brandConfig: activeBrandConfig?.brandName,
           contentCriteria: activeContentCriteria?.name
         });
         
-        // Set status but don't add technical error to user-facing issues
-        status = 'non_compliant';
-        
-        // Add user-friendly issue instead of technical error
-        issues.push({
-          type: 'Revisão necessária',
-          description: 'Este criativo requer revisão manual de conformidade.',
-          severity: 'medium'
-        });
-        
-        // Update check details without technical error messages
-        checks.forEach(check => {
-          if (check.status === 'passed') {
-            check.status = 'failed';
-            check.details += ' - Requer verificação manual';
-          }
-        });
+        // Don't change status if analysis worked with fallback
+        if (complianceResult.score === 0) {
+          status = 'non_compliant';
+          
+          // Replace technical errors with user-friendly messages
+          issues.length = 0; // Clear technical errors
+          issues.push({
+            type: 'Análise Pendente',
+            description: 'Este criativo precisa de análise manual. Verifique configurações de IA.',
+            severity: 'medium'
+          });
+          
+          // Update check details
+          checks.forEach(check => {
+            if (check.status === 'passed') {
+              check.status = 'warning';
+              check.details = 'Verificação manual necessária';
+            }
+          });
+        } else {
+          // Analysis worked with fallback, just filter out technical messages
+          complianceResult.issues = complianceResult.issues.filter(issue => 
+            !issue.includes("Análise falhou") && 
+            !issue.includes("configuração da OpenAI") &&
+            !issue.includes("Analysis failed")
+          );
+        }
       }
 
       // Create audit record
@@ -1449,8 +1463,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId,
         creativeId,
         status,
-        complianceScore: complianceScore.toString(),
-        performanceScore: performanceScore.toString(),
+        complianceScore: Math.round(complianceScore).toString(),
+        performanceScore: Math.round(performanceScore).toString(),
         issues: JSON.stringify(issues),
         recommendations: JSON.stringify(recommendations),
         aiAnalysis: JSON.stringify({
