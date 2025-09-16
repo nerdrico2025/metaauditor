@@ -75,9 +75,11 @@ export interface IStorage {
 
   // Audit operations
   createAudit(audit: InsertAudit): Promise<Audit>;
+  getAuditById(id: string): Promise<Audit | undefined>;
   getAuditsByUser(userId: string): Promise<Audit[]>;
   getAuditsByCreative(creativeId: string): Promise<Audit[]>;
   getRecentAudits(userId: string, limit?: number): Promise<Audit[]>;
+  deleteAudit(id: string): Promise<boolean>;
 
   // Audit Action operations
   createAuditAction(action: InsertAuditAction): Promise<AuditAction>;
@@ -306,6 +308,11 @@ export class DatabaseStorage implements IStorage {
     return newAudit;
   }
 
+  async getAuditById(id: string): Promise<Audit | undefined> {
+    const [audit] = await db.select().from(audits).where(eq(audits.id, id));
+    return audit;
+  }
+
   async getAuditsByUser(userId: string): Promise<Audit[]> {
     return await db.select().from(audits).where(eq(audits.userId, userId)).orderBy(desc(audits.createdAt));
   }
@@ -319,6 +326,11 @@ export class DatabaseStorage implements IStorage {
       .where(eq(audits.userId, userId))
       .orderBy(desc(audits.createdAt))
       .limit(limit);
+  }
+
+  async deleteAudit(id: string): Promise<boolean> {
+    const result = await db.delete(audits).where(eq(audits.id, id));
+    return (result.rowCount ?? 0) > 0;
   }
 
   // Audit Action operations

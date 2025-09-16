@@ -148,8 +148,54 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
     },
   });
 
+  // Delete audit mutation for reanalysis
+  const deleteAuditMutation = useMutation({
+    mutationFn: async () => {
+      if (!latestAudit) throw new Error("No audit found");
+      
+      const response = await apiRequest("DELETE", `/api/audits/${latestAudit.id}`);
+      return await response.json();
+    },
+    onSuccess: () => {
+      // Invalidate audits query to refresh the data
+      queryClient.invalidateQueries({ queryKey: ["/api/creatives", creative.id, "audits"] });
+    },
+    onError: (error) => {
+      console.error("Error deleting audit:", error);
+      toast({
+        title: "Erro ao Deletar Análise",
+        description: "Falha ao deletar análise anterior",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleAnalyze = () => {
     analyzeMutation.mutate();
+  };
+
+  const handleReanalyze = async () => {
+    if (!latestAudit) return;
+    
+    try {
+      // First delete the existing audit
+      await deleteAuditMutation.mutateAsync();
+      
+      // Then create a new analysis
+      analyzeMutation.mutate();
+      
+      toast({
+        title: "Reprocessando Análise",
+        description: "Análise anterior removida. Iniciando nova análise...",
+      });
+    } catch (error) {
+      console.error("Error during reanalysis:", error);
+      toast({
+        title: "Erro na Reprocessamento",
+        description: "Falha ao refazer análise",
+        variant: "destructive",
+      });
+    }
   };
 
   // Auto-analyze when modal opens if autoAnalyze is true
@@ -454,6 +500,16 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
             >
               {executeActionsMutation.isPending ? 'Executando...' : 'Executar Ações'}
             </Button>
+            {latestAudit && (
+              <Button 
+                onClick={handleReanalyze}
+                disabled={analyzeMutation.isPending}
+                variant="outline"
+                className="text-blue-600 border-blue-200 hover:bg-blue-50"
+              >
+                {analyzeMutation.isPending ? 'Reprocessando...' : 'Refazer Análise'}
+              </Button>
+            )}
             <Button variant="outline" onClick={onClose}>
               Cancelar
             </Button>

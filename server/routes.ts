@@ -1530,6 +1530,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete('/api/audits/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      const auditId = req.params.id;
+      const userId = req.user!.id;
+      
+      // Verify ownership by checking if the audit belongs to the user
+      const audit = await storage.getAuditById(auditId);
+      if (!audit || audit.userId !== userId) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
+      const success = await storage.deleteAudit(auditId);
+      if (!success) {
+        return res.status(404).json({ message: "Audit not found" });
+      }
+      
+      res.json({ message: "Audit deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting audit:", error);
+      res.status(500).json({ message: "Failed to delete audit" });
+    }
+  });
+
   // Audit Action routes
   app.get('/api/audit-actions', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
