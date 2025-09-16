@@ -330,6 +330,9 @@ export const insertPolicySchema = createInsertSchema(policies).omit({
 export const insertAuditSchema = createInsertSchema(audits).omit({
   id: true,
   createdAt: true,
+}).extend({
+  complianceScore: z.union([z.string(), z.number()]).transform(val => Number(val)),
+  performanceScore: z.union([z.string(), z.number()]).transform(val => Number(val)),
 });
 
 export const insertAuditActionSchema = createInsertSchema(auditActions).omit({

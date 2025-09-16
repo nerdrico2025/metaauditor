@@ -1463,8 +1463,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId,
         creativeId,
         status,
-        complianceScore: Math.min(99.99, Math.max(0, Number(complianceScore.toFixed(2)))).toString(),
-        performanceScore: Math.min(99.99, Math.max(0, Number(performanceScore.toFixed(2)))).toString(),
+        complianceScore: Math.min(99.99, Math.max(0, Number(complianceScore.toFixed(2)))),
+        performanceScore: Math.min(99.99, Math.max(0, Number(performanceScore.toFixed(2)))),
         issues: JSON.stringify(issues),
         recommendations: JSON.stringify(recommendations),
         aiAnalysis: JSON.stringify({
