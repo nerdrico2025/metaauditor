@@ -488,11 +488,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user!.id;
       
-      // Load data from all three tables
-      const [brandConfigs, policies, contentCriterias] = await Promise.all([
+      // Load data from all four sources
+      const [brandConfigs, policies, contentCriterias, performanceBenchmarks] = await Promise.all([
         storage.getBrandConfigurationsByUser(userId),
         storage.getPoliciesByUser(userId),
-        storage.getContentCriteriaByUser(userId)
+        storage.getContentCriteriaByUser(userId),
+        storage.getPerformanceBenchmarksByUser(userId)
       ]);
 
       // Get the first/active configuration for each type (or use defaults)
@@ -507,7 +508,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           primaryColor: brandConfig?.primaryColor || null,
           secondaryColor: brandConfig?.secondaryColor || null,
           accentColor: brandConfig?.accentColor || null,
-          fontFamily: brandConfig?.fontFamily || null,
           visualGuidelines: brandConfig?.brandGuidelines || null,
         },
         brandPolicies: {
@@ -527,16 +527,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
                             contentCriteria.requiredKeywords as string[] : [],
           forbiddenTerms: contentCriteria?.prohibitedKeywords && Array.isArray(contentCriteria.prohibitedKeywords) ? 
                           contentCriteria.prohibitedKeywords as string[] : [],
-          requiredPhrases: contentCriteria?.requiredPhrases && Array.isArray(contentCriteria.requiredPhrases) ? 
-                           contentCriteria.requiredPhrases as string[] : [],
-          charLimits: {
-            min: contentCriteria?.minTextLength || null,
-            max: contentCriteria?.maxTextLength || null,
-          },
           brandRequirements: {
             requireLogo: contentCriteria?.requiresLogo || false,
             requireBrandColors: contentCriteria?.requiresBrandColors || false,
           },
+        },
+        performanceBenchmarks: {
+          ctrMin: performanceBenchmarks?.ctrMin ? Number(performanceBenchmarks.ctrMin) : null,
+          ctrTarget: performanceBenchmarks?.ctrTarget ? Number(performanceBenchmarks.ctrTarget) : null,
+          cpcMax: performanceBenchmarks?.cpcMax ? Number(performanceBenchmarks.cpcMax) : null,
+          cpcTarget: performanceBenchmarks?.cpcTarget ? Number(performanceBenchmarks.cpcTarget) : null,
+          conversionsMin: performanceBenchmarks?.conversionsMin || null,
+          conversionsTarget: performanceBenchmarks?.conversionsTarget || null,
         },
       };
 
@@ -586,7 +588,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               primaryColor: validatedSettings.brand.primaryColor,
               secondaryColor: validatedSettings.brand.secondaryColor,
               accentColor: validatedSettings.brand.accentColor,
-              fontFamily: validatedSettings.brand.fontFamily,
+
               brandGuidelines: validatedSettings.brand.visualGuidelines,
               updatedAt: new Date()
             })
@@ -607,7 +609,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               primaryColor: validatedSettings.brand.primaryColor,
               secondaryColor: validatedSettings.brand.secondaryColor,
               accentColor: validatedSettings.brand.accentColor,
-              fontFamily: validatedSettings.brand.fontFamily,
+
               brandGuidelines: validatedSettings.brand.visualGuidelines,
               isActive: true,
             })
@@ -659,9 +661,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .set({
               requiredKeywords: validatedSettings.validationCriteria.requiredKeywords,
               prohibitedKeywords: validatedSettings.validationCriteria.forbiddenTerms,
-              requiredPhrases: validatedSettings.validationCriteria.requiredPhrases,
-              minTextLength: validatedSettings.validationCriteria.charLimits.min,
-              maxTextLength: validatedSettings.validationCriteria.charLimits.max,
+
               requiresLogo: validatedSettings.validationCriteria.brandRequirements.requireLogo,
               requiresBrandColors: validatedSettings.validationCriteria.brandRequirements.requireBrandColors,
               updatedAt: new Date()
@@ -682,9 +682,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               description: "Auto-generated default validation criteria",
               requiredKeywords: validatedSettings.validationCriteria.requiredKeywords,
               prohibitedKeywords: validatedSettings.validationCriteria.forbiddenTerms,
-              requiredPhrases: validatedSettings.validationCriteria.requiredPhrases,
-              minTextLength: validatedSettings.validationCriteria.charLimits.min,
-              maxTextLength: validatedSettings.validationCriteria.charLimits.max,
+
               requiresLogo: validatedSettings.validationCriteria.brandRequirements.requireLogo,
               requiresBrandColors: validatedSettings.validationCriteria.brandRequirements.requireBrandColors,
               isActive: true,
@@ -700,7 +698,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             primaryColor: brandConfig.primaryColor || null,
             secondaryColor: brandConfig.secondaryColor || null,
             accentColor: brandConfig.accentColor || null,
-            fontFamily: brandConfig.fontFamily || null,
             visualGuidelines: brandConfig.brandGuidelines || null,
           },
           brandPolicies: {
@@ -720,18 +717,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
                               contentCriteriaRecord.requiredKeywords as string[] : [],
             forbiddenTerms: contentCriteriaRecord?.prohibitedKeywords && Array.isArray(contentCriteriaRecord.prohibitedKeywords) ? 
                             contentCriteriaRecord.prohibitedKeywords as string[] : [],
-            requiredPhrases: contentCriteriaRecord?.requiredPhrases && Array.isArray(contentCriteriaRecord.requiredPhrases) ? 
-                             contentCriteriaRecord.requiredPhrases as string[] : [],
-            charLimits: {
-              min: contentCriteriaRecord?.minTextLength || null,
-              max: contentCriteriaRecord?.maxTextLength || null,
-            },
             brandRequirements: {
               requireLogo: contentCriteriaRecord?.requiresLogo || false,
               requireBrandColors: contentCriteriaRecord?.requiresBrandColors || false,
             },
           },
+          performanceBenchmarks: {
+            ctrMin: null,
+            ctrTarget: null,
+            cpcMax: null,
+            cpcTarget: null,
+            conversionsMin: null,
+            conversionsTarget: null,
+          },
         };
+
+        // Update or create performance benchmarks
+        await storage.createOrUpdatePerformanceBenchmarks(userId, validatedSettings.performanceBenchmarks);
         
         return updatedSettings;
       });

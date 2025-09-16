@@ -20,7 +20,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Palette, Shield, Save, Upload } from "lucide-react";
+import { Palette, Shield, Save, Upload, TrendingUp } from "lucide-react";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import type { SettingsDTO } from "@shared/schema";
 
@@ -45,8 +45,19 @@ const validationCriteriaSchema = z.object({
   requireBrandColors: z.boolean(),
 });
 
+// Performance Benchmarks form schema
+const performanceBenchmarksSchema = z.object({
+  ctrMin: z.coerce.number().positive().optional().or(z.literal(undefined)),
+  ctrTarget: z.coerce.number().positive().optional().or(z.literal(undefined)),
+  cpcMax: z.coerce.number().positive().optional().or(z.literal(undefined)),
+  cpcTarget: z.coerce.number().positive().optional().or(z.literal(undefined)),
+  conversionsMin: z.coerce.number().int().nonnegative().optional().or(z.literal(undefined)),
+  conversionsTarget: z.coerce.number().int().nonnegative().optional().or(z.literal(undefined)),
+});
+
 type BrandPoliciesFormData = z.infer<typeof brandPoliciesSchema>;
 type ValidationCriteriaFormData = z.infer<typeof validationCriteriaSchema>;
+type PerformanceBenchmarksFormData = z.infer<typeof performanceBenchmarksSchema>;
 
 export default function Policies() {
   const { toast } = useToast();
@@ -77,6 +88,19 @@ export default function Policies() {
       forbiddenTerms: [],
       requireLogo: false,
       requireBrandColors: false,
+    },
+  });
+
+  // Performance Benchmarks form
+  const benchmarksForm = useForm<PerformanceBenchmarksFormData>({
+    resolver: zodResolver(performanceBenchmarksSchema),
+    defaultValues: {
+      ctrMin: undefined,
+      ctrTarget: undefined,
+      cpcMax: undefined,
+      cpcTarget: undefined,
+      conversionsMin: undefined,
+      conversionsTarget: undefined,
     },
   });
 
@@ -123,8 +147,18 @@ export default function Policies() {
         requireLogo: settings.validationCriteria.brandRequirements.requireLogo,
         requireBrandColors: settings.validationCriteria.brandRequirements.requireBrandColors,
       });
+
+      // Load performance benchmarks form
+      benchmarksForm.reset({
+        ctrMin: settings.performanceBenchmarks?.ctrMin || undefined,
+        ctrTarget: settings.performanceBenchmarks?.ctrTarget || undefined,
+        cpcMax: settings.performanceBenchmarks?.cpcMax || undefined,
+        cpcTarget: settings.performanceBenchmarks?.cpcTarget || undefined,
+        conversionsMin: settings.performanceBenchmarks?.conversionsMin || undefined,
+        conversionsTarget: settings.performanceBenchmarks?.conversionsTarget || undefined,
+      });
     }
-  }, [settings, brandForm, criteriaForm]);
+  }, [settings, brandForm, criteriaForm, benchmarksForm]);
 
   // Update mutation
   const updateMutation = useMutation({
@@ -258,6 +292,27 @@ export default function Policies() {
     updateMutation.mutate(updatedSettings);
   };
 
+  // Submit performance benchmarks
+  const onSubmitPerformanceBenchmarks = (data: PerformanceBenchmarksFormData) => {
+    if (!settings) return;
+
+    const updatedSettings: SettingsDTO = {
+      brand: settings.brand, // Keep existing brand settings
+      brandPolicies: settings.brandPolicies, // Keep existing brand policies
+      validationCriteria: settings.validationCriteria, // Keep existing validation criteria
+      performanceBenchmarks: {
+        ctrMin: data.ctrMin || null,
+        ctrTarget: data.ctrTarget || null,
+        cpcMax: data.cpcMax || null,
+        cpcTarget: data.cpcTarget || null,
+        conversionsMin: data.conversionsMin || null,
+        conversionsTarget: data.conversionsTarget || null,
+      },
+    };
+
+    updateMutation.mutate(updatedSettings);
+  };
+
   useEffect(() => {
     if (error && isUnauthorizedError(error as Error)) {
       toast({
@@ -298,7 +353,7 @@ export default function Policies() {
               </div>
 
               <Tabs value={activeTab} onValueChange={setActiveTab} data-testid="settings-tabs">
-                <TabsList className="grid w-full grid-cols-2">
+                <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="brand-policies" data-testid="tab-brand-policies">
                     <Palette className="w-4 h-4 mr-2" />
                     Políticas de Marca
@@ -306,6 +361,10 @@ export default function Policies() {
                   <TabsTrigger value="validation-criteria" data-testid="tab-validation-criteria">
                     <Shield className="w-4 h-4 mr-2" />
                     Critérios de Validação
+                  </TabsTrigger>
+                  <TabsTrigger value="performance-benchmarks" data-testid="tab-performance-benchmarks">
+                    <TrendingUp className="w-4 h-4 mr-2" />
+                    Métricas de Referência
                   </TabsTrigger>
                 </TabsList>
 
@@ -628,6 +687,135 @@ export default function Policies() {
                             >
                               <Save className="w-4 h-4 mr-2" />
                               {updateMutation.isPending ? "Salvando..." : "Salvar Critérios de Validação"}
+                            </Button>
+                          </div>
+                        </form>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                {/* Performance Benchmarks Tab */}
+                <TabsContent value="performance-benchmarks">
+                  <Card data-testid="card-performance-benchmarks">
+                    <CardHeader>
+                      <CardTitle className="flex items-center">
+                        <TrendingUp className="w-5 h-5 mr-2" />
+                        Métricas de Referência
+                      </CardTitle>
+                      <CardDescription>
+                        Configure valores de referência para análise automática de performance
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {settingsLoading ? (
+                        <div className="space-y-4">
+                          <Skeleton className="h-4 w-full" />
+                          <Skeleton className="h-10 w-full" />
+                          <Skeleton className="h-4 w-3/4" />
+                          <Skeleton className="h-10 w-full" />
+                        </div>
+                      ) : (
+                        <form onSubmit={benchmarksForm.handleSubmit(onSubmitPerformanceBenchmarks)} className="space-y-6">
+                          {/* CTR Metrics */}
+                          <div>
+                            <Label className="text-base font-medium">Taxa de Cliques (CTR) - %</Label>
+                            <div className="mt-2 grid grid-cols-2 gap-4">
+                              <div>
+                                <Label htmlFor="ctrMin">CTR Mínimo</Label>
+                                <Input
+                                  id="ctrMin"
+                                  type="number"
+                                  step="0.001"
+                                  placeholder="Ex: 1.5"
+                                  {...benchmarksForm.register("ctrMin")}
+                                  data-testid="input-ctr-min"
+                                />
+                                <p className="text-xs text-slate-500 mt-1">CTR abaixo deste valor será considerado baixo</p>
+                              </div>
+                              <div>
+                                <Label htmlFor="ctrTarget">CTR Alvo</Label>
+                                <Input
+                                  id="ctrTarget"
+                                  type="number"
+                                  step="0.001"
+                                  placeholder="Ex: 3.0"
+                                  {...benchmarksForm.register("ctrTarget")}
+                                  data-testid="input-ctr-target"
+                                />
+                                <p className="text-xs text-slate-500 mt-1">Meta de CTR para campanhas</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* CPC Metrics */}
+                          <div>
+                            <Label className="text-base font-medium">Custo por Clique (CPC) - R$</Label>
+                            <div className="mt-2 grid grid-cols-2 gap-4">
+                              <div>
+                                <Label htmlFor="cpcMax">CPC Máximo</Label>
+                                <Input
+                                  id="cpcMax"
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="Ex: 2.50"
+                                  {...benchmarksForm.register("cpcMax")}
+                                  data-testid="input-cpc-max"
+                                />
+                                <p className="text-xs text-slate-500 mt-1">CPC acima deste valor será considerado alto</p>
+                              </div>
+                              <div>
+                                <Label htmlFor="cpcTarget">CPC Alvo</Label>
+                                <Input
+                                  id="cpcTarget"
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="Ex: 1.20"
+                                  {...benchmarksForm.register("cpcTarget")}
+                                  data-testid="input-cpc-target"
+                                />
+                                <p className="text-xs text-slate-500 mt-1">Meta de CPC para campanhas</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Conversions Metrics */}
+                          <div>
+                            <Label className="text-base font-medium">Conversões</Label>
+                            <div className="mt-2 grid grid-cols-2 gap-4">
+                              <div>
+                                <Label htmlFor="conversionsMin">Conversões Mínimas</Label>
+                                <Input
+                                  id="conversionsMin"
+                                  type="number"
+                                  placeholder="Ex: 10"
+                                  {...benchmarksForm.register("conversionsMin")}
+                                  data-testid="input-conversions-min"
+                                />
+                                <p className="text-xs text-slate-500 mt-1">Número mínimo de conversões esperadas</p>
+                              </div>
+                              <div>
+                                <Label htmlFor="conversionsTarget">Conversões Alvo</Label>
+                                <Input
+                                  id="conversionsTarget"
+                                  type="number"
+                                  placeholder="Ex: 50"
+                                  {...benchmarksForm.register("conversionsTarget")}
+                                  data-testid="input-conversions-target"
+                                />
+                                <p className="text-xs text-slate-500 mt-1">Meta de conversões para campanhas</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex justify-end">
+                            <Button 
+                              type="submit" 
+                              disabled={updateMutation.isPending}
+                              data-testid="button-save-performance-benchmarks"
+                            >
+                              <Save className="w-4 h-4 mr-2" />
+                              {updateMutation.isPending ? "Salvando..." : "Salvar Métricas de Referência"}
                             </Button>
                           </div>
                         </form>
