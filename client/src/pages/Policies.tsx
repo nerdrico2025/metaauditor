@@ -164,7 +164,7 @@ export default function Policies() {
   const updateMutation = useMutation({
     mutationFn: async (data: SettingsDTO) => {
       const response = await apiRequest("PUT", "/api/policies/settings", data);
-      return await response.json();
+      return response;
     },
     onSuccess: () => {
       toast({
