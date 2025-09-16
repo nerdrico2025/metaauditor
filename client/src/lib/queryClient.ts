@@ -11,10 +11,10 @@ export async function apiRequest(
   data?: any
 ): Promise<any> {
   const token = getToken();
-  
+
   let url: string;
   let options: RequestInit;
-  
+
   // Handle overloaded signatures
   if (typeof urlOrOptions === 'string') {
     // Called as (method, url, data)
@@ -29,7 +29,7 @@ export async function apiRequest(
     url = methodOrUrl;
     options = urlOrOptions || {};
   }
-  
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string> || {}),
@@ -39,18 +39,47 @@ export async function apiRequest(
     headers.Authorization = `Bearer ${token}`;
   }
 
+  console.log("🔄 API Request:", {
+    method: options.method || "GET", // Default to GET if not specified
+    url,
+    hasData: !!data || !!options.body,
+    hasToken: !!token,
+    dataKeys: data ? Object.keys(data) : (options.body ? "Included in body" : [])
+  });
+
   const response = await fetch(url, {
     ...options,
     headers,
     credentials: 'include', // Include cookies for session-based auth
   });
 
+  console.log("📡 API Response:", {
+    method: options.method || "GET",
+    url,
+    status: response.status,
+    statusText: response.statusText,
+    ok: response.ok,
+    headers: Object.fromEntries(response.headers.entries())
+  });
+
+
   if (!response.ok) {
     if (response.status === 401 || response.status === 403) {
       localStorage.removeItem('auth_token');
       window.location.href = '/';
     }
-    throw new Error(await response.text());
+    const errorText = await response.text();
+    console.error("❌ API Request failed:", {
+      method: options.method || "GET",
+      url,
+      status: response.status,
+      statusText: response.statusText,
+      errorMessage: errorText
+    });
+    const error = new Error(errorText) as any;
+    error.status = response.status;
+    error.response = response;
+    throw error;
   }
 
   return response.json();
@@ -71,10 +100,23 @@ export const queryClient = new QueryClient({
           headers.Authorization = `Bearer ${token}`;
         }
 
+        console.log("🔄 Query Request:", {
+          url,
+          hasToken: !!token,
+        });
+
         const response = await fetch(url, {
           headers,
           signal,
           credentials: 'include',
+        });
+
+        console.log("📡 Query Response:", {
+          url,
+          status: response.status,
+          statusText: response.statusText,
+          ok: response.ok,
+          headers: Object.fromEntries(response.headers.entries())
         });
 
         if (!response.ok) {
@@ -82,7 +124,14 @@ export const queryClient = new QueryClient({
             localStorage.removeItem('auth_token');
             window.location.href = '/login';
           }
-          throw new Error(await response.text());
+          const errorText = await response.text();
+          console.error("❌ Query Request failed:", {
+            url,
+            status: response.status,
+            statusText: response.statusText,
+            errorMessage: errorText
+          });
+          throw new Error(errorText);
         }
 
         return response.json();

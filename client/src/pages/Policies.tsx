@@ -173,8 +173,16 @@ export default function Policies() {
       });
       queryClient.invalidateQueries({ queryKey: ["/api/policies/settings"] });
     },
-    onError: (error) => {
-      if (isUnauthorizedError(error as Error)) {
+    onError: (error: any) => {
+      console.error("🚨 Mutation Error Details:", {
+        error,
+        message: error?.message,
+        status: error?.status,
+        response: error?.response,
+        name: error?.name
+      });
+      
+      if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
           description: "You are logged out. Logging in again...",
@@ -185,11 +193,31 @@ export default function Policies() {
         }, 500);
         return;
       }
-      toast({
-        title: "Erro",
-        description: "Falha ao salvar configurações",
-        variant: "destructive",
-      });
+      
+      // Only show error toast for actual HTTP errors (400+), not validation issues
+      if (error?.status && error.status >= 400) {
+        toast({
+          title: "Erro",
+          description: error?.message || "Falha ao salvar configurações",
+          variant: "destructive",
+        });
+      } else if (error?.name === 'ZodError') {
+        // Handle validation errors specifically
+        console.log("🔍 Zod validation error - this should not show user error toast");
+        toast({
+          title: "Erro de Validação",
+          description: "Verifique os dados inseridos e tente novamente",
+          variant: "destructive",
+        });
+      } else {
+        // For unexpected errors that don't have status codes
+        console.log("🔍 Unexpected error without status code:", error);
+        toast({
+          title: "Erro",
+          description: "Falha ao salvar configurações",
+          variant: "destructive",
+        });
+      }
     },
   });
 

@@ -553,8 +553,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user!.id;
       
+      console.log("📝 Settings update request:", {
+        userId,
+        requestBody: JSON.stringify(req.body, null, 2)
+      });
+      
       // Validate request body against SettingsDTO schema
       const validatedSettings = settingsDTO.parse(req.body);
+      
+      console.log("✅ Settings validation passed:", {
+        userId,
+        brandKeys: Object.keys(validatedSettings.brand),
+        validationKeys: Object.keys(validatedSettings.validationCriteria),
+        performanceKeys: Object.keys(validatedSettings.performanceBenchmarks)
+      });
       
       // Execute all operations within a single transaction to ensure atomicity
       const result = await db.transaction(async (tx) => {
@@ -758,10 +770,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Return the updated settings from the transaction
+      console.log("🎉 Settings update completed successfully:", {
+        userId,
+        responseSize: JSON.stringify(result).length,
+        timestamp: new Date().toISOString()
+      });
+      
       res.json(result);
     } catch (error) {
-      console.error("Error updating settings:", error);
+      console.error("❌ Error updating settings:", error);
       if (error instanceof Error && error.name === 'ZodError') {
+        console.log("🔍 Zod validation error details:", (error as any).errors);
         return res.status(400).json({ message: "Invalid settings data", errors: (error as any).errors });
       }
       res.status(500).json({ message: "Failed to update settings" });
