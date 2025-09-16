@@ -734,7 +734,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Update or create performance benchmarks
         const benchmarksData = validatedSettings.performanceBenchmarks;
-        await storage.createOrUpdatePerformanceBenchmarks(userId, {
+        const savedBenchmarks = await storage.createOrUpdatePerformanceBenchmarks(userId, {
           userId,
           ctrMin: benchmarksData.ctrMin?.toString() || null,
           ctrTarget: benchmarksData.ctrTarget?.toString() || null,
@@ -743,6 +743,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           conversionsMin: benchmarksData.conversionsMin || null,
           conversionsTarget: benchmarksData.conversionsTarget || null,
         });
+
+        // Update the returned object with actually saved benchmark values
+        updatedSettings.performanceBenchmarks = {
+          ctrMin: savedBenchmarks.ctrMin ? parseFloat(savedBenchmarks.ctrMin) : null,
+          ctrTarget: savedBenchmarks.ctrTarget ? parseFloat(savedBenchmarks.ctrTarget) : null,
+          cpcMax: savedBenchmarks.cpcMax ? parseFloat(savedBenchmarks.cpcMax) : null,
+          cpcTarget: savedBenchmarks.cpcTarget ? parseFloat(savedBenchmarks.cpcTarget) : null,
+          conversionsMin: savedBenchmarks.conversionsMin || null,
+          conversionsTarget: savedBenchmarks.conversionsTarget || null,
+        };
         
         return updatedSettings;
       });
