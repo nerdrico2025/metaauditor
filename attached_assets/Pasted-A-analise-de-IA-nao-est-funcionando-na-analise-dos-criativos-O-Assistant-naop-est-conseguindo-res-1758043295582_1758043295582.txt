@@ -1,0 +1,75 @@
+A analise de IA nao está funcionando na analise dos criativos. O Assistant naop está conseguindo resolver. Segue o log do erro:
+
+Error analyzing creative: error: numeric field overflow
+at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+at async NeonPreparedQuery.execute (/home/runner/workspace/node_modules/src/neon-serverless/session.ts:102:18)
+at async DatabaseStorage.createAudit (/home/runner/workspace/server/storage.ts:307:24)
+at async <anonymous> (/home/runner/workspace/server/routes.ts:1486:21) {
+length: 164,
+severity: 'ERROR',
+code: '22003',
+detail: 'A field with precision 3, scale 2 must round to an absolute value less than 10^1.',
+hint: undefined,
+position: undefined,
+internalPosition: undefined,
+internalQuery: undefined,
+where: undefined,
+schema: undefined,
+table: undefined,
+column: undefined,
+dataType: undefined,
+constraint: undefined,
+file: 'numeric.c',
+line: '7909',
+routine: 'apply_typmod'
+}
+5:15:59 PM [express] POST /api/creatives/c06eb17b-2af2-4750-bb83-6ad07af78c34/analyze 500 in 7841ms …
+
+Crie um plano específico e eficaz para resolver esse problema.
+
+2 minutes ago
+
+Decided on schema type mismatch (5 seconds)
+Com base na análise do código, identifiquei o problema específico na análise de IA dos criativos. Aqui está o plano específico e eficaz para resolver esse problema:
+
+Plano de Correção do Erro de Overflow Numérico
+Problema Identificado:
+O erro numeric field overflow com código '22003' ocorre porque os valores de complianceScore e performanceScore estão sendo convertidos para string antes de serem inseridos no banco, mas o schema espera valores numéricos do tipo decimal(5, 2).
+
+Localização do problema: Arquivo server/routes.ts, linhas 1466-1467
+
+Código problemático atual:
+
+complianceScore: Math.min(99.99, Math.max(0, Number(complianceScore.toFixed(2)))).toString(), // ❌ .toString() causa o erro
+performanceScore: Math.min(99.99, Math.max(0, Number(performanceScore.toFixed(2)))).toString(), // ❌ .toString() causa o erro
+Soluções Específicas:
+1. Correção Principal - Remoção de .toString() ⭐ PRIORITÁRIO
+Arquivo: server/routes.ts (linhas 1466-1467)
+Ação: Remover .toString() dos campos de score
+Código corrigido:
+complianceScore: Math.min(99.99, Math.max(0, Number(complianceScore.toFixed(2)))),
+performanceScore: Math.min(99.99, Math.max(0, Number(performanceScore.toFixed(2)))),
+2. Validação de Entrada de Dados
+Arquivo: server/routes.ts (função de análise)
+Ação: Adicionar validação para garantir que os valores são numéricos válidos antes do processamento
+Benefício: Previne futuros erros de overflow
+3. Verificação do Schema Insert
+Arquivo: shared/schema.ts (linha 330-333)
+Ação: Verificar se o insertAuditSchema está configurado corretamente para aceitar tipos numéricos
+Benefício: Garante consistência entre tipos TypeScript e banco de dados
+4. Teste da Correção
+Ação: Testar a análise de criativos após as correções
+Método: Usar endpoint POST /api/creatives/{id}/analyze
+Verificação: Confirmar que a inserção no banco funciona sem erros de overflow
+Ordem de Execução:
+Imediato: Corrigir as linhas 1466-1467 removendo .toString()
+Subsequente: Adicionar validações de entrada
+Verificação: Verificar schema de inserção
+Teste: Executar teste completo da funcionalidade
+Impacto Esperado:
+✅ Correção imediata do erro de overflow numérico
+✅ Análise de IA funcionando corretamente
+✅ Criativos sendo analisados e auditados com sucesso
+✅ Dados corretos sendo armazenados no banco de dados
+Esta correção resolverá o problema específico que está impedindo a análise de IA de funcionar corretamente, permitindo que o Assistant processe as análises de criativos sem erros de overflow numérico.
