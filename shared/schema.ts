@@ -116,7 +116,7 @@ export const policies = pgTable("policies", {
 export const audits = pgTable("audits", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
-  creativeId: uuid("creative_id").notNull().references(() => creatives.id, { onDelete: 'cascade' }),
+  creativeId: uuid("creative_id").notNull(), // No FK constraint to allow campaign_metrics creatives
   policyId: uuid("policy_id").references(() => policies.id),
   status: varchar("status").notNull(), // 'compliant', 'non_compliant', 'low_performance', 'needs_review'
   complianceScore: decimal("compliance_score", { precision: 5, scale: 2 }).notNull(),

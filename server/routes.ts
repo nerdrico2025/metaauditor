@@ -1301,7 +1301,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         creative = {
           id: matchingMetric.id,
           userId: userId,
-          campaignId: null,
+          campaignId: `campaign_${matchingMetric.id}`, // Generate a campaign ID from metric ID
           externalId: `metric_${matchingMetric.id}`,
           name: matchingMetric.anuncios || 'Anúncio sem nome',
           type: 'image' as const,
@@ -1316,13 +1316,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           clicks: matchingMetric.cliques || 0,
           conversions: 0, // Not available in campaign_metrics
           ctr: (matchingMetric.cliques && matchingMetric.impressoes && matchingMetric.impressoes > 0) ? 
-            Number((matchingMetric.cliques / matchingMetric.impressoes * 100).toFixed(3)) : 0,
-          cpc: (matchingMetric.cpc && !isNaN(Number(matchingMetric.cpc))) ? Number(matchingMetric.cpc) : 0,
+            (matchingMetric.cliques / matchingMetric.impressoes * 100).toFixed(3) : "0.000",
+          cpc: (matchingMetric.cpc && !isNaN(Number(matchingMetric.cpc))) ? Number(matchingMetric.cpc).toFixed(2) : "0.00",
           createdAt: matchingMetric.createdAt || new Date(),
           updatedAt: matchingMetric.updatedAt || new Date(),
         };
         
         console.log(`✅ Found and transformed creative from campaign_metrics: ${creative.name}`);
+      }
+
+      // Verify we have a creative before proceeding
+      if (!creative) {
+        console.log(`❌ Creative ${creativeId} could not be found or created`);
+        return res.status(404).json({ message: "Creative not found" });
       }
 
       // Get user's brand configurations, content criteria, and performance benchmarks
@@ -1458,16 +1464,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Create audit record with properly formatted decimal values
+      // Validate and sanitize score values to prevent overflow
+      const validateScore = (score: number | null | undefined, name: string): number => {
+        if (score === null || score === undefined || isNaN(score)) {
+          console.warn(`⚠️ Invalid ${name}: ${score}, defaulting to 0`);
+          return 0;
+        }
+        const numericScore = Number(score);
+        if (numericScore < 0) {
+          console.warn(`⚠️ Negative ${name}: ${numericScore}, clamping to 0`);
+          return 0;
+        }
+        if (numericScore > 99.99) {
+          console.warn(`⚠️ Overflow ${name}: ${numericScore}, clamping to 99.99`);
+          return 99.99;
+        }
+        // Ensure we have proper decimal precision (max 2 decimal places for 5,2 precision)
+        return Math.round(numericScore * 100) / 100;
+      };
+
+      const validatedComplianceScore = validateScore(complianceScore, 'complianceScore');
+      const validatedPerformanceScore = validateScore(performanceScore, 'performanceScore');
+
+      // Format scores as strings with 2 decimal places for database persistence
+      const complianceScoreStr = validatedComplianceScore.toFixed(2);
+      const performanceScoreStr = validatedPerformanceScore.toFixed(2);
+
+      // Create audit record with properly formatted values
       const auditData = {
         userId,
         creativeId,
         status,
-        complianceScore: Math.min(99.99, Math.max(0, Number(complianceScore.toFixed(2)))),
-        performanceScore: Math.min(99.99, Math.max(0, Number(performanceScore.toFixed(2)))),
-        issues: JSON.stringify(issues),
-        recommendations: JSON.stringify(recommendations),
-        aiAnalysis: JSON.stringify({
+        complianceScore: complianceScoreStr,
+        performanceScore: performanceScoreStr,
+        issues, // Pass as plain object - Drizzle handles JSONB serialization
+        recommendations, // Pass as plain object - Drizzle handles JSONB serialization  
+        aiAnalysis: {
           checks,
           summary: issues.length === 0 ? 'Criativo conforme com todas as verificações' : `${issues.length} problema(s) identificado(s)`,
           brandConfig: activeBrandConfig ? {
@@ -1480,8 +1512,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             hasRequiredKeywords: !!activeContentCriteria.requiredKeywords,
             hasProhibitedKeywords: !!activeContentCriteria.prohibitedKeywords
           } : null
-        }),
+        },
       };
+
+      console.log('🐛 Debug auditData before insert:', {
+        complianceScore: auditData.complianceScore,
+        performanceScore: auditData.performanceScore,
+        issuesType: typeof auditData.issues,
+        aiAnalysisType: typeof auditData.aiAnalysis
+      });
 
       const audit = await storage.createAudit(auditData);
       res.json(audit);
@@ -1613,6 +1652,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching problem creatives:", error);
       res.status(500).json({ message: "Failed to fetch problem creatives" });
+    }
+  });
+
+  app.get('/api/dashboard/recent-audits', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+      
+      // Ensure JSON response
+      res.setHeader('Content-Type', 'application/json');
+      
+      const recentAudits = await storage.getRecentAudits(userId, limit);
+      res.json(recentAudits);
+    } catch (error) {
+      console.error("Error fetching recent audits:", error);
+      res.status(500).json({ message: "Failed to fetch recent audits" });
     }
   });
 
