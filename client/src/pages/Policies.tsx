@@ -521,7 +521,7 @@ export default function Policies() {
 
                           {/* Auto Actions */}
                           <div>
-                            <Label className="text-base font-medium">Ações Automáticas</Label>
+                            <Label className="text-base font-medium">Ações Automáticas (previsto para a versão 2 do app)</Label>
                             <div className="mt-4 space-y-4">
                               <div className="flex items-center justify-between">
                                 <div>
@@ -532,6 +532,7 @@ export default function Policies() {
                                   id="autoApproval"
                                   checked={brandForm.watch("autoApproval")}
                                   onCheckedChange={(checked) => brandForm.setValue("autoApproval", checked)}
+                                  disabled={true}
                                   data-testid="switch-auto-approval"
                                 />
                               </div>
@@ -545,6 +546,7 @@ export default function Policies() {
                                   id="pauseOnViolation"
                                   checked={brandForm.watch("pauseOnViolation")}
                                   onCheckedChange={(checked) => brandForm.setValue("pauseOnViolation", checked)}
+                                  disabled={true}
                                   data-testid="switch-pause-on-violation"
                                 />
                               </div>
@@ -558,6 +560,7 @@ export default function Policies() {
                                   id="sendForReview"
                                   checked={brandForm.watch("sendForReview")}
                                   onCheckedChange={(checked) => brandForm.setValue("sendForReview", checked)}
+                                  disabled={true}
                                   data-testid="switch-send-for-review"
                                 />
                               </div>
@@ -571,6 +574,7 @@ export default function Policies() {
                                   id="autoFixMinor"
                                   checked={brandForm.watch("autoFixMinor")}
                                   onCheckedChange={(checked) => brandForm.setValue("autoFixMinor", checked)}
+                                  disabled={true}
                                   data-testid="switch-auto-fix-minor"
                                 />
                               </div>
