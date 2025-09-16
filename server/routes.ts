@@ -733,7 +733,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
 
         // Update or create performance benchmarks
-        await storage.createOrUpdatePerformanceBenchmarks(userId, validatedSettings.performanceBenchmarks);
+        const benchmarksData = validatedSettings.performanceBenchmarks;
+        await storage.createOrUpdatePerformanceBenchmarks(userId, {
+          userId,
+          ctrMin: benchmarksData.ctrMin?.toString() || null,
+          ctrTarget: benchmarksData.ctrTarget?.toString() || null,
+          cpcMax: benchmarksData.cpcMax?.toString() || null,
+          cpcTarget: benchmarksData.cpcTarget?.toString() || null,
+          conversionsMin: benchmarksData.conversionsMin || null,
+          conversionsTarget: benchmarksData.conversionsTarget || null,
+        });
         
         return updatedSettings;
       });
@@ -2202,9 +2211,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('❌ Image proxy error:', error);
       
       if (!res.headersSent) {
-        if (error.name === 'AbortError') {
+        if ((error as Error).name === 'AbortError') {
           res.status(408).json({ error: 'Request timeout' });
-        } else if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
+        } else if ((error as any).code === 'ENOTFOUND' || (error as any).code === 'ECONNREFUSED') {
           res.status(502).json({ error: 'Failed to connect to image server' });
         } else {
           res.status(500).json({ 
