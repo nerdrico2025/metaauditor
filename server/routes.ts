@@ -1458,13 +1458,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Create audit record
+      // Create audit record with properly formatted decimal values
       const auditData = {
         userId,
         creativeId,
         status,
-        complianceScore: Math.round(complianceScore).toString(),
-        performanceScore: Math.round(performanceScore).toString(),
+        complianceScore: Math.min(99.99, Math.max(0, Number(complianceScore.toFixed(2)))).toString(),
+        performanceScore: Math.min(99.99, Math.max(0, Number(performanceScore.toFixed(2)))).toString(),
         issues: JSON.stringify(issues),
         recommendations: JSON.stringify(recommendations),
         aiAnalysis: JSON.stringify({
