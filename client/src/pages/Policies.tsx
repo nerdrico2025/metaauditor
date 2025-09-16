@@ -443,24 +443,6 @@ export default function Policies() {
                             </div>
                           </div>
 
-                          {/* Typography */}
-                          <div>
-                            <Label htmlFor="fontFamily">Tipografia</Label>
-                            <Select onValueChange={(value) => brandForm.setValue("fontFamily", value)}>
-                              <SelectTrigger data-testid="select-font-family">
-                                <SelectValue placeholder="Selecione a fonte da marca" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Arial, sans-serif">Arial</SelectItem>
-                                <SelectItem value="Helvetica, sans-serif">Helvetica</SelectItem>
-                                <SelectItem value="Georgia, serif">Georgia</SelectItem>
-                                <SelectItem value="Times New Roman, serif">Times New Roman</SelectItem>
-                                <SelectItem value="Roboto, sans-serif">Roboto</SelectItem>
-                                <SelectItem value="Open Sans, sans-serif">Open Sans</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-
                           {/* Visual Guidelines */}
                           <div>
                             <Label htmlFor="visualGuidelines">Diretrizes Visuais</Label>
@@ -602,53 +584,6 @@ export default function Policies() {
                               />
                             </div>
 
-                            <div>
-                              <Label className="text-base font-medium">Frases Obrigatórias</Label>
-                              <p className="text-sm text-slate-600 mb-2">
-                                Frases específicas que devem aparecer nos criativos
-                              </p>
-                              <ChipsInput
-                                value={criteriaForm.watch("requiredPhrases")}
-                                onChange={(phrases) => criteriaForm.setValue("requiredPhrases", phrases)}
-                                placeholder="Digite uma frase obrigatória e pressione Enter"
-                                data-testid="chips-required-phrases"
-                              />
-                            </div>
-                          </div>
-
-                          <Separator />
-
-                          {/* Character Limits */}
-                          <div>
-                            <Label className="text-base font-medium">Limites de Caracteres</Label>
-                            <div className="mt-2 grid grid-cols-2 gap-4">
-                              <div>
-                                <Label htmlFor="charLimitsMin">Mínimo</Label>
-                                <Input
-                                  id="charLimitsMin"
-                                  type="number"
-                                  {...criteriaForm.register("charLimitsMin")}
-                                  placeholder="Ex: 10"
-                                  data-testid="input-char-limits-min"
-                                />
-                                {criteriaForm.formState.errors.charLimitsMin && (
-                                  <p className="text-sm text-red-500 mt-1">{criteriaForm.formState.errors.charLimitsMin.message}</p>
-                                )}
-                              </div>
-                              <div>
-                                <Label htmlFor="charLimitsMax">Máximo</Label>
-                                <Input
-                                  id="charLimitsMax"
-                                  type="number"
-                                  {...criteriaForm.register("charLimitsMax")}
-                                  placeholder="Ex: 280"
-                                  data-testid="input-char-limits-max"
-                                />
-                                {criteriaForm.formState.errors.charLimitsMax && (
-                                  <p className="text-sm text-red-500 mt-1">{criteriaForm.formState.errors.charLimitsMax.message}</p>
-                                )}
-                              </div>
-                            </div>
                           </div>
 
                           <Separator />
