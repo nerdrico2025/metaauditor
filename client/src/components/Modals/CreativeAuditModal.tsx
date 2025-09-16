@@ -86,11 +86,22 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
         }, 500);
         return;
       }
-      toast({
-        title: "Erro na Análise",
-        description: "Falha ao analisar criativo",
-        variant: "destructive",
-      });
+      
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      
+      if (errorMessage.includes('404') || errorMessage.includes('not found')) {
+        toast({
+          title: "Criativo não encontrado",
+          description: "Este criativo pode ter sido removido ou não está disponível para análise.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Erro na Análise",
+          description: "Falha ao analisar criativo. Tente novamente.",
+          variant: "destructive",
+        });
+      }
     },
   });
 
@@ -205,8 +216,13 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
                   {creative.name}
                 </DialogTitle>
                 <p className="mt-1 text-sm text-slate-500">
-                  Campaign ID: {creative.campaignId || 'Não identificado'}
+                  {creative.campaignId ? `Campaign ID: ${creative.campaignId}` : 'Origem: Google Sheets'}
                 </p>
+                {(creative as any).campaignName && (
+                  <p className="text-xs text-slate-400">
+                    Campanha: {(creative as any).campaignName}
+                  </p>
+                )}
               </div>
               <Button variant="ghost" size="sm" onClick={onClose}>
                 <X className="h-4 w-4" />

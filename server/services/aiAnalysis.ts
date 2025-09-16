@@ -52,7 +52,7 @@ Brand Requirements:
 - Accent Color: ${brandConfig.accentColor || 'Not specified'}
 - Brand Guidelines: ${brandConfig.brandGuidelines || 'Not specified'}
 - Logo URL: ${brandConfig.logoUrl ? 'Logo provided' : 'No logo provided'}` : '\nNo brand configuration found.';
-    
+
     const contentRequirements = contentCriteria ? `
 Content Criteria:
 - Criteria Name: ${contentCriteria.name}
@@ -62,7 +62,7 @@ Content Criteria:
 - Requires Brand Colors: ${contentCriteria.requiresBrandColors ? 'Yes' : 'No'}` : '\nNo content criteria found.';
 
     const prompt = `Analyze this ad creative for brand compliance based on the user's specific brand configuration and content criteria:
-    
+
 Creative Details:
 - Name: ${creative.name}
 - Type: ${creative.type}
@@ -127,45 +127,45 @@ Respond with JSON in this format: {
     };
   } catch (error) {
     console.error("AI compliance analysis failed:", error);
-    
+
     // Fallback analysis without AI - check brand colors manually
     if (brandConfig) {
       const issues: string[] = [];
       const recommendations: string[] = [];
       let colorCompliance = true;
-      
+
       // Check if brand colors are defined and should be present
       const definedColors = [
         brandConfig.primaryColor,
         brandConfig.secondaryColor, 
         brandConfig.accentColor
       ].filter(color => color && color !== '');
-      
+
       console.log(`🎨 Manual brand color check:`, {
         brandName: brandConfig.brandName,
         definedColors,
         creativeName: creative.name,
         creativeText: creative.text
       });
-      
+
       if (definedColors.length > 0) {
         issues.push(`Brand colors not verified: esperadas ${definedColors.join(', ')}`);
         recommendations.push(`Verificar se o criativo usa as cores da marca: ${definedColors.join(', ')}`);
         colorCompliance = false;
       }
-      
+
       if (contentCriteria?.requiredKeywords && Array.isArray(contentCriteria.requiredKeywords)) {
         const text = (creative.text || '') + ' ' + (creative.headline || '') + ' ' + (creative.description || '');
         const missingKeywords = contentCriteria.requiredKeywords.filter(keyword => 
           !text.toLowerCase().includes(keyword.toLowerCase())
         );
-        
+
         if (missingKeywords.length > 0) {
           issues.push(`Palavras obrigatórias ausentes: ${missingKeywords.join(', ')}`);
           recommendations.push(`Incluir palavras obrigatórias: ${missingKeywords.join(', ')}`);
         }
       }
-      
+
       return {
         score: issues.length === 0 ? 85 : 25,
         issues,
@@ -178,10 +178,10 @@ Respond with JSON in this format: {
         }
       };
     }
-    
+
     // Log the error internally but don't expose technical details to users
     console.error("OpenAI configuration issue - analysis fallback triggered");
-    
+
     return {
       score: 0,
       issues: ["Análise falhou - configuração da OpenAI necessária"],

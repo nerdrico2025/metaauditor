@@ -180,6 +180,12 @@ export default function Creatives() {
                               {creative.headline}
                             </p>
                           )}
+                          
+                          {(creative as any).campaignName && (
+                            <p className="text-xs text-slate-500 truncate">
+                              Campanha: {(creative as any).campaignName}
+                            </p>
+                          )}
 
                           <div className="flex items-center justify-between">
                             <Badge variant={getStatusBadgeVariant(creative.status)}>

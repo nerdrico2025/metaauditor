@@ -1261,16 +1261,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Creative analysis endpoint
+  // Creative analysis endpoint - Fixed to work with campaign_metrics data
   app.post('/api/creatives/:id/analyze', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const creativeId = req.params.id;
       const userId = req.user!.id;
 
-      // Get the creative
-      const creative = await storage.getCreativeById(creativeId);
+      // First try to get the creative from the actual creatives table
+      let creative = await storage.getCreativeById(creativeId);
+      
+      // If not found in creatives table, look for it in campaign_metrics (transformed data)
       if (!creative) {
-        return res.status(404).json({ message: "Creative not found" });
+        console.log(`🔍 Creative ${creativeId} not found in creatives table, searching in campaign_metrics...`);
+        
+        // Get the campaign metrics data and find the matching record
+        const metricsResult = await storage.getCampaignMetrics(userId, { 
+          page: 1, 
+          limit: 1000 
+        });
+        
+        const matchingMetric = metricsResult.data.find(metric => metric.id === creativeId);
+        
+        if (!matchingMetric) {
+          console.log(`❌ Creative ${creativeId} not found in either creatives or campaign_metrics table`);
+          return res.status(404).json({ message: "Creative not found" });
+        }
+        
+        // Transform campaign metric to creative format for analysis
+        const isValidImageUrl = (url: string | null): boolean => {
+          if (!url) return false;
+          try {
+            const urlObj = new URL(url);
+            return (urlObj.protocol === 'http:' || urlObj.protocol === 'https:') &&
+                   (url.includes('scontent') || url.includes('googleadservices') || 
+                    /\.(jpg|jpeg|png|gif|webp|bmp)(\?|$)/i.test(url));
+          } catch { return false; }
+        };
+        
+        creative = {
+          id: matchingMetric.id,
+          userId: userId,
+          campaignId: null,
+          externalId: `metric_${matchingMetric.id}`,
+          name: matchingMetric.anuncios || 'Anúncio sem nome',
+          type: 'image' as const,
+          imageUrl: isValidImageUrl(matchingMetric.adUrl) ? matchingMetric.adUrl : null,
+          videoUrl: null,
+          text: null,
+          headline: matchingMetric.anuncios || 'Anúncio',
+          description: `Campaign: ${matchingMetric.campanha || 'N/A'}`,
+          callToAction: null,
+          status: 'active' as const,
+          impressions: matchingMetric.impressoes || 0,
+          clicks: matchingMetric.cliques || 0,
+          conversions: 0, // Not available in campaign_metrics
+          ctr: (matchingMetric.cliques && matchingMetric.impressoes && matchingMetric.impressoes > 0) ? 
+            Number((matchingMetric.cliques / matchingMetric.impressoes * 100).toFixed(3)) : 0,
+          cpc: (matchingMetric.cpc && !isNaN(Number(matchingMetric.cpc))) ? Number(matchingMetric.cpc) : 0,
+          createdAt: matchingMetric.createdAt || new Date(),
+          updatedAt: matchingMetric.updatedAt || new Date(),
+        };
+        
+        console.log(`✅ Found and transformed creative from campaign_metrics: ${creative.name}`);
       }
 
       // Get user's brand configurations, content criteria, and performance benchmarks
