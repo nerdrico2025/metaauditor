@@ -1,0 +1,64 @@
+🖼️ Proxying image request: https://scontent.xx.fbcdn.net/v/t45.1600-4/527492852_3892437201006730_1868681351746860352_n.png?stp=dst-jpg_tt6&_nc_cat=110&ccb=1-7&_nc_sid=890911&_nc_ohc=eKqVOXDOYDQQ7kNvwFAkGW6&_nc_oc=AdkV_dJ0N_GeiA8ZlQQ0i5PeFH8dYpiZeaDW1A4u8n0E5JBCdskn55kyK69anZ-HPEw&_nc_zt=1&_nc_ht=scontent.xx&edm=AOgd6ZUEAAAA&_nc_gid=STg5KyzTFci22-WYTGgyVg&oh=00_AfalO8H0n7nQneXPEg-OLqgxlvb1X2Ci772B7HjcOIvzCA&oe=68CEDB51
+✅ Image proxy successful: image/jpeg
+✅ Image proxy successful: image/jpeg
+2:45:01 PM [express] GET /api/image-proxy 200 in 17ms
+2:45:01 PM [express] GET /api/image-proxy 200 in 16ms
+🖼️ Proxying image request: https://scontent.xx.fbcdn.net/v/t45.1600-4/527731445_4001024236815815_3430895308474858043_n.png?stp=dst-jpg_tt6&_nc_cat=109&ccb=1-7&_nc_sid=890911&_nc_ohc=h6WuU0RT6esQ7kNvwFyaROm&_nc_oc=AdkBLt6ytqzXRLFJO1csb16AJ2JLggyBfAbUQkCubIeyoUR8pDEMwv7jgU2v_86VXuU&_nc_zt=1&_nc_ht=scontent.xx&edm=AOgd6ZUEAAAA&_nc_gid=STg5KyzTFci22-WYTGgyVg&oh=00_Afb1MUhQL3KhdTJD1Bm3b6ATn39pK1qhAHdwDdE7KydI2w&oe=68CEAD7C
+🖼️ Proxying image request: https://scontent.xx.fbcdn.net/v/t45.1600-4/528856350_1673090033551991_4876260371900172187_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=890911&_nc_ohc=fzmpw6nil2gQ7kNvwE89o_K&_nc_oc=AdkkJaKomqcZDCrugummsE6utGimLJTtNU6Lm8JgioPOwenSRGH-q4hFUm7wDHB9KeA&_nc_zt=1&_nc_ht=scontent.xx&edm=AOgd6ZUEAAAA&_nc_gid=STg5KyzTFci22-WYTGgyVg&oh=00_AfYRiEC47jkhr9_263gmXNpO0Ue14glbLDaMe5BxULsZvA&oe=68CEC419
+🖼️ Proxying image request: https://scontent.xx.fbcdn.net/v/t45.1600-4/529667362_783499024359641_3308604230553443264_n.jpg?_nc_cat=107&ccb=1-7&_nc_sid=890911&_nc_ohc=Anrkt7LXTWQQ7kNvwHfhw63&_nc_oc=AdnXgw_t-Fafervr8wA1c15awaComxnPUySrbE0gxKd-sA7TUFIyn9tp2Oz9_0ALCno&_nc_zt=1&_nc_ht=scontent.xx&edm=AOgd6ZUEAAAA&_nc_gid=STg5KyzTFci22-WYTGgyVg&oh=00_AfYweWifNZHFoTySzxWk_MSBYMfHEPkdiLy-Yb9pfqsQLw&oe=68CED44C
+✅ Image proxy successful: image/jpeg
+2:45:01 PM [express] GET /api/image-proxy 200 in 21ms
+✅ Image proxy successful: image/jpeg
+2:45:01 PM [express] GET /api/image-proxy 200 in 22ms
+✅ Image proxy successful: image/jpeg
+2:45:01 PM [express] GET /api/image-proxy 200 in 21ms
+🖼️ Proxying image request: https://scontent.xx.fbcdn.net/v/t45.1600-4/505730469_1129759858782785_8007518154453096267_n.jpg?_nc_cat=100&ccb=1-7&_nc_sid=890911&_nc_ohc=re0JNJVBYAMQ7kNvwEK4JQO&_nc_oc=Adl82Ve66jFNUxnCOPgELlHg-61s__SoFBkWKpCnl74bBNYr4w6a6gc8zS7RuVje9-M&_nc_zt=1&_nc_ht=scontent.xx&edm=AOgd6ZUEAAAA&_nc_gid=X1r9Pe4X9hh02H672dIf2w&oh=00_AfbByNeiRf9lGxAyM8RclKgCC0QXo3nLDs-dVh9Lw64ddw&oe=68CEDA9E
+✅ Image proxy successful: image/jpeg
+2:45:01 PM [express] GET /api/image-proxy 200 in 12ms
+🖼️ Proxying image request: https://scontent.xx.fbcdn.net/v/t45.1600-4/507356762_547084281668537_9196795037608100295_n.png?stp=dst-jpg_tt6&_nc_cat=102&ccb=1-7&_nc_sid=890911&_nc_ohc=VeNnxxViqjgQ7kNvwF9F70F&_nc_oc=AdkMVFntoRJ0nCQfebFw9T3Gw2kDmzEXZdXvpgzIWvWcrlwHeoqRoQ_UYUidHprw7WM&_nc_zt=1&_nc_ht=scontent.xx&edm=AOgd6ZUEAAAA&_nc_gid=X1r9Pe4X9hh02H672dIf2w&oh=00_AfbsJydXSSMlnkaKXjM9qCjp7hy1lSkKE-r89Xesze3KLw&oe=68CEBD28
+✅ Image proxy successful: image/jpeg
+2:45:01 PM [express] GET /api/image-proxy 200 in 14ms
+🔍 Creative 9425f5d6-3623-4a30-89e5-749a8c531b98 not found in creatives table, searching in campaign_metrics...
+2:45:05 PM [express] GET /api/creatives 304 in 135ms :: [{"id":"8f2dae0b-6471-4541-8037-460547ec3e43…
+✅ Found and transformed creative from campaign_metrics: junho 1
+📊 Analysis Debug Info:
+- Brand configs found: 1
+- Content criteria found: 1
+- Performance benchmarks found: Yes
+- Active brand config: {
+  name: 'Oi',
+  primaryColor: '#006ec2',
+  secondaryColor: '#ffffff',
+  isActive: true
+}
+- Active content criteria: {
+  name: 'Validação de palavras em criativos',
+  requiredKeywords: [ 'Assine' ],
+  prohibitedKeywords: [ 'grátis' ],
+  isActive: true
+}
+Error analyzing creative: error: numeric field overflow
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async NeonPreparedQuery.execute (/home/runner/workspace/node_modules/src/neon-serverless/session.ts:102:18)
+    at async DatabaseStorage.createAudit (/home/runner/workspace/server/storage.ts:305:24)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:1486:21) {
+  length: 164,
+  severity: 'ERROR',
+  code: '22003',
+  detail: 'A field with precision 3, scale 2 must round to an absolute value less than 10^1.',
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'numeric.c',
+  line: '7909',
+  routine: 'apply_typmod'
+}
+2:45:15 PM [express] POST /api/creatives/9425f5d6-3623-4a30-89e5-749a8c531b98/analyze 500 in 9994ms …
