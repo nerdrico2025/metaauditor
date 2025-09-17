@@ -3,8 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SiFacebook, SiGoogle } from "react-icons/si";
+import { useTranslation } from 'react-i18next';
 
 export default function IntegrationStatus() {
+  const { t } = useTranslation();
+  
   const { data: integrations, isLoading } = useQuery<any[]>({
     queryKey: ["/api/integrations"],
   });
@@ -32,14 +35,14 @@ export default function IntegrationStatus() {
         return (
           <Badge className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary text-primary-foreground">
             <span className="w-1.5 h-1.5 bg-primary rounded-full mr-1" />
-            Conectado
+            {t('integrations.connected')}
           </Badge>
         );
       case 'error':
         return (
           <Badge className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-destructive text-destructive-foreground">
             <span className="w-1.5 h-1.5 bg-destructive rounded-full mr-1" />
-            Erro
+            {t('integrations.error')}
           </Badge>
         );
       default:
@@ -99,7 +102,7 @@ export default function IntegrationStatus() {
     <Card className="bg-white shadow-sm border border-slate-200">
       <CardHeader className="px-6 py-4 border-b border-slate-200">
         <CardTitle className="text-lg font-medium text-slate-900">
-          Status das Integrações
+          {t('dashboard.integrationStatus')}
         </CardTitle>
       </CardHeader>
       <CardContent className="p-6">

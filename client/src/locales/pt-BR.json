@@ -248,6 +248,13 @@
     "brandConsistency": "Consistência da marca com as diretrizes estabelecidas",
     "textAnalysis": "Análise do texto e elementos visuais",
     "performanceInsights": "Insights de performance baseados em dados históricos",
-    "improvementSuggestions": "Sugestões de melhoria para otimização"
+    "improvementSuggestions": "Sugestões de melhoria para otimização",
+    "missingKeyword": "Palavra-chave obrigatória ausente",
+    "imageNotAnalyzed": "Conteúdo da imagem não analisado para cores da marca",
+    "prohibitedKeyword": "Palavra-chave proibida encontrada",
+    "analysisFailedProcess": "Falha na análise - não foi possível processar o criativo",
+    "unnamedCreative": "Criativo sem nome",
+    "brandColorAnalysis": "Análise das cores da marca",
+    "contentAnalysisError": "Erro na análise de conteúdo"
   }
 }

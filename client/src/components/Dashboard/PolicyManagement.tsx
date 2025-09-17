@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import PolicyModal from "@/components/Modals/PolicyModal";
 import { Settings, Plus, CheckCircle, BarChart3 } from "lucide-react";
+import { useTranslation } from 'react-i18next';
 import type { Policy } from "@shared/schema";
 
 export default function PolicyManagement() {
+  const { t } = useTranslation();
   const [selectedPolicy, setSelectedPolicy] = useState<Policy | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -43,14 +45,14 @@ export default function PolicyManagement() {
       <Card className="bg-white shadow-sm border border-slate-200">
         <CardHeader className="px-6 py-4 border-b border-slate-200 flex flex-row items-center justify-between">
           <CardTitle className="text-lg font-medium text-slate-900">
-            Políticas de Validação
+            {t('dashboard.policyManagement')}
           </CardTitle>
           <Button 
             onClick={handleCreatePolicy}
             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
           >
             <Plus className="h-4 w-4 mr-2" />
-            Nova Política
+            {t('policies.create')}
           </Button>
         </CardHeader>
         <CardContent className="p-6">
@@ -124,9 +126,9 @@ export default function PolicyManagement() {
           ) : (
             <div className="text-center py-8">
               <Settings className="h-8 w-8 text-slate-400 mx-auto mb-3" />
-              <p className="text-sm text-slate-600 mb-2">Nenhuma política configurada</p>
+              <p className="text-sm text-slate-600 mb-2">{t('policies.noBrandConfig')}</p>
               <p className="text-xs text-slate-500 mb-4">
-                Crie políticas para automatizar a validação de criativos
+                {t('policies.noBrandConfigDescription')}
               </p>
               <Button 
                 onClick={handleCreatePolicy}
@@ -134,7 +136,7 @@ export default function PolicyManagement() {
                 size="sm"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Criar Primeira Política
+                {t('policies.createFirstConfig')}
               </Button>
             </div>
           )}

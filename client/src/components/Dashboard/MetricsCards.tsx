@@ -2,8 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BellRing, Image, AlertTriangle, TrendingDown } from "lucide-react";
+import { useTranslation } from 'react-i18next';
 
 export default function MetricsCards() {
+  const { t } = useTranslation();
+  
   const { data: metrics, isLoading } = useQuery<{
     activeCampaigns: number;
     creativesAnalyzed: number;
@@ -15,28 +18,28 @@ export default function MetricsCards() {
 
   const cards = [
     {
-      title: "Campanhas Ativas",
+      title: t('dashboard.activeCampaigns'),
       value: metrics?.activeCampaigns || 0,
       icon: BellRing,
       bgColor: "bg-primary",
       iconColor: "text-primary-foreground",
     },
     {
-      title: "Criativos Analisados", 
+      title: t('dashboard.creativesAnalyzed'), 
       value: metrics?.creativesAnalyzed || 0,
       icon: Image,
       bgColor: "bg-primary",
       iconColor: "text-primary-foreground",
     },
     {
-      title: "Não Conformes",
+      title: t('creatives.nonCompliant'),
       value: metrics?.nonCompliant || 0,
       icon: AlertTriangle,
       bgColor: "bg-destructive",
       iconColor: "text-destructive-foreground",
     },
     {
-      title: "Baixa Performance",
+      title: t('reports.low'),
       value: metrics?.lowPerformance || 0,
       icon: TrendingDown,
       bgColor: "bg-secondary",

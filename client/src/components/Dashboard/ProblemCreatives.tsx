@@ -8,12 +8,14 @@ import CreativeAuditModal from "@/components/Modals/CreativeAuditModal";
 import { CreativeImage } from "@/components/CreativeImage";
 import { Image, AlertTriangle, TrendingDown, Palette } from "lucide-react";
 import type { Creative, Audit } from "@shared/schema";
+import { useTranslation } from 'react-i18next';
 
 type ProblemCreative = Creative & { audit: Audit };
 
 export default function ProblemCreatives() {
+  const { t } = useTranslation();
   const [selectedCreative, setSelectedCreative] = useState<Creative | null>(null);
-  
+
   const { data: problemCreatives, isLoading } = useQuery<ProblemCreative[]>({
     queryKey: ["/api/dashboard/problem-creatives"],
   });
@@ -46,12 +48,12 @@ export default function ProblemCreatives() {
     if (status === 'non_compliant') {
       // Don't show technical error messages to users
       const firstIssue = issues[0]?.description || '';
-      
+
       // If it's a technical error, show a user-friendly message
       if (firstIssue.includes('Analysis failed') || firstIssue.includes('análise falhou') || firstIssue.includes('unable to process')) {
         return 'Requer revisão';
       }
-      
+
       // For other compliance issues, show them normally
       return firstIssue || 'Não conforme';
     }
@@ -145,7 +147,7 @@ export default function ProblemCreatives() {
           ) : (
             <div className="text-center py-6">
               <AlertTriangle className="h-8 w-8 text-slate-400 mx-auto mb-2" />
-              <p className="text-sm text-slate-600">Nenhum problema identificado</p>
+              <p className="text-sm text-slate-600">{t('dashboard.noProblemCreatives')}</p>
               <p className="text-xs text-slate-500">Todos os criativos estão conformes</p>
             </div>
           )}

@@ -2,8 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CheckCircle, AlertTriangle, Pause, Clock } from "lucide-react";
+import { useTranslation } from 'react-i18next';
 
 export default function RecentAudits() {
+  const { t } = useTranslation();
+  
   const { data: audits, isLoading } = useQuery<any[]>({
     queryKey: ["/api/dashboard/recent-audits"],
   });
@@ -37,13 +40,13 @@ export default function RecentAudits() {
   const getStatusText = (status: string) => {
     switch (status) {
       case 'compliant':
-        return 'Conforme';
+        return t('creatives.compliant');
       case 'non_compliant':
-        return 'Não conforme';
+        return t('creatives.nonCompliant');
       case 'low_performance':
-        return 'Baixa performance';
+        return t('reports.low');
       default:
-        return 'Pendente';
+        return t('creatives.pending');
     }
   };
 
@@ -66,7 +69,7 @@ export default function RecentAudits() {
     <Card className="bg-white shadow-sm border border-slate-200">
       <CardHeader className="px-6 py-4 border-b border-slate-200">
         <CardTitle className="text-lg font-medium text-slate-900">
-          Auditorias Recentes
+          {t('dashboard.recentAudits')}
         </CardTitle>
       </CardHeader>
       <CardContent className="p-6">
@@ -104,11 +107,11 @@ export default function RecentAudits() {
                       <div className="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
                         <div>
                           <p className="text-sm text-slate-600">
-                            Creative <span className="font-medium text-slate-900">{audit.creative?.name || 'Unnamed'}</span> - {getStatusText(audit.status)}
+                            {t('creatives.title')} <span className="font-medium text-slate-900">{audit.creative?.name || t('common.noDataAvailable')}</span> - {getStatusText(audit.status)}
                           </p>
                           {audit.issues && audit.issues.length > 0 && (
                             <p className="text-xs text-slate-500">
-                              {audit.issues[0]?.description || 'Análise concluída'}
+                              {audit.issues[0]?.description || t('aiAnalysis.analysisComplete')}
                             </p>
                           )}
                         </div>
@@ -125,7 +128,7 @@ export default function RecentAudits() {
         ) : (
           <div className="text-center py-6">
             <Clock className="h-8 w-8 text-slate-400 mx-auto mb-2" />
-            <p className="text-sm text-slate-600">Nenhuma auditoria recente</p>
+            <p className="text-sm text-slate-600">{t('dashboard.noRecentAudits')}</p>
             <p className="text-xs text-slate-500">Execute uma sincronização para ver as auditorias</p>
           </div>
         )}
