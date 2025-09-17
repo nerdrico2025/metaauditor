@@ -61,34 +61,34 @@ Content Criteria:
 - Requires Logo: ${contentCriteria.requiresLogo ? 'Yes' : 'No'}
 - Requires Brand Colors: ${contentCriteria.requiresBrandColors ? 'Yes' : 'No'}` : '\nNo content criteria found.';
 
-    const prompt = `Analyze this ad creative for brand compliance based on the user's specific brand configuration and content criteria:
+    const prompt = `Analise este criativo publicitário para conformidade com a marca baseado na configuração específica da marca e critérios de conteúdo do usuário:
 
-Creative Details:
-- Name: ${creative.name}
-- Type: ${creative.type}
-- Text: ${creative.text || 'N/A'}
-- Headline: ${creative.headline || 'N/A'}
-- Description: ${creative.description || 'N/A'}
+Detalhes do Criativo:
+- Nome: ${creative.name}
+- Tipo: ${creative.type}
+- Texto: ${creative.text || 'N/A'}
+- Título: ${creative.headline || 'N/A'}
+- Descrição: ${creative.description || 'N/A'}
 - Call to Action: ${creative.callToAction || 'N/A'}
-- Image URL: ${creative.imageUrl ? 'Image provided' : 'No image'}
+- URL da Imagem: ${creative.imageUrl ? 'Imagem fornecida' : 'Sem imagem'}
 ${brandRequirements}
 ${contentRequirements}
 
-IMPORTANT: Analyze compliance against the SPECIFIC brand colors, keywords, and criteria provided above. If brand colors are specified, check if the creative uses those exact colors. If required keywords are specified, verify they are present. If prohibited keywords/phrases are specified, check that they are NOT present.
+IMPORTANTE: Analise a conformidade contra as cores específicas da marca, palavras-chave e critérios fornecidos acima. Se cores da marca forem especificadas, verifique se o criativo usa essas cores exatas. Se palavras-chave obrigatórias forem especificadas, verifique se estão presentes. Se palavras-chave/frases proibidas forem especificadas, verifique se NÃO estão presentes.
 
-Please analyze for:
-1. Brand color compliance (against specific colors if provided)
-2. Logo presence and compliance (if required)
-3. Required keywords/phrases presence
-4. Prohibited keywords/phrases absence
-5. Text length compliance (if specified)
-6. Overall brand consistency
-7. Professional language and appropriateness
+Por favor, analise:
+1. Conformidade das cores da marca (contra cores específicas se fornecidas)
+2. Presença e conformidade do logo (se obrigatório)
+3. Presença de palavras-chave/frases obrigatórias
+4. Ausência de palavras-chave/frases proibidas
+5. Conformidade do comprimento do texto (se especificado)
+6. Consistência geral da marca
+7. Linguagem profissional e adequação
 
-Respond with JSON in this format: {
+RESPONDA OBRIGATORIAMENTE EM PORTUGUÊS-BR. Responda com JSON neste formato: {
   "score": number (0-100),
-  "issues": ["issue1", "issue2"],
-  "recommendations": ["rec1", "rec2"],
+  "issues": ["problema1", "problema2"],
+  "recommendations": ["recomendação1", "recomendação2"],
   "logoCompliance": boolean,
   "colorCompliance": boolean,
   "textCompliance": boolean,
@@ -100,7 +100,7 @@ Respond with JSON in this format: {
       messages: [
         {
           role: "system",
-          content: "You are a brand compliance expert. Analyze ad creatives for compliance issues and provide actionable recommendations."
+          content: "Você é um especialista em conformidade de marca. Analise criativos publicitários para problemas de conformidade e forneça recomendações acionáveis. SEMPRE responda em Português-BR."
         },
         {
           role: "user",
@@ -149,7 +149,7 @@ Respond with JSON in this format: {
       });
 
       if (definedColors.length > 0) {
-        issues.push(`Brand colors not verified: esperadas ${definedColors.join(', ')}`);
+        issues.push(`Cores da marca não verificadas: esperadas ${definedColors.join(', ')}`);
         recommendations.push(`Verificar se o criativo usa as cores da marca: ${definedColors.join(', ')}`);
         colorCompliance = false;
       }
@@ -219,31 +219,31 @@ Performance Benchmarks (user-defined thresholds):
 
 IMPORTANT: Compare this creative's metrics against the user's specific benchmarks above. Flag if performance is below minimums or suggest optimizations to reach targets.` : '\nNo performance benchmarks configured.';
 
-    const prompt = `Analyze this ad creative's performance against user-defined benchmarks:
+    const prompt = `Analise a performance deste criativo publicitário contra os benchmarks definidos pelo usuário:
 
-Current Performance Metrics:
-- Impressions: ${creative.impressions}
-- Clicks: ${creative.clicks}
-- Conversions: ${creative.conversions}
+Métricas de Performance Atuais:
+- Impressões: ${creative.impressions}
+- Cliques: ${creative.clicks}
+- Conversões: ${creative.conversions}
 - CTR: ${ctr}%
 - CPC: $${cpc}
-- Conversion Rate: ${(conversionRate * 100).toFixed(2)}%
+- Taxa de Conversão: ${(conversionRate * 100).toFixed(2)}%
 ${benchmarksContext}
 
-Creative Details:
-- Type: ${creative.type}
-- Text: ${creative.text || 'N/A'}
-- Headline: ${creative.headline || 'N/A'}
+Detalhes do Criativo:
+- Tipo: ${creative.type}
+- Texto: ${creative.text || 'N/A'}
+- Título: ${creative.headline || 'N/A'}
 
-Analyze performance against the benchmarks (if provided) and provide recommendations for improvement. If benchmarks are set, clearly indicate whether this creative meets/exceeds thresholds or falls short.
+Analise a performance contra os benchmarks (se fornecidos) e forneça recomendações para melhoria. Se benchmarks estão definidos, indique claramente se este criativo atende/excede os limites ou fica aquém.
 
-Respond with JSON in this format: {
+RESPONDA OBRIGATORIAMENTE EM PORTUGUÊS-BR. Responda com JSON neste formato: {
   "score": number (0-100),
   "performance": "high|medium|low",
-  "recommendations": ["rec1", "rec2"],
-  "ctrAnalysis": "analysis text",
-  "conversionAnalysis": "analysis text", 
-  "costEfficiency": "analysis text"
+  "recommendations": ["recomendação1", "recomendação2"],
+  "ctrAnalysis": "texto da análise",
+  "conversionAnalysis": "texto da análise", 
+  "costEfficiency": "texto da análise"
 }`;
 
     const response = await getOpenAI().chat.completions.create({
@@ -251,7 +251,7 @@ Respond with JSON in this format: {
       messages: [
         {
           role: "system",
-          content: "You are a digital marketing performance analyst. Analyze ad performance metrics and provide actionable optimization recommendations."
+          content: "Você é um analista de performance de marketing digital. Analise métricas de performance de anúncios e forneça recomendações de otimização acionáveis. SEMPRE responda em Português-BR."
         },
         {
           role: "user",
@@ -280,11 +280,11 @@ Respond with JSON in this format: {
     return {
       score: 0,
       performance: 'low',
-      recommendations: ["Analysis failed - please review performance manually"],
+      recommendations: ["Análise falhou - revise a performance manualmente"],
       metrics: {
-        ctrAnalysis: "Analysis unavailable",
-        conversionAnalysis: "Analysis unavailable",
-        costEfficiency: "Analysis unavailable",
+        ctrAnalysis: "Análise indisponível",
+        conversionAnalysis: "Análise indisponível",
+        costEfficiency: "Análise indisponível",
       }
     };
   }

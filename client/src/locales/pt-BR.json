@@ -255,6 +255,14 @@
     "analysisFailedProcess": "Falha na análise - não foi possível processar o criativo",
     "unnamedCreative": "Criativo sem nome",
     "brandColorAnalysis": "Análise das cores da marca",
-    "contentAnalysisError": "Erro na análise de conteúdo"
+    "contentAnalysisError": "Erro na análise de conteúdo",
+    "missingRequiredKeyword": "Palavra-chave obrigatória ausente",
+    "imageContentNotAnalyzed": "Conteúdo da imagem não analisado para cores da marca",
+    "prohibitedKeywordFound": "Palavra-chave proibida possivelmente presente no conteúdo da imagem",
+    "analysisFailedUnable": "Falha na análise - não foi possível processar o criativo",
+    "brandColorsNotVerified": "Cores da marca não verificadas",
+    "checkBrandColors": "Verificar se o criativo usa as cores da marca",
+    "performanceReviewManually": "Revise a performance manualmente",
+    "analysisUnavailable": "Análise indisponível"
   }
 }
