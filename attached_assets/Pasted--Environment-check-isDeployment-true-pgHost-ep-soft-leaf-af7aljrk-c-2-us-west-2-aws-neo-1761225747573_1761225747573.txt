@@ -1,0 +1,101 @@
+🔍 Environment check: {
+  isDeployment: true,
+  pgHost: 'ep-soft-leaf-af7aljrk.c-2.us-west-2.aws.neon.tech',
+  heliumEnabled: 'true',
+  environment: 'production'
+}
+🚀 DEPLOYMENT: Using verified Neon DATABASE_URL
+✅ Database connection validated: {
+  host: 'ep-soft-leaf-af7aljrk.c-2.us-west-2.aws.neon.tech',
+  port: '5432',
+  database: 'neondb',
+  ssl: 'require',
+  environment: 'DEPLOYMENT',
+  isNeonDb: true,
+  protocol: 'postgresql:'
+}
+🚨 CRITICAL: JWT_SECRET environment variable is required!
+⚠️ Development: Using fallback JWT secret (INSECURE!)
+🕐 Initializing cron jobs (development mode)
+📅 Scheduled 'Daily Google Sheets Sync' - Next run: 24/10/2025, 08:00:00
+📅 Scheduled 'Health Check' - Next run: 23/10/2025, 13:25:00
+✅ Cron jobs initialized successfully
+🚀 DEPLOYMENT: Skipping Replit Auth to avoid "helium" DNS lookup
+1:21:56 PM [express] serving on port 5000
+Browserslist: browsers data (caniuse-lite) is 12 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+Database might need initialization: NeonDbError: The endpoint has been disabled. Enable it using Neon API and retry.
+    at execute (file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1556:55)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async NeonHttpPreparedQuery.execute (/home/runner/workspace/node_modules/src/neon-http/session.ts:68:18)
+    at async checkIfDatabaseEmpty (/home/runner/workspace/server/seedData.ts:22:27)
+    at async Timeout._onTimeout (/home/runner/workspace/server/index.ts:107:25) {
+  severity: '',
+  code: '',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: undefined,
+  line: undefined,
+  routine: undefined,
+  sourceError: undefined
+}
+1:21:59 PM [express] 🌱 Database is empty - seeding with demo data...
+🌱 Starting database seeding for production environment...
+❌ Error seeding database: NeonDbError: The endpoint has been disabled. Enable it using Neon API and retry.
+    at execute (file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1556:55)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async NeonHttpPreparedQuery.execute (/home/runner/workspace/node_modules/src/neon-http/session.ts:68:18)
+    at async seedDatabase (/home/runner/workspace/server/seedData.ts:36:24)
+    at async Timeout._onTimeout (/home/runner/workspace/server/index.ts:110:11) {
+  severity: '',
+  code: '',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: undefined,
+  line: undefined,
+  routine: undefined,
+  sourceError: undefined
+}
+⚠️ Database seeding failed: NeonDbError: The endpoint has been disabled. Enable it using Neon API and retry.
+    at execute (file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1556:55)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async NeonHttpPreparedQuery.execute (/home/runner/workspace/node_modules/src/neon-http/session.ts:68:18)
+    at async seedDatabase (/home/runner/workspace/server/seedData.ts:36:24)
+    at async Timeout._onTimeout (/home/runner/workspace/server/index.ts:110:11) {
+  severity: '',
+  code: '',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: undefined,
+  line: undefined,
+  routine: undefined,
+  sourceError: undefined
+}
