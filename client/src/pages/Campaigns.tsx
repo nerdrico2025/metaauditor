@@ -1,15 +1,42 @@
+
 import { useEffect, useState, lazy, Suspense } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import Sidebar from "@/components/Layout/Sidebar";
 import Header from "@/components/Layout/Header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BellRing, Calendar, DollarSign, BarChart3 } from "lucide-react";
+import { BellRing, Calendar, DollarSign, BarChart3, Search, Eye, Edit, Trash2, Filter } from "lucide-react";
 import type { Campaign } from "@shared/schema";
 
 // Lazy load modals to reduce chunk size
@@ -19,8 +46,15 @@ const CampaignCreativesModal = lazy(() => import("@/components/Modals/CampaignCr
 export default function Campaigns() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  const queryClient = useQueryClient();
   const [selectedCampaignForReport, setSelectedCampaignForReport] = useState<Campaign | null>(null);
   const [selectedCampaignForCreatives, setSelectedCampaignForCreatives] = useState<Campaign | null>(null);
+  const [campaignToDelete, setCampaignToDelete] = useState<Campaign | null>(null);
+  
+  // Filters
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [platformFilter, setPlatformFilter] = useState<string>("all");
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -40,6 +74,32 @@ export default function Campaigns() {
   const { data: campaigns, isLoading: campaignsLoading, error } = useQuery<Campaign[]>({
     queryKey: ["/api/campaigns"],
     enabled: isAuthenticated,
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (campaignId: string) => {
+      const response = await fetch(`/api/campaigns/${campaignId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('Failed to delete campaign');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
+      toast({
+        title: "Sucesso",
+        description: "Campanha excluída com sucesso",
+      });
+      setCampaignToDelete(null);
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Não foi possível excluir a campanha",
+        variant: "destructive",
+      });
+    },
   });
 
   useEffect(() => {
@@ -80,13 +140,34 @@ export default function Campaigns() {
   const getPlatformIcon = (platform: string) => {
     switch (platform) {
       case 'meta':
-        return '📘'; // Meta/Facebook icon placeholder
+        return '📘';
       case 'google':
-        return '🔍'; // Google icon placeholder
+        return '🔍';
       default:
         return '📊';
     }
   };
+
+  const getPlatformName = (platform: string) => {
+    switch (platform) {
+      case 'meta':
+        return 'Meta Ads';
+      case 'google':
+        return 'Google Ads';
+      default:
+        return platform;
+    }
+  };
+
+  // Filter campaigns
+  const filteredCampaigns = campaigns?.filter((campaign) => {
+    const matchesSearch = campaign.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         campaign.externalId.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === "all" || campaign.status === statusFilter;
+    const matchesPlatform = platformFilter === "all" || campaign.platform === platformFilter;
+    
+    return matchesSearch && matchesStatus && matchesPlatform;
+  }) || [];
 
   return (
     <div className="flex h-screen bg-slate-50">
@@ -98,109 +179,200 @@ export default function Campaigns() {
         <main className="flex-1 overflow-y-auto">
           <div className="py-6">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              {campaignsLoading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {[...Array(6)].map((_, i) => (
-                    <Card key={i} className="border-slate-200">
-                      <CardHeader>
-                        <Skeleton className="h-4 w-3/4" />
-                        <Skeleton className="h-3 w-1/2" />
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2">
-                          <Skeleton className="h-3 w-full" />
-                          <Skeleton className="h-3 w-2/3" />
-                          <Skeleton className="h-3 w-1/2" />
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ) : campaigns && campaigns.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {campaigns.map((campaign: Campaign) => (
-                    <Card key={campaign.id} className="border-slate-200 hover:shadow-lg transition-shadow">
-                      <CardHeader>
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-lg">{getPlatformIcon(campaign.platform)}</span>
-                            <div>
-                              <CardTitle className="text-lg font-semibold text-slate-900">
-                                {campaign.name}
-                              </CardTitle>
-                              <p className="text-sm text-slate-500 capitalize">
-                                {campaign.platform} Ads
-                              </p>
-                            </div>
-                          </div>
-                          <Badge variant={getStatusBadgeVariant(campaign.status)}>
-                            {campaign.status === 'active' ? 'Ativa' : 
-                             campaign.status === 'paused' ? 'Pausada' : 'Inativa'}
-                          </Badge>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-3">
-                          {campaign.budget && (
-                            <div className="flex items-center space-x-2 text-sm text-slate-600">
-                              <DollarSign className="h-4 w-4" />
-                              <span>Orçamento: R$ {parseFloat(campaign.budget).toFixed(2)}</span>
-                            </div>
-                          )}
-                          
-                          <div className="flex items-center space-x-2 text-sm text-slate-600">
-                            <Calendar className="h-4 w-4" />
-                            <span>
-                              Criada em {campaign.createdAt ? new Date(campaign.createdAt).toLocaleDateString('pt-BR') : 'Data não disponível'}
-                            </span>
-                          </div>
+              {/* Filters */}
+              <Card className="mb-6 bg-white border-slate-200">
+                <CardContent className="pt-6">
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="flex-1">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <Input
+                          placeholder="Buscar por nome ou ID..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="pl-10 bg-white"
+                        />
+                      </div>
+                    </div>
+                    
+                    <Select value={platformFilter} onValueChange={setPlatformFilter}>
+                      <SelectTrigger className="w-full sm:w-[180px] bg-white">
+                        <SelectValue placeholder="Plataforma" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas Plataformas</SelectItem>
+                        <SelectItem value="meta">Meta Ads</SelectItem>
+                        <SelectItem value="google">Google Ads</SelectItem>
+                      </SelectContent>
+                    </Select>
 
-                          <div className="flex items-center space-x-2 text-sm text-slate-600">
-                            <BarChart3 className="h-4 w-4" />
-                            <span>ID: {campaign.externalId}</span>
-                          </div>
-                        </div>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="w-full sm:w-[150px] bg-white">
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos Status</SelectItem>
+                        <SelectItem value="active">Ativa</SelectItem>
+                        <SelectItem value="paused">Pausada</SelectItem>
+                        <SelectItem value="inactive">Inativa</SelectItem>
+                      </SelectContent>
+                    </Select>
 
-                        <div className="mt-4 pt-4 border-t border-slate-200">
-                          <div className="flex space-x-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="flex-1"
-                              onClick={() => setSelectedCampaignForCreatives(campaign)}
-                            >
-                              <BellRing className="h-4 w-4 mr-2" />
-                              Ver Criativos
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="flex-1"
-                              onClick={() => setSelectedCampaignForReport(campaign)}
-                            >
-                              <BarChart3 className="h-4 w-4 mr-2" />
-                              Relatório
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <BellRing className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-slate-900 mb-2">
-                    Nenhuma campanha encontrada
-                  </h3>
-                  <p className="text-slate-600 mb-6">
-                    Conecte suas contas Meta Ads ou Google Ads para começar a sincronizar campanhas.
-                  </p>
-                  <Button variant="outline">
-                    Configurar Integrações
-                  </Button>
-                </div>
-              )}
+                    {(searchTerm || statusFilter !== "all" || platformFilter !== "all") && (
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setSearchTerm("");
+                          setStatusFilter("all");
+                          setPlatformFilter("all");
+                        }}
+                        className="w-full sm:w-auto bg-white"
+                      >
+                        Limpar Filtros
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Table */}
+              <Card className="bg-white border-slate-200">
+                <CardContent className="p-0">
+                  {campaignsLoading ? (
+                    <div className="p-6 space-y-4">
+                      {[...Array(5)].map((_, i) => (
+                        <Skeleton key={i} className="h-16 w-full" />
+                      ))}
+                    </div>
+                  ) : filteredCampaigns.length === 0 ? (
+                    <div className="text-center py-12">
+                      <BellRing className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-slate-900 mb-2">
+                        {searchTerm || statusFilter !== "all" || platformFilter !== "all"
+                          ? "Nenhuma campanha encontrada"
+                          : "Nenhuma campanha cadastrada"
+                        }
+                      </h3>
+                      <p className="text-slate-600 mb-6">
+                        {searchTerm || statusFilter !== "all" || platformFilter !== "all"
+                          ? "Tente ajustar os filtros de busca."
+                          : "Conecte suas contas Meta Ads ou Google Ads para começar a sincronizar campanhas."
+                        }
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-[50px]"></TableHead>
+                            <TableHead>Nome da Campanha</TableHead>
+                            <TableHead>Plataforma</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Orçamento</TableHead>
+                            <TableHead>Criada em</TableHead>
+                            <TableHead className="text-right">Ações</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredCampaigns.map((campaign) => (
+                            <TableRow key={campaign.id} className="hover:bg-slate-50">
+                              <TableCell>
+                                <span className="text-2xl">{getPlatformIcon(campaign.platform)}</span>
+                              </TableCell>
+                              <TableCell>
+                                <div>
+                                  <div className="font-medium text-slate-900">{campaign.name}</div>
+                                  <div className="text-sm text-slate-500">ID: {campaign.externalId}</div>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <span className="text-sm text-slate-600">
+                                  {getPlatformName(campaign.platform)}
+                                </span>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={getStatusBadgeVariant(campaign.status)}>
+                                  {campaign.status === 'active' ? 'Ativa' : 
+                                   campaign.status === 'paused' ? 'Pausada' : 'Inativa'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                {campaign.budget ? (
+                                  <div className="flex items-center space-x-1 text-sm text-slate-600">
+                                    <DollarSign className="h-3 w-3" />
+                                    <span>R$ {parseFloat(campaign.budget).toFixed(2)}</span>
+                                  </div>
+                                ) : (
+                                  <span className="text-sm text-slate-400">-</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center space-x-1 text-sm text-slate-600">
+                                  <Calendar className="h-3 w-3" />
+                                  <span>
+                                    {campaign.createdAt 
+                                      ? new Date(campaign.createdAt).toLocaleDateString('pt-BR')
+                                      : '-'
+                                    }
+                                  </span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end space-x-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setSelectedCampaignForCreatives(campaign)}
+                                    title="Ver Criativos"
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setSelectedCampaignForReport(campaign)}
+                                    title="Ver Relatório"
+                                  >
+                                    <BarChart3 className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    disabled
+                                    title="Editar (em breve)"
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setCampaignToDelete(campaign)}
+                                    title="Excluir"
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+
+                  {/* Summary */}
+                  {!campaignsLoading && filteredCampaigns.length > 0 && (
+                    <div className="border-t border-slate-200 px-6 py-4">
+                      <div className="text-sm text-slate-600">
+                        Exibindo <span className="font-semibold">{filteredCampaigns.length}</span> de{' '}
+                        <span className="font-semibold">{campaigns?.length || 0}</span> campanhas
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </div>
           </div>
         </main>
@@ -222,6 +394,28 @@ export default function Campaigns() {
           />
         )}
       </Suspense>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!campaignToDelete} onOpenChange={() => setCampaignToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir a campanha "<strong>{campaignToDelete?.name}</strong>"?
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => campaignToDelete && deleteMutation.mutate(campaignToDelete.id)}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
