@@ -50,8 +50,8 @@ export default function MetricsCards() {
   return (
     <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
       {cards.map((card) => (
-        <Card key={card.title} className="bg-card overflow-hidden shadow-sm border border-border">
-          <CardContent className="p-5">
+        <Card key={card.title} className="bg-white dark:bg-white overflow-hidden shadow-sm border border-slate-200">
+          <CardContent className="p-5 bg-white dark:bg-white">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className={`w-8 h-8 ${card.bgColor} rounded-lg flex items-center justify-center`}>

@@ -7,24 +7,24 @@ import { useTranslation } from 'react-i18next';
 
 export default function IntegrationStatus() {
   const { t } = useTranslation();
-  
+
   const { data: integrations, isLoading } = useQuery<any[]>({
     queryKey: ["/api/integrations"],
   });
 
   const formatLastSync = (date: string | null) => {
     if (!date) return 'Nunca sincronizado';
-    
+
     const now = new Date();
     const syncDate = new Date(date);
     const diffInMinutes = Math.floor((now.getTime() - syncDate.getTime()) / (1000 * 60));
-    
+
     if (diffInMinutes < 1) return 'Agora';
     if (diffInMinutes < 60) return `há ${diffInMinutes} min`;
-    
+
     const diffInHours = Math.floor(diffInMinutes / 60);
     if (diffInHours < 24) return `há ${diffInHours}h`;
-    
+
     const diffInDays = Math.floor(diffInHours / 24);
     return `há ${diffInDays}d`;
   };

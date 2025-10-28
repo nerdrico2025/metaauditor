@@ -32,7 +32,7 @@ export default function PolicyManagement() {
     const now = new Date();
     const updated = new Date(date);
     const diffInDays = Math.floor((now.getTime() - updated.getTime()) / (1000 * 60 * 60 * 24));
-    
+
     if (diffInDays === 0) return 'Hoje';
     if (diffInDays === 1) return 'Ontem';
     if (diffInDays < 7) return `${diffInDays} dias atrás`;
@@ -47,7 +47,7 @@ export default function PolicyManagement() {
           <CardTitle className="text-lg font-medium text-slate-900">
             {t('dashboard.policyManagement')}
           </CardTitle>
-          <Button 
+          <Button
             onClick={handleCreatePolicy}
             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
           >
@@ -76,7 +76,7 @@ export default function PolicyManagement() {
           ) : policies && policies.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {policies.slice(0, 4).map((policy: Policy) => (
-                <div 
+                <div
                   key={policy.id}
                   className="border border-slate-200 rounded-lg p-4 hover:border-primary/30 cursor-pointer transition-colors"
                   onClick={() => handleEditPolicy(policy)}
@@ -89,11 +89,11 @@ export default function PolicyManagement() {
                       {policy.status === 'active' ? 'Ativa' : 'Inativa'}
                     </Badge>
                   </div>
-                  
+
                   <p className="text-xs text-slate-500 mb-3">
                     {policy.description || 'Sem descrição'}
                   </p>
-                  
+
                   <div className="space-y-2">
                     {/* Show compliance rules */}
                     {policy.rules && typeof policy.rules === 'object' && Object.keys(policy.rules).length > 0 ? (
@@ -104,7 +104,7 @@ export default function PolicyManagement() {
                         </div>
                       ))
                     ) : null}
-                    
+
                     {/* Show performance thresholds */}
                     {policy.performanceThresholds && typeof policy.performanceThresholds === 'object' ? (
                       Object.entries(policy.performanceThresholds as Record<string, any>).slice(0, 1).map(([key, value]) => (
@@ -115,7 +115,7 @@ export default function PolicyManagement() {
                       ))
                     ) : null}
                   </div>
-                  
+
                   <div className="mt-3 pt-3 border-t border-slate-200 flex justify-between text-xs text-slate-500">
                     <span>Política {policy.isDefault ? 'padrão' : 'personalizada'}</span>
                     <span>Atualizada {policy.updatedAt ? formatLastUpdated(policy.updatedAt.toString()) : 'nunca'}</span>
@@ -130,7 +130,7 @@ export default function PolicyManagement() {
               <p className="text-xs text-slate-500 mb-4">
                 {t('policies.noBrandConfigDescription')}
               </p>
-              <Button 
+              <Button
                 onClick={handleCreatePolicy}
                 variant="outline"
                 size="sm"

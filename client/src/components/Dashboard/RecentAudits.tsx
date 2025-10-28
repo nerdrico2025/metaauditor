@@ -66,8 +66,8 @@ export default function RecentAudits() {
   };
 
   return (
-    <Card className="bg-white shadow-sm border border-slate-200">
-      <CardHeader className="px-6 py-4 border-b border-slate-200">
+    <Card className="bg-white dark:bg-white shadow-sm border border-slate-200">
+      <CardHeader className="px-6 py-4 border-b border-slate-200 bg-white dark:bg-white">
         <CardTitle className="text-lg font-medium text-slate-900">
           {t('dashboard.recentAudits')}
         </CardTitle>

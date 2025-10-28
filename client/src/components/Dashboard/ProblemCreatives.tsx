@@ -65,9 +65,9 @@ export default function ProblemCreatives() {
 
   return (
     <>
-      <Card className="bg-card shadow-sm border border-border">
-        <CardHeader className="px-6 py-4 border-b border-border flex flex-row items-center justify-between">
-          <CardTitle className="text-lg font-medium text-foreground">
+      <Card className="bg-white dark:bg-white shadow-sm border border-slate-200">
+        <CardHeader className="px-6 py-4 border-b border-slate-200 bg-white dark:bg-white flex flex-row items-center justify-between">
+          <CardTitle className="text-lg font-medium text-slate-900">
             Criativos com Problemas
           </CardTitle>
           <Button variant="link" className="text-primary hover:text-primary/80 text-sm font-medium p-0">
