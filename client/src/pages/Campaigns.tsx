@@ -36,12 +36,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BellRing, Calendar, DollarSign, BarChart3, Search, Eye, Edit, Trash2, Filter } from "lucide-react";
+import { BellRing, Calendar, DollarSign, BarChart3, Search, Eye, Edit, Trash2, Filter, Plus } from "lucide-react";
 import type { Campaign } from "@shared/schema";
 
 // Lazy load modals to reduce chunk size
 const CampaignReportModal = lazy(() => import("@/components/Modals/CampaignReportModal"));
 const CampaignCreativesModal = lazy(() => import("@/components/Modals/CampaignCreativesModal"));
+const CampaignFormModal = lazy(() => import("@/components/Modals/CampaignFormModal"));
 
 export default function Campaigns() {
   const { toast } = useToast();
@@ -50,6 +51,8 @@ export default function Campaigns() {
   const [selectedCampaignForReport, setSelectedCampaignForReport] = useState<Campaign | null>(null);
   const [selectedCampaignForCreatives, setSelectedCampaignForCreatives] = useState<Campaign | null>(null);
   const [campaignToDelete, setCampaignToDelete] = useState<Campaign | null>(null);
+  const [campaignToEdit, setCampaignToEdit] = useState<Campaign | null>(null);
+  const [isCreatingCampaign, setIsCreatingCampaign] = useState(false);
   
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
@@ -179,6 +182,18 @@ export default function Campaigns() {
         <main className="flex-1 overflow-y-auto">
           <div className="py-6">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              {/* Header com botão de criar */}
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-slate-900">Campanhas</h2>
+                <Button
+                  onClick={() => setIsCreatingCampaign(true)}
+                  className="bg-primary hover:bg-primary/90"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nova Campanha
+                </Button>
+              </div>
+
               {/* Filters */}
               <Card className="mb-6 bg-white border-slate-200">
                 <CardContent className="pt-6">
@@ -339,8 +354,8 @@ export default function Campaigns() {
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    disabled
-                                    title="Editar (em breve)"
+                                    onClick={() => setCampaignToEdit(campaign)}
+                                    title="Editar"
                                   >
                                     <Edit className="h-4 w-4" />
                                   </Button>
@@ -391,6 +406,16 @@ export default function Campaigns() {
           <CampaignCreativesModal 
             campaign={selectedCampaignForCreatives}
             onClose={() => setSelectedCampaignForCreatives(null)}
+          />
+        )}
+
+        {(isCreatingCampaign || campaignToEdit) && (
+          <CampaignFormModal
+            campaign={campaignToEdit}
+            onClose={() => {
+              setIsCreatingCampaign(false);
+              setCampaignToEdit(null);
+            }}
           />
         )}
       </Suspense>

@@ -231,6 +231,47 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(campaigns).where(eq(campaigns.userId, userId));
   }
 
+  async getCampaignById(campaignId: string): Promise<Campaign | undefined> {
+    const [campaign] = await db
+      .select()
+      .from(campaigns)
+      .where(eq(campaigns.id, campaignId))
+      .limit(1);
+    return campaign;
+  }
+
+  async getCampaignByExternalId(externalId: string, userId: string): Promise<Campaign | undefined> {
+    const [campaign] = await db
+      .select()
+      .from(campaigns)
+      .where(and(
+        eq(campaigns.externalId, externalId),
+        eq(campaigns.userId, userId)
+      ))
+      .limit(1);
+    return campaign;
+  }
+
+  async createCampaign(data: InsertCampaign): Promise<Campaign> {
+    const [campaign] = await db.insert(campaigns).values(data).returning();
+    return campaign;
+  }
+
+  async updateCampaign(
+    campaignId: string,
+    data: Partial<Pick<Campaign, 'name' | 'status' | 'budget'>>
+  ): Promise<Campaign> {
+    const [campaign] = await db
+      .update(campaigns)
+      .set({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .where(eq(campaigns.id, campaignId))
+      .returning();
+    return campaign;
+  }
+
   async getCampaignById(id: string): Promise<Campaign | undefined> {
     const [campaign] = await db.select().from(campaigns).where(eq(campaigns.id, id));
     return campaign;

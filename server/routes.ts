@@ -48,7 +48,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     process.env.REPLIT_ENVIRONMENT === 'production' ||
     process.env.REPLIT_HELIUM_ENABLED === 'true'
   );
-  
+
   if (!isDeployment) {
     console.log('🔗 DEVELOPMENT: Setting up Replit Auth');
     try {
@@ -60,7 +60,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log('🚀 DEPLOYMENT: Skipping Replit Auth to avoid "helium" DNS lookup');
     // Add PostgreSQL session support for JWT-only mode  
     const PostgreSQLStore = ConnectPgSimple(session);
-    
+
     app.use(session({
       store: new PostgreSQLStore({
         conString: process.env.DATABASE_URL,
@@ -130,7 +130,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
       res.setHeader('Vary', 'Authorization');
-      
+
       console.log(`🔍 Auth user request - ID: ${req.user.id}, Email: ${req.user.email}, Name: ${req.user.firstName} ${req.user.lastName}`);
 
       // Return safe user data without password
@@ -182,7 +182,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/users', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
     try {
       const validatedData = createUserSchema.parse(req.body);
-      
+
       // Check if user already exists
       const existingUser = await storage.getUserByEmail(validatedData.email);
       if (existingUser) {
@@ -254,7 +254,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/users/:id', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
     try {
       const userId = req.params.id;
-      
+
       // Prevent deletion of current user
       if (userId === req.user?.id) {
         return res.status(400).json({ message: 'Você não pode deletar sua própria conta' });
@@ -300,7 +300,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/profile', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const validatedData = updateProfileSchema.parse(req.body);
-      
+
       // Update user profile
       const updatedUser = await storage.updateUser(req.user!.id, validatedData);
       if (!updatedUser) {
@@ -326,7 +326,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/profile/password', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const validatedData = changePasswordSchema.parse(req.body);
-      
+
       // Get current user with password
       const currentUser = await storage.getUserById(req.user!.id);
       if (!currentUser) {
@@ -366,18 +366,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         });
       }
-      
+
       // Clear all possible cookies
       res.clearCookie('connect.sid');
       res.clearCookie('token');
       res.clearCookie('auth-token');
-      
+
       // Force cache headers to prevent caching
       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
       res.setHeader('Surrogate-Control', 'no-store');
-      
+
       res.json({ message: 'All session and cache cleared successfully', timestamp: new Date().toISOString() });
     } catch (error) {
       console.error("Error clearing session:", error);
@@ -425,14 +425,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const integrationId = req.params.id;
       const userId = req.user!.id;
-      
+
       // Verify ownership by getting user integrations and finding the specific one
       const userIntegrations = await storage.getIntegrationsByUser(userId);
       const existingIntegration = userIntegrations.find(integration => integration.id === integrationId);
       if (!existingIntegration) {
         return res.status(403).json({ message: 'Access denied' });
       }
-      
+
       const integration = await storage.updateIntegration(integrationId, req.body);
       if (!integration) {
         return res.status(404).json({ message: "Integration not found" });
@@ -487,7 +487,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/policies/settings', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const userId = req.user!.id;
-      
+
       // Load data from all four sources
       const [brandConfigs, policies, contentCriterias, performanceBenchmarks] = await Promise.all([
         storage.getBrandConfigurationsByUser(userId),
@@ -552,22 +552,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/policies/settings', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const userId = req.user!.id;
-      
+
       console.log("📝 Settings update request:", {
         userId,
         requestBody: JSON.stringify(req.body, null, 2)
       });
-      
+
       // Validate request body against SettingsDTO schema
       const validatedSettings = settingsDTO.parse(req.body);
-      
+
       console.log("✅ Settings validation passed:", {
         userId,
         brandKeys: Object.keys(validatedSettings.brand),
         validationKeys: Object.keys(validatedSettings.validationCriteria),
         performanceKeys: Object.keys(validatedSettings.performanceBenchmarks)
       });
-      
+
       // Execute all operations within a single transaction to ensure atomicity
       const result = await db.transaction(async (tx) => {
         // Load existing data with deterministic ordering within transaction
@@ -606,7 +606,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             })
             .where(eq(brandConfigurations.id, brandConfig.id))
             .returning();
-          
+
           if (!updatedBrandConfig) {
             throw new Error("Failed to update brand configuration");
           }
@@ -646,7 +646,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             })
             .where(eq(policies.id, policy.id))
             .returning();
-          
+
           if (!updatedPolicy) {
             throw new Error("Failed to update policy");
           }
@@ -680,7 +680,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             })
             .where(eq(contentCriteria.id, contentCriteriaRecord.id))
             .returning();
-          
+
           if (!updatedContentCriteria) {
             throw new Error("Failed to update content criteria");
           }
@@ -765,7 +765,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           conversionsMin: savedBenchmarks.conversionsMin || null,
           conversionsTarget: savedBenchmarks.conversionsTarget || null,
         };
-        
+
         return updatedSettings;
       });
 
@@ -775,7 +775,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         responseSize: JSON.stringify(result).length,
         timestamp: new Date().toISOString()
       });
-      
+
       res.json(result);
     } catch (error) {
       console.error("❌ Error updating settings:", error);
@@ -792,7 +792,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const policyId = req.params.id;
       const userId = req.user!.id;
       const policy = await storage.getPolicyById(policyId);
-      
+
       // Verify ownership
       if (!policy || policy.userId !== userId) {
         return res.status(403).json({ message: 'Access denied' });
@@ -811,13 +811,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const policyId = req.params.id;
       const userId = req.user!.id;
-      
+
       // Verify ownership  
       const existingPolicy = await storage.getPolicyById(policyId);
       if (!existingPolicy || existingPolicy.userId !== userId) {
         return res.status(403).json({ message: 'Access denied' });
       }
-      
+
       const policy = await storage.updatePolicy(policyId, req.body);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
@@ -833,13 +833,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const policyId = req.params.id;
       const userId = req.user!.id;
-      
+
       // Verify ownership
       const existingPolicy = await storage.getPolicyById(policyId);
       if (!existingPolicy || existingPolicy.userId !== userId) {
         return res.status(403).json({ message: 'Access denied' });
       }
-      
+
       const success = await storage.deletePolicy(policyId);
       if (!success) {
         return res.status(404).json({ message: "Policy not found" });
@@ -868,7 +868,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = req.params.id;
       const userId = req.user!.id;
       const brandConfiguration = await storage.getBrandConfigurationById(id);
-      
+
       // Verify ownership
       if (!brandConfiguration || brandConfiguration.userId !== userId) {
         return res.status(403).json({ message: 'Access denied' });
@@ -902,13 +902,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = req.params.id;
       const userId = req.user!.id;
-      
+
       // Verify ownership
       const existing = await storage.getBrandConfigurationById(id);
       if (!existing || existing.userId !== userId) {
         return res.status(403).json({ message: 'Access denied' });
       }
-      
+
       const brandConfiguration = await storage.updateBrandConfiguration(id, req.body);
       if (!brandConfiguration) {
         return res.status(404).json({ message: "Brand configuration not found" });
@@ -924,13 +924,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = req.params.id;
       const userId = req.user!.id;
-      
+
       // Verify ownership
       const existing = await storage.getBrandConfigurationById(id);
       if (!existing || existing.userId !== userId) {
         return res.status(403).json({ message: 'Access denied' });
       }
-      
+
       const success = await storage.deleteBrandConfiguration(id);
       if (!success) {
         return res.status(404).json({ message: "Brand configuration not found" });
@@ -959,7 +959,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = req.params.id;
       const userId = req.user!.id;
       const contentCriteria = await storage.getContentCriteriaById(id);
-      
+
       // Verify ownership
       if (!contentCriteria || contentCriteria.userId !== userId) {
         return res.status(403).json({ message: 'Access denied' });
@@ -993,13 +993,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = req.params.id;
       const userId = req.user!.id;
-      
+
       // Verify ownership
       const existing = await storage.getContentCriteriaById(id);
       if (!existing || existing.userId !== userId) {
         return res.status(403).json({ message: 'Access denied' });
       }
-      
+
       const contentCriteria = await storage.updateContentCriteria(id, req.body);
       if (!contentCriteria) {
         return res.status(404).json({ message: "Content criteria not found" });
@@ -1015,13 +1015,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = req.params.id;
       const userId = req.user!.id;
-      
+
       // Verify ownership
       const existing = await storage.getContentCriteriaById(id);
       if (!existing || existing.userId !== userId) {
         return res.status(403).json({ message: 'Access denied' });
       }
-      
+
       const success = await storage.deleteContentCriteria(id);
       if (!success) {
         return res.status(404).json({ message: "Content criteria not found" });
@@ -1054,11 +1054,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate a unique filename for the logo
       const fileExtension = req.body.fileType?.split('/')[1] || 'png';
       const filename = `logos/${randomUUID()}.${fileExtension}`;
-      
+
       // Create a mock presigned URL for now
       // In production, this would integrate with the actual object storage
       const uploadURL = `https://storage.googleapis.com/replit-objstore-3a4bda15-c9f7-47e3-844a-a44e681f9f17/public/${filename}`;
-      
+
       res.json({ 
         method: "PUT" as const,
         url: uploadURL,
@@ -1114,20 +1114,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const userId = req.user!.id;
-      
+
       // Get campaign details
       const campaign = await storage.getCampaignById(id);
       if (!campaign) {
         return res.status(404).json({ message: "Campaign not found" });
       }
-      
+
       // Get campaign metrics from campaign_metrics table filtered by campaign name
       const metrics = await storage.getCampaignMetrics(userId, {
         page: 1,
         limit: 1000,
         campaign: campaign.name
       });
-      
+
       res.json({
         campaign,
         metrics: metrics.data
@@ -1142,7 +1142,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/campaigns/:id/creatives', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const { id } = req.params;
-      
+
       const creatives = await storage.getCreativesByCampaign(id);
       res.json(creatives);
     } catch (error) {
@@ -1160,7 +1160,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         page: 1, 
         limit: 1000, // Get all records for now
       });
-      
+
       // Helper function to validate if URL could be an image
       const isValidImageUrl = (url: string | null): boolean => {
         if (!url) return false;
@@ -1175,19 +1175,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return false;
         }
       };
-      
+
       // Group and deduplicate by ad URL to avoid duplicates
       const uniqueAds = new Map<string, any>();
-      
+
       metrics.data.forEach(metric => {
         const key = metric.adUrl || metric.anuncios || metric.id;
-        
+
         // Only include if we have a valid image URL or if we haven't seen this ad before
         if (!uniqueAds.has(key) || isValidImageUrl(metric.adUrl)) {
           uniqueAds.set(key, metric);
         }
       });
-      
+
       // Transform unique campaign metrics to creative-like objects
       const creatives = Array.from(uniqueAds.values())
         .slice(0, 50) // Limit to reasonable number for UI performance
@@ -1218,7 +1218,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           campaignName: metric.campanha,
           accountName: metric.nomeAconta,
         }));
-      
+
       res.json(creatives);
     } catch (error) {
       console.error("Error fetching creatives:", error);
@@ -1231,7 +1231,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const creativeId = req.params.id;
       const userId = req.user!.id;
       const creative = await storage.getCreativeById(creativeId);
-      
+
       // Verify ownership
       if (!creative || creative.userId !== userId) {
         return res.status(403).json({ message: 'Access denied' });
@@ -1269,24 +1269,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // First try to get the creative from the actual creatives table
       let creative = await storage.getCreativeById(creativeId);
-      
+
       // If not found in creatives table, look for it in campaign_metrics (transformed data)
       if (!creative) {
         console.log(`🔍 Creative ${creativeId} not found in creatives table, searching in campaign_metrics...`);
-        
+
         // Get the campaign metrics data and find the matching record
         const metricsResult = await storage.getCampaignMetrics(userId, { 
           page: 1, 
           limit: 1000 
         });
-        
+
         const matchingMetric = metricsResult.data.find(metric => metric.id === creativeId);
-        
+
         if (!matchingMetric) {
           console.log(`❌ Creative ${creativeId} not found in either creatives or campaign_metrics table`);
           return res.status(404).json({ message: "Creative not found" });
         }
-        
+
         // Transform campaign metric to creative format for analysis
         const isValidImageUrl = (url: string | null): boolean => {
           if (!url) return false;
@@ -1297,7 +1297,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     /\.(jpg|jpeg|png|gif|webp|bmp)(\?|$)/i.test(url));
           } catch { return false; }
         };
-        
+
         creative = {
           id: matchingMetric.id,
           userId: userId,
@@ -1321,7 +1321,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           createdAt: matchingMetric.createdAt || new Date(),
           updatedAt: matchingMetric.updatedAt || new Date(),
         };
-        
+
         console.log(`✅ Found and transformed creative from campaign_metrics: ${creative.name}`);
       }
 
@@ -1414,7 +1414,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         {
           category: 'Performance',
           description: 'Métricas de CTR e conversão', 
-          status: performanceResult.performance === 'high' ? 'passed' : performanceResult.performance === 'medium' ? 'warning' : 'failed',
+          status: performanceResult.performance === 'high' ? 'passed' : performanceResult.performance === 'warning' ? 'warning' : 'failed',
           details: `CTR: ${creative.ctr}%, Conversões: ${creative.conversions}`
         }
       ];
@@ -1434,11 +1434,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           brandConfig: activeBrandConfig?.brandName,
           contentCriteria: activeContentCriteria?.name
         });
-        
+
         // Don't change status if analysis worked with fallback
         if (complianceResult.score === 0) {
           status = 'non_compliant';
-          
+
           // Replace technical errors with user-friendly messages
           issues.length = 0; // Clear technical errors
           issues.push({
@@ -1446,7 +1446,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             description: 'Este criativo precisa de análise manual. Verifique configurações de IA.',
             severity: 'medium'
           });
-          
+
           // Update check details
           checks.forEach(check => {
             if (check.status === 'passed') {
@@ -1535,23 +1535,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const creativeId = req.params.id;
       const userId = req.user?.id;
-      
+
       console.log('🔍 GET /api/creatives/:id/audits DEBUG:', {
         creativeId,
         userId,
         hasUser: !!req.user,
         authHeader: req.headers.authorization ? 'Bearer ***' : 'None'
       });
-      
+
       const rawAudits = await storage.getAuditsByCreative(creativeId);
-      
+
       // ✅ Fix: Ensure decimal scores are properly converted to numbers
       const audits = rawAudits.map(audit => ({
         ...audit,
         complianceScore: audit.complianceScore ? Number(audit.complianceScore) : 0,
         performanceScore: audit.performanceScore ? Number(audit.performanceScore) : 0,
       }));
-      
+
       console.log('✅ Audits response:', {
         creativeId,
         auditCount: audits.length,
@@ -1561,7 +1561,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           status: audits[0].status
         } : null
       });
-      
+
       res.json(audits);
     } catch (error) {
       console.error("Error fetching creative audits:", error);
@@ -1600,18 +1600,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const auditId = req.params.id;
       const userId = req.user!.id;
-      
+
       // Verify ownership by checking if the audit belongs to the user
       const audit = await storage.getAuditById(auditId);
       if (!audit || audit.userId !== userId) {
         return res.status(403).json({ message: 'Access denied' });
       }
-      
+
       const success = await storage.deleteAudit(auditId);
       if (!success) {
         return res.status(404).json({ message: "Audit not found" });
       }
-      
+
       res.json({ message: "Audit deleted successfully" });
     } catch (error) {
       console.error("Error deleting audit:", error);
@@ -1650,19 +1650,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/dashboard/metrics', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const userId = req.user!.id;
-      
+
       // CRITICAL: Force no-cache to prevent serving stale demo data
       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
       res.setHeader('Vary', 'Authorization');
-      
+
       console.log(`🔍 Dashboard metrics request - UserID: ${userId}`);
-      
+
       const metrics = await storage.getDashboardMetrics(userId);
-      
+
       console.log(`📊 Metrics result - Campaigns: ${metrics.activeCampaigns}, Analyzed: ${metrics.creativesAnalyzed}`);
-      
+
       res.json(metrics);
     } catch (error) {
       console.error("Error fetching dashboard metrics:", error);
@@ -1686,10 +1686,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user!.id;
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
-      
+
       // Ensure JSON response
       res.setHeader('Content-Type', 'application/json');
-      
+
       const recentAudits = await storage.getRecentAudits(userId, limit);
       res.json(recentAudits);
     } catch (error) {
@@ -1730,7 +1730,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: "Authentication required"
         });
       }
-      
+
       const userId = req.user.id;
       console.log(`🔄 Manual sync triggered by user: ${userId}`);
 
@@ -2061,10 +2061,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/admin/simple-sync', async (req: Request, res: Response) => {
     try {
       console.log(`🔄 Simple sync trigger requested`);
-      
+
       // Import the sync function
       const { syncSingleTabWithLogging } = await import('./services/sheetsSingleTabSync');
-      
+
       // Execute sync
       const result = await syncSingleTabWithLogging();
 
@@ -2154,7 +2154,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Import the sync function
       const { syncSingleTabWithLogging } = await import('./services/sheetsSingleTabSync');
-      
+
       // Execute full sync
       const result = await syncSingleTabWithLogging(req.user.id);
 
@@ -2320,7 +2320,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/image-proxy', async (req: Request, res: Response) => {
     try {
       const { url } = req.query;
-      
+
       if (!url || typeof url !== 'string') {
         return res.status(400).json({ error: 'URL parameter is required' });
       }
@@ -2366,7 +2366,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log(`🖼️ Proxying image request: ${url}`);
-      
+
       // Fetch the image with proper headers
       const imageResponse = await fetch(url, {
         headers: {
@@ -2387,18 +2387,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get content type and size
       const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
       const contentLength = imageResponse.headers.get('content-length');
-      
+
       // Set response headers
       res.set({
         'Content-Type': contentType,
         'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
         'Access-Control-Allow-Origin': '*'
       });
-      
+
       if (contentLength) {
         res.set('Content-Length', contentLength);
       }
-      
+
       // Simple pipe for now
       if (imageResponse.body) {
         imageResponse.body.pipe(res);
@@ -2406,10 +2406,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         res.status(500).json({ error: 'No image data received' });
       }
-      
+
     } catch (error) {
       console.error('❌ Image proxy error:', error);
-      
+
       if (!res.headersSent) {
         if ((error as Error).name === 'AbortError') {
           res.status(408).json({ error: 'Request timeout' });
