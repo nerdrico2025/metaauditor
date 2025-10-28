@@ -25,7 +25,7 @@ export default function Sidebar() {
 
   return (
     <div className="hidden lg:flex lg:w-64 lg:flex-col">
-      <div className="flex flex-col flex-grow bg-card border-r border-border pt-5 pb-4 overflow-y-auto">
+      <div className="flex flex-col flex-grow bg-white dark:bg-white border-r border-slate-200 pt-5 pb-4 overflow-y-auto">
         {/* Logo */}
         <div className="flex items-center flex-shrink-0 px-4">
           <div className="flex items-center">
@@ -47,12 +47,12 @@ export default function Sidebar() {
                 className={cn(
                   isActive
                     ? 'bg-primary text-primary-foreground border-r-2 border-primary group flex items-center px-2 py-2 text-sm font-medium rounded-l-md'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground group flex items-center px-2 py-2 text-sm font-medium rounded-md'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 group flex items-center px-2 py-2 text-sm font-medium rounded-md'
                 )}
               >
                 <item.icon
                   className={cn(
-                    isActive ? 'text-primary-foreground' : 'text-muted-foreground group-hover:text-foreground',
+                    isActive ? 'text-primary-foreground' : 'text-slate-500 group-hover:text-slate-900',
                     'mr-3 h-5 w-5'
                   )}
                 />
@@ -64,7 +64,7 @@ export default function Sidebar() {
 
         {/* User Profile */}
         {user && (
-          <div className="flex-shrink-0 flex border-t border-border p-4">
+          <div className="flex-shrink-0 flex border-t border-slate-200 p-4">
             <div className="flex items-center w-full">
               <img
                 className="inline-block h-9 w-9 rounded-full object-cover"
@@ -72,16 +72,16 @@ export default function Sidebar() {
                 alt="User avatar"
               />
               <div className="ml-3 flex-1">
-                <p className="text-sm font-medium text-foreground">
+                <p className="text-sm font-medium text-slate-900">
                   {user.firstName && user.lastName
                     ? `${user.firstName} ${user.lastName}`
                     : user.firstName || user.email || t('user.guest')}
                 </p>
-                <p className="text-xs text-muted-foreground">{user.email}</p>
+                <p className="text-xs text-slate-500">{user.email}</p>
               </div>
               <button
                 onClick={handleLogout}
-                className="ml-2 text-muted-foreground hover:text-foreground"
+                className="ml-2 text-slate-500 hover:text-slate-900"
                 title="Logout"
               >
                 <LogOut className="h-4 w-4" />

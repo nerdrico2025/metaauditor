@@ -99,24 +99,26 @@ export default function RecentAudits() {
                       />
                     )}
                     <div className="relative flex space-x-3">
-                      <div>
+                      <div className="flex-shrink-0">
                         <span className={`h-8 w-8 rounded-full ${getStatusBg(audit.status)} flex items-center justify-center ring-8 ring-white`}>
                           {getStatusIcon(audit.status)}
                         </span>
                       </div>
-                      <div className="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
-                        <div>
-                          <p className="text-sm text-slate-600">
-                            {t('creatives.title')} <span className="font-medium text-slate-900">{audit.creative?.name || t('common.noDataAvailable')}</span> - {getStatusText(audit.status)}
-                          </p>
-                          {audit.issues && audit.issues.length > 0 && (
-                            <p className="text-xs text-slate-500">
-                              {audit.issues[0]?.description || t('aiAnalysis.analysisComplete')}
+                      <div className="min-w-0 flex-1 pt-1.5">
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm text-slate-600 break-words">
+                              {t('creatives.title')} <span className="font-medium text-slate-900">{audit.creative?.name || t('common.noDataAvailable')}</span> - {getStatusText(audit.status)}
                             </p>
-                          )}
-                        </div>
-                        <div className="text-right text-sm whitespace-nowrap text-slate-500">
-                          <time>{formatTimeAgo(audit.createdAt)}</time>
+                            {audit.issues && audit.issues.length > 0 && (
+                              <p className="text-xs text-slate-500 line-clamp-2 mt-1">
+                                {audit.issues[0]?.description || t('aiAnalysis.analysisComplete')}
+                              </p>
+                            )}
+                          </div>
+                          <div className="text-left sm:text-right text-sm whitespace-nowrap text-slate-500 flex-shrink-0">
+                            <time>{formatTimeAgo(audit.createdAt)}</time>
+                          </div>
                         </div>
                       </div>
                     </div>
