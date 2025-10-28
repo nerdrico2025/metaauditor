@@ -15,12 +15,17 @@ const navigation = [
 ];
 
 export default function Sidebar() {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const { user, logout } = useAuth();
   const { t } = useTranslation();
 
   const handleLogout = () => {
     logout();
+  };
+
+  const handleNavigation = (href: string) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    setLocation(href);
   };
 
   return (
@@ -41,13 +46,13 @@ export default function Sidebar() {
           {navigation.map((item) => {
             const isActive = location === item.href;
             return (
-              <a
+              <button
                 key={item.name}
-                href={item.href}
+                onClick={handleNavigation(item.href)}
                 className={cn(
                   isActive
-                    ? 'bg-primary text-primary-foreground border-r-2 border-primary group flex items-center px-2 py-2 text-sm font-medium rounded-l-md'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 group flex items-center px-2 py-2 text-sm font-medium rounded-md'
+                    ? 'bg-primary text-primary-foreground border-r-2 border-primary group flex items-center px-2 py-2 text-sm font-medium rounded-l-md w-full'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 group flex items-center px-2 py-2 text-sm font-medium rounded-md w-full'
                 )}
               >
                 <item.icon
@@ -57,7 +62,7 @@ export default function Sidebar() {
                   )}
                 />
                 {item.name}
-              </a>
+              </button>
             );
           })}
         </nav>
