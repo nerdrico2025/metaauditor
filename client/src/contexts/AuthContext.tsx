@@ -6,7 +6,7 @@ export interface User {
   email: string;
   firstName: string | null;
   lastName: string | null;
-  role: 'administrador' | 'operador';
+  role: 'super_admin' | 'company_admin' | 'operador';
   profileImageUrl: string | null;
   lastLoginAt: Date | null;
   createdAt: Date | null;
@@ -20,6 +20,7 @@ interface AuthContextType {
   logout: () => void;
   isAuthenticated: boolean;
   isAdmin: boolean;
+  isSuperAdmin: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -70,6 +71,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
       localStorage.setItem('auth_token', authToken);
       setToken(authToken);
       setUser(userData);
+      
+      // Redirect based on role
+      if (userData.role === 'super_admin') {
+        window.location.href = '/super-admin';
+      } else {
+        window.location.href = '/dashboard';
+      }
     } catch (error) {
       throw error;
     } finally {
@@ -86,7 +94,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const isAuthenticated = !!user && !!token;
-  const isAdmin = user?.role === 'administrador';
+  const isAdmin = user?.role === 'company_admin' || user?.role === 'super_admin';
+  const isSuperAdmin = user?.role === 'super_admin';
 
   return (
     <AuthContext.Provider
@@ -98,6 +107,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         logout,
         isAuthenticated,
         isAdmin,
+        isSuperAdmin,
       }}
     >
       {children}

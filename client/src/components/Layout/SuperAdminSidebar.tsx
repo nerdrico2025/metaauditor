@@ -1,28 +1,20 @@
+
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
-import { Search, BarChart3, BellRing, Image, FileText, Settings, History, LogOut, ExternalLink } from "lucide-react";
-import { useTranslation } from 'react-i18next';
+import { Building2, Users, CreditCard, Settings, BarChart3, LogOut, Shield } from "lucide-react";
 
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: BarChart3 },
-  { name: 'Campanhas', href: '/campaigns', icon: BellRing },
-  { name: 'Criativos', href: '/creatives', icon: Image },
-  { name: 'Relatórios', href: '/reports', icon: FileText },
-  { name: 'Políticas', href: '/policies', icon: Settings },
-  { name: 'Histórico', href: '/history', icon: History },
-  { name: 'Integrações', href: '/integrations', icon: ExternalLink },
+  { name: 'Empresas', href: '/super-admin', icon: Building2 },
+  { name: 'Usuários', href: '/super-admin/users', icon: Users },
+  { name: 'Planos', href: '/super-admin/plans', icon: CreditCard },
+  { name: 'Estatísticas', href: '/super-admin/stats', icon: BarChart3 },
+  { name: 'Configurações', href: '/super-admin/settings', icon: Settings },
 ];
 
-export default function Sidebar() {
+export default function SuperAdminSidebar() {
   const [location, setLocation] = useLocation();
-  const { user, logout, isSuperAdmin } = useAuth();
-  const { t } = useTranslation();
-
-  // Don't show regular sidebar for super admin
-  if (isSuperAdmin) {
-    return null;
-  }
+  const { user, logout } = useAuth();
 
   const handleLogout = () => {
     logout();
@@ -39,10 +31,10 @@ export default function Sidebar() {
         {/* Logo */}
         <div className="flex items-center flex-shrink-0 px-4">
           <div className="flex items-center">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <Search className="h-5 w-5 text-primary-foreground" />
+            <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
+              <Shield className="h-5 w-5 text-white" />
             </div>
-            <span className="ml-3 text-xl font-semibold text-foreground">Click Auditor</span>
+            <span className="ml-3 text-xl font-semibold text-foreground">Super Admin</span>
           </div>
         </div>
 
@@ -56,13 +48,13 @@ export default function Sidebar() {
                 onClick={handleNavigation(item.href)}
                 className={cn(
                   isActive
-                    ? 'bg-primary text-primary-foreground border-r-2 border-primary group flex items-center px-2 py-2 text-sm font-medium rounded-l-md w-full'
+                    ? 'bg-purple-600 text-white border-r-2 border-purple-700 group flex items-center px-2 py-2 text-sm font-medium rounded-l-md w-full'
                     : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 group flex items-center px-2 py-2 text-sm font-medium rounded-md w-full'
                 )}
               >
                 <item.icon
                   className={cn(
-                    isActive ? 'text-primary-foreground' : 'text-slate-500 group-hover:text-slate-900',
+                    isActive ? 'text-white' : 'text-slate-500 group-hover:text-slate-900',
                     'mr-3 h-5 w-5'
                   )}
                 />
@@ -76,18 +68,16 @@ export default function Sidebar() {
         {user && (
           <div className="flex-shrink-0 flex border-t border-slate-200 p-4">
             <div className="flex items-center w-full">
-              <img
-                className="inline-block h-9 w-9 rounded-full object-cover"
-                src={user.profileImageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.firstName || user.email || 'User')}&background=3b82f6&color=fff`}
-                alt="User avatar"
-              />
+              <div className="inline-block h-9 w-9 rounded-full bg-purple-600 flex items-center justify-center">
+                <Shield className="h-5 w-5 text-white" />
+              </div>
               <div className="ml-3 flex-1">
                 <p className="text-sm font-medium text-slate-900">
                   {user.firstName && user.lastName
                     ? `${user.firstName} ${user.lastName}`
-                    : user.firstName || user.email || t('user.guest')}
+                    : user.firstName || user.email}
                 </p>
-                <p className="text-xs text-slate-500">{user.email}</p>
+                <p className="text-xs text-purple-600 font-semibold">Super Admin</p>
               </div>
               <button
                 onClick={handleLogout}

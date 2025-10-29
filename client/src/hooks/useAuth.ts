@@ -124,5 +124,6 @@ export function useAuth() {
     isRegisterPending: registerMutation.isPending,
     loginError: loginMutation.error?.message,
     registerError: registerMutation.error?.message,
+    isSuperAdmin: user?.role === 'super_admin',
   };
 }

@@ -15,6 +15,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Building2, Plus, Edit, Trash2, Users, TrendingUp, Calendar } from 'lucide-react';
+import SuperAdminSidebar from '@/components/Layout/SuperAdminSidebar';
+import Header from '@/components/Layout/Header';
 
 const createCompanySchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
@@ -133,8 +135,16 @@ export default function SuperAdmin() {
   };
 
   return (
-    <div className="container mx-auto py-6">
-      <div className="mb-6 flex justify-between items-center">
+    <div className="flex h-screen bg-background">
+      <SuperAdminSidebar />
+      
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <Header title="Gestão de Empresas" />
+        
+        <main className="flex-1 overflow-y-auto">
+          <div className="py-6">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="mb-6 flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Super Admin</h1>
           <p className="text-gray-600 dark:text-gray-300">Gestão de empresas (tenants)</p>
@@ -306,6 +316,10 @@ export default function SuperAdmin() {
             </Card>
           ))
         )}
+      </div>
+            </div>
+          </div>
+        </main>
       </div>
     </div>
   );
