@@ -110,7 +110,7 @@ export const integrations = pgTable("integrations", {
 // Campaigns
 export const campaigns = pgTable("campaigns", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  companyId: uuid("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }), // ✅ Vinculado à empresa
+  companyId: uuid("company_id").references(() => companies.id, { onDelete: 'cascade' }), // Temporariamente nullable
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }), // Usuário que criou
   integrationId: uuid("integration_id").notNull().references(() => integrations.id, { onDelete: 'cascade' }),
   externalId: varchar("external_id").notNull(), // ID from Meta/Google
