@@ -1,4 +1,7 @@
+import { db } from "./db";
+import { eq, desc, sql, and, or, lte, gte, count, between } from "drizzle-orm";
 import {
+  companies,
   users,
   integrations,
   campaigns,
@@ -6,35 +9,35 @@ import {
   policies,
   audits,
   auditActions,
-  campaignMetrics,
   brandConfigurations,
   contentCriteria,
+  campaignMetrics,
   performanceBenchmarks,
+  type Company,
+  type InsertCompany,
   type User,
   type UpsertUser,
-  type Integration,
   type InsertIntegration,
-  type Campaign,
+  type Integration,
   type InsertCampaign,
-  type Creative,
+  type Campaign,
   type InsertCreative,
-  type Policy,
+  type Creative,
   type InsertPolicy,
-  type Audit,
+  type Policy,
   type InsertAudit,
-  type AuditAction,
+  type Audit,
   type InsertAuditAction,
-  type CampaignMetrics,
-  type InsertCampaignMetrics,
-  type BrandConfiguration,
+  type AuditAction,
   type InsertBrandConfiguration,
-  type ContentCriteria,
+  type BrandConfiguration,
   type InsertContentCriteria,
-  type PerformanceBenchmarks,
+  type ContentCriteria,
+  type InsertCampaignMetrics,
+  type CampaignMetrics,
   type InsertPerformanceBenchmarks,
+  type PerformanceBenchmarks,
 } from "@shared/schema";
-import { db } from "./db";
-import { eq, desc, and, count, sql } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (mandatory for Replit Auth)
@@ -127,6 +130,13 @@ export interface IStorage {
   getPerformanceBenchmarksByUser(userId: string): Promise<PerformanceBenchmarks | undefined>;
   deletePerformanceBenchmarks(userId: string): Promise<boolean>;
 
+  // Company operations
+  createCompany(company: InsertCompany): Promise<Company>;
+  getCompanyById(id: string): Promise<Company | undefined>;
+  getCompaniesByUser(userId: string): Promise<Company[]>;
+  updateCompany(id: string, data: Partial<InsertCompany>): Promise<Company | undefined>;
+  deleteCompany(id: string): Promise<boolean>;
+
   // Debug methods for campaign metrics verification
   getAllUsers(): Promise<User[]>;
   getCampaignMetricsDebug(): Promise<{
@@ -176,7 +186,7 @@ export class DatabaseStorage implements IStorage {
     if (user && user.email === 'rafael@clickhero.com.br') {
       throw new Error('Cannot delete master user');
     }
-    
+
     const result = await db.delete(users).where(eq(users.id, id));
     return (result.rowCount ?? 0) > 0;
   }
@@ -650,7 +660,7 @@ export class DatabaseStorage implements IStorage {
   async createOrUpdatePerformanceBenchmarks(userId: string, benchmarks: InsertPerformanceBenchmarks): Promise<PerformanceBenchmarks> {
     // First try to get existing benchmarks for this user
     const existing = await this.getPerformanceBenchmarksByUser(userId);
-    
+
     if (existing) {
       // Update existing benchmarks
       const [result] = await db
@@ -681,6 +691,47 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(performanceBenchmarks)
       .where(eq(performanceBenchmarks.userId, userId));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  // Company operations
+  async createCompany(company: InsertCompany): Promise<Company> {
+    const [newCompany] = await db.insert(companies).values(company).returning();
+    return newCompany;
+  }
+
+  async getCompanyById(id: string): Promise<Company | undefined> {
+    const [company] = await db.select().from(companies).where(eq(companies.id, id));
+    return company;
+  }
+
+  async getCompaniesByUser(userId: string): Promise<Company[]> {
+    // This assumes a join table or a direct relationship exists between users and companies
+    // For now, let's assume a direct relationship for simplicity, but this might need adjustment
+    // based on the actual schema for multi-tenancy.
+    // A more robust approach would involve a 'company_users' join table.
+    return await db
+      .select({ company: companies })
+      .from(companies)
+      .leftJoin(users, eq(users.companyId, companies.id)) // Assuming users have a companyId field
+      .where(eq(users.id, userId))
+      .then(rows => rows.map(row => row.company));
+  }
+
+
+  async updateCompany(id: string, data: Partial<InsertCompany>): Promise<Company | undefined> {
+    const [updated] = await db
+      .update(companies)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(companies.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteCompany(id: string): Promise<boolean> {
+    // In a real-world scenario, you'd also want to handle associated data (users, campaigns, etc.)
+    // For now, we'll just delete the company itself.
+    const result = await db.delete(companies).where(eq(companies.id, id));
     return (result.rowCount ?? 0) > 0;
   }
 }

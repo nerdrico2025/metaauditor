@@ -152,11 +152,118 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Role-based authorization middleware
   const requireAdmin = (req: Request, res: Response, next: any) => {
-    if (req.user?.role !== 'administrador') {
+    if (req.user?.role !== 'company_admin' && req.user?.role !== 'super_admin') {
       return res.status(403).json({ message: 'Acesso negado. Apenas administradores podem realizar esta ação.' });
     }
     next();
   };
+
+  const requireSuperAdmin = (req: Request, res: Response, next: any) => {
+    if (req.user?.role !== 'super_admin') {
+      return res.status(403).json({ message: 'Acesso negado. Apenas super administradores podem realizar esta ação.' });
+    }
+    next();
+  };
+
+  // ========================================
+  // COMPANIES MANAGEMENT ROUTES (Super Admin Only)
+  // ========================================
+  
+  // Get all companies (Super Admin)
+  app.get('/api/companies', authenticateToken, requireSuperAdmin, async (req: AuthRequest, res: Response) => {
+    try {
+      const companies = await storage.getAllCompanies();
+      res.json(companies);
+    } catch (error: any) {
+      console.error("Error fetching companies:", error);
+      res.status(500).json({ message: "Erro ao buscar empresas" });
+    }
+  });
+
+  // Get single company by ID (Super Admin)
+  app.get('/api/companies/:id', authenticateToken, requireSuperAdmin, async (req: AuthRequest, res: Response) => {
+    try {
+      const companyId = req.params.id;
+      const company = await storage.getCompanyById(companyId);
+      
+      if (!company) {
+        return res.status(404).json({ message: 'Empresa não encontrada' });
+      }
+      
+      res.json(company);
+    } catch (error: any) {
+      console.error("Error fetching company:", error);
+      res.status(500).json({ message: "Erro ao buscar empresa" });
+    }
+  });
+
+  // Create new company (Super Admin)
+  app.post('/api/companies', authenticateToken, requireSuperAdmin, async (req: AuthRequest, res: Response) => {
+    try {
+      const validatedData = createCompanySchema.parse(req.body);
+      
+      // Check if slug already exists
+      const existingCompany = await storage.getCompanyBySlug(validatedData.slug);
+      if (existingCompany) {
+        return res.status(400).json({ message: 'Slug já está em uso' });
+      }
+      
+      const company = await storage.createCompany(validatedData);
+      res.json(company);
+    } catch (error: any) {
+      console.error("Error creating company:", error);
+      res.status(400).json({ message: error.message || "Erro ao criar empresa" });
+    }
+  });
+
+  // Update company (Super Admin)
+  app.put('/api/companies/:id', authenticateToken, requireSuperAdmin, async (req: AuthRequest, res: Response) => {
+    try {
+      const companyId = req.params.id;
+      const validatedData = updateCompanySchema.parse(req.body);
+      
+      const company = await storage.updateCompany(companyId, validatedData);
+      
+      if (!company) {
+        return res.status(404).json({ message: 'Empresa não encontrada' });
+      }
+      
+      res.json(company);
+    } catch (error: any) {
+      console.error("Error updating company:", error);
+      res.status(400).json({ message: error.message || "Erro ao atualizar empresa" });
+    }
+  });
+
+  // Delete company (Super Admin)
+  app.delete('/api/companies/:id', authenticateToken, requireSuperAdmin, async (req: AuthRequest, res: Response) => {
+    try {
+      const companyId = req.params.id;
+      
+      const success = await storage.deleteCompany(companyId);
+      
+      if (!success) {
+        return res.status(404).json({ message: 'Empresa não encontrada' });
+      }
+      
+      res.json({ message: 'Empresa removida com sucesso' });
+    } catch (error: any) {
+      console.error("Error deleting company:", error);
+      res.status(400).json({ message: error.message || "Erro ao remover empresa" });
+    }
+  });
+
+  // Get company stats (Super Admin)
+  app.get('/api/companies/:id/stats', authenticateToken, requireSuperAdmin, async (req: AuthRequest, res: Response) => {
+    try {
+      const companyId = req.params.id;
+      const stats = await storage.getCompanyStats(companyId);
+      res.json(stats);
+    } catch (error: any) {
+      console.error("Error fetching company stats:", error);
+      res.status(500).json({ message: "Erro ao buscar estatísticas da empresa" });
+    }
+  });
 
   // User Management routes (Admin only)
   app.get('/api/users', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {

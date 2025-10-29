@@ -7,6 +7,9 @@ import { AuthProvider, ProtectedRoute } from "@/contexts/AuthContext";
 import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
 import Settings from "@/pages/Settings";
+import BrandSettings from "@/pages/BrandSettings";
+import ContentCriteria from "@/pages/ContentCriteria";
+import SuperAdmin from "@/pages/SuperAdmin";
 import Dashboard from "@/pages/Dashboard";
 import Campaigns from "@/pages/Campaigns";
 import Creatives from "@/pages/Creatives";
@@ -64,6 +67,11 @@ function Router() {
       <Route path="/integrations">
         <ProtectedRoute>
           <Integrations />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/super-admin">
+        <ProtectedRoute>
+          <SuperAdmin />
         </ProtectedRoute>
       </Route>
       <Route component={NotFound} />
