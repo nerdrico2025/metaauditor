@@ -8,6 +8,13 @@
       "when": 1758034045378,
       "tag": "0000_bent_anita_blake",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1761745964379,
+      "tag": "0001_ordinary_eddie_brock",
+      "breakpoints": true
     }
   ]
 }

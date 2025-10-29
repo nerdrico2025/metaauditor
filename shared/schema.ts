@@ -28,12 +28,59 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
+// Subscription plan enum
+export const subscriptionPlanEnum = pgEnum('subscription_plan', ['free', 'starter', 'professional', 'enterprise']);
+
 // User role enum
-export const userRoleEnum = pgEnum('user_role', ['administrador', 'operador']);
+export const userRoleEnum = pgEnum('user_role', ['super_admin', 'company_admin', 'operador']);
+
+// Company status enum
+export const companyStatusEnum = pgEnum('company_status', ['active', 'suspended', 'trial', 'cancelled']);
+
+// Companies table (Tenants)
+export const companies = pgTable("companies", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 255 }).notNull(),
+  slug: varchar("slug", { length: 255 }).unique().notNull(), // URL-friendly identifier
+  logoUrl: text("logo_url"),
+  primaryColor: varchar("primary_color", { length: 7 }),
+  status: companyStatusEnum("status").default('trial'),
+  
+  // Subscription & Billing
+  subscriptionPlan: subscriptionPlanEnum("subscription_plan").default('free'),
+  subscriptionStatus: varchar("subscription_status").default('trial'), // 'trial', 'active', 'past_due', 'cancelled'
+  subscriptionStartDate: timestamp("subscription_start_date"),
+  subscriptionEndDate: timestamp("subscription_end_date"),
+  trialEndsAt: timestamp("trial_ends_at"),
+  
+  // Plan Limits
+  maxUsers: integer("max_users").default(5),
+  maxCampaigns: integer("max_campaigns").default(10),
+  maxAuditsPerMonth: integer("max_audits_per_month").default(100),
+  
+  // Usage Tracking
+  currentUsers: integer("current_users").default(0),
+  currentCampaigns: integer("current_campaigns").default(0),
+  auditsThisMonth: integer("audits_this_month").default(0),
+  
+  // Contact & Billing
+  contactEmail: varchar("contact_email"),
+  contactPhone: varchar("contact_phone"),
+  billingEmail: varchar("billing_email"),
+  taxId: varchar("tax_id"), // CNPJ/CPF
+  
+  // Metadata
+  settings: jsonb("settings"), // Custom company settings
+  metadata: jsonb("metadata"), // Additional data
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
 
 // User storage table (custom auth)
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: uuid("company_id").references(() => companies.id, { onDelete: 'cascade' }), // NULL for super_admin
   email: varchar("email").unique().notNull(),
   password: varchar("password").notNull(),
   firstName: varchar("first_name"),
@@ -63,7 +110,8 @@ export const integrations = pgTable("integrations", {
 // Campaigns
 export const campaigns = pgTable("campaigns", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  companyId: uuid("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }), // ✅ Vinculado à empresa
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }), // Usuário que criou
   integrationId: uuid("integration_id").notNull().references(() => integrations.id, { onDelete: 'cascade' }),
   externalId: varchar("external_id").notNull(), // ID from Meta/Google
   name: text("name").notNull(),
@@ -202,7 +250,20 @@ export const campaignMetrics = pgTable("campaign_metrics", {
 ]);
 
 // Relations
-export const usersRelations = relations(users, ({ many }) => ({
+export const companiesRelations = relations(companies, ({ many }) => ({
+  users: many(users),
+  campaigns: many(campaigns),
+  integrations: many(integrations),
+  policies: many(policies),
+  brandConfigurations: many(brandConfigurations),
+  contentCriteria: many(contentCriteria),
+}));
+
+export const usersRelations = relations(users, ({ one, many }) => ({
+  company: one(companies, {
+    fields: [users.companyId],
+    references: [companies.id],
+  }),
   integrations: many(integrations),
   campaigns: many(campaigns),
   creatives: many(creatives),
@@ -358,13 +419,40 @@ export const insertContentCriteriaSchema = createInsertSchema(contentCriteria).o
   updatedAt: true,
 });
 
+// Company schemas
+export const createCompanySchema = z.object({
+  name: z.string().min(1, "Nome da empresa é obrigatório"),
+  slug: z.string().min(1, "Slug é obrigatório").regex(/^[a-z0-9-]+$/, "Slug deve conter apenas letras minúsculas, números e hífens"),
+  contactEmail: z.string().email("Email de contato inválido"),
+  subscriptionPlan: z.enum(['free', 'starter', 'professional', 'enterprise']).default('free'),
+  maxUsers: z.number().int().positive().default(5),
+  maxCampaigns: z.number().int().positive().default(10),
+  maxAuditsPerMonth: z.number().int().positive().default(100),
+});
+
+export const updateCompanySchema = z.object({
+  name: z.string().min(1, "Nome da empresa é obrigatório").optional(),
+  logoUrl: z.string().url().optional(),
+  primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+  status: z.enum(['active', 'suspended', 'trial', 'cancelled']).optional(),
+  subscriptionPlan: z.enum(['free', 'starter', 'professional', 'enterprise']).optional(),
+  maxUsers: z.number().int().positive().optional(),
+  maxCampaigns: z.number().int().positive().optional(),
+  maxAuditsPerMonth: z.number().int().positive().optional(),
+  contactEmail: z.string().email().optional(),
+  contactPhone: z.string().optional(),
+  billingEmail: z.string().email().optional(),
+  taxId: z.string().optional(),
+});
+
 // Auth schemas
 export const registerSchema = z.object({
   email: z.string().email("Email inválido"),
   password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
   firstName: z.string().min(1, "Nome é obrigatório"),
   lastName: z.string().min(1, "Sobrenome é obrigatório"),
-  role: z.enum(['administrador', 'operador']).default('operador'),
+  role: z.enum(['super_admin', 'company_admin', 'operador']).default('operador'),
+  companyId: z.string().uuid().optional(), // Optional for super_admin
 });
 
 export const loginSchema = z.object({
@@ -411,7 +499,13 @@ export type CreateUserData = z.infer<typeof createUserSchema>;
 export type UpdateUserData = z.infer<typeof updateUserSchema>;
 export type UpdateProfileData = z.infer<typeof updateProfileSchema>;
 export type ChangePasswordData = z.infer<typeof changePasswordSchema>;
-export type UserRole = 'administrador' | 'operador';
+export type UserRole = 'super_admin' | 'company_admin' | 'operador';
+export type SubscriptionPlan = 'free' | 'starter' | 'professional' | 'enterprise';
+export type CompanyStatus = 'active' | 'suspended' | 'trial' | 'cancelled';
+export type Company = typeof companies.$inferSelect;
+export type InsertCompany = typeof companies.$inferInsert;
+export type CreateCompanyData = z.infer<typeof createCompanySchema>;
+export type UpdateCompanyData = z.infer<typeof updateCompanySchema>;
 export type InsertIntegration = z.infer<typeof insertIntegrationSchema>;
 export type Integration = typeof integrations.$inferSelect;
 export type InsertCampaign = z.infer<typeof insertCampaignSchema>;
