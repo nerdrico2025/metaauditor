@@ -1,0 +1,1 @@
+ALTER TABLE "campaigns" ALTER COLUMN "company_id" DROP NOT NULL;
