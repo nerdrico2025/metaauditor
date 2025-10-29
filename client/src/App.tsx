@@ -70,7 +70,7 @@ function Router() {
         </ProtectedRoute>
       </Route>
       <Route path="/super-admin">
-        <ProtectedRoute>
+        <ProtectedRoute requireSuperAdmin={true}>
           <SuperAdmin />
         </ProtectedRoute>
       </Route>

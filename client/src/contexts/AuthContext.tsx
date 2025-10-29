@@ -124,8 +124,16 @@ export function useAuth() {
 }
 
 // Higher-order component for protecting routes
-export function ProtectedRoute({ children, requireAdmin = false }: { children: ReactNode; requireAdmin?: boolean }) {
-  const { isAuthenticated, isAdmin, isLoading } = useAuth();
+export function ProtectedRoute({ 
+  children, 
+  requireAdmin = false,
+  requireSuperAdmin = false 
+}: { 
+  children: ReactNode; 
+  requireAdmin?: boolean;
+  requireSuperAdmin?: boolean;
+}) {
+  const { isAuthenticated, isAdmin, isSuperAdmin, isLoading, user } = useAuth();
 
   if (isLoading) {
     return <div className="flex items-center justify-center min-h-screen">Carregando...</div>;
@@ -134,6 +142,24 @@ export function ProtectedRoute({ children, requireAdmin = false }: { children: R
   if (!isAuthenticated) {
     window.location.href = '/login';
     return null;
+  }
+
+  // Super admin trying to access regular routes should be redirected to super admin
+  if (isSuperAdmin && !requireSuperAdmin && window.location.pathname !== '/super-admin') {
+    window.location.href = '/super-admin';
+    return null;
+  }
+
+  // Regular users trying to access super admin routes
+  if (requireSuperAdmin && !isSuperAdmin) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Acesso Negado</h1>
+          <p className="text-gray-600 dark:text-gray-300">Apenas super administradores podem acessar esta página.</p>
+        </div>
+      </div>
+    );
   }
 
   if (requireAdmin && !isAdmin) {

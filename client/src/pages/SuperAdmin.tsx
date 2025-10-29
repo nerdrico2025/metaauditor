@@ -51,20 +51,6 @@ export default function SuperAdmin() {
   const { toast } = useToast();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
-  // Verificar se é super admin
-  if (user?.role !== 'super_admin') {
-    return (
-      <div className="container mx-auto py-6">
-        <Card>
-          <CardContent className="py-8 text-center">
-            <h2 className="text-xl font-semibold mb-2">Acesso Negado</h2>
-            <p className="text-gray-600">Apenas super administradores podem acessar esta página.</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   const { data: companies = [], isLoading } = useQuery<Company[]>({
     queryKey: ['/api/companies'],
   });
