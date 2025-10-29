@@ -6,8 +6,8 @@ CREATE TABLE IF NOT EXISTS "companies" (
   "slug" varchar(255) UNIQUE NOT NULL,
   "logo_url" text,
   "primary_color" varchar(7),
-  "status" company_status DEFAULT 'trial',
-  "subscription_plan" subscription_plan DEFAULT 'free',
+  "status" varchar DEFAULT 'trial',
+  "subscription_plan" varchar DEFAULT 'free',
   "subscription_status" varchar DEFAULT 'trial',
   "subscription_start_date" timestamp,
   "subscription_end_date" timestamp,
@@ -50,7 +50,18 @@ BEGIN
   END IF;
 END $$;
 
--- Step 4: Create a default company for existing data
+-- Step 4: Ensure user_role enum has super_admin
+DO $$
+BEGIN
+  -- Drop and recreate the enum with all roles
+  ALTER TABLE users ALTER COLUMN role TYPE text;
+  DROP TYPE IF EXISTS user_role CASCADE;
+  CREATE TYPE user_role AS ENUM('super_admin', 'company_admin', 'operador');
+  ALTER TABLE users ALTER COLUMN role TYPE user_role USING role::user_role;
+  ALTER TABLE users ALTER COLUMN role SET DEFAULT 'operador';
+END $$;
+
+-- Step 5: Create a default company for existing data
 DO $$
 DECLARE
   default_company_id uuid;
@@ -83,7 +94,7 @@ BEGIN
   END IF;
 END $$;
 
--- Step 5: Add foreign key constraints
+-- Step 6: Add foreign key constraints
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -107,7 +118,7 @@ BEGIN
   END IF;
 END $$;
 
--- Step 6: Add unique constraint on email if not exists
+-- Step 7: Add unique constraint on email if not exists
 DO $$
 BEGIN
   IF NOT EXISTS (
