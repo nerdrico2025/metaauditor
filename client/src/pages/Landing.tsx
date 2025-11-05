@@ -145,16 +145,21 @@ function LoginFormComponent({
 
 export default function Landing() {
   const [location, setLocation] = useLocation();
-  const { login, isAuthenticated, isLoading } = useAuth();
+  const { login, isAuthenticated, isLoading, user } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Redirect if already authenticated - moved to useEffect to avoid render-time state changes
+  // Redirect if already authenticated
   useEffect(() => {
-    if (isAuthenticated && !isLoading) {
-      setLocation('/dashboard');
+    if (isAuthenticated && !isLoading && user) {
+      // Redirect based on role
+      if (user.role === 'super_admin') {
+        setLocation('/super-admin');
+      } else {
+        setLocation('/dashboard');
+      }
     }
-  }, [isAuthenticated, isLoading, setLocation]);
+  }, [isAuthenticated, isLoading, user, setLocation]);
 
   // Show loading state while checking authentication
   if (isLoading) {
@@ -170,7 +175,14 @@ export default function Landing() {
 
   // Don't render anything if user is authenticated (redirect happening)
   if (isAuthenticated) {
-    return null;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-click-hero-white-2 to-click-hero-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-click-hero-orange mx-auto"></div>
+          <p className="mt-2 text-click-hero-dark-gray">Redirecionando...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
