@@ -33,11 +33,14 @@ app.use((req, res, next) => {
 });
 
 // API Routes - Modular structure
+import userRoutes from "./modules/users/user.routes";
+import campaignRoutes from "./modules/campaigns/campaign.routes";
+import creativeRoutes from "./modules/creatives/creative.routes";
+
 app.use('/api/auth', authRoutes);
-// TODO: Add more modular routes here
-// app.use('/api/users', userRoutes);
-// app.use('/api/campaigns', campaignRoutes);
-// app.use('/api/creatives', creativeRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/campaigns', campaignRoutes);
+app.use('/api/creatives', creativeRoutes);
 
 // Health check endpoints
 app.get('/healthz', (req, res) => {
