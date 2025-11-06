@@ -64,14 +64,7 @@ export default function Creatives() {
   });
 
   const { data, isLoading: creativesLoading, error } = useQuery<PaginatedResponse>({
-    queryKey: ["/api/creatives", page, limit, statusFilter, campaignFilter, searchTerm],
-    queryFn: async () => {
-      const response = await fetch(`/api/creatives?${queryParams}`, {
-        credentials: 'include',
-      });
-      if (!response.ok) throw new Error('Failed to fetch creatives');
-      return response.json();
-    },
+    queryKey: [`/api/creatives?${queryParams.toString()}`],
     enabled: isAuthenticated,
   });
 
