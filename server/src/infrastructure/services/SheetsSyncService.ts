@@ -1,7 +1,7 @@
 
 import { eq, sql } from 'drizzle-orm';
 import Papa from 'papaparse';
-import { campaignMetrics, InsertCampaignMetrics } from '../../shared/schema.js';
+import { campaignMetrics, campaigns, creatives, InsertCampaignMetrics } from '../../shared/schema.js';
 import { db } from '../database/connection.js';
 import { nanoid } from 'nanoid';
 
@@ -227,7 +227,7 @@ export class SheetsSyncService {
     return result;
   }
 
-  async syncSingleTab(userId?: string): Promise<SyncResult> {
+  async syncSingleTab(userId?: string, integrationId?: string): Promise<SyncResult> {
     const syncBatch = nanoid();
     console.log(`🚀 Starting Google Sheets sync - Batch ID: ${syncBatch}`);
     
@@ -260,6 +260,18 @@ export class SheetsSyncService {
         return result;
       }
       
+      // Clear existing data
+      console.log(`🗑️ Clearing existing data from previous syncs`);
+      await db.delete(campaignMetrics).where(eq(campaignMetrics.source, 'google_sheets'));
+      await db.delete(creatives).where(eq(creatives.status, 'imported_sheets'));
+      console.log(`✅ Cleared existing Google Sheets data`);
+      
+      // Create campaigns and creatives from sheet data
+      if (userId && integrationId) {
+        console.log(`📋 Creating campaigns and creatives from sheet data`);
+        await this.createCampaignsAndCreatives(downloadResult.data, userId, integrationId);
+      }
+      
       const transformedRecords: InsertCampaignMetrics[] = [];
       
       for (const rawRecord of downloadResult.data) {
@@ -272,11 +284,7 @@ export class SheetsSyncService {
       result.totalProcessed = transformedRecords.length;
       console.log(`✅ Successfully transformed ${result.totalProcessed} records`);
       
-      console.log(`🗑️ Clearing existing data from previous syncs`);
-      await db.delete(campaignMetrics).where(eq(campaignMetrics.source, 'google_sheets'));
-      console.log(`✅ Cleared existing Google Sheets data`);
-      
-      console.log(`💾 Inserting data in batches of ${BATCH_SIZE}`);
+      console.log(`💾 Inserting metrics data in batches of ${BATCH_SIZE}`);
       const totalBatches = Math.ceil(transformedRecords.length / BATCH_SIZE);
       
       for (let i = 0; i < totalBatches; i++) {
@@ -314,6 +322,62 @@ export class SheetsSyncService {
     }
     
     return result;
+  }
+
+  private async createCampaignsAndCreatives(data: RawMetricsData[], userId: string, integrationId: string): Promise<void> {
+    const campaignMap = new Map<string, string>();
+    
+    // Group data by campaign
+    for (const row of data) {
+      if (!row.campanha || campaignMap.has(row.campanha)) continue;
+      
+      try {
+        // Create campaign
+        const [campaign] = await db.insert(campaigns).values({
+          userId,
+          integrationId,
+          externalId: `sheets_${nanoid(10)}`,
+          name: row.campanha,
+          platform: 'google_sheets',
+          status: 'active',
+        }).returning({ id: campaigns.id });
+        
+        campaignMap.set(row.campanha, campaign.id);
+        console.log(`✅ Created campaign: ${row.campanha}`);
+      } catch (error) {
+        console.log(`⚠️ Error creating campaign ${row.campanha}:`, error);
+      }
+    }
+    
+    // Create creatives
+    let creativesCreated = 0;
+    for (const row of data) {
+      const campaignId = campaignMap.get(row.campanha);
+      if (!campaignId || !row.anuncios) continue;
+      
+      try {
+        await db.insert(creatives).values({
+          userId,
+          campaignId,
+          externalId: `sheets_${nanoid(10)}`,
+          name: row.anuncios,
+          type: 'image',
+          imageUrl: row.ad_url || null,
+          status: 'imported_sheets',
+          impressions: this.parseInteger(row.impressoes),
+          clicks: this.parseInteger(row.cliques),
+          conversions: this.parseInteger(row.conversas_iniciadas),
+          cpc: this.parseBrazilianCurrency(row.cpc),
+          ctr: row.cliques && row.impressoes ? 
+            ((this.parseInteger(row.cliques) / this.parseInteger(row.impressoes)) * 100).toFixed(3) : '0',
+        });
+        creativesCreated++;
+      } catch (error) {
+        console.log(`⚠️ Error creating creative ${row.anuncios}:`, error);
+      }
+    }
+    
+    console.log(`✅ Created ${creativesCreated} creatives from ${campaignMap.size} campaigns`);
   }
 
   async getSyncStatus(): Promise<{
