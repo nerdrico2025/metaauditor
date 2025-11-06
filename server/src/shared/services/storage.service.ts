@@ -6,6 +6,7 @@ import {
   users,
   integrations,
   campaigns,
+  adSets,
   creatives,
   policies,
   audits,
@@ -22,6 +23,8 @@ import {
   type Integration,
   type InsertCampaign,
   type Campaign,
+  type InsertAdSet,
+  type AdSet,
   type InsertCreative,
   type Creative,
   type InsertPolicy,
@@ -59,6 +62,11 @@ export interface IStorage {
   getCampaignById(id: string): Promise<Campaign | undefined>;
   getCampaignByIdWithCompanyCheck(id: string, userId: string): Promise<Campaign | undefined>;
   updateCampaign(id: string, data: Partial<InsertCampaign>): Promise<Campaign | undefined>;
+  createAdSet(adSet: InsertAdSet): Promise<AdSet>;
+  getAdSetsByUser(userId: string): Promise<AdSet[]>;
+  getAdSetsByCampaign(campaignId: string): Promise<AdSet[]>;
+  getAdSetById(id: string): Promise<AdSet | undefined>;
+  updateAdSet(id: string, data: Partial<InsertAdSet>): Promise<AdSet | undefined>;
   createCreative(creative: InsertCreative): Promise<Creative>;
   getCreativesByUser(userId: string): Promise<Creative[]>;
   getCreativesByCampaign(campaignId: string): Promise<Creative[]>;
@@ -250,6 +258,33 @@ export class DatabaseStorage implements IStorage {
       .update(campaigns)
       .set({ ...data, updatedAt: new Date() })
       .where(eq(campaigns.id, id))
+      .returning();
+    return updated;
+  }
+
+  async createAdSet(adSet: InsertAdSet): Promise<AdSet> {
+    const [newAdSet] = await db.insert(adSets).values(adSet).returning();
+    return newAdSet;
+  }
+
+  async getAdSetsByUser(userId: string): Promise<AdSet[]> {
+    return await db.select().from(adSets).where(eq(adSets.userId, userId));
+  }
+
+  async getAdSetsByCampaign(campaignId: string): Promise<AdSet[]> {
+    return await db.select().from(adSets).where(eq(adSets.campaignId, campaignId));
+  }
+
+  async getAdSetById(id: string): Promise<AdSet | undefined> {
+    const [adSet] = await db.select().from(adSets).where(eq(adSets.id, id));
+    return adSet;
+  }
+
+  async updateAdSet(id: string, data: Partial<InsertAdSet>): Promise<AdSet | undefined> {
+    const [updated] = await db
+      .update(adSets)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(adSets.id, id))
       .returning();
     return updated;
   }

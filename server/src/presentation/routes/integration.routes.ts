@@ -79,30 +79,54 @@ router.post('/:id/sync', authenticateToken, async (req: Request, res: Response, 
     const companyId = user?.companyId || null;
 
     let syncedCampaigns = 0;
+    let syncedAdSets = 0;
     let syncedCreatives = 0;
 
     // Sync based on platform
     if (integration.platform === 'meta') {
+      console.log('🚀 Starting Meta Ads sync with full hierarchy...');
+      
       // Sync Meta Ads campaigns
       const campaigns = await metaAdsService.syncCampaigns(integration, userId, companyId);
+      console.log(`📊 Found ${campaigns.length} campaigns`);
       
       for (const campaign of campaigns) {
-        await storage.createCampaign(campaign);
+        const dbCampaign = await storage.createCampaign(campaign);
         syncedCampaigns++;
+        console.log(`✅ Campaign synced: ${campaign.name}`);
 
-        // Sync creatives for each campaign
-        const creatives = await metaAdsService.syncCreatives(
+        // Sync ad sets for each campaign
+        const adSets = await metaAdsService.syncAdSets(
           integration,
           campaign.externalId,
-          campaign.id,
+          dbCampaign.id,
           userId
         );
+        console.log(`  📋 Found ${adSets.length} ad sets in campaign ${campaign.name}`);
 
-        for (const creative of creatives) {
-          await storage.createCreative(creative);
-          syncedCreatives++;
+        for (const adSet of adSets) {
+          const dbAdSet = await storage.createAdSet(adSet);
+          syncedAdSets++;
+          console.log(`  ✅ Ad Set synced: ${adSet.name}`);
+
+          // Sync creatives for each ad set
+          const creatives = await metaAdsService.syncCreatives(
+            integration,
+            adSet.externalId,
+            dbAdSet.id,
+            dbCampaign.id,
+            userId
+          );
+          console.log(`    🎨 Found ${creatives.length} ads in ad set ${adSet.name}`);
+
+          for (const creative of creatives) {
+            await storage.createCreative(creative);
+            syncedCreatives++;
+          }
         }
       }
+      
+      console.log(`🎉 Meta sync completed: ${syncedCampaigns} campaigns, ${syncedAdSets} ad sets, ${syncedCreatives} ads`);
     } else if (integration.platform === 'google') {
       // Sync Google Ads campaigns
       const campaigns = await googleAdsService.syncCampaigns(integration, userId, companyId);
@@ -134,6 +158,7 @@ router.post('/:id/sync', authenticateToken, async (req: Request, res: Response, 
     res.json({
       message: 'Sincronização concluída com sucesso',
       campaigns: syncedCampaigns,
+      adSets: syncedAdSets,
       creatives: syncedCreatives,
     });
   } catch (error) {
