@@ -80,6 +80,14 @@ router.post('/:id/analyze', authenticateToken, async (req: Request, res: Respons
       return res.status(404).json({ message: 'Criativo não encontrado' });
     }
 
+    // Validate that creative has a real image (not placeholder)
+    if (!creative.imageUrl || creative.imageUrl.includes('placeholder.com')) {
+      return res.status(400).json({ 
+        message: 'Criativo sem imagem real',
+        details: 'Para analisar um criativo, ele precisa ter uma imagem válida. Importe criativos do Meta Ads ou Google Ads, ou adicione uma imagem manualmente.'
+      });
+    }
+
     // Get brand configuration and content criteria for the user
     const brandConfigs = await storage.getBrandConfigurationsByUser(userId);
     const brandConfig = brandConfigs.length > 0 ? brandConfigs[0] : null;
