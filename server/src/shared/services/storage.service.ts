@@ -1,5 +1,5 @@
 
-import { db } from '../config/database';
+import { db } from '../../infrastructure/database/connection';
 import { eq, desc, sql, and, count } from "drizzle-orm";
 import {
   companies,
