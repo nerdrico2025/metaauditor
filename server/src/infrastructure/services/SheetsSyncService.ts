@@ -266,7 +266,15 @@ export class SheetsSyncService {
       // Clear existing data
       console.log(`🗑️ Clearing existing data from previous syncs`);
       await db.delete(campaignMetrics).where(eq(campaignMetrics.source, 'google_sheets'));
-      console.log(`✅ Cleared existing Google Sheets data`);
+      
+      // Delete campaigns and creatives from Google Sheets integration
+      if (integrationId) {
+        await db.delete(creatives).where(
+          sql`${creatives.campaignId} IN (SELECT id FROM ${campaigns} WHERE ${campaigns.integrationId} = ${integrationId})`
+        );
+        await db.delete(campaigns).where(eq(campaigns.integrationId, integrationId));
+        console.log(`✅ Cleared existing campaigns and creatives from Google Sheets integration`);
+      }
       
       // Create campaigns and creatives from sheet data
       if (userId && integrationId) {
@@ -344,8 +352,11 @@ export class SheetsSyncService {
       if (!row.campanha || campaignMap.has(row.campanha)) continue;
       
       try {
+        // Debug log to see the campaign_status value
+        console.log(`📋 Processing campaign: ${row.campanha}, campaign_status from sheet: "${row.campaign_status}"`);
+        
         // Normalize campaign status: PAUSED -> paused, ACTIVE -> active
-        const normalizedStatus = row.campaign_status?.toUpperCase() === 'PAUSED' ? 'paused' : 'active';
+        const normalizedStatus = row.campaign_status?.toUpperCase().trim() === 'PAUSED' ? 'paused' : 'active';
         
         // Create campaign with the real platform from integration dataSource
         const [campaign] = await db.insert(campaigns).values({
@@ -373,9 +384,12 @@ export class SheetsSyncService {
       if (!campaignId || !row.anuncios) continue;
       
       try {
+        // Debug log to see the ad_status value
+        console.log(`📋 Processing creative: ${row.anuncios}, ad_status from sheet: "${row.ad_status}"`);
+        
         // Normalize ad status: CAMPAIGN_PAUSED -> campaign_paused, PAUSED -> paused, ACTIVE -> active
         let normalizedAdStatus = 'active';
-        const adStatusUpper = row.ad_status?.toUpperCase();
+        const adStatusUpper = row.ad_status?.toUpperCase().trim();
         if (adStatusUpper === 'CAMPAIGN_PAUSED') {
           normalizedAdStatus = 'campaign_paused';
         } else if (adStatusUpper === 'PAUSED') {
