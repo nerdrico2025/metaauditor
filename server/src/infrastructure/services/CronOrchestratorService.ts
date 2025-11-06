@@ -14,10 +14,10 @@ export class CronOrchestratorService {
   }
 
   /**
-   * Inicializa e agenda os jobs do cron.
+   * Configura os jobs do cron (sem iniciar).
    */
-  public async initializeJobs(): Promise<void> {
-    // Exemplo: Agendar sincronização de planilhas a cada hora
+  public setupCronJobs(): void {
+    // Exemplo: Agendar sincronização de planilhas a cada hora (sem iniciar)
     const sheetsSyncJob = cron.schedule('0 * * * *', async () => {
       console.log('Iniciando sincronização de planilhas...');
       try {
@@ -25,19 +25,23 @@ export class CronOrchestratorService {
         console.log('Sincronização de planilhas concluída com sucesso.');
       } catch (error) {
         console.error('Erro ao sincronizar planilhas:', error);
-        // Aqui você pode querer lidar com o erro de forma mais robusta,
-        // talvez emitindo um evento ou registrando em um sistema de monitoramento.
       }
+    }, {
+      scheduled: false
     });
     this.cronJobs.push(sheetsSyncJob);
-    console.log('Job de sincronização de planilhas agendado.');
+    console.log('Job de sincronização de planilhas configurado.');
+  }
 
-    // Adicione outros jobs aqui conforme necessário
-    // const anotherJob = cron.schedule('*/5 * * * *', async () => {
-    //   console.log('Executando outro job a cada 5 minutos...');
-    // });
-    // this.cronJobs.push(anotherJob);
-    // console.log('Outro job agendado.');
+  /**
+   * Inicia todos os jobs configurados.
+   */
+  public startAll(): void {
+    console.log('Iniciando todos os jobs do cron...');
+    this.cronJobs.forEach(job => {
+      job.start();
+    });
+    console.log('Todos os jobs do cron foram iniciados.');
   }
 
   /**

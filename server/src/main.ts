@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import { setupVite, serveStatic, log } from "../vite";
-import { cronOrchestratorService } from "@infrastructure/services/cronOrchestratorService";
+import { cronOrchestratorService } from "@infrastructure/services/CronOrchestratorService";
 import { checkIfDatabaseEmpty, seedDatabase } from "../scripts/seedData";
 import { errorHandler } from "@shared/errors/AppException";
 import { storage } from "@shared/services/storage.service";
