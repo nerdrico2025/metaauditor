@@ -16,8 +16,12 @@
     "baseUrl": ".",
     "types": ["node", "vite/client"],
     "paths": {
+      "@domain/*": ["./server/src/domain/*"],
+      "@application/*": ["./server/src/application/*"],
+      "@infrastructure/*": ["./server/src/infrastructure/*"],
+      "@presentation/*": ["./server/src/presentation/*"],
       "@shared/*": ["./server/src/shared/*"],
-      "@db": ["./server/src/shared/config/database"]
+      "@drizzle/*": ["./server/drizzle/*"]
     }
   }
 }
