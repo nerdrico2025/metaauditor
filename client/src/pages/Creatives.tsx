@@ -59,7 +59,8 @@ function CreativeTableRow({
   onZoom,
   onAnalyze,
   getCampaignName,
-  getStatusBadgeVariant
+  getStatusBadgeVariant,
+  getStatusLabel
 }: {
   creative: Creative;
   onView: () => void;
@@ -67,6 +68,7 @@ function CreativeTableRow({
   onAnalyze: () => void;
   getCampaignName: (id: string | null) => string;
   getStatusBadgeVariant: (status: string) => any;
+  getStatusLabel: (status: string) => string;
 }) {
   const { hasAudit, isLoading } = useCreativeHasAudit(creative.id);
   
@@ -85,8 +87,7 @@ function CreativeTableRow({
         <div className="max-w-xs">
           <div className="truncate mb-1">{creative.name}</div>
           <Badge variant={getStatusBadgeVariant(creative.status)} className="text-xs">
-            {creative.status === 'active' ? 'Ativo' : 
-             creative.status === 'paused' ? 'Pausado' : 'Inativo'}
+            {getStatusLabel(creative.status)}
           </Badge>
           {creative.headline && (
             <div className="text-xs text-slate-500 truncate mt-1">{creative.headline}</div>
@@ -96,6 +97,11 @@ function CreativeTableRow({
       <TableCell>
         <span className="text-sm text-slate-600">
           {getCampaignName(creative.campaignId)}
+        </span>
+      </TableCell>
+      <TableCell>
+        <span className="text-sm text-slate-600">
+          {creative.createdAt ? new Date(creative.createdAt).toLocaleDateString('pt-BR') : '-'}
         </span>
       </TableCell>
       <TableCell className="text-right">
@@ -230,10 +236,27 @@ export default function Creatives() {
         return 'default';
       case 'paused':
         return 'secondary';
+      case 'campaign_paused':
+        return 'destructive';
       case 'inactive':
         return 'outline';
       default:
         return 'outline';
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'active':
+        return 'Ativo';
+      case 'paused':
+        return 'Pausado';
+      case 'campaign_paused':
+        return 'Campanha Pausada';
+      case 'inactive':
+        return 'Inativo';
+      default:
+        return status;
     }
   };
 
@@ -328,6 +351,7 @@ export default function Creatives() {
                           <TableHead className="w-24"></TableHead>
                           <TableHead>Nome</TableHead>
                           <TableHead>Campanha</TableHead>
+                          <TableHead>Data</TableHead>
                           <TableHead className="text-right">Impressões</TableHead>
                           <TableHead className="text-right">Cliques</TableHead>
                           <TableHead className="text-right">CTR</TableHead>
@@ -346,6 +370,7 @@ export default function Creatives() {
                             onAnalyze={() => setSelectedCreativeForAnalysis(creative)}
                             getCampaignName={getCampaignName}
                             getStatusBadgeVariant={getStatusBadgeVariant}
+                            getStatusLabel={getStatusLabel}
                           />
                         ))}
                       </TableBody>
