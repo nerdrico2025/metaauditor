@@ -15,6 +15,7 @@ import {
   contentCriteria,
   campaignMetrics,
   performanceBenchmarks,
+  platformSettings,
   type Company,
   type InsertCompany,
   type User,
@@ -41,6 +42,8 @@ import {
   type CampaignMetrics,
   type InsertPerformanceBenchmarks,
   type PerformanceBenchmarks,
+  type InsertPlatformSettings,
+  type PlatformSettings,
 } from "../schema.js";
 
 export interface IStorage {
@@ -126,6 +129,9 @@ export interface IStorage {
     dateRange: { earliest: Date | null; latest: Date | null };
     sampleRecords: CampaignMetrics[];
   }>;
+  getPlatformSettingsByPlatform(platform: string): Promise<PlatformSettings | undefined>;
+  upsertPlatformSettings(data: Omit<InsertPlatformSettings, 'id' | 'createdAt' | 'updatedAt'>): Promise<PlatformSettings>;
+  deletePlatformSettings(platform: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -662,6 +668,40 @@ export class DatabaseStorage implements IStorage {
       },
       sampleRecords
     };
+  }
+
+  async getPlatformSettingsByPlatform(platform: string): Promise<PlatformSettings | undefined> {
+    const [settings] = await db
+      .select()
+      .from(platformSettings)
+      .where(eq(platformSettings.platform, platform));
+    return settings;
+  }
+
+  async upsertPlatformSettings(data: Omit<InsertPlatformSettings, 'id' | 'createdAt' | 'updatedAt'>): Promise<PlatformSettings> {
+    const existing = await this.getPlatformSettingsByPlatform(data.platform);
+    
+    if (existing) {
+      const [updated] = await db
+        .update(platformSettings)
+        .set({ ...data, updatedAt: new Date() })
+        .where(eq(platformSettings.platform, data.platform))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db
+        .insert(platformSettings)
+        .values(data)
+        .returning();
+      return created;
+    }
+  }
+
+  async deletePlatformSettings(platform: string): Promise<boolean> {
+    const result = await db
+      .delete(platformSettings)
+      .where(eq(platformSettings.platform, platform));
+    return (result.rowCount ?? 0) > 0;
   }
 }
 
