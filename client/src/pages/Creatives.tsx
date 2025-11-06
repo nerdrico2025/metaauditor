@@ -12,8 +12,31 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Filter, Eye, BarChart3, ChevronLeft, ChevronRight, Image as ImageIcon } from "lucide-react";
-import type { Creative, Campaign } from "@shared/schema";
+import { Search, Filter, Eye, BarChart3, ChevronLeft, ChevronRight, Image as ImageIcon, CheckCircle, XCircle } from "lucide-react";
+import type { Creative, Campaign, Audit } from "@shared/schema";
+
+// Component to show if creative has been analyzed
+function CreativeAnalysisIndicator({ creativeId }: { creativeId: string }) {
+  const { data: audits, isLoading } = useQuery<Audit[]>({
+    queryKey: [`/api/creatives/${creativeId}/audits`],
+  });
+
+  if (isLoading) {
+    return <Skeleton className="h-5 w-5 rounded-full mx-auto" />;
+  }
+
+  const hasAudit = audits && audits.length > 0;
+
+  return (
+    <div className="flex items-center justify-center" title={hasAudit ? "Criativo analisado" : "Não analisado"}>
+      {hasAudit ? (
+        <CheckCircle className="h-5 w-5 text-green-500" />
+      ) : (
+        <XCircle className="h-5 w-5 text-slate-300" />
+      )}
+    </div>
+  );
+}
 
 interface PaginatedResponse {
   creatives: Creative[];
@@ -178,7 +201,7 @@ export default function Creatives() {
               {creativesLoading ? (
                 <div className="space-y-3">
                   {[...Array(10)].map((_, i) => (
-                    <Skeleton key={i} className="h-16 w-full" />
+                    <Skeleton key={i} className="h-24 w-full" />
                   ))}
                 </div>
               ) : creatives.length > 0 ? (
@@ -187,15 +210,14 @@ export default function Creatives() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="w-12"></TableHead>
+                          <TableHead className="w-24"></TableHead>
                           <TableHead>Nome</TableHead>
                           <TableHead>Campanha</TableHead>
-                          <TableHead>Tipo</TableHead>
-                          <TableHead>Status</TableHead>
                           <TableHead className="text-right">Impressões</TableHead>
                           <TableHead className="text-right">Cliques</TableHead>
                           <TableHead className="text-right">CTR</TableHead>
                           <TableHead className="text-right">Conv.</TableHead>
+                          <TableHead className="text-center">Análise</TableHead>
                           <TableHead className="text-right">Ações</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -207,22 +229,27 @@ export default function Creatives() {
                                 <img 
                                   src={creative.imageUrl} 
                                   alt={creative.name}
-                                  className="w-10 h-10 object-cover rounded"
+                                  className="w-20 h-20 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+                                  onClick={() => setSelectedCreative(creative)}
                                   onError={(e) => {
-                                    e.currentTarget.src = 'https://via.placeholder.com/40?text=IMG';
+                                    e.currentTarget.src = 'https://via.placeholder.com/80?text=IMG';
                                   }}
                                 />
                               ) : (
-                                <div className="w-10 h-10 bg-slate-100 rounded flex items-center justify-center">
-                                  <ImageIcon className="h-5 w-5 text-slate-400" />
+                                <div className="w-20 h-20 bg-slate-100 rounded-lg flex items-center justify-center">
+                                  <ImageIcon className="h-8 w-8 text-slate-400" />
                                 </div>
                               )}
                             </TableCell>
                             <TableCell className="font-medium">
                               <div className="max-w-xs">
-                                <div className="truncate">{creative.name}</div>
+                                <div className="truncate mb-1">{creative.name}</div>
+                                <Badge variant={getStatusBadgeVariant(creative.status)} className="text-xs">
+                                  {creative.status === 'active' ? 'Ativo' : 
+                                   creative.status === 'paused' ? 'Pausado' : 'Inativo'}
+                                </Badge>
                                 {creative.headline && (
-                                  <div className="text-xs text-slate-500 truncate">{creative.headline}</div>
+                                  <div className="text-xs text-slate-500 truncate mt-1">{creative.headline}</div>
                                 )}
                               </div>
                             </TableCell>
@@ -230,17 +257,6 @@ export default function Creatives() {
                               <span className="text-sm text-slate-600">
                                 {getCampaignName(creative.campaignId)}
                               </span>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className="text-xs">
-                                {creative.type}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={getStatusBadgeVariant(creative.status)}>
-                                {creative.status === 'active' ? 'Ativo' : 
-                                 creative.status === 'paused' ? 'Pausado' : 'Inativo'}
-                              </Badge>
                             </TableCell>
                             <TableCell className="text-right">
                               {creative.impressions?.toLocaleString() || 0}
@@ -254,6 +270,9 @@ export default function Creatives() {
                             <TableCell className="text-right">
                               {creative.conversions || 0}
                             </TableCell>
+                            <TableCell className="text-center">
+                              <CreativeAnalysisIndicator creativeId={creative.id} />
+                            </TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end space-x-2">
                                 <Button 
@@ -261,16 +280,19 @@ export default function Creatives() {
                                   size="sm"
                                   onClick={() => setSelectedCreative(creative)}
                                   data-testid={`button-view-${creative.id}`}
+                                  title="Ver detalhes"
                                 >
                                   <Eye className="h-4 w-4" />
                                 </Button>
                                 <Button 
-                                  variant="ghost" 
+                                  variant="outline" 
                                   size="sm"
                                   onClick={() => setSelectedCreativeForAnalysis(creative)}
                                   data-testid={`button-analyze-${creative.id}`}
+                                  title="Analisar criativo"
                                 >
-                                  <BarChart3 className="h-4 w-4" />
+                                  <BarChart3 className="h-4 w-4 mr-1" />
+                                  Analisar
                                 </Button>
                               </div>
                             </TableCell>
