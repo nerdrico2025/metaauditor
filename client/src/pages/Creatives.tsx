@@ -1,23 +1,45 @@
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { isUnauthorizedError } from "@/lib/authUtils";
 import Sidebar from "@/components/Layout/Sidebar";
 import Header from "@/components/Layout/Header";
-import CreativeAuditModal from "@/components/Modals/CreativeAuditModal";
 import { CreativeImage } from "@/components/CreativeImage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Search, Filter, Eye, BarChart3, ChevronLeft, ChevronRight, Image as ImageIcon, CheckCircle, XCircle, X } from "lucide-react";
+import { 
+  Search, 
+  Eye, 
+  X, 
+  Image as ImageIcon,
+  RefreshCw,
+  AlertCircle,
+  Facebook,
+  CheckCircle,
+  XCircle,
+  TrendingUp,
+  MousePointer,
+  BarChart3,
+  ChevronRight
+} from "lucide-react";
+import { SiGoogle } from 'react-icons/si';
+import { Link } from "wouter";
 import type { Creative, Campaign, Audit } from "@shared/schema";
 
-// Component to show if creative has been analyzed
+interface AdSet {
+  id: string;
+  name: string;
+  campaignId: string;
+  platform: string;
+}
+
 function CreativeAnalysisIndicator({ creativeId }: { creativeId: string }) {
   const { data: audits, isLoading } = useQuery<Audit[]>({
     queryKey: [`/api/creatives/${creativeId}/audits`],
@@ -32,148 +54,31 @@ function CreativeAnalysisIndicator({ creativeId }: { creativeId: string }) {
   return (
     <div className="flex items-center justify-center" title={hasAudit ? "Criativo analisado" : "Não analisado"}>
       {hasAudit ? (
-        <CheckCircle className="h-5 w-5 text-green-500" />
+        <CheckCircle className="h-5 w-5 text-green-500 dark:text-green-400" />
       ) : (
-        <XCircle className="h-5 w-5 text-slate-300" />
+        <XCircle className="h-5 w-5 text-gray-300 dark:text-gray-600" />
       )}
     </div>
   );
 }
 
-// Hook to check if creative has audit
-function useCreativeHasAudit(creativeId: string) {
-  const { data: audits, isLoading } = useQuery<Audit[]>({
-    queryKey: [`/api/creatives/${creativeId}/audits`],
-  });
-  
-  return {
-    hasAudit: audits && audits.length > 0,
-    isLoading
-  };
-}
-
-// Component for creative table row
-function CreativeTableRow({ 
-  creative, 
-  onView,
-  onZoom,
-  onAnalyze,
-  getCampaignName,
-  getStatusBadgeVariant,
-  getStatusLabel
-}: {
-  creative: Creative;
-  onView: () => void;
-  onZoom: () => void;
-  onAnalyze: () => void;
-  getCampaignName: (id: string | null) => string;
-  getStatusBadgeVariant: (status: string) => any;
-  getStatusLabel: (status: string) => string;
-}) {
-  const { hasAudit, isLoading } = useCreativeHasAudit(creative.id);
-  
-  return (
-    <TableRow data-testid={`row-creative-${creative.id}`}>
-      <TableCell>
-        <div onClick={onZoom} className="cursor-pointer">
-          <CreativeImage 
-            creative={creative}
-            className="w-20 h-20 object-cover rounded-lg hover:opacity-80 transition-opacity"
-            size="small"
-          />
-        </div>
-      </TableCell>
-      <TableCell className="font-medium">
-        <div className="max-w-xs">
-          <div className="truncate mb-1">{creative.name}</div>
-          <Badge variant={getStatusBadgeVariant(creative.status)} className="text-xs">
-            {getStatusLabel(creative.status)}
-          </Badge>
-          {creative.headline && (
-            <div className="text-xs text-slate-500 truncate mt-1">{creative.headline}</div>
-          )}
-        </div>
-      </TableCell>
-      <TableCell>
-        <span className="text-sm text-slate-600">
-          {getCampaignName(creative.campaignId)}
-        </span>
-      </TableCell>
-      <TableCell>
-        <span className="text-sm text-slate-600">
-          {creative.createdAt ? new Date(creative.createdAt).toLocaleDateString('pt-BR') : '-'}
-        </span>
-      </TableCell>
-      <TableCell className="text-right">
-        {creative.impressions?.toLocaleString() || 0}
-      </TableCell>
-      <TableCell className="text-right">
-        {creative.clicks?.toLocaleString() || 0}
-      </TableCell>
-      <TableCell className="text-right">
-        {creative.ctr || '0'}%
-      </TableCell>
-      <TableCell className="text-right">
-        {creative.conversions || 0}
-      </TableCell>
-      <TableCell className="text-center">
-        <CreativeAnalysisIndicator creativeId={creative.id} />
-      </TableCell>
-      <TableCell className="text-right">
-        <div className="flex justify-end space-x-2">
-          <Button 
-            variant="ghost" 
-            size="sm"
-            onClick={onView}
-            data-testid={`button-view-${creative.id}`}
-            title="Ver detalhes"
-          >
-            <Eye className="h-4 w-4" />
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={onAnalyze}
-            disabled={isLoading || hasAudit}
-            data-testid={`button-analyze-${creative.id}`}
-            title={hasAudit ? "Criativo já analisado" : "Analisar criativo"}
-          >
-            <BarChart3 className="h-4 w-4 mr-1" />
-            {hasAudit ? 'Analisado' : 'Analisar'}
-          </Button>
-        </div>
-      </TableCell>
-    </TableRow>
-  );
-}
-
-interface PaginatedResponse {
-  creatives: Creative[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
-}
-
 export default function Creatives() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
-  const [selectedCreative, setSelectedCreative] = useState<Creative | null>(null);
-  const [selectedCreativeForAnalysis, setSelectedCreativeForAnalysis] = useState<Creative | null>(null);
+  const queryClient = useQueryClient();
+  
   const [zoomedCreative, setZoomedCreative] = useState<Creative | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [campaignFilter, setCampaignFilter] = useState("all");
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(20);
+  const [adSetFilter, setAdSetFilter] = useState("all");
+  const [platformFilter, setPlatformFilter] = useState("all");
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
+        title: "Não autenticado",
+        description: "Redirecionando para login...",
         variant: "destructive",
       });
       setTimeout(() => {
@@ -183,290 +88,492 @@ export default function Creatives() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  const { data: campaigns } = useQuery<Campaign[]>({
+  const { data: creatives = [], isLoading: creativesLoading } = useQuery<Creative[]>({
+    queryKey: ["/api/creatives"],
+    enabled: isAuthenticated,
+  });
+
+  const { data: campaigns = [] } = useQuery<Campaign[]>({
     queryKey: ["/api/campaigns"],
     enabled: isAuthenticated,
   });
 
-  const queryParams = new URLSearchParams({
-    page: page.toString(),
-    limit: limit.toString(),
-    ...(statusFilter !== 'all' && { status: statusFilter }),
-    ...(campaignFilter !== 'all' && { campaignId: campaignFilter }),
-    ...(searchTerm && { search: searchTerm }),
-  });
-
-  const { data, isLoading: creativesLoading, error } = useQuery<PaginatedResponse>({
-    queryKey: [`/api/creatives?${queryParams.toString()}`],
+  const { data: adSets = [] } = useQuery<AdSet[]>({
+    queryKey: ["/api/adsets"],
     enabled: isAuthenticated,
   });
 
-  useEffect(() => {
-    if (error && isUnauthorizedError(error as Error)) {
+  const { data: integrations = [] } = useQuery<any[]>({
+    queryKey: ['/api/integrations'],
+    enabled: isAuthenticated,
+  });
+
+  const syncAllMutation = useMutation({
+    mutationFn: async () => {
+      const results = await Promise.allSettled(
+        integrations.map((integration) =>
+          fetch(`/api/integrations/${integration.id}/sync`, {
+            method: 'POST',
+            credentials: 'include',
+          }).then(res => res.json())
+        )
+      );
+      return results;
+    },
+    onSuccess: (results) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/creatives"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/adsets"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/integrations"] });
+      
+      const fulfilled = results.filter(r => r.status === 'fulfilled');
+      const successData = fulfilled.map(r => r.status === 'fulfilled' ? r.value : null).filter(Boolean);
+      
+      const totalCampaigns = successData.reduce((sum, data: any) => sum + (data.campaigns || 0), 0);
+      const totalAdSets = successData.reduce((sum, data: any) => sum + (data.adSets || 0), 0);
+      const totalCreatives = successData.reduce((sum, data: any) => sum + (data.creatives || 0), 0);
+      
+      const parts = [];
+      if (totalCampaigns) parts.push(`${totalCampaigns} campanhas`);
+      if (totalAdSets) parts.push(`${totalAdSets} ad sets`);
+      if (totalCreatives) parts.push(`${totalCreatives} anúncios`);
+      
       toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
+        title: "Sincronização concluída!",
+        description: parts.length > 0 ? parts.join(', ') + ' sincronizados.' : 'Sincronização concluída.',
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Erro ao sincronizar integrações",
         variant: "destructive",
       });
-      setTimeout(() => {
-        window.location.href = "/api/login";
-      }, 500);
-      return;
-    }
-  }, [error, toast]);
+    },
+  });
 
-  useEffect(() => {
-    setPage(1);
-  }, [searchTerm, statusFilter, campaignFilter]);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-      </div>
-    );
+  if (isLoading || !isAuthenticated) {
+    return null;
   }
 
-  const creatives = data?.creatives || [];
-  const pagination = data?.pagination || { page: 1, limit: 50, total: 0, totalPages: 0 };
+  const getCampaignName = (campaignId: string | null) => {
+    if (!campaignId) return 'Campanha Desconhecida';
+    const campaign = campaigns.find(c => c.id === campaignId);
+    return campaign?.name || 'Campanha Desconhecida';
+  };
+
+  const getAdSetName = (adSetId: string | null) => {
+    if (!adSetId) return 'Ad Set Desconhecido';
+    const adSet = adSets.find(a => a.id === adSetId);
+    return adSet?.name || 'Ad Set Desconhecido';
+  };
 
   const getStatusBadgeVariant = (status: string) => {
-    switch (status) {
+    switch (status.toLowerCase()) {
       case 'active':
         return 'default';
       case 'paused':
         return 'secondary';
-      case 'campaign_paused':
+      case 'archived':
         return 'destructive';
-      case 'inactive':
-        return 'outline';
       default:
         return 'outline';
     }
   };
 
   const getStatusLabel = (status: string) => {
-    switch (status) {
+    switch (status.toLowerCase()) {
       case 'active':
         return 'Ativo';
       case 'paused':
         return 'Pausado';
-      case 'campaign_paused':
-        return 'Campanha Pausada';
-      case 'inactive':
-        return 'Inativo';
+      case 'archived':
+        return 'Arquivado';
       default:
         return status;
     }
   };
 
-  const getCampaignName = (campaignId: string | null) => {
-    if (!campaignId || !campaigns) return 'N/A';
-    const campaign = campaigns.find(c => c.id === campaignId);
-    return campaign?.name || 'N/A';
+  const getPlatformIcon = (platform: string) => {
+    if (platform === 'meta') return <Facebook className="h-5 w-5 text-blue-600" />;
+    if (platform === 'google') return <SiGoogle className="h-5 w-5 text-red-600" />;
+    return <ImageIcon className="h-5 w-5 text-gray-600" />;
   };
 
-  const handlePreviousPage = () => {
-    if (page > 1) setPage(page - 1);
+  const formatDate = (date: Date | null | string | undefined) => {
+    if (!date) return 'Nunca';
+    return new Date(date).toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   };
 
-  const handleNextPage = () => {
-    if (page < pagination.totalPages) setPage(page + 1);
+  const getMostRecentSync = () => {
+    if (!integrations.length) return null;
+    const syncs = integrations
+      .map(i => i.lastSync)
+      .filter(Boolean)
+      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+    return syncs[0] || null;
   };
+
+  const filteredCreatives = creatives.filter((creative) => {
+    const matchesSearch = creative.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         creative.externalId?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === "all" || creative.status.toLowerCase() === statusFilter;
+    const matchesCampaign = campaignFilter === "all" || creative.campaignId === campaignFilter;
+    const matchesAdSet = adSetFilter === "all" || creative.adSetId === adSetFilter;
+    const matchesPlatform = platformFilter === "all" || creative.platform === platformFilter;
+    
+    return matchesSearch && matchesStatus && matchesCampaign && matchesAdSet && matchesPlatform;
+  });
+
+  const metaCreatives = filteredCreatives.filter(c => c.platform === 'meta');
+  const activeCreatives = filteredCreatives.filter(c => c.status.toLowerCase() === 'active');
+  const totalImpressions = filteredCreatives.reduce((sum, c) => sum + (c.impressions || 0), 0);
+  const totalClicks = filteredCreatives.reduce((sum, c) => sum + (c.clicks || 0), 0);
 
   return (
-    <div className="flex h-screen bg-slate-50">
+    <div className="flex h-screen bg-background">
       <Sidebar />
-      
-      <div className="flex flex-col flex-1 overflow-hidden">
-        <Header title="Criativos" />
-        
-        <main className="flex-1 overflow-y-auto">
-          <div className="py-6">
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Header title="Anúncios" />
+        <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900">
+          <div className="py-8">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="mb-6 flex flex-col sm:flex-row gap-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
-                  <Input
-                    placeholder="Buscar criativos..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                    data-testid="input-search-creatives"
-                  />
+              
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                    Anúncios (Creatives)
+                  </h1>
+                  <p className="text-gray-600 dark:text-gray-400 mt-2">
+                    Gerencie os anúncios das suas campanhas Meta Ads e Google Ads
+                  </p>
+                  {getMostRecentSync() && (
+                    <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
+                      Última sincronização: {formatDate(getMostRecentSync())}
+                    </p>
+                  )}
                 </div>
-
-                <Select value={limit.toString()} onValueChange={(value) => setLimit(Number(value))}>
-                  <SelectTrigger className="w-full sm:w-32" data-testid="select-page-size">
-                    <SelectValue placeholder="Por página" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="20">20 por página</SelectItem>
-                    <SelectItem value="50">50 por página</SelectItem>
-                    <SelectItem value="100">100 por página</SelectItem>
-                  </SelectContent>
-                </Select>
-                
-                <Select value={campaignFilter} onValueChange={setCampaignFilter}>
-                  <SelectTrigger className="w-full sm:w-64" data-testid="select-campaign-filter">
-                    <Filter className="h-4 w-4 mr-2" />
-                    <SelectValue placeholder="Campanha" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas as Campanhas</SelectItem>
-                    {campaigns?.map((campaign) => (
-                      <SelectItem key={campaign.id} value={campaign.id}>
-                        {campaign.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-full sm:w-48" data-testid="select-status-filter">
-                    <Filter className="h-4 w-4 mr-2" />
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos os Status</SelectItem>
-                    <SelectItem value="active">Ativo</SelectItem>
-                    <SelectItem value="paused">Pausado</SelectItem>
-                    <SelectItem value="campaign_paused">Campanha Pausada</SelectItem>
-                    <SelectItem value="inactive">Inativo</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Button
+                  onClick={() => syncAllMutation.mutate()}
+                  disabled={syncAllMutation.isPending || !integrations.length}
+                  className="bg-primary hover:bg-primary/90"
+                  data-testid="button-sync-all"
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${syncAllMutation.isPending ? 'animate-spin' : ''}`} />
+                  {syncAllMutation.isPending ? 'Sincronizando...' : 'Sincronizar Tudo'}
+                </Button>
               </div>
 
-              {creativesLoading ? (
-                <div className="space-y-3">
-                  {[...Array(10)].map((_, i) => (
-                    <Skeleton key={i} className="h-24 w-full" />
-                  ))}
-                </div>
-              ) : creatives.length > 0 ? (
-                <>
-                  <div className="bg-white rounded-lg shadow overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-24"></TableHead>
-                          <TableHead>Nome</TableHead>
-                          <TableHead>Campanha</TableHead>
-                          <TableHead>Data</TableHead>
-                          <TableHead className="text-right">Impressões</TableHead>
-                          <TableHead className="text-right">Cliques</TableHead>
-                          <TableHead className="text-right">CTR</TableHead>
-                          <TableHead className="text-right">Conv.</TableHead>
-                          <TableHead className="text-center">Análise</TableHead>
-                          <TableHead className="text-right">Ações</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {creatives.map((creative) => (
-                          <CreativeTableRow 
-                            key={creative.id}
-                            creative={creative}
-                            onView={() => setSelectedCreative(creative)}
-                            onZoom={() => setZoomedCreative(creative)}
-                            onAnalyze={() => setSelectedCreativeForAnalysis(creative)}
-                            getCampaignName={getCampaignName}
-                            getStatusBadgeVariant={getStatusBadgeVariant}
-                            getStatusLabel={getStatusLabel}
-                          />
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
+              {integrations.length === 0 && (
+                <Alert className="mb-6 bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+                  <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  <AlertDescription className="text-blue-900 dark:text-blue-100">
+                    Você ainda não conectou nenhuma conta de anúncios. Vá para{' '}
+                    <Link href="/settings" className="font-semibold underline">Configurações</Link>
+                    {' '}para conectar suas contas Meta Ads ou Google Ads.
+                  </AlertDescription>
+                </Alert>
+              )}
 
-                  <div className="mt-6 flex items-center justify-between">
-                    <div className="text-sm text-slate-600">
-                      Mostrando {((page - 1) * limit) + 1} a {Math.min(page * limit, pagination.total)} de {pagination.total} criativos
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total de Anúncios</p>
+                        <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2" data-testid="stat-total-creatives">
+                          {filteredCreatives.length}
+                        </p>
+                      </div>
+                      <ImageIcon className="h-10 w-10 text-gray-400 dark:text-gray-500" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Anúncios Meta Ads</p>
+                        <p className="text-3xl font-bold text-blue-600 dark:text-blue-400 mt-2" data-testid="stat-meta-creatives">
+                          {metaCreatives.length}
+                        </p>
+                      </div>
+                      <Facebook className="h-10 w-10 text-blue-600 dark:text-blue-400" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Impressões Totais</p>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white mt-2" data-testid="stat-total-impressions">
+                          {totalImpressions.toLocaleString('pt-BR')}
+                        </p>
+                      </div>
+                      <TrendingUp className="h-10 w-10 text-purple-500" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Cliques Totais</p>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white mt-2" data-testid="stat-total-clicks">
+                          {totalClicks.toLocaleString('pt-BR')}
+                        </p>
+                      </div>
+                      <MousePointer className="h-10 w-10 text-orange-500" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card className="mb-6 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                <CardContent className="pt-6">
+                  <div className="flex flex-col lg:flex-row gap-4">
+                    <div className="flex-1">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
+                        <Input
+                          placeholder="Buscar por nome ou ID..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="pl-10 bg-white dark:bg-gray-800"
+                          data-testid="input-search-creatives"
+                        />
+                      </div>
                     </div>
                     
-                    <div className="flex items-center space-x-2">
+                    <Select value={campaignFilter} onValueChange={setCampaignFilter}>
+                      <SelectTrigger className="w-full lg:w-[220px] bg-white dark:bg-gray-800" data-testid="select-campaign-filter">
+                        <SelectValue placeholder="Todas Campanhas" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas Campanhas</SelectItem>
+                        {campaigns.map((campaign) => (
+                          <SelectItem key={campaign.id} value={campaign.id}>
+                            {campaign.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <Select value={adSetFilter} onValueChange={setAdSetFilter}>
+                      <SelectTrigger className="w-full lg:w-[220px] bg-white dark:bg-gray-800" data-testid="select-adset-filter">
+                        <SelectValue placeholder="Todos Ad Sets" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos Ad Sets</SelectItem>
+                        {adSets.map((adSet) => (
+                          <SelectItem key={adSet.id} value={adSet.id}>
+                            {adSet.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <Select value={platformFilter} onValueChange={setPlatformFilter}>
+                      <SelectTrigger className="w-full lg:w-[180px] bg-white dark:bg-gray-800" data-testid="select-platform-filter">
+                        <SelectValue placeholder="Plataforma" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas Plataformas</SelectItem>
+                        <SelectItem value="meta">Meta Ads</SelectItem>
+                        <SelectItem value="google">Google Ads</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="w-full lg:w-[150px] bg-white dark:bg-gray-800" data-testid="select-status-filter">
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos Status</SelectItem>
+                        <SelectItem value="active">Ativo</SelectItem>
+                        <SelectItem value="paused">Pausado</SelectItem>
+                        <SelectItem value="archived">Arquivado</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    {(searchTerm || statusFilter !== "all" || campaignFilter !== "all" || adSetFilter !== "all" || platformFilter !== "all") && (
                       <Button
                         variant="outline"
-                        size="sm"
-                        onClick={handlePreviousPage}
-                        disabled={page === 1}
-                        data-testid="button-prev-page"
+                        onClick={() => {
+                          setSearchTerm("");
+                          setStatusFilter("all");
+                          setCampaignFilter("all");
+                          setAdSetFilter("all");
+                          setPlatformFilter("all");
+                        }}
+                        className="w-full lg:w-auto"
+                        data-testid="button-clear-filters"
                       >
-                        <ChevronLeft className="h-4 w-4 mr-1" />
-                        Anterior
+                        Limpar Filtros
                       </Button>
-                      
-                      <div className="text-sm text-slate-600">
-                        Página {page} de {pagination.totalPages}
-                      </div>
-                      
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleNextPage}
-                        disabled={page === pagination.totalPages}
-                        data-testid="button-next-page"
-                      >
-                        Próxima
-                        <ChevronRight className="h-4 w-4 ml-1" />
-                      </Button>
-                    </div>
+                    )}
                   </div>
-                </>
-              ) : (
-                <div className="text-center py-12">
-                  <ImageIcon className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-slate-900 mb-2">
-                    {searchTerm || statusFilter !== 'all' || campaignFilter !== 'all'
-                      ? 'Nenhum criativo encontrado'
-                      : 'Nenhum criativo disponível'
-                    }
-                  </h3>
-                  <p className="text-slate-600 mb-6">
-                    {searchTerm || statusFilter !== 'all' || campaignFilter !== 'all'
-                      ? 'Tente ajustar os filtros de busca.'
-                      : 'Sincronize suas campanhas para começar a ver os criativos.'
-                    }
-                  </p>
-                </div>
-              )}
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                <CardContent className="p-0">
+                  {creativesLoading ? (
+                    <div className="p-6 space-y-4">
+                      {[...Array(5)].map((_, i) => (
+                        <Skeleton key={i} className="h-20 w-full" />
+                      ))}
+                    </div>
+                  ) : filteredCreatives.length === 0 ? (
+                    <div className="text-center py-12">
+                      <ImageIcon className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                        {searchTerm || statusFilter !== "all" || campaignFilter !== "all" || adSetFilter !== "all" || platformFilter !== "all"
+                          ? "Nenhum anúncio encontrado"
+                          : "Nenhum anúncio sincronizado"
+                        }
+                      </h3>
+                      <p className="text-gray-600 dark:text-gray-400 mb-6">
+                        {searchTerm || statusFilter !== "all" || campaignFilter !== "all" || adSetFilter !== "all" || platformFilter !== "all"
+                          ? "Tente ajustar os filtros de busca."
+                          : "Conecte suas contas Meta Ads ou Google Ads e clique em 'Sincronizar Tudo'."
+                        }
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-gray-50 dark:bg-gray-900">
+                            <TableHead className="w-[100px]"></TableHead>
+                            <TableHead className="w-[50px]"></TableHead>
+                            <TableHead>Nome do Anúncio</TableHead>
+                            <TableHead>Campanha</TableHead>
+                            <TableHead>Ad Set</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="text-right">Impressões</TableHead>
+                            <TableHead className="text-right">Cliques</TableHead>
+                            <TableHead className="text-right">CTR</TableHead>
+                            <TableHead className="text-center">Analisado</TableHead>
+                            <TableHead className="text-right">Ações</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredCreatives.map((creative) => (
+                            <TableRow 
+                              key={creative.id} 
+                              className="hover:bg-gray-50 dark:hover:bg-gray-900/50" 
+                              data-testid={`row-creative-${creative.id}`}
+                            >
+                              <TableCell>
+                                <div onClick={() => setZoomedCreative(creative)} className="cursor-pointer">
+                                  <CreativeImage 
+                                    creative={creative}
+                                    className="w-20 h-20 object-cover rounded-lg hover:opacity-80 transition-opacity border border-gray-200 dark:border-gray-700"
+                                    size="small"
+                                  />
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                {getPlatformIcon(creative.platform)}
+                              </TableCell>
+                              <TableCell>
+                                <div>
+                                  <div className="font-medium text-gray-900 dark:text-white max-w-xs truncate">{creative.name}</div>
+                                  {creative.headline && (
+                                    <div className="text-xs text-gray-500 dark:text-gray-500 max-w-xs truncate mt-1">
+                                      {creative.headline}
+                                    </div>
+                                  )}
+                                  <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">ID: {creative.externalId}</div>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <span className="text-sm text-gray-600 dark:text-gray-400">
+                                  {getCampaignName(creative.campaignId)}
+                                </span>
+                              </TableCell>
+                              <TableCell>
+                                <span className="text-sm text-gray-600 dark:text-gray-400">
+                                  {getAdSetName(creative.adSetId)}
+                                </span>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={getStatusBadgeVariant(creative.status)}>
+                                  {getStatusLabel(creative.status)}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right text-sm text-gray-600 dark:text-gray-400">
+                                {creative.impressions?.toLocaleString('pt-BR') || 0}
+                              </TableCell>
+                              <TableCell className="text-right text-sm text-gray-600 dark:text-gray-400">
+                                {creative.clicks?.toLocaleString('pt-BR') || 0}
+                              </TableCell>
+                              <TableCell className="text-right text-sm text-gray-600 dark:text-gray-400">
+                                {creative.ctr || '0'}%
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <CreativeAnalysisIndicator creativeId={creative.id} />
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  data-testid={`button-details-${creative.id}`}
+                                >
+                                  <ChevronRight className="h-4 w-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
             </div>
           </div>
         </main>
       </div>
 
-      {selectedCreative && (
-        <CreativeAuditModal 
-          creative={selectedCreative}
-          onClose={() => setSelectedCreative(null)}
-        />
-      )}
-
-      {selectedCreativeForAnalysis && (
-        <CreativeAuditModal 
-          creative={selectedCreativeForAnalysis}
-          onClose={() => setSelectedCreativeForAnalysis(null)}
-          autoAnalyze={true}
-        />
-      )}
-
-      {/* Image Zoom Modal */}
       {zoomedCreative && (
-        <Dialog open={true} onOpenChange={() => setZoomedCreative(null)}>
-          <DialogContent className="max-w-6xl max-h-[90vh] p-0">
-            <div className="relative bg-black">
-              <CreativeImage 
-                creative={zoomedCreative}
-                className="w-full h-auto max-h-[90vh] object-contain"
-                size="large"
-              />
-              <Button 
-                variant="secondary" 
-                size="sm" 
-                className="absolute top-4 right-4"
+        <Dialog open={!!zoomedCreative} onOpenChange={() => setZoomedCreative(null)}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
+            <div className="relative">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute top-2 right-2 z-10"
                 onClick={() => setZoomedCreative(null)}
               >
                 <X className="h-4 w-4" />
               </Button>
+              <CreativeImage 
+                creative={zoomedCreative}
+                className="w-full h-auto rounded-lg"
+                size="large"
+              />
+              <div className="mt-4 space-y-2">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{zoomedCreative.name}</h3>
+                {zoomedCreative.headline && (
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{zoomedCreative.headline}</p>
+                )}
+                {zoomedCreative.description && (
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{zoomedCreative.description}</p>
+                )}
+              </div>
             </div>
           </DialogContent>
         </Dialog>
