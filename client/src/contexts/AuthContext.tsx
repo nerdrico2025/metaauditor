@@ -8,6 +8,7 @@ export interface User {
   lastName: string | null;
   role: 'super_admin' | 'company_admin' | 'operador';
   profileImageUrl: string | null;
+  companyId: string | null;
   lastLoginAt: Date | null;
   createdAt: Date | null;
 }

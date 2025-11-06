@@ -15,6 +15,7 @@ import policyRoutes from "./presentation/routes/policy.routes.js";
 import integrationRoutes from "./presentation/routes/integration.routes.js";
 import dashboardRoutes from "./presentation/routes/dashboard.routes.js";
 import auditRoutes from "./presentation/routes/audit.routes.js";
+import companyRoutes from "./presentation/routes/company.routes.js";
 
 export async function startServer() {
   const app = express();
@@ -76,6 +77,7 @@ export async function startServer() {
   app.use('/api/integrations', integrationRoutes);
   app.use('/api/dashboard', dashboardRoutes);
   app.use('/api/audits', auditRoutes);
+  app.use('/api/company', companyRoutes);
 
   // Health check endpoints
   app.get('/healthz', (req, res) => {

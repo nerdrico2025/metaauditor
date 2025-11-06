@@ -17,6 +17,7 @@ import Reports from "@/pages/Reports";
 import Policies from "@/pages/Policies";
 import History from "@/pages/History";
 import Integrations from "@/pages/Integrations";
+import Company from "@/pages/Company";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -66,6 +67,11 @@ function Router() {
       <Route path="/integrations">
         <ProtectedRoute>
           <Integrations />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/company">
+        <ProtectedRoute>
+          <Company />
         </ProtectedRoute>
       </Route>
       <Route path="/super-admin">

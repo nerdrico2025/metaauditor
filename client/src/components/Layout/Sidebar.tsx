@@ -1,23 +1,39 @@
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
-import { Search, BarChart3, BellRing, Image, FileText, Settings, History, LogOut, ExternalLink } from "lucide-react";
+import { Search, BarChart3, BellRing, Image, FileText, Settings, History, LogOut, ExternalLink, ChevronDown, ChevronRight, Building2, Shield } from "lucide-react";
 import { useTranslation } from 'react-i18next';
 
-const navigation = [
+interface NavigationItem {
+  name: string;
+  href?: string;
+  icon: React.ElementType;
+  children?: NavigationItem[];
+}
+
+const navigation: NavigationItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: BarChart3 },
   { name: 'Campanhas', href: '/campaigns', icon: BellRing },
   { name: 'Criativos', href: '/creatives', icon: Image },
   { name: 'Relatórios', href: '/reports', icon: FileText },
-  { name: 'Políticas', href: '/policies', icon: Settings },
   { name: 'Histórico', href: '/history', icon: History },
-  { name: 'Integrações', href: '/integrations', icon: ExternalLink },
+  { 
+    name: 'Configurações', 
+    icon: Settings,
+    children: [
+      { name: 'Políticas de Validação', href: '/policies', icon: Shield },
+      { name: 'Integrações', href: '/integrations', icon: ExternalLink },
+      { name: 'Dados da Empresa', href: '/company', icon: Building2 },
+    ]
+  },
 ];
 
 export default function Sidebar() {
   const [location, setLocation] = useLocation();
   const { user, logout, isSuperAdmin } = useAuth();
   const { t } = useTranslation();
+  const [expandedItems, setExpandedItems] = useState<string[]>(['Configurações']);
 
   // Don't show regular sidebar for super admin
   if (isSuperAdmin) {
@@ -31,6 +47,93 @@ export default function Sidebar() {
   const handleNavigation = (href: string) => (e: React.MouseEvent) => {
     e.preventDefault();
     setLocation(href);
+  };
+
+  const toggleExpanded = (itemName: string) => {
+    setExpandedItems(prev => 
+      prev.includes(itemName) 
+        ? prev.filter(name => name !== itemName)
+        : [...prev, itemName]
+    );
+  };
+
+  const isItemActive = (item: NavigationItem): boolean => {
+    if (item.href) {
+      return location === item.href;
+    }
+    if (item.children) {
+      return item.children.some(child => child.href === location);
+    }
+    return false;
+  };
+
+  const renderNavigationItem = (item: NavigationItem, level: number = 0) => {
+    const hasChildren = item.children && item.children.length > 0;
+    const isExpanded = expandedItems.includes(item.name);
+    const isActive = isItemActive(item);
+
+    if (hasChildren) {
+      return (
+        <div key={item.name} className="space-y-1">
+          <button
+            onClick={() => toggleExpanded(item.name)}
+            className={cn(
+              isActive
+                ? 'bg-slate-100 text-slate-900'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+              'group flex items-center justify-between px-2 py-2 text-sm font-medium rounded-md w-full'
+            )}
+            data-testid={`menu-${item.name.toLowerCase().replace(/\s+/g, '-')}`}
+          >
+            <div className="flex items-center">
+              <item.icon
+                className={cn(
+                  isActive ? 'text-slate-900' : 'text-slate-500 group-hover:text-slate-900',
+                  'mr-3 h-5 w-5'
+                )}
+              />
+              {item.name}
+            </div>
+            {isExpanded ? (
+              <ChevronDown className="h-4 w-4 text-slate-400" />
+            ) : (
+              <ChevronRight className="h-4 w-4 text-slate-400" />
+            )}
+          </button>
+          {isExpanded && item.children && (
+            <div className="ml-4 space-y-1">
+              {item.children.map(child => renderNavigationItem(child, level + 1))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <button
+        key={item.name}
+        onClick={item.href ? handleNavigation(item.href) : undefined}
+        className={cn(
+          location === item.href
+            ? 'bg-primary text-primary-foreground border-r-2 border-primary'
+            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+          level > 0 && 'text-sm',
+          'group flex items-center px-2 py-2 text-sm font-medium rounded-l-md w-full'
+        )}
+        data-testid={`menu-${item.name.toLowerCase().replace(/\s+/g, '-')}`}
+      >
+        <item.icon
+          className={cn(
+            location === item.href 
+              ? 'text-primary-foreground' 
+              : 'text-slate-500 group-hover:text-slate-900',
+            'mr-3 h-5 w-5',
+            level > 0 && 'h-4 w-4'
+          )}
+        />
+        {item.name}
+      </button>
+    );
   };
 
   return (
@@ -48,28 +151,7 @@ export default function Sidebar() {
 
         {/* Navigation */}
         <nav className="mt-8 flex-1 px-2 space-y-1">
-          {navigation.map((item) => {
-            const isActive = location === item.href;
-            return (
-              <button
-                key={item.name}
-                onClick={handleNavigation(item.href)}
-                className={cn(
-                  isActive
-                    ? 'bg-primary text-primary-foreground border-r-2 border-primary group flex items-center px-2 py-2 text-sm font-medium rounded-l-md w-full'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 group flex items-center px-2 py-2 text-sm font-medium rounded-md w-full'
-                )}
-              >
-                <item.icon
-                  className={cn(
-                    isActive ? 'text-primary-foreground' : 'text-slate-500 group-hover:text-slate-900',
-                    'mr-3 h-5 w-5'
-                  )}
-                />
-                {item.name}
-              </button>
-            );
-          })}
+          {navigation.map((item) => renderNavigationItem(item))}
         </nav>
 
         {/* User Profile */}
@@ -93,6 +175,7 @@ export default function Sidebar() {
                 onClick={handleLogout}
                 className="ml-2 text-slate-500 hover:text-slate-900"
                 title="Logout"
+                data-testid="button-logout"
               >
                 <LogOut className="h-4 w-4" />
               </button>
