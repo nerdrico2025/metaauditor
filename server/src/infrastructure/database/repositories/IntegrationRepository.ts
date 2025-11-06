@@ -1,7 +1,7 @@
 
 import { eq } from 'drizzle-orm';
-import { db } from '../../../../db';
-import { integrations } from '../../../../../shared/schema';
+import { db } from '../connection';
+import { integrations } from '../../../shared/schema';
 import type { Integration as IntegrationEntity } from '../../../domain/entities/Integration';
 import type { InsertIntegration, Integration } from '../../../../../shared/schema';
 

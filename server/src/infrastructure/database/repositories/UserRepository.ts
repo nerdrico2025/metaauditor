@@ -1,7 +1,7 @@
 
 import { eq } from 'drizzle-orm';
-import { db } from '../../db';
-import { users } from '../../../../shared/schema';
+import { db } from '../connection';
+import { users } from '../../shared/schema';
 import { User } from '../../../domain/entities/User';
 import { IUserRepository, CreateUserData, UpdateUserData } from '../../../application/repositories/IUserRepository';
 

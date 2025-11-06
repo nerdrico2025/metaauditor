@@ -1,7 +1,7 @@
 
 import { eq } from 'drizzle-orm';
-import { db } from '../../../../db';
-import { policies } from '../../../../../shared/schema';
+import { db } from '../connection';
+import { policies } from '../../../shared/schema';
 import type { Policy as PolicyEntity } from '../../../domain/entities/Policy';
 import type { InsertPolicy, Policy } from '../../../../../shared/schema';
 

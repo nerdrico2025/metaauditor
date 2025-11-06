@@ -1,7 +1,7 @@
 
 import { eq } from 'drizzle-orm';
-import { db } from '../../../../db';
-import { creatives } from '../../../../../shared/schema';
+import { db } from '../connection';
+import { creatives } from '../../../shared/schema';
 import type { Creative as CreativeEntity } from '../../../domain/entities/Creative';
 import type { InsertCreative, Creative } from '../../../../../shared/schema';
 
