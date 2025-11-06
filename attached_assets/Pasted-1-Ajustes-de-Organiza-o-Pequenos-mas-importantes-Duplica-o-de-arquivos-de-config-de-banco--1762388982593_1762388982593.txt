@@ -1,0 +1,134 @@
+1. Ajustes de Organização (Pequenos, mas importantes)
+🔹 Duplicação de arquivos de config de banco
+
+Você tem:
+
+src/infrastructure/config/database.ts
+src/shared/config/database.ts
+
+
+👉 Mantenha apenas um.
+
+Recomendado:
+
+Deixe apenas src/infrastructure/config/database.ts,
+pois a config de banco faz parte da infraestrutura, não é algo “compartilhável” no domínio.
+
+Remova ou substitua o outro (shared/config/database.ts) para evitar confusão.
+
+🔹 Duplicação de schema (Drizzle x Infraestrutura)
+
+Atualmente:
+
+drizzle/schema.ts
+src/infrastructure/database/schema.ts
+
+
+👉 O schema oficial deve ficar apenas dentro de /drizzle/schema.ts.
+O arquivo dentro de /src/infrastructure/database/schema.ts pode ser removido ou transformado em reexport se você precisar importar via alias.
+
+Exemplo seguro:
+
+// src/infrastructure/database/schema.ts
+export * from "../../../drizzle/schema";
+
+
+Assim, qualquer import interno (@infrastructure/database/schema) continua funcionando,
+mas o Drizzle CLI usa o schema verdadeiro no local correto.
+
+🔹 index.ts na raiz
+
+O arquivo index.ts na raiz normalmente não é necessário num backend.
+Ele só faz sentido se:
+
+Você estiver exportando o servidor como módulo (ex: microserviço ou lib), ou
+
+Usando-o como “redirect” para src/main.ts.
+
+Se não for o caso, pode removê-lo com segurança e ajustar o package.json:
+
+"main": "dist/src/main.js",
+"scripts": {
+  "start": "node dist/src/main.js"
+}
+
+🔹 vite.ts na raiz
+
+Se você está usando vite-node ou vite apenas para build, esse arquivo deve ficar na raiz mesmo, o que está correto ✅.
+Mas renomeie para vite.config.ts para seguir o padrão (o Vite busca exatamente esse nome por convenção).
+
+⚙️ 2. Sugestão de Estrutura Final Ajustada
+server/
+├── drizzle/
+│   ├── migrations/
+│   │   ├── meta/
+│   │   │   ├── _journal.json
+│   │   │   └── *.json
+│   │   ├── 0000_init.sql
+│   │   ├── 0001_users.sql
+│   │   └── 0002_companies.sql
+│   ├── schema.ts
+│   └── seed.ts
+│
+├── scripts/
+│   ├── createSuperAdmin.ts
+│   ├── resetUserPassword.ts
+│   └── seedData.ts
+│
+├── src/
+│   ├── domain/
+│   │   ├── entities/
+│   │   └── value-objects/
+│   │
+│   ├── application/
+│   │   ├── repositories/
+│   │   ├── services/
+│   │   └── use-cases/
+│   │
+│   ├── infrastructure/
+│   │   ├── config/
+│   │   │   └── database.ts
+│   │   ├── database/
+│   │   │   ├── connection.ts
+│   │   │   ├── repositories/
+│   │   │   └── index.ts
+│   │   └── adapters/              # (opcional: integrações externas, API, filas, e-mail, etc.)
+│   │
+│   ├── presentation/
+│   │   ├── controllers/
+│   │   ├── middlewares/
+│   │   └── routes/
+│   │
+│   ├── shared/
+│   │   ├── errors/
+│   │   ├── services/
+│   │   └── utils/
+│   │
+│   └── main.ts
+│
+├── drizzle.config.ts
+├── vite.config.ts
+└── package.json
+
+🧩 3. Alias recomendados (tsconfig.json)
+
+Você já tem uma estrutura grande — use aliases para manter imports limpos e evitar ../../../.
+
+"compilerOptions": {
+  "baseUrl": "./",
+  "paths": {
+    "@domain/*": ["src/domain/*"],
+    "@application/*": ["src/application/*"],
+    "@infrastructure/*": ["src/infrastructure/*"],
+    "@presentation/*": ["src/presentation/*"],
+    "@shared/*": ["src/shared/*"],
+    "@drizzle/*": ["drizzle/*"]
+  }
+}
+
+
+Isso te permite importar assim:
+
+import { User } from "@domain/entities/User";
+import { UserRepository } from "@infrastructure/database/repositories/UserRepository";
+import { LoginUseCase } from "@application/use-cases/auth/LoginUseCase";
