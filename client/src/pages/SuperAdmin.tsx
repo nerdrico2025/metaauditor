@@ -167,15 +167,17 @@ export default function SuperAdmin() {
     enabled: user?.role === 'super_admin',
   });
 
-  const { data: companies = [], isLoading: companiesLoading } = useQuery<Company[]>({
+  const { data: companiesResponse, isLoading: companiesLoading } = useQuery<{ data: Company[]; total: number; page: number; limit: number; totalPages: number }>({
     queryKey: ['/api/admin/companies'],
     enabled: user?.role === 'super_admin',
   });
+  const companies = companiesResponse?.data || [];
 
-  const { data: adminUsers = [], isLoading: usersLoading } = useQuery<AdminUser[]>({
+  const { data: usersResponse, isLoading: usersLoading } = useQuery<{ data: AdminUser[]; total: number; page: number; limit: number; totalPages: number }>({
     queryKey: ['/api/admin/admin-users'],
     enabled: user?.role === 'super_admin',
   });
+  const adminUsers = usersResponse?.data || [];
 
   const { data: platformSettings } = useQuery<PlatformSettings>({
     queryKey: ['/api/platform-settings/meta'],
