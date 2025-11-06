@@ -46,7 +46,7 @@ function LoginFormComponent({
     setError(null);
     try {
       await login(data.email, data.password);
-      setLocation('/dashboard');
+      // Don't redirect here - let the useEffect in Landing handle it
     } catch (err: any) {
       setError(err.message || 'Erro ao fazer login. Verifique suas credenciais.');
     }

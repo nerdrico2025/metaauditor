@@ -71,13 +71,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       localStorage.setItem('auth_token', authToken);
       setToken(authToken);
       setUser(userData);
-      
-      // Redirect based on role
-      if (userData.role === 'super_admin') {
-        window.location.href = '/super-admin';
-      } else {
-        window.location.href = '/dashboard';
-      }
     } catch (error) {
       throw error;
     } finally {

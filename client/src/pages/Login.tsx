@@ -42,7 +42,7 @@ export default function Login() {
     setError(null);
     try {
       await login(data.email, data.password);
-      setLocation('/dashboard');
+      // Don't redirect here - redirect will happen automatically
     } catch (err: any) {
       setError(err.message || 'Erro ao fazer login. Verifique suas credenciais.');
     }
