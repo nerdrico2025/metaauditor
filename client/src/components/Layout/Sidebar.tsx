@@ -14,9 +14,15 @@ interface NavigationItem {
 
 const navigation: NavigationItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: BarChart3 },
-  { name: 'Campanhas', href: '/campaigns', icon: BellRing },
-  { name: 'Ad Sets', href: '/adsets', icon: Target },
-  { name: 'Criativos', href: '/creatives', icon: Image },
+  { 
+    name: 'Campanhas', 
+    icon: BellRing,
+    children: [
+      { name: 'Todas as Campanhas', href: '/campaigns', icon: BellRing },
+      { name: 'Grupos de Anúncios', href: '/adsets', icon: Target },
+      { name: 'Anúncios', href: '/creatives', icon: Image },
+    ]
+  },
   { name: 'Relatórios', href: '/reports', icon: FileText },
   { name: 'Histórico', href: '/history', icon: History },
   { 
@@ -34,7 +40,7 @@ export default function Sidebar() {
   const [location, setLocation] = useLocation();
   const { user, logout, isSuperAdmin } = useAuth();
   const { t } = useTranslation();
-  const [expandedItems, setExpandedItems] = useState<string[]>(['Configurações']);
+  const [expandedItems, setExpandedItems] = useState<string[]>(['Campanhas', 'Configurações']);
 
   // Don't show regular sidebar for super admin
   if (isSuperAdmin) {
