@@ -57,6 +57,7 @@ export interface IStorage {
   createCampaign(campaign: InsertCampaign): Promise<Campaign>;
   getCampaignsByUser(userId: string): Promise<Campaign[]>;
   getCampaignById(id: string): Promise<Campaign | undefined>;
+  getCampaignByIdWithCompanyCheck(id: string, userId: string): Promise<Campaign | undefined>;
   updateCampaign(id: string, data: Partial<InsertCampaign>): Promise<Campaign | undefined>;
   createCreative(creative: InsertCreative): Promise<Creative>;
   getCreativesByUser(userId: string): Promise<Creative[]>;
