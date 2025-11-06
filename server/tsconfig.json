@@ -16,16 +16,16 @@
     "allowImportingTsExtensions": true,
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
-    "baseUrl": ".",
+    "baseUrl": "./src",
     "types": ["node"],
     "paths": {
-      "@domain/*": ["./src/domain/*"],
-      "@application/*": ["./src/application/*"],
-      "@infrastructure/*": ["./src/infrastructure/*"],
-      "@presentation/*": ["./src/presentation/*"],
-      "@shared/*": ["./src/shared/*"],
-      "@shared/utils": ["./src/shared/utils"],
-      "@drizzle/*": ["./drizzle/*"]
+      "@domain/*": ["./domain/*"],
+      "@application/*": ["./application/*"],
+      "@infrastructure/*": ["./infrastructure/*"],
+      "@presentation/*": ["./presentation/*"],
+      "@shared/*": ["./shared/*"],
+      "@shared/utils": ["./shared/utils"],
+      "@drizzle/*": ["../drizzle/*"]
     }
   }
 }
