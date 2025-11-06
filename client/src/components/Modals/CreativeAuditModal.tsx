@@ -66,7 +66,7 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
   const analyzeMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest("POST", `/api/creatives/${creative.id}/analyze`);
-      return await response.json();
+      return response;
     },
     onSuccess: (newAudit) => {
       toast({
