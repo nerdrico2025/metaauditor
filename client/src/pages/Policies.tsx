@@ -119,46 +119,49 @@ export default function Policies() {
   }, [isAuthenticated, isLoading, toast]);
 
   // Get policies settings
-  const { data: settings, isLoading: settingsLoading, error } = useQuery<SettingsDTO>({
+  const { data: settingsResponse, isLoading: settingsLoading, error } = useQuery<SettingsDTO[]>({
     queryKey: ["/api/policies/settings"],
     enabled: isAuthenticated,
   });
+
+  // Get the first settings object from the array
+  const settings = settingsResponse?.[0];
 
   // Load data into forms when settings are fetched
   useEffect(() => {
     if (settings) {
       // Load brand policies form (removed fontFamily)
       brandForm.reset({
-        logoUrl: settings.brand.logoUrl || "",
-        primaryColor: settings.brand.primaryColor || "",
-        secondaryColor: settings.brand.secondaryColor || "",
-        accentColor: settings.brand.accentColor || "",
-        visualGuidelines: settings.brand.visualGuidelines || "",
-        autoApproval: settings.brandPolicies.autoApproval,
-        pauseOnViolation: settings.brandPolicies.autoActions.pauseOnViolation,
-        sendForReview: settings.brandPolicies.autoActions.sendForReview,
-        autoFixMinor: settings.brandPolicies.autoActions.autoFixMinor,
+        logoUrl: settings.brand?.logoUrl || "",
+        primaryColor: settings.brand?.primaryColor || "",
+        secondaryColor: settings.brand?.secondaryColor || "",
+        accentColor: settings.brand?.accentColor || "",
+        visualGuidelines: settings.brand?.visualGuidelines || "",
+        autoApproval: settings.brandPolicies?.autoApproval || false,
+        pauseOnViolation: settings.brandPolicies?.autoActions?.pauseOnViolation || false,
+        sendForReview: settings.brandPolicies?.autoActions?.sendForReview || false,
+        autoFixMinor: settings.brandPolicies?.autoActions?.autoFixMinor || false,
       });
 
       // Load validation criteria form (removed character limits and required phrases)
       criteriaForm.reset({
-        requiredKeywords: settings.validationCriteria.requiredKeywords,
-        forbiddenTerms: settings.validationCriteria.forbiddenTerms,
-        requireLogo: settings.validationCriteria.brandRequirements.requireLogo,
-        requireBrandColors: settings.validationCriteria.brandRequirements.requireBrandColors,
+        requiredKeywords: settings.validationCriteria?.requiredKeywords || [],
+        forbiddenTerms: settings.validationCriteria?.forbiddenTerms || [],
+        requireLogo: settings.validationCriteria?.brandRequirements?.requireLogo || false,
+        requireBrandColors: settings.validationCriteria?.brandRequirements?.requireBrandColors || false,
       });
 
       // Load performance benchmarks form
       benchmarksForm.reset({
-        ctrMin: settings.performanceBenchmarks?.ctrMin || undefined,
-        ctrTarget: settings.performanceBenchmarks?.ctrTarget || undefined,
-        cpcMax: settings.performanceBenchmarks?.cpcMax || undefined,
-        cpcTarget: settings.performanceBenchmarks?.cpcTarget || undefined,
-        conversionsMin: settings.performanceBenchmarks?.conversionsMin || undefined,
-        conversionsTarget: settings.performanceBenchmarks?.conversionsTarget || undefined,
+        ctrMin: settings.performanceBenchmarks?.ctrMin ?? undefined,
+        ctrTarget: settings.performanceBenchmarks?.ctrTarget ?? undefined,
+        cpcMax: settings.performanceBenchmarks?.cpcMax ?? undefined,
+        cpcTarget: settings.performanceBenchmarks?.cpcTarget ?? undefined,
+        conversionsMin: settings.performanceBenchmarks?.conversionsMin ?? undefined,
+        conversionsTarget: settings.performanceBenchmarks?.conversionsTarget ?? undefined,
       });
     }
-  }, [settings, brandForm, criteriaForm, benchmarksForm]);
+  }, [settings]);
 
   // Update mutation
   const updateMutation = useMutation({
@@ -278,7 +281,14 @@ export default function Policies() {
           autoFixMinor: data.autoFixMinor,
         },
       },
-      validationCriteria: settings.validationCriteria, // Keep existing validation criteria
+      validationCriteria: settings.validationCriteria || {
+        requiredKeywords: [],
+        forbiddenTerms: [],
+        brandRequirements: {
+          requireLogo: false,
+          requireBrandColors: false,
+        },
+      },
       performanceBenchmarks: settings.performanceBenchmarks || {
         ctrMin: null,
         ctrTarget: null,
@@ -297,8 +307,21 @@ export default function Policies() {
     if (!settings) return;
 
     const updatedSettings: SettingsDTO = {
-      brand: settings.brand, // Keep existing brand settings
-      brandPolicies: settings.brandPolicies, // Keep existing brand policies
+      brand: settings.brand || {
+        logoUrl: null,
+        primaryColor: null,
+        secondaryColor: null,
+        accentColor: null,
+        visualGuidelines: null,
+      },
+      brandPolicies: settings.brandPolicies || {
+        autoApproval: false,
+        autoActions: {
+          pauseOnViolation: false,
+          sendForReview: false,
+          autoFixMinor: false,
+        },
+      },
       validationCriteria: {
         requiredKeywords: data.requiredKeywords,
         forbiddenTerms: data.forbiddenTerms,
@@ -325,9 +348,29 @@ export default function Policies() {
     if (!settings) return;
 
     const updatedSettings: SettingsDTO = {
-      brand: settings.brand, // Keep existing brand settings
-      brandPolicies: settings.brandPolicies, // Keep existing brand policies
-      validationCriteria: settings.validationCriteria, // Keep existing validation criteria
+      brand: settings.brand || {
+        logoUrl: null,
+        primaryColor: null,
+        secondaryColor: null,
+        accentColor: null,
+        visualGuidelines: null,
+      },
+      brandPolicies: settings.brandPolicies || {
+        autoApproval: false,
+        autoActions: {
+          pauseOnViolation: false,
+          sendForReview: false,
+          autoFixMinor: false,
+        },
+      },
+      validationCriteria: settings.validationCriteria || {
+        requiredKeywords: [],
+        forbiddenTerms: [],
+        brandRequirements: {
+          requireLogo: false,
+          requireBrandColors: false,
+        },
+      },
       performanceBenchmarks: {
         ctrMin: data.ctrMin || null,
         ctrTarget: data.ctrTarget || null,
