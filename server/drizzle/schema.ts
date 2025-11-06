@@ -115,16 +115,36 @@ export const campaigns = pgTable("campaigns", {
   platform: varchar("platform").notNull(),
   status: varchar("status").notNull(),
   account: varchar("account"),
+  objective: varchar("objective"),
   budget: decimal("budget", { precision: 10, scale: 2 }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Creatives
+// Ad Sets (Grupos de Anúncios)
+export const adSets = pgTable("ad_sets", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  campaignId: uuid("campaign_id").notNull().references(() => campaigns.id, { onDelete: 'cascade' }),
+  externalId: varchar("external_id").notNull(),
+  name: text("name").notNull(),
+  status: varchar("status").notNull(),
+  dailyBudget: decimal("daily_budget", { precision: 10, scale: 2 }),
+  lifetimeBudget: decimal("lifetime_budget", { precision: 10, scale: 2 }),
+  bidStrategy: varchar("bid_strategy"),
+  targeting: jsonb("targeting"),
+  startTime: timestamp("start_time"),
+  endTime: timestamp("end_time"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Creatives (Anúncios)
 export const creatives = pgTable("creatives", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   campaignId: uuid("campaign_id").notNull().references(() => campaigns.id, { onDelete: 'cascade' }),
+  adSetId: uuid("ad_set_id").references(() => adSets.id, { onDelete: 'cascade' }),
   externalId: varchar("external_id").notNull(),
   name: text("name").notNull(),
   type: varchar("type").notNull(),
@@ -318,6 +338,19 @@ export const campaignsRelations = relations(campaigns, ({ one, many }) => ({
     fields: [campaigns.integrationId],
     references: [integrations.id],
   }),
+  adSets: many(adSets),
+  creatives: many(creatives),
+}));
+
+export const adSetsRelations = relations(adSets, ({ one, many }) => ({
+  user: one(users, {
+    fields: [adSets.userId],
+    references: [users.id],
+  }),
+  campaign: one(campaigns, {
+    fields: [adSets.campaignId],
+    references: [campaigns.id],
+  }),
   creatives: many(creatives),
 }));
 
@@ -329,6 +362,10 @@ export const creativesRelations = relations(creatives, ({ one, many }) => ({
   campaign: one(campaigns, {
     fields: [creatives.campaignId],
     references: [campaigns.id],
+  }),
+  adSet: one(adSets, {
+    fields: [creatives.adSetId],
+    references: [adSets.id],
   }),
   audits: many(audits),
 }));
@@ -397,6 +434,12 @@ export const insertIntegrationSchema = createInsertSchema(integrations).omit({
 });
 
 export const insertCampaignSchema = createInsertSchema(campaigns).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAdSetSchema = createInsertSchema(adSets).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -576,6 +619,8 @@ export type InsertIntegration = z.infer<typeof insertIntegrationSchema>;
 export type Integration = typeof integrations.$inferSelect;
 export type InsertCampaign = z.infer<typeof insertCampaignSchema>;
 export type Campaign = typeof campaigns.$inferSelect;
+export type InsertAdSet = z.infer<typeof insertAdSetSchema>;
+export type AdSet = typeof adSets.$inferSelect;
 export type InsertCreative = z.infer<typeof insertCreativeSchema>;
 export type Creative = typeof creatives.$inferSelect;
 export type InsertPolicy = z.infer<typeof insertPolicySchema>;
