@@ -1,7 +1,7 @@
 
 import { eq, sql } from 'drizzle-orm';
 import Papa from 'papaparse';
-import { campaignMetrics, campaigns, creatives, InsertCampaignMetrics } from '../../shared/schema.js';
+import { campaignMetrics, campaigns, creatives, users, InsertCampaignMetrics } from '../../shared/schema.js';
 import { db } from '../database/connection.js';
 import { nanoid } from 'nanoid';
 
@@ -325,6 +325,10 @@ export class SheetsSyncService {
   }
 
   private async createCampaignsAndCreatives(data: RawMetricsData[], userId: string, integrationId: string): Promise<void> {
+    // Get user's companyId
+    const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    const companyId = user?.companyId || null;
+    
     const campaignMap = new Map<string, string>();
     
     // Group data by campaign
@@ -334,6 +338,7 @@ export class SheetsSyncService {
       try {
         // Create campaign
         const [campaign] = await db.insert(campaigns).values({
+          companyId,
           userId,
           integrationId,
           externalId: `sheets_${nanoid(10)}`,
