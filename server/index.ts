@@ -1,16 +1,15 @@
-
 import express, { type Request, Response, NextFunction } from "express";
 import cors from "cors";
 import { setupVite, serveStatic, log } from "./vite";
-import { cronManager, triggerManualSync } from "./services/cronManager";
+import { cronManagerService } from "./src/application/services/CronManagerService"; // Updated import
 import { checkIfDatabaseEmpty, seedDatabase } from "./seedData";
 import { errorHandler } from "./src/shared/errors/AppError";
 
 // Import DDD routes
 import authRoutes from "./src/presentation/routes/auth.routes";
-import userRoutes from "./modules/users/user.routes";
-import campaignRoutes from "./modules/campaigns/campaign.routes";
-import creativeRoutes from "./modules/creatives/creative.routes";
+import userRoutes from "./src/presentation/routes/user.routes"; // Corrected path
+import campaignRoutes from "./src/presentation/routes/campaign.routes"; // Corrected path
+import creativeRoutes from "./src/presentation/routes/creative.routes"; // Corrected path
 
 // Import legacy routes (será migrado gradualmente)
 import { registerRoutes as registerLegacyRoutes } from "./routes";
@@ -19,7 +18,7 @@ const app = express();
 
 // CORS configuration
 app.use(cors({
-  origin: process.env.NODE_ENV === 'development' 
+  origin: process.env.NODE_ENV === 'development'
     ? ['http://localhost:5000', 'http://0.0.0.0:5000']
     : true,
   credentials: true,
@@ -81,7 +80,7 @@ app.use((req, res, next) => {
   const PORT = parseInt(process.env.PORT || '5000', 10);
 
   const isPreview = process.env.REPLIT_PREVIEW === 'true' || process.env.REPLIT_DEPLOYMENT === 'preview';
-  
+
   server.listen({
     port: PORT,
     host: "0.0.0.0",
@@ -108,7 +107,7 @@ app.use((req, res, next) => {
 
       if (process.env.NODE_ENV !== 'production') {
         try {
-          cronManager.startAll();
+          cronManagerService.startAll(); // Updated to use cronManagerService
           log(`🕐 Google Sheets sync cron jobs started successfully`);
         } catch (error) {
           console.error(`❌ Failed to start cron jobs:`, error);
