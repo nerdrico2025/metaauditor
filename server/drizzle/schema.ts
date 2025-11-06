@@ -29,6 +29,18 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
+// Platform Settings (Global configuration for OAuth apps)
+export const platformSettings = pgTable("platform_settings", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  platform: varchar("platform").notNull().unique(), // 'meta', 'google'
+  appId: text("app_id"),
+  appSecret: text("app_secret"),
+  redirectUri: text("redirect_uri"),
+  isConfigured: boolean("is_configured").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Subscription plan enum
 export const subscriptionPlanEnum = pgEnum('subscription_plan', ['free', 'starter', 'professional', 'enterprise']);
 
@@ -427,6 +439,12 @@ export const contentCriteriaRelations = relations(contentCriteria, ({ one }) => 
 }));
 
 // Insert schemas
+export const insertPlatformSettingsSchema = createInsertSchema(platformSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertIntegrationSchema = createInsertSchema(integrations).omit({
   id: true,
   createdAt: true,
@@ -615,6 +633,8 @@ export type Company = typeof companies.$inferSelect;
 export type InsertCompany = typeof companies.$inferInsert;
 export type CreateCompanyData = z.infer<typeof createCompanySchema>;
 export type UpdateCompanyData = z.infer<typeof updateCompanySchema>;
+export type InsertPlatformSettings = z.infer<typeof insertPlatformSettingsSchema>;
+export type PlatformSettings = typeof platformSettings.$inferSelect;
 export type InsertIntegration = z.infer<typeof insertIntegrationSchema>;
 export type Integration = typeof integrations.$inferSelect;
 export type InsertCampaign = z.infer<typeof insertCampaignSchema>;
