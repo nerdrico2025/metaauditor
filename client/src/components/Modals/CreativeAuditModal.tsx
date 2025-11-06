@@ -283,23 +283,13 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
             {/* Creative Preview */}
             <div className="space-y-4">
               <div className="border border-slate-200 rounded-lg p-4 bg-slate-50">
-                {creative.imageUrl ? (
-                  <div className="relative cursor-pointer" onClick={() => setImageZoomed(true)}>
-                    <CreativeImage 
-                      creative={creative}
-                      className="w-full h-auto rounded-lg hover:opacity-90 transition-opacity"
-                      size="large"
-                    />
-                  </div>
-                ) : (
-                  <div className="w-full h-48 bg-gradient-to-br from-slate-50 to-slate-100 rounded-lg flex flex-col items-center justify-center border-2 border-dashed border-slate-200">
-                    <ImageIcon className="h-12 w-12 text-slate-400 mb-4" />
-                    <span className="text-sm text-slate-600 font-medium text-center px-4">
-                      {creative.name}
-                    </span>
-                    <span className="text-xs text-slate-400 mt-2">Nenhuma imagem cadastrada</span>
-                  </div>
-                )}
+                <div className="relative cursor-pointer" onClick={() => setImageZoomed(true)}>
+                  <CreativeImage 
+                    creative={creative}
+                    className="w-full h-auto rounded-lg hover:opacity-90 transition-opacity"
+                    size="large"
+                  />
+                </div>
               </div>
 
               {/* Creative Metrics */}
@@ -558,10 +548,10 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
       </Dialog>
 
       {/* Image Zoom Modal */}
-      {imageZoomed && creative.imageUrl && (
+      {imageZoomed && (
         <Dialog open={imageZoomed} onOpenChange={setImageZoomed}>
           <DialogContent className="max-w-6xl max-h-[90vh] p-0">
-            <div className="relative">
+            <div className="relative bg-black">
               <CreativeImage 
                 creative={creative}
                 className="w-full h-auto max-h-[90vh] object-contain"

@@ -6,13 +6,15 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import Sidebar from "@/components/Layout/Sidebar";
 import Header from "@/components/Layout/Header";
 import CreativeAuditModal from "@/components/Modals/CreativeAuditModal";
+import { CreativeImage } from "@/components/CreativeImage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Filter, Eye, BarChart3, ChevronLeft, ChevronRight, Image as ImageIcon, CheckCircle, XCircle } from "lucide-react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Search, Filter, Eye, BarChart3, ChevronLeft, ChevronRight, Image as ImageIcon, CheckCircle, XCircle, X } from "lucide-react";
 import type { Creative, Campaign, Audit } from "@shared/schema";
 
 // Component to show if creative has been analyzed
@@ -53,13 +55,15 @@ function useCreativeHasAudit(creativeId: string) {
 // Component for creative table row
 function CreativeTableRow({ 
   creative, 
-  onView, 
+  onView,
+  onZoom,
   onAnalyze,
   getCampaignName,
   getStatusBadgeVariant
 }: {
   creative: Creative;
   onView: () => void;
+  onZoom: () => void;
   onAnalyze: () => void;
   getCampaignName: (id: string | null) => string;
   getStatusBadgeVariant: (status: string) => any;
@@ -69,21 +73,13 @@ function CreativeTableRow({
   return (
     <TableRow data-testid={`row-creative-${creative.id}`}>
       <TableCell>
-        {creative.imageUrl && !creative.imageUrl.includes('placeholder') ? (
-          <img 
-            src={creative.imageUrl} 
-            alt={creative.name}
-            className="w-20 h-20 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
-            onClick={onView}
-            onError={(e) => {
-              e.currentTarget.src = 'https://via.placeholder.com/80?text=IMG';
-            }}
+        <div onClick={onZoom} className="cursor-pointer">
+          <CreativeImage 
+            creative={creative}
+            className="w-20 h-20 object-cover rounded-lg hover:opacity-80 transition-opacity"
+            size="small"
           />
-        ) : (
-          <div className="w-20 h-20 bg-slate-100 rounded-lg flex items-center justify-center">
-            <ImageIcon className="h-8 w-8 text-slate-400" />
-          </div>
-        )}
+        </div>
       </TableCell>
       <TableCell className="font-medium">
         <div className="max-w-xs">
@@ -160,11 +156,12 @@ export default function Creatives() {
   const { isAuthenticated, isLoading } = useAuth();
   const [selectedCreative, setSelectedCreative] = useState<Creative | null>(null);
   const [selectedCreativeForAnalysis, setSelectedCreativeForAnalysis] = useState<Creative | null>(null);
+  const [zoomedCreative, setZoomedCreative] = useState<Creative | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [campaignFilter, setCampaignFilter] = useState("all");
   const [page, setPage] = useState(1);
-  const limit = 50;
+  const [limit, setLimit] = useState(20);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -275,6 +272,17 @@ export default function Creatives() {
                     data-testid="input-search-creatives"
                   />
                 </div>
+
+                <Select value={limit.toString()} onValueChange={(value) => setLimit(Number(value))}>
+                  <SelectTrigger className="w-full sm:w-32" data-testid="select-page-size">
+                    <SelectValue placeholder="Por página" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="20">20 por página</SelectItem>
+                    <SelectItem value="50">50 por página</SelectItem>
+                    <SelectItem value="100">100 por página</SelectItem>
+                  </SelectContent>
+                </Select>
                 
                 <Select value={campaignFilter} onValueChange={setCampaignFilter}>
                   <SelectTrigger className="w-full sm:w-64" data-testid="select-campaign-filter">
@@ -334,6 +342,7 @@ export default function Creatives() {
                             key={creative.id}
                             creative={creative}
                             onView={() => setSelectedCreative(creative)}
+                            onZoom={() => setZoomedCreative(creative)}
                             onAnalyze={() => setSelectedCreativeForAnalysis(creative)}
                             getCampaignName={getCampaignName}
                             getStatusBadgeVariant={getStatusBadgeVariant}
@@ -412,6 +421,29 @@ export default function Creatives() {
           onClose={() => setSelectedCreativeForAnalysis(null)}
           autoAnalyze={true}
         />
+      )}
+
+      {/* Image Zoom Modal */}
+      {zoomedCreative && (
+        <Dialog open={true} onOpenChange={() => setZoomedCreative(null)}>
+          <DialogContent className="max-w-6xl max-h-[90vh] p-0">
+            <div className="relative bg-black">
+              <CreativeImage 
+                creative={zoomedCreative}
+                className="w-full h-auto max-h-[90vh] object-contain"
+                size="large"
+              />
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                className="absolute top-4 right-4"
+                onClick={() => setZoomedCreative(null)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
