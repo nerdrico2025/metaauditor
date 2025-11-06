@@ -6,15 +6,24 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import Sidebar from "@/components/Layout/Sidebar";
 import Header from "@/components/Layout/Header";
 import CreativeAuditModal from "@/components/Modals/CreativeAuditModal";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Image, Search, Filter, Eye, BarChart3 } from "lucide-react";
-import type { Creative } from "@shared/schema";
-import { CreativeImage } from "@/components/CreativeImage";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Search, Filter, Eye, BarChart3, ChevronLeft, ChevronRight, Image as ImageIcon } from "lucide-react";
+import type { Creative, Campaign } from "@shared/schema";
+
+interface PaginatedResponse {
+  creatives: Creative[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
 
 export default function Creatives() {
   const { toast } = useToast();
@@ -23,8 +32,10 @@ export default function Creatives() {
   const [selectedCreativeForAnalysis, setSelectedCreativeForAnalysis] = useState<Creative | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [campaignFilter, setCampaignFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  const limit = 50;
 
-  // Redirect to home if not authenticated
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       toast({
@@ -39,8 +50,26 @@ export default function Creatives() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  const { data: creatives, isLoading: creativesLoading, error } = useQuery<Creative[]>({
-    queryKey: ["/api/creatives"],
+  const { data: campaigns } = useQuery<Campaign[]>({
+    queryKey: ["/api/campaigns"],
+    enabled: isAuthenticated,
+  });
+
+  const queryParams = new URLSearchParams({
+    page: page.toString(),
+    limit: limit.toString(),
+    ...(statusFilter !== 'all' && { status: statusFilter }),
+    ...(campaignFilter !== 'all' && { campaignId: campaignFilter }),
+    ...(searchTerm && { search: searchTerm }),
+  });
+
+  const { data, isLoading: creativesLoading, error } = useQuery<PaginatedResponse>({
+    queryKey: ["/api/creatives", page, limit, statusFilter, campaignFilter, searchTerm],
+    queryFn: async () => {
+      const response = await fetch(`/api/creatives?${queryParams}`);
+      if (!response.ok) throw new Error('Failed to fetch creatives');
+      return response.json();
+    },
     enabled: isAuthenticated,
   });
 
@@ -58,6 +87,10 @@ export default function Creatives() {
     }
   }, [error, toast]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, statusFilter, campaignFilter]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -65,6 +98,9 @@ export default function Creatives() {
       </div>
     );
   }
+
+  const creatives = data?.creatives || [];
+  const pagination = data?.pagination || { page: 1, limit: 50, total: 0, totalPages: 0 };
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -79,29 +115,19 @@ export default function Creatives() {
     }
   };
 
-  const getTypeBadgeColor = (type: string) => {
-    switch (type) {
-      case 'image':
-        return 'bg-blue-100 text-blue-800';
-      case 'video':
-        return 'bg-purple-100 text-purple-800';
-      case 'carousel':
-        return 'bg-green-100 text-green-800';
-      case 'text':
-        return 'bg-amber-100 text-amber-800';
-      default:
-        return 'bg-slate-100 text-slate-800';
-    }
+  const getCampaignName = (campaignId: string | null) => {
+    if (!campaignId || !campaigns) return 'N/A';
+    const campaign = campaigns.find(c => c.id === campaignId);
+    return campaign?.name || 'N/A';
   };
 
-  const filteredCreatives = creatives?.filter((creative: Creative) => {
-    const matchesSearch = creative.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         creative.headline?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         creative.text?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || creative.status === statusFilter;
-    
-    return matchesSearch && matchesStatus;
-  }) || [];
+  const handlePreviousPage = () => {
+    if (page > 1) setPage(page - 1);
+  };
+
+  const handleNextPage = () => {
+    if (page < pagination.totalPages) setPage(page + 1);
+  };
 
   return (
     <div className="flex h-screen bg-slate-50">
@@ -113,7 +139,6 @@ export default function Creatives() {
         <main className="flex-1 overflow-y-auto">
           <div className="py-6">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              {/* Filters */}
               <div className="mb-6 flex flex-col sm:flex-row gap-4">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -122,10 +147,27 @@ export default function Creatives() {
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
+                    data-testid="input-search-creatives"
                   />
                 </div>
+                
+                <Select value={campaignFilter} onValueChange={setCampaignFilter}>
+                  <SelectTrigger className="w-full sm:w-64" data-testid="select-campaign-filter">
+                    <Filter className="h-4 w-4 mr-2" />
+                    <SelectValue placeholder="Campanha" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas as Campanhas</SelectItem>
+                    {campaigns?.map((campaign) => (
+                      <SelectItem key={campaign.id} value={campaign.id}>
+                        {campaign.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-full sm:w-48">
+                  <SelectTrigger className="w-full sm:w-48" data-testid="select-status-filter">
                     <Filter className="h-4 w-4 mr-2" />
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
@@ -139,119 +181,155 @@ export default function Creatives() {
               </div>
 
               {creativesLoading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {[...Array(9)].map((_, i) => (
-                    <Card key={i} className="border-slate-200">
-                      <CardContent className="p-4">
-                        <Skeleton className="h-32 w-full mb-4 rounded" />
-                        <Skeleton className="h-4 w-3/4 mb-2" />
-                        <Skeleton className="h-3 w-1/2 mb-3" />
-                        <div className="flex justify-between">
-                          <Skeleton className="h-6 w-16" />
-                          <Skeleton className="h-6 w-20" />
-                        </div>
-                      </CardContent>
-                    </Card>
+                <div className="space-y-3">
+                  {[...Array(10)].map((_, i) => (
+                    <Skeleton key={i} className="h-16 w-full" />
                   ))}
                 </div>
-              ) : filteredCreatives.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredCreatives.map((creative: Creative) => (
-                    <Card key={creative.id} className="border-slate-200 hover:shadow-lg transition-shadow cursor-pointer">
-                      <CardContent className="p-4">
-                        {/* Creative Preview */}
-                        <div className="relative mb-4">
-                          <CreativeImage creative={creative} />
-                          <div className="absolute top-2 right-2">
-                            <Badge className={`text-xs ${getTypeBadgeColor(creative.type)}`}>
-                              {creative.type}
-                            </Badge>
-                          </div>
-                        </div>
+              ) : creatives.length > 0 ? (
+                <>
+                  <div className="bg-white rounded-lg shadow overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-12"></TableHead>
+                          <TableHead>Nome</TableHead>
+                          <TableHead>Campanha</TableHead>
+                          <TableHead>Tipo</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Impressões</TableHead>
+                          <TableHead className="text-right">Cliques</TableHead>
+                          <TableHead className="text-right">CTR</TableHead>
+                          <TableHead className="text-right">Conv.</TableHead>
+                          <TableHead className="text-right">Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {creatives.map((creative) => (
+                          <TableRow key={creative.id} data-testid={`row-creative-${creative.id}`}>
+                            <TableCell>
+                              {creative.imageUrl && !creative.imageUrl.includes('placeholder') ? (
+                                <img 
+                                  src={creative.imageUrl} 
+                                  alt={creative.name}
+                                  className="w-10 h-10 object-cover rounded"
+                                  onError={(e) => {
+                                    e.currentTarget.src = 'https://via.placeholder.com/40?text=IMG';
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-10 h-10 bg-slate-100 rounded flex items-center justify-center">
+                                  <ImageIcon className="h-5 w-5 text-slate-400" />
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              <div className="max-w-xs">
+                                <div className="truncate">{creative.name}</div>
+                                {creative.headline && (
+                                  <div className="text-xs text-slate-500 truncate">{creative.headline}</div>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <span className="text-sm text-slate-600">
+                                {getCampaignName(creative.campaignId)}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="text-xs">
+                                {creative.type}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={getStatusBadgeVariant(creative.status)}>
+                                {creative.status === 'active' ? 'Ativo' : 
+                                 creative.status === 'paused' ? 'Pausado' : 'Inativo'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {creative.impressions?.toLocaleString() || 0}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {creative.clicks?.toLocaleString() || 0}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {creative.ctr || '0'}%
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {creative.conversions || 0}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end space-x-2">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => setSelectedCreative(creative)}
+                                  data-testid={`button-view-${creative.id}`}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => setSelectedCreativeForAnalysis(creative)}
+                                  data-testid={`button-analyze-${creative.id}`}
+                                >
+                                  <BarChart3 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
 
-                        {/* Creative Info */}
-                        <div className="space-y-2">
-                          <h3 className="font-semibold text-slate-900 truncate">
-                            {creative.name}
-                          </h3>
-                          
-                          {creative.headline && (
-                            <p className="text-sm text-slate-600 line-clamp-2">
-                              {creative.headline}
-                            </p>
-                          )}
-                          
-                          {(creative as any).campaignName && (
-                            <p className="text-xs text-slate-500 truncate">
-                              Campanha: {(creative as any).campaignName}
-                            </p>
-                          )}
-
-                          <div className="flex items-center justify-between">
-                            <Badge variant={getStatusBadgeVariant(creative.status)}>
-                              {creative.status === 'active' ? 'Ativo' : 
-                               creative.status === 'paused' ? 'Pausado' : 'Inativo'}
-                            </Badge>
-                            
-                            <div className="text-sm text-slate-500">
-                              {creative.impressions?.toLocaleString() || 0} impressões
-                            </div>
-                          </div>
-
-                          {/* Metrics */}
-                          <div className="grid grid-cols-3 gap-2 text-xs text-slate-600 pt-2 border-t border-slate-100">
-                            <div>
-                              <span className="block font-medium">CTR</span>
-                              <span>{creative.ctr || '0'}%</span>
-                            </div>
-                            <div>
-                              <span className="block font-medium">Cliques</span>
-                              <span>{creative.clicks || 0}</span>
-                            </div>
-                            <div>
-                              <span className="block font-medium">Conv.</span>
-                              <span>{creative.conversions || 0}</span>
-                            </div>
-                          </div>
-
-                          {/* Actions */}
-                          <div className="flex space-x-2 pt-3">
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="flex-1"
-                              onClick={() => setSelectedCreative(creative)}
-                            >
-                              <Eye className="h-4 w-4 mr-1" />
-                              Ver
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="flex-1"
-                              onClick={() => setSelectedCreativeForAnalysis(creative)}
-                              data-testid={`button-analyze-${creative.id}`}
-                            >
-                              <BarChart3 className="h-4 w-4 mr-1" />
-                              Analisar
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+                  <div className="mt-6 flex items-center justify-between">
+                    <div className="text-sm text-slate-600">
+                      Mostrando {((page - 1) * limit) + 1} a {Math.min(page * limit, pagination.total)} de {pagination.total} criativos
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handlePreviousPage}
+                        disabled={page === 1}
+                        data-testid="button-prev-page"
+                      >
+                        <ChevronLeft className="h-4 w-4 mr-1" />
+                        Anterior
+                      </Button>
+                      
+                      <div className="text-sm text-slate-600">
+                        Página {page} de {pagination.totalPages}
+                      </div>
+                      
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleNextPage}
+                        disabled={page === pagination.totalPages}
+                        data-testid="button-next-page"
+                      >
+                        Próxima
+                        <ChevronRight className="h-4 w-4 ml-1" />
+                      </Button>
+                    </div>
+                  </div>
+                </>
               ) : (
                 <div className="text-center py-12">
-                  <Image className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+                  <ImageIcon className="h-12 w-12 text-slate-400 mx-auto mb-4" />
                   <h3 className="text-lg font-medium text-slate-900 mb-2">
-                    {searchTerm || statusFilter !== 'all' 
+                    {searchTerm || statusFilter !== 'all' || campaignFilter !== 'all'
                       ? 'Nenhum criativo encontrado'
                       : 'Nenhum criativo disponível'
                     }
                   </h3>
                   <p className="text-slate-600 mb-6">
-                    {searchTerm || statusFilter !== 'all'
+                    {searchTerm || statusFilter !== 'all' || campaignFilter !== 'all'
                       ? 'Tente ajustar os filtros de busca.'
                       : 'Sincronize suas campanhas para começar a ver os criativos.'
                     }
