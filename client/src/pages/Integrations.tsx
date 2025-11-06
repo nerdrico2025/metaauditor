@@ -27,7 +27,14 @@ const createIntegrationSchema = z.object({
   accountId: z.string().min(1, 'Account ID é obrigatório'),
 });
 
+const googleSheetsConfigSchema = z.object({
+  sheetId: z.string().min(1, 'Sheet ID é obrigatório'),
+  tabGid: z.string().default('0'),
+  name: z.string().min(1, 'Nome é obrigatório'),
+});
+
 type CreateIntegrationData = z.infer<typeof createIntegrationSchema>;
+type GoogleSheetsConfigData = z.infer<typeof googleSheetsConfigSchema>;
 
 interface Integration {
   id: string;
@@ -48,6 +55,7 @@ export default function Integrations() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [createIntegrationDialogOpen, setCreateIntegrationDialogOpen] = useState(false);
+  const [sheetsConfigDialogOpen, setSheetsConfigDialogOpen] = useState(false);
 
   // Fetch integrations
   const { data: integrations = [], isLoading: integrationsLoading } = useQuery<Integration[]>({
@@ -64,6 +72,16 @@ export default function Integrations() {
   // Create integration form
   const createIntegrationForm = useForm<CreateIntegrationData>({
     resolver: zodResolver(createIntegrationSchema),
+  });
+
+  // Google Sheets config form
+  const sheetsConfigForm = useForm<GoogleSheetsConfigData>({
+    resolver: zodResolver(googleSheetsConfigSchema),
+    defaultValues: {
+      sheetId: '1mOPjhRhBUP60GzZm0NAuUSYGzlE1bDbi414iYtlwZkA',
+      tabGid: '0',
+      name: 'Planilha Principal Meta Ads',
+    },
   });
 
   // Mutations
@@ -131,10 +149,30 @@ export default function Integrations() {
       });
       queryClient.invalidateQueries({ queryKey: ['/api/sync/status'] });
       queryClient.invalidateQueries({ queryKey: ['/api/campaigns'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/creatives'] });
     },
     onError: (error: any) => {
       toast({
         title: 'Erro na sincronização',
+        description: error.message,
+        variant: 'destructive'
+      });
+    },
+  });
+
+  const saveSheetsConfigMutation = useMutation({
+    mutationFn: (data: GoogleSheetsConfigData) => apiRequest('/api/sheets/config', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+    onSuccess: () => {
+      toast({ title: 'Configuração salva com sucesso!' });
+      setSheetsConfigDialogOpen(false);
+      sheetsConfigForm.reset();
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Erro ao salvar configuração',
         description: error.message,
         variant: 'destructive'
       });
@@ -197,13 +235,95 @@ export default function Integrations() {
                         </CardDescription>
                       </div>
                     </div>
-                    <Badge variant={sheetsSyncStatus?.data?.syncStatus?.recordCount ? 'default' : 'secondary'} className="text-sm px-3 py-1">
-                      {sheetsSyncStatus?.data?.syncStatus?.recordCount ? (
-                        <><CheckCircle2 className="w-4 h-4 mr-1" /> Configurado</>
-                      ) : (
-                        <><Clock className="w-4 h-4 mr-1" /> Aguardando dados</>
-                      )}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Dialog open={sheetsConfigDialogOpen} onOpenChange={setSheetsConfigDialogOpen}>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" size="sm" data-testid="button-configure-sheets">
+                            Configurar
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Configurar Google Sheets</DialogTitle>
+                            <DialogDescription>
+                              Configure a planilha Google Sheets para importação de dados
+                            </DialogDescription>
+                          </DialogHeader>
+                          <form onSubmit={sheetsConfigForm.handleSubmit((data) => saveSheetsConfigMutation.mutate(data))}>
+                            <div className="space-y-4 py-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="name">Nome da Configuração</Label>
+                                <Input
+                                  id="name"
+                                  placeholder="Ex: Planilha Principal Meta Ads"
+                                  data-testid="input-sheets-name"
+                                  {...sheetsConfigForm.register('name')}
+                                />
+                                {sheetsConfigForm.formState.errors.name && (
+                                  <p className="text-sm text-red-600 dark:text-red-400">
+                                    {sheetsConfigForm.formState.errors.name.message}
+                                  </p>
+                                )}
+                              </div>
+
+                              <div className="space-y-2">
+                                <Label htmlFor="sheetId">Sheet ID</Label>
+                                <Input
+                                  id="sheetId"
+                                  placeholder="Ex: 1mOPjhRhBUP60GzZm0NAuUSYGzlE1bDbi414iYtlwZkA"
+                                  data-testid="input-sheets-id"
+                                  {...sheetsConfigForm.register('sheetId')}
+                                />
+                                <p className="text-xs text-gray-500">
+                                  Encontre o ID na URL da planilha: docs.google.com/spreadsheets/d/<strong>ID_AQUI</strong>/edit
+                                </p>
+                                {sheetsConfigForm.formState.errors.sheetId && (
+                                  <p className="text-sm text-red-600 dark:text-red-400">
+                                    {sheetsConfigForm.formState.errors.sheetId.message}
+                                  </p>
+                                )}
+                              </div>
+
+                              <div className="space-y-2">
+                                <Label htmlFor="tabGid">Tab GID (opcional)</Label>
+                                <Input
+                                  id="tabGid"
+                                  placeholder="0"
+                                  data-testid="input-sheets-gid"
+                                  {...sheetsConfigForm.register('tabGid')}
+                                />
+                                <p className="text-xs text-gray-500">
+                                  GID da aba específica. Padrão é "0" (primeira aba)
+                                </p>
+                              </div>
+                            </div>
+                            <DialogFooter>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setSheetsConfigDialogOpen(false)}
+                              >
+                                Cancelar
+                              </Button>
+                              <Button
+                                type="submit"
+                                disabled={saveSheetsConfigMutation.isPending}
+                                data-testid="button-save-sheets-config"
+                              >
+                                {saveSheetsConfigMutation.isPending ? 'Salvando...' : 'Salvar Configuração'}
+                              </Button>
+                            </DialogFooter>
+                          </form>
+                        </DialogContent>
+                      </Dialog>
+                      <Badge variant={sheetsSyncStatus?.data?.syncStatus?.recordCount ? 'default' : 'secondary'} className="text-sm px-3 py-1">
+                        {sheetsSyncStatus?.data?.syncStatus?.recordCount ? (
+                          <><CheckCircle2 className="w-4 h-4 mr-1" /> Configurado</>
+                        ) : (
+                          <><Clock className="w-4 h-4 mr-1" /> Aguardando dados</>
+                        )}
+                      </Badge>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="pt-6">
