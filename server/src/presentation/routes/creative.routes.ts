@@ -3,8 +3,11 @@ import { Router } from 'express';
 import { authenticateToken } from '../middlewares/auth.middleware';
 import type { Request, Response, NextFunction } from 'express';
 import { storage } from '../../shared/services/storage.service.js';
+import { AIAnalysisService } from '../../infrastructure/services/AIAnalysisService.js';
+import { nanoid } from 'nanoid';
 
 const router = Router();
+const aiAnalysisService = new AIAnalysisService();
 
 // Get all creatives for user
 router.get('/', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
@@ -62,6 +65,74 @@ router.put('/:id', authenticateToken, async (req: Request, res: Response, next: 
       return res.status(404).json({ message: 'Criativo não encontrado' });
     }
     res.json(creative);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Analyze creative with AI
+router.post('/:id/analyze', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = (req as any).user?.userId;
+    const creative = await storage.getCreativeById(req.params.id);
+    
+    if (!creative) {
+      return res.status(404).json({ message: 'Criativo não encontrado' });
+    }
+
+    // Get brand configuration and content criteria for the user
+    const brandConfigs = await storage.getBrandConfigurationsByUser(userId);
+    const brandConfig = brandConfigs.length > 0 ? brandConfigs[0] : null;
+    
+    const contentCriteriaList = await storage.getContentCriteriaByUser(userId);
+    const contentCriteria = contentCriteriaList.length > 0 ? contentCriteriaList[0] : null;
+    
+    const performanceBenchmarks = await storage.getPerformanceBenchmarksByUser(userId);
+
+    // Perform AI analysis
+    const complianceAnalysis = await aiAnalysisService.analyzeCreativeCompliance(
+      creative,
+      brandConfig,
+      contentCriteria
+    );
+    
+    const performanceAnalysis = await aiAnalysisService.analyzeCreativePerformance(
+      creative,
+      performanceBenchmarks
+    );
+
+    // Calculate overall compliance status
+    const complianceStatus = complianceAnalysis.score >= 80 ? 'conforme' : 
+                            complianceAnalysis.score >= 60 ? 'parcialmente_conforme' : 
+                            'nao_conforme';
+
+    // Create audit record
+    const audit = await storage.createAudit({
+      creativeId: creative.id,
+      userId,
+      status: complianceStatus,
+      complianceScore: complianceAnalysis.score,
+      performanceScore: performanceAnalysis.score,
+      issues: complianceAnalysis.issues,
+      recommendations: [...complianceAnalysis.recommendations, ...performanceAnalysis.recommendations],
+      aiAnalysis: {
+        compliance: complianceAnalysis,
+        performance: performanceAnalysis,
+      },
+    });
+
+    res.json(audit);
+  } catch (error) {
+    console.error('Error analyzing creative:', error);
+    next(error);
+  }
+});
+
+// Get audits for a creative
+router.get('/:id/audits', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const audits = await storage.getAuditsByCreative(req.params.id);
+    res.json(audits);
   } catch (error) {
     next(error);
   }
