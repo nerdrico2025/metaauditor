@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, Plus, Edit, Eye, EyeOff, Shield, User, RefreshCw, Facebook } from 'lucide-react';
+import { Trash2, Plus, Edit, Eye, EyeOff, Shield, User, RefreshCw, Facebook, Settings as SettingsIcon } from 'lucide-react';
 import { SiGoogle } from 'react-icons/si';
 
 // Form schemas
@@ -56,11 +56,17 @@ const createIntegrationSchema = z.object({
   accountId: z.string().min(1, 'Account ID é obrigatório'),
 });
 
+const platformSettingsSchema = z.object({
+  appId: z.string().min(1, 'App ID é obrigatório'),
+  appSecret: z.string().min(1, 'App Secret é obrigatório'),
+});
+
 type UpdateProfileData = z.infer<typeof updateProfileSchema>;
 type ChangePasswordData = z.infer<typeof changePasswordSchema>;
 type CreateUserData = z.infer<typeof createUserSchema>;
 type UpdateUserData = z.infer<typeof updateUserSchema>;
 type CreateIntegrationData = z.infer<typeof createIntegrationSchema>;
+type PlatformSettingsData = z.infer<typeof platformSettingsSchema>;
 
 interface User {
   id: string;
@@ -82,6 +88,12 @@ interface Integration {
   createdAt: Date;
 }
 
+interface PlatformSettings {
+  appId: string;
+  appSecret: string;
+  isConfigured: boolean;
+}
+
 export default function Settings() {
   const { user, isAdmin } = useAuth();
   const { toast } = useToast();
@@ -90,12 +102,14 @@ export default function Settings() {
   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showAppSecret, setShowAppSecret] = useState(false);
   const [createUserDialogOpen, setCreateUserDialogOpen] = useState(false);
   const [editUserDialog, setEditUserDialog] = useState<{ open: boolean; user: User | null }>({
     open: false,
     user: null,
   });
   const [createIntegrationDialogOpen, setCreateIntegrationDialogOpen] = useState(false);
+  const [isConnectingMeta, setIsConnectingMeta] = useState(false);
 
   // Fetch current user profile
   const { data: profile } = useQuery<User>({
@@ -113,6 +127,12 @@ export default function Settings() {
   const { data: integrations = [] } = useQuery<Integration[]>({
     queryKey: ['/api/integrations'],
     enabled: !!user,
+  });
+
+  // Fetch platform settings (super_admin only)
+  const { data: platformSettings } = useQuery<PlatformSettings>({
+    queryKey: ['/api/platform-settings/meta'],
+    enabled: user?.role === 'super_admin',
   });
 
   // Profile update form
@@ -143,6 +163,15 @@ export default function Settings() {
   // Create integration form
   const createIntegrationForm = useForm<CreateIntegrationData>({
     resolver: zodResolver(createIntegrationSchema),
+  });
+
+  // Platform settings form
+  const platformSettingsForm = useForm<PlatformSettingsData>({
+    resolver: zodResolver(platformSettingsSchema),
+    defaultValues: {
+      appId: '',
+      appSecret: '',
+    },
   });
 
   // Mutations
@@ -299,6 +328,27 @@ export default function Settings() {
     },
   });
 
+  const savePlatformSettingsMutation = useMutation({
+    mutationFn: (data: PlatformSettingsData) => apiRequest('/api/platform-settings', {
+      method: 'POST',
+      body: JSON.stringify({
+        platform: 'meta',
+        ...data,
+      }),
+    }),
+    onSuccess: () => {
+      toast({ title: 'Configurações salvas com sucesso!' });
+      queryClient.invalidateQueries({ queryKey: ['/api/platform-settings/meta'] });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: 'Erro ao salvar configurações',
+        description: error.message,
+        variant: 'destructive'
+      });
+    },
+  });
+
   // Set form defaults when profile data loads
   if (profile && profile.firstName !== undefined && !profileForm.getValues().firstName) {
     profileForm.reset({
@@ -318,6 +368,14 @@ export default function Settings() {
     });
   }
 
+  // Set form defaults when platform settings data loads
+  if (platformSettings && platformSettings.appId && !platformSettingsForm.getValues().appId) {
+    platformSettingsForm.reset({
+      appId: platformSettings.appId || '',
+      appSecret: platformSettings.appSecret || '',
+    });
+  }
+
   const formatDate = (date: Date | null) => {
     if (!date) return 'Nunca';
     return new Date(date).toLocaleDateString('pt-BR', {
@@ -331,6 +389,34 @@ export default function Settings() {
 
   const isMasterUser = (userEmail: string) => userEmail === 'rafael@clickhero.com.br';
 
+  const handleConnectMetaOAuth = async () => {
+    setIsConnectingMeta(true);
+    try {
+      const response = await fetch('/api/auth/meta/connect', {
+        method: 'GET',
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Falha ao obter URL de autenticação');
+      }
+      
+      const data = await response.json();
+      if (data.authUrl) {
+        window.location.href = data.authUrl;
+      } else {
+        throw new Error('URL de autenticação não fornecida');
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao conectar com Meta',
+        description: error.message || 'Não foi possível iniciar a autenticação OAuth',
+        variant: 'destructive'
+      });
+      setIsConnectingMeta(false);
+    }
+  };
+
   return (
     <div className="container mx-auto py-6">
       <div className="mb-6">
@@ -339,7 +425,7 @@ export default function Settings() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3 lg:w-[600px]">
+        <TabsList className={`grid w-full ${user?.role === 'super_admin' ? 'grid-cols-4' : isAdmin ? 'grid-cols-3' : 'grid-cols-2'} lg:w-[800px]`}>
           <TabsTrigger value="profile" data-testid="tab-profile">
             <User className="w-4 h-4 mr-2" />
             Perfil
@@ -348,6 +434,12 @@ export default function Settings() {
             <RefreshCw className="w-4 h-4 mr-2" />
             Integrações
           </TabsTrigger>
+          {user?.role === 'super_admin' && (
+            <TabsTrigger value="global-settings" data-testid="tab-global-settings">
+              <SettingsIcon className="w-4 h-4 mr-2" />
+              Configurações Globais
+            </TabsTrigger>
+          )}
           {isAdmin && (
             <TabsTrigger value="users" data-testid="tab-users">
               <Shield className="w-4 h-4 mr-2" />
@@ -547,13 +639,23 @@ export default function Settings() {
                   Configure integrações com Meta Ads e Google Ads para sincronizar campanhas e criativos
                 </CardDescription>
               </div>
-              <Dialog open={createIntegrationDialogOpen} onOpenChange={setCreateIntegrationDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button data-testid="button-create-integration">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Nova Integração
-                  </Button>
-                </DialogTrigger>
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleConnectMetaOAuth}
+                  disabled={isConnectingMeta}
+                  variant="outline"
+                  data-testid="button-connect-meta-oauth"
+                >
+                  <Facebook className="w-4 h-4 mr-2" />
+                  {isConnectingMeta ? 'Conectando...' : 'Conectar com Meta OAuth'}
+                </Button>
+                <Dialog open={createIntegrationDialogOpen} onOpenChange={setCreateIntegrationDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button data-testid="button-create-integration">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Nova Integração
+                    </Button>
+                  </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Criar Nova Integração</DialogTitle>
@@ -662,8 +764,15 @@ export default function Settings() {
                   </form>
                 </DialogContent>
               </Dialog>
+              </div>
             </CardHeader>
             <CardContent>
+              <Alert className="mb-4 bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+                <AlertDescription className="text-sm">
+                  <strong>💡 Dica:</strong> Use o botão "Conectar com Meta OAuth" para uma configuração mais rápida e segura. 
+                  O processo OAuth gerencia automaticamente os tokens de acesso, sem necessidade de copiar e colar credenciais manualmente.
+                </AlertDescription>
+              </Alert>
               <div className="space-y-4">
                 {integrations.length === 0 ? (
                   <div className="text-center py-8 text-gray-500 dark:text-gray-400">
@@ -728,6 +837,114 @@ export default function Settings() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {user?.role === 'super_admin' && (
+          <TabsContent value="global-settings" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Configuração do App Meta (Facebook/Instagram)</CardTitle>
+                    <CardDescription>
+                      Configure as credenciais do aplicativo Meta para habilitar OAuth automático para seus clientes
+                    </CardDescription>
+                  </div>
+                  {platformSettings?.isConfigured && (
+                    <Badge variant="default" className="bg-green-600">
+                      Configurado
+                    </Badge>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                <form 
+                  onSubmit={platformSettingsForm.handleSubmit((data) => savePlatformSettingsMutation.mutate(data))}
+                  className="space-y-6"
+                >
+                  <Alert>
+                    <AlertDescription>
+                      <strong>Como criar um App Meta:</strong>
+                      <ol className="list-decimal list-inside mt-2 space-y-1 text-sm">
+                        <li>Acesse <a href="https://developers.facebook.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">developers.facebook.com</a></li>
+                        <li>Clique em "Meus Apps" → "Criar App"</li>
+                        <li>Escolha o tipo "Empresa" e preencha os dados</li>
+                        <li>Após criado, copie o App ID e App Secret abaixo</li>
+                        <li>Configure o redirect URI no painel do app Meta</li>
+                      </ol>
+                    </AlertDescription>
+                  </Alert>
+
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="appId">App ID</Label>
+                      <Input
+                        id="appId"
+                        placeholder="Ex: 123456789012345"
+                        data-testid="input-app-id"
+                        {...platformSettingsForm.register('appId')}
+                      />
+                      {platformSettingsForm.formState.errors.appId && (
+                        <p className="text-sm text-red-600 dark:text-red-400">
+                          {platformSettingsForm.formState.errors.appId.message}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="appSecret">App Secret</Label>
+                      <div className="relative">
+                        <Input
+                          id="appSecret"
+                          type={showAppSecret ? 'text' : 'password'}
+                          placeholder="Cole seu App Secret aqui"
+                          data-testid="input-app-secret"
+                          {...platformSettingsForm.register('appSecret')}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                          onClick={() => setShowAppSecret(!showAppSecret)}
+                          data-testid="button-toggle-app-secret"
+                        >
+                          {showAppSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                      {platformSettingsForm.formState.errors.appSecret && (
+                        <p className="text-sm text-red-600 dark:text-red-400">
+                          {platformSettingsForm.formState.errors.appSecret.message}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="redirectUri">Redirect URI</Label>
+                      <Input
+                        id="redirectUri"
+                        value={`${window.location.origin}/auth/meta/callback`}
+                        readOnly
+                        data-testid="input-redirect-uri"
+                        className="bg-gray-50 dark:bg-gray-800"
+                      />
+                      <p className="text-xs text-gray-500">
+                        Use este URI nas configurações do seu App Meta
+                      </p>
+                    </div>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    disabled={savePlatformSettingsMutation.isPending}
+                    data-testid="button-save-platform-settings"
+                  >
+                    {savePlatformSettingsMutation.isPending ? 'Salvando...' : 'Salvar Configurações'}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
 
         {isAdmin && (
           <TabsContent value="users" className="space-y-6">

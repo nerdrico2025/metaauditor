@@ -20,6 +20,7 @@ import companyRoutes from "./presentation/routes/company.routes.js";
 import sheetsRoutes from "./presentation/routes/sheets.routes.js";
 import imageMigrationRoutes from "./presentation/routes/image-migration.routes.js";
 import platformSettingsRoutes from "./presentation/routes/platform-settings.routes.js";
+import metaOAuthRoutes from "./presentation/routes/meta-oauth.routes.js";
 
 export async function startServer() {
   const app = express();
@@ -89,6 +90,7 @@ export async function startServer() {
   app.use('/api', sheetsRoutes);
   app.use('/api/admin', imageMigrationRoutes);
   app.use('/api/platform-settings', platformSettingsRoutes);
+  app.use('/api/auth/meta', metaOAuthRoutes);
 
   // Health check endpoints
   app.get('/healthz', (req, res) => {
