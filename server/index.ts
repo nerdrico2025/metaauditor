@@ -1,9 +1,10 @@
 import express, { type Request, Response, NextFunction } from "express";
 import cors from "cors";
 import { setupVite, serveStatic, log } from "./vite";
-import { cronManagerService } from "./src/application/services/CronManagerService"; // Updated import
-import { checkIfDatabaseEmpty, seedDatabase } from "./seedData";
+import { cronManagerService } from "./src/application/services/CronManagerService";
+import { checkIfDatabaseEmpty, seedDatabase } from "../scripts/seedData";
 import { errorHandler } from "./src/shared/errors/AppError";
+import { storage } from "./src/shared/services/storage.service";
 
 // Import DDD routes
 import authRoutes from "./src/presentation/routes/auth.routes";
@@ -15,6 +16,9 @@ import creativeRoutes from "./src/presentation/routes/creative.routes"; // Corre
 import { registerRoutes as registerLegacyRoutes } from "./routes";
 
 const app = express();
+
+// Setup storage in app locals for middleware access
+app.locals.storage = storage;
 
 // CORS configuration
 app.use(cors({
