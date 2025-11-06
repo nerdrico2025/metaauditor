@@ -338,13 +338,14 @@ export class SheetsSyncService {
       
       try {
         // Create campaign
+        // Note: Even though imported via Google Sheets, the actual platform is Meta (Facebook/Instagram)
         const [campaign] = await db.insert(campaigns).values({
           companyId,
           userId,
           integrationId,
           externalId: `sheets_${nanoid(10)}`,
           name: row.campanha,
-          platform: 'google_sheets',
+          platform: 'meta', // Real platform is Meta, not Google Sheets
           status: 'active',
         }).returning({ id: campaigns.id });
         
