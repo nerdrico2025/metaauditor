@@ -88,10 +88,12 @@ export default function Creatives() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  const { data: creatives = [], isLoading: creativesLoading } = useQuery<Creative[]>({
+  const { data: creativesResponse, isLoading: creativesLoading } = useQuery<{ creatives: Creative[], pagination: any }>({
     queryKey: ["/api/creatives"],
     enabled: isAuthenticated,
   });
+
+  const creatives = creativesResponse?.creatives || [];
 
   const { data: campaigns = [] } = useQuery<Campaign[]>({
     queryKey: ["/api/campaigns"],
@@ -220,7 +222,7 @@ export default function Creatives() {
     return syncs[0] || null;
   };
 
-  const filteredCreatives = (creatives || []).filter((creative) => {
+  const filteredCreatives = creatives.filter((creative) => {
     const matchesSearch = creative.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          creative.externalId?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "all" || creative.status.toLowerCase() === statusFilter;
