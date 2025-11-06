@@ -208,11 +208,39 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getCampaignsByUser(userId: string): Promise<Campaign[]> {
+    // Get user's companyId for additional security
+    const user = await this.getUserById(userId);
+    if (!user) return [];
+    
+    // Filter by both userId and companyId for multi-tenant isolation
+    if (user.companyId) {
+      return await db.select().from(campaigns).where(
+        and(
+          eq(campaigns.userId, userId),
+          eq(campaigns.companyId, user.companyId)
+        )
+      );
+    }
+    
+    // Fallback for users without company (backward compatibility)
     return await db.select().from(campaigns).where(eq(campaigns.userId, userId));
   }
 
   async getCampaignById(id: string): Promise<Campaign | undefined> {
     const [campaign] = await db.select().from(campaigns).where(eq(campaigns.id, id));
+    return campaign;
+  }
+
+  async getCampaignByIdWithCompanyCheck(id: string, userId: string): Promise<Campaign | undefined> {
+    const user = await this.getUserById(userId);
+    if (!user) return undefined;
+    
+    const [campaign] = await db.select().from(campaigns).where(
+      and(
+        eq(campaigns.id, id),
+        user.companyId ? eq(campaigns.companyId, user.companyId) : eq(campaigns.userId, userId)
+      )
+    );
     return campaign;
   }
 
