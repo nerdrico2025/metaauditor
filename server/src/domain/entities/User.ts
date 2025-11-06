@@ -1,5 +1,5 @@
 
-import { UserRole } from '../../../shared/schema';
+import { UserRole } from '@shared/schema';
 
 export class User {
   constructor(

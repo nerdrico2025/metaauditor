@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { IUserRepository } from '@application/repositories/IUserRepository';
 import { UnauthorizedError } from '@shared/errors/AppError';
-import { Email } from '../../../domain/value-objects/Email';
+import { Email } from '@domain/value-objects/Email';
 
 export interface LoginDTO {
   email: string;

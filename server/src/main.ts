@@ -2,7 +2,7 @@
 import express from "express";
 import cors from "cors";
 import { setupVite, serveStatic, log } from "../vite";
-import { cronManagerService } from "@application/services/CronManagerService";
+import { cronManagerService } from "@infrastructure/services/CronManagerService";
 import { checkIfDatabaseEmpty, seedDatabase } from "../scripts/seedData";
 import { errorHandler } from "@shared/errors/AppError";
 import { storage } from "@shared/services/storage.service";
