@@ -15,7 +15,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, Plus, Edit, Eye, EyeOff, Shield, User } from 'lucide-react';
+import { Trash2, Plus, Edit, Eye, EyeOff, Shield, User, RefreshCw, Facebook } from 'lucide-react';
+import { SiGoogle } from 'react-icons/si';
 
 // Form schemas
 const updateProfileSchema = z.object({
@@ -45,13 +46,21 @@ const updateUserSchema = z.object({
   email: z.string().email('Email inválido').optional(),
   firstName: z.string().min(1, 'Nome é obrigatório').optional(),
   lastName: z.string().min(1, 'Sobrenome é obrigatório').optional(),
-  role: z.enum(['administrador', 'operador']).optional(),
+  role: z.enum(['company_admin', 'operador', 'super_admin']).optional(),
+});
+
+const createIntegrationSchema = z.object({
+  platform: z.enum(['meta', 'google']),
+  accessToken: z.string().min(1, 'Access token é obrigatório'),
+  refreshToken: z.string().optional(),
+  accountId: z.string().min(1, 'Account ID é obrigatório'),
 });
 
 type UpdateProfileData = z.infer<typeof updateProfileSchema>;
 type ChangePasswordData = z.infer<typeof changePasswordSchema>;
 type CreateUserData = z.infer<typeof createUserSchema>;
 type UpdateUserData = z.infer<typeof updateUserSchema>;
+type CreateIntegrationData = z.infer<typeof createIntegrationSchema>;
 
 interface User {
   id: string;
@@ -62,6 +71,15 @@ interface User {
   isActive: boolean;
   lastLoginAt: Date | null;
   createdAt: Date | null;
+}
+
+interface Integration {
+  id: string;
+  platform: string;
+  accountId: string | null;
+  status: string;
+  lastSync: Date | null;
+  createdAt: Date;
 }
 
 export default function Settings() {
@@ -77,6 +95,7 @@ export default function Settings() {
     open: false,
     user: null,
   });
+  const [createIntegrationDialogOpen, setCreateIntegrationDialogOpen] = useState(false);
 
   // Fetch current user profile
   const { data: profile } = useQuery<User>({
@@ -88,6 +107,12 @@ export default function Settings() {
   const { data: users = [] } = useQuery<User[]>({
     queryKey: ['/api/users'],
     enabled: isAdmin,
+  });
+
+  // Fetch integrations
+  const { data: integrations = [] } = useQuery<Integration[]>({
+    queryKey: ['/api/integrations'],
+    enabled: !!user,
   });
 
   // Profile update form
@@ -113,6 +138,11 @@ export default function Settings() {
   // Update user form
   const updateUserForm = useForm<UpdateUserData>({
     resolver: zodResolver(updateUserSchema),
+  });
+
+  // Create integration form
+  const createIntegrationForm = useForm<CreateIntegrationData>({
+    resolver: zodResolver(createIntegrationSchema),
   });
 
   // Mutations
@@ -209,6 +239,61 @@ export default function Settings() {
     },
   });
 
+  const createIntegrationMutation = useMutation({
+    mutationFn: (data: CreateIntegrationData) => apiRequest('/api/integrations', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+    onSuccess: () => {
+      toast({ title: 'Integração criada com sucesso!' });
+      setCreateIntegrationDialogOpen(false);
+      createIntegrationForm.reset();
+      queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: 'Erro ao criar integração',
+        description: error.message,
+        variant: 'destructive'
+      });
+    },
+  });
+
+  const syncIntegrationMutation = useMutation({
+    mutationFn: (id: string) => apiRequest(`/api/integrations/${id}/sync`, { method: 'POST' }),
+    onSuccess: (data: any) => {
+      toast({ 
+        title: 'Sincronização concluída!',
+        description: `${data.campaigns} campanhas e ${data.creatives} criativos sincronizados.`
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/campaigns'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/creatives'] });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: 'Erro na sincronização',
+        description: error.message,
+        variant: 'destructive'
+      });
+    },
+  });
+
+  const deleteIntegrationMutation = useMutation({
+    mutationFn: (id: string) => apiRequest(`/api/integrations/${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      toast({ title: 'Integração removida com sucesso!' });
+      queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: 'Erro ao remover integração',
+        description: error.message,
+        variant: 'destructive'
+      });
+    },
+  });
+
   // Set form defaults when profile data loads
   if (profile && profile.firstName !== undefined && !profileForm.getValues().firstName) {
     profileForm.reset({
@@ -249,10 +334,14 @@ export default function Settings() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2 lg:w-[400px]">
+        <TabsList className="grid w-full grid-cols-3 lg:w-[600px]">
           <TabsTrigger value="profile" data-testid="tab-profile">
             <User className="w-4 h-4 mr-2" />
             Perfil
+          </TabsTrigger>
+          <TabsTrigger value="integrations" data-testid="tab-integrations">
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Integrações
           </TabsTrigger>
           {isAdmin && (
             <TabsTrigger value="users" data-testid="tab-users">
@@ -440,6 +529,197 @@ export default function Settings() {
                   {changePasswordMutation.isPending ? 'Alterando...' : 'Alterar Senha'}
                 </Button>
               </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="integrations" className="space-y-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Integrações de Plataformas</CardTitle>
+                <CardDescription>
+                  Configure integrações com Meta Ads e Google Ads para sincronizar campanhas e criativos
+                </CardDescription>
+              </div>
+              <Dialog open={createIntegrationDialogOpen} onOpenChange={setCreateIntegrationDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button data-testid="button-create-integration">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Nova Integração
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Criar Nova Integração</DialogTitle>
+                    <DialogDescription>
+                      Configure uma nova integração com Meta Ads ou Google Ads
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={createIntegrationForm.handleSubmit((data) => createIntegrationMutation.mutate(data))}>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="platform">Plataforma</Label>
+                        <Select onValueChange={(value) => createIntegrationForm.setValue('platform', value as 'meta' | 'google')}>
+                          <SelectTrigger data-testid="select-platform">
+                            <SelectValue placeholder="Selecione a plataforma" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="meta">
+                              <div className="flex items-center gap-2">
+                                <Facebook className="w-4 h-4" />
+                                Meta Ads (Facebook/Instagram)
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="google">
+                              <div className="flex items-center gap-2">
+                                <SiGoogle className="w-4 h-4" />
+                                Google Ads
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {createIntegrationForm.formState.errors.platform && (
+                          <p className="text-sm text-red-600 dark:text-red-400">
+                            {createIntegrationForm.formState.errors.platform.message}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="accessToken">Access Token</Label>
+                        <Input
+                          id="accessToken"
+                          type="password"
+                          placeholder="Cole seu access token aqui"
+                          data-testid="input-access-token"
+                          {...createIntegrationForm.register('accessToken')}
+                        />
+                        {createIntegrationForm.formState.errors.accessToken && (
+                          <p className="text-sm text-red-600 dark:text-red-400">
+                            {createIntegrationForm.formState.errors.accessToken.message}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="refreshToken">Refresh Token (opcional)</Label>
+                        <Input
+                          id="refreshToken"
+                          type="password"
+                          placeholder="Cole seu refresh token aqui"
+                          data-testid="input-refresh-token"
+                          {...createIntegrationForm.register('refreshToken')}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="accountId">Account ID</Label>
+                        <Input
+                          id="accountId"
+                          placeholder="Ex: act_123456789 (Meta) ou 123-456-7890 (Google)"
+                          data-testid="input-account-id"
+                          {...createIntegrationForm.register('accountId')}
+                        />
+                        {createIntegrationForm.formState.errors.accountId && (
+                          <p className="text-sm text-red-600 dark:text-red-400">
+                            {createIntegrationForm.formState.errors.accountId.message}
+                          </p>
+                        )}
+                      </div>
+
+                      <Alert>
+                        <AlertDescription>
+                          <strong>Como obter suas credenciais:</strong>
+                          <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
+                            <li><strong>Meta Ads:</strong> Acesse Meta Business Manager → Configurações → Integrações → Access Token</li>
+                            <li><strong>Google Ads:</strong> Use OAuth 2.0 via Google Cloud Console</li>
+                          </ul>
+                        </AlertDescription>
+                      </Alert>
+                    </div>
+                    <DialogFooter className="mt-6">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setCreateIntegrationDialogOpen(false)}
+                      >
+                        Cancelar
+                      </Button>
+                      <Button
+                        type="submit"
+                        disabled={createIntegrationMutation.isPending}
+                        data-testid="button-submit-create-integration"
+                      >
+                        {createIntegrationMutation.isPending ? 'Criando...' : 'Criar Integração'}
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {integrations.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                    Nenhuma integração configurada. Adicione uma nova integração para começar a sincronizar dados.
+                  </div>
+                ) : (
+                  integrations.map((integration) => (
+                    <div
+                      key={integration.id}
+                      className="flex items-center justify-between p-4 border rounded-lg"
+                      data-testid={`integration-item-${integration.id}`}
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          {integration.platform === 'meta' ? (
+                            <Facebook className="w-5 h-5 text-blue-600" />
+                          ) : (
+                            <SiGoogle className="w-5 h-5 text-red-600" />
+                          )}
+                          <p className="font-medium">
+                            {integration.platform === 'meta' ? 'Meta Ads' : 'Google Ads'}
+                          </p>
+                          <Badge variant={integration.status === 'active' ? 'default' : 'secondary'}>
+                            {integration.status === 'active' ? 'Ativa' : 'Inativa'}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                          Account ID: {integration.accountId}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          Última sincronização: {formatDate(integration.lastSync)}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => syncIntegrationMutation.mutate(integration.id)}
+                          disabled={syncIntegrationMutation.isPending}
+                          data-testid={`button-sync-integration-${integration.id}`}
+                        >
+                          <RefreshCw className={`w-4 h-4 ${syncIntegrationMutation.isPending ? 'animate-spin' : ''}`} />
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => {
+                            if (confirm('Tem certeza que deseja remover esta integração?')) {
+                              deleteIntegrationMutation.mutate(integration.id);
+                            }
+                          }}
+                          disabled={deleteIntegrationMutation.isPending}
+                          data-testid={`button-delete-integration-${integration.id}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
