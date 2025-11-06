@@ -4,6 +4,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiRequest, queryClient } from '@/lib/queryClient';
+import Sidebar from '@/components/Layout/Sidebar';
+import Header from '@/components/Layout/Header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -98,29 +100,47 @@ export default function Company() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto py-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-gray-500">Carregando...</div>
+      <div className="flex h-screen bg-background">
+        <Sidebar />
+        <div className="flex flex-col flex-1 overflow-hidden">
+          <Header title="Dados da Empresa" />
+          <main className="flex-1 overflow-y-auto">
+            <div className="py-6">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex items-center justify-center h-64">
+                  <div className="text-gray-500">Carregando...</div>
+                </div>
+              </div>
+            </div>
+          </main>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto py-6">
-      <div className="mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-            <Building2 className="h-6 w-6 text-primary-foreground" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Dados da Empresa</h1>
-            <p className="text-gray-600 dark:text-gray-300">Gerencie as informações da sua empresa</p>
-          </div>
-        </div>
-      </div>
+    <div className="flex h-screen bg-background">
+      <Sidebar />
+      
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <Header title="Dados da Empresa" />
+        
+        <main className="flex-1 overflow-y-auto">
+          <div className="py-6">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+                    <Building2 className="h-6 w-6 text-primary-foreground" />
+                  </div>
+                  <div>
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Dados da Empresa</h1>
+                    <p className="text-gray-600 dark:text-gray-300">Gerencie as informações da sua empresa</p>
+                  </div>
+                </div>
+              </div>
 
-      <Card>
+              <Card>
         <CardHeader>
           <CardTitle>Informações da Empresa</CardTitle>
           <CardDescription>
@@ -219,7 +239,11 @@ export default function Company() {
             </div>
           </form>
         </CardContent>
-      </Card>
+              </Card>
+            </div>
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
