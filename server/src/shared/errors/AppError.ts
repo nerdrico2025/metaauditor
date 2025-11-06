@@ -1,4 +1,6 @@
 
+import type { Request, Response, NextFunction } from 'express';
+
 export class AppError extends Error {
   constructor(
     public readonly message: string,
@@ -39,3 +41,29 @@ export class ConflictError extends AppError {
     super(message, 409);
   }
 }
+
+export const errorHandler = (
+  error: Error,
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  if (error instanceof AppError) {
+    return res.status(error.statusCode).json({
+      status: 'error',
+      message: error.message,
+      ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
+    });
+  }
+
+  console.error('Unexpected error:', error);
+
+  return res.status(500).json({
+    status: 'error',
+    message: 'Erro interno do servidor',
+    ...(process.env.NODE_ENV === 'development' && { 
+      stack: error.stack,
+      details: error.message 
+    })
+  });
+};

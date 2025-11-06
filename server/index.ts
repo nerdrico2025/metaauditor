@@ -1,9 +1,19 @@
+
 import express, { type Request, Response, NextFunction } from "express";
 import cors from "cors";
-import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { cronManager, triggerManualSync } from "./services/cronManager";
 import { checkIfDatabaseEmpty, seedDatabase } from "./seedData";
+import { errorHandler } from "./src/shared/errors/AppError";
+
+// Import DDD routes
+import authRoutes from "./src/presentation/routes/auth.routes";
+import userRoutes from "./modules/users/user.routes";
+import campaignRoutes from "./modules/campaigns/campaign.routes";
+import creativeRoutes from "./modules/creatives/creative.routes";
+
+// Import legacy routes (será migrado gradualmente)
+import { registerRoutes as registerLegacyRoutes } from "./routes";
 
 const app = express();
 
@@ -49,42 +59,26 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  const server = await registerRoutes(app);
+  // Register DDD routes (nova arquitetura)
+  app.use('/api/auth', authRoutes);
+  app.use('/api/users', userRoutes);
+  app.use('/api/campaigns', campaignRoutes);
+  app.use('/api/creatives', creativeRoutes);
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+  // Register legacy routes (ainda necessário para outras rotas)
+  const server = await registerLegacyRoutes(app);
 
-    console.error("Server error:", err);
+  // Global error handler (DDD)
+  app.use(errorHandler);
 
-    // Ensure response is sent and don't throw in production
-    if (!res.headersSent) {
-      res.status(status).json({ message });
-    }
-  });
-
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
+  // Vite setup
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
   const PORT = parseInt(process.env.PORT || '5000', 10);
-
-  // Initialize demo user for production - DISABLED TO FIX DATA INCONSISTENCY
-  async function initializeDemoUser() {
-    // DISABLED: This was causing "Rafael Demo" to appear in production
-    // The real user "Rafael Master" exists in the database
-    console.log('🚫 Demo user initialization DISABLED in production to prevent data conflicts');
-    return;
-  }
 
   const isPreview = process.env.REPLIT_PREVIEW === 'true' || process.env.REPLIT_DEPLOYMENT === 'preview';
   
@@ -100,9 +94,7 @@ app.use((req, res, next) => {
       return;
     }
 
-    // Defer heavy operations to allow quick server startup
     setTimeout(async () => {
-      // Check if database needs seeding (production environment with empty database)
       try {
         const isEmpty = await checkIfDatabaseEmpty();
         if (isEmpty) {
@@ -114,7 +106,6 @@ app.use((req, res, next) => {
         console.error(`⚠️ Database seeding failed:`, error);
       }
 
-      // Start cron jobs after server is running (only in development)
       if (process.env.NODE_ENV !== 'production') {
         try {
           cronManager.startAll();
@@ -126,11 +117,7 @@ app.use((req, res, next) => {
         log(`🚀 Production server ready - cron jobs disabled in production`);
       }
 
-      // Production startup - sync data only, NO demo user bootstrap
       setTimeout(async () => {
-        // REMOVED: await initializeDemoUser() - was causing Rafael Demo to appear
-        
-        // Force sync to ensure production user sees all data
         log(`🔄 Starting production data sync...`);
         try {
           await triggerManualSync();
@@ -139,6 +126,6 @@ app.use((req, res, next) => {
           console.error(`⚠️ Production sync failed:`, error);
         }
       }, 1000);
-    }, isPreview ? 0 : 3000); // No delay for preview, 3s delay for normal startup
+    }, isPreview ? 0 : 3000);
   });
 })();
