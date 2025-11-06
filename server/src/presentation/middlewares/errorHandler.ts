@@ -1,6 +1,6 @@
 
 import { Request, Response, NextFunction } from 'express';
-import { AppException } from '@shared/errors/AppException';
+import { AppException } from '../../shared/errors/AppException.js';
 
 export const errorHandler = (
   err: Error | AppException,

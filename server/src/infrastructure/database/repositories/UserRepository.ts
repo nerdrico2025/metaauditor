@@ -1,8 +1,8 @@
 import { eq } from 'drizzle-orm';
-import { db } from '@infrastructure/database/connection';
-import { users } from '@drizzle/schema';
-import { IUserRepository, CreateUserData, UpdateUserData } from '@application/repositories/IUserRepository';
-import { User } from '@domain/entities/User';
+import { db } from '../connection.js';
+import { users } from '../../../../drizzle/schema.js';
+import { IUserRepository, CreateUserData, UpdateUserData } from '../../../application/repositories/IUserRepository.js';
+import { User } from '../../../domain/entities/User.js';
 
 export class UserRepository implements IUserRepository {
   async findById(id: string): Promise<User | null> {
@@ -47,6 +47,7 @@ export class UserRepository implements IUserRepository {
     return new User(
       data.id,
       data.email,
+      data.password,
       data.firstName,
       data.lastName,
       data.role,

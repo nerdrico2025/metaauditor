@@ -1,9 +1,9 @@
 
 import { eq } from 'drizzle-orm';
-import { db } from '@infrastructure/database/connection';
-import { policies } from '@drizzle/schema';
-import type { Policy as PolicyEntity } from '@domain/entities/Policy';
-import type { InsertPolicy, Policy } from '@drizzle/schema';
+import { db } from '../connection.js';
+import { policies } from '../../../../drizzle/schema.js';
+import type { Policy as PolicyEntity } from '../../../domain/entities/Policy.js';
+import type { InsertPolicy, Policy } from '../../../../drizzle/schema.js';
 
 export interface IPolicyRepository {
   findById(id: string): Promise<PolicyEntity | null>;
@@ -13,7 +13,7 @@ export interface IPolicyRepository {
   delete(id: string): Promise<boolean>;
 }
 
-import { Policy as PolicyDomain } from '@domain/entities/Policy';
+import { Policy as PolicyDomain } from '../../../domain/entities/Policy.js';
 
 export class PolicyRepository implements IPolicyRepository {
   private toDomain(data: any): PolicyEntity {

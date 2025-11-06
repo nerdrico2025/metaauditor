@@ -1,6 +1,6 @@
 
 import OpenAI from "openai";
-import type { Creative, BrandConfiguration, ContentCriteria, PerformanceBenchmarks } from "@shared/schema";
+import type { Creative, BrandConfiguration, ContentCriteria, PerformanceBenchmarks } from "../../shared/schema.js";
 
 let openai: OpenAI | null = null;
 

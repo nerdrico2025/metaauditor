@@ -1,8 +1,8 @@
 
 import { eq, sql } from 'drizzle-orm';
 import Papa from 'papaparse';
-import { campaignMetrics, InsertCampaignMetrics } from '@shared/schema';
-import { db } from '../../infrastructure/config/database';
+import { campaignMetrics, InsertCampaignMetrics } from '../../shared/schema.js';
+import { db } from '../database/connection.js';
 import { nanoid } from 'nanoid';
 
 interface RawMetricsData {

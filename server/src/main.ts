@@ -1,16 +1,16 @@
 import express from "express";
 import cors from "cors";
-import { setupVite, serveStatic, log } from "../vite";
-import { cronOrchestratorService } from "@infrastructure/services/CronOrchestratorService";
-import { checkIfDatabaseEmpty, seedDatabase } from "../scripts/seedData";
-import { errorHandler } from "@shared/errors/AppException";
-import { storage } from "@shared/services/storage.service";
+import { setupVite, serveStatic, log } from "../vite.js";
+import { cronOrchestratorService } from "./infrastructure/services/CronOrchestratorService.js";
+import { checkIfDatabaseEmpty, seedDatabase } from "../scripts/seedData.js";
+import { errorHandler } from "./shared/errors/AppException.js";
+import { storage } from "./shared/services/storage.service.js";
 
 // Import DDD routes
-import authRoutes from "@presentation/routes/auth.routes";
-import userRoutes from "@presentation/routes/user.routes";
-import campaignRoutes from "@presentation/routes/campaign.routes";
-import creativeRoutes from "@presentation/routes/creative.routes";
+import authRoutes from "./presentation/routes/auth.routes.js";
+import userRoutes from "./presentation/routes/user.routes.js";
+import campaignRoutes from "./presentation/routes/campaign.routes.js";
+import creativeRoutes from "./presentation/routes/creative.routes.js";
 
 export async function startServer() {
   const app = express();
@@ -60,7 +60,8 @@ export async function startServer() {
     next();
   });
 
-  const server = require('http').createServer(app);
+  const { createServer } = await import('http');
+  const server = createServer(app);
 
   // Register DDD routes
   app.use('/api/auth', authRoutes);
@@ -141,3 +142,9 @@ export async function startServer() {
     });
   });
 }
+
+// Start the server when this module is executed directly
+startServer().catch((error) => {
+  console.error('❌ Failed to start server:', error);
+  process.exit(1);
+});

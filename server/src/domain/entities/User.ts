@@ -1,10 +1,11 @@
 
-import { UserRole } from '@shared/schema';
+import { UserRole } from '../../shared/schema.js';
 
 export class User {
   constructor(
     public readonly id: string,
     public readonly email: string,
+    public readonly password: string,
     public readonly firstName: string | null,
     public readonly lastName: string | null,
     public readonly role: UserRole,

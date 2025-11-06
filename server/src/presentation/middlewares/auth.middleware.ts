@@ -1,14 +1,14 @@
 
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { UnauthorizedError } from '../../shared/errors/AppError';
+import { UnauthorizedException } from '../../shared/errors/AppException.js';
 
 export const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
-    throw new UnauthorizedError('Token não fornecido');
+    throw new UnauthorizedException('Token não fornecido');
   }
 
   try {
@@ -16,6 +16,6 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
     (req as any).user = decoded;
     next();
   } catch (error) {
-    throw new UnauthorizedError('Token inválido');
+    throw new UnauthorizedException('Token inválido');
   }
 };

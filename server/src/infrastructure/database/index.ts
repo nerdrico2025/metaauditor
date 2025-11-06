@@ -1,3 +1,3 @@
 
-export { db } from './connection';
-export * from '@drizzle/schema';
+export { db } from './connection.js';
+export * from '../../../drizzle/schema.js';

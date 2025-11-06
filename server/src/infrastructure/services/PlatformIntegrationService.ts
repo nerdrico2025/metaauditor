@@ -1,5 +1,5 @@
 
-import type { Integration } from "@shared/schema";
+import type { Integration } from "../../shared/schema.js";
 
 export interface PlatformSyncResult {
   success: boolean;

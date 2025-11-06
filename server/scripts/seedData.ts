@@ -1,11 +1,11 @@
 import bcrypt from 'bcryptjs';
-import { db } from '@infrastructure/database/connection';
-import { users } from '@drizzle/schema';
+import { db } from '../src/infrastructure/database/connection.js';
+import { users } from '../drizzle/schema.js';
 
 export async function checkIfDatabaseEmpty(): Promise<boolean> {
   try {
-    const result = await db.query.users.count();
-    return result === 0;
+    const result = await db.select().from(users);
+    return result.length === 0;
   } catch (error) {
     console.error('Error checking if database is empty:', error);
     throw error;
@@ -22,11 +22,10 @@ export async function seedDatabase(): Promise<void> {
       {
         email: 'admin@clickhero.com',
         password: password,
-        name: 'Admin User',
+        firstName: 'Admin',
+        lastName: 'User',
         role: 'super_admin',
-        status: 'active',
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        isActive: true,
       },
     ]);
 

@@ -48,4 +48,4 @@ export class ForbiddenException extends AppException {
 }
 
 // Re-export errorHandler for convenience
-export { errorHandler } from '@presentation/middlewares/errorHandler';
+export { errorHandler } from '../../presentation/middlewares/errorHandler.js';

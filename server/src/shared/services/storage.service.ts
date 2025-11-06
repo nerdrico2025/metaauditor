@@ -38,7 +38,7 @@ import {
   type CampaignMetrics,
   type InsertPerformanceBenchmarks,
   type PerformanceBenchmarks,
-} from "@shared/schema";
+} from "../schema.js";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;

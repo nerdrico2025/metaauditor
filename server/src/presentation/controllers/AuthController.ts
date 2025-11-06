@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import { LoginUseCase } from '@application/use-cases/auth/LoginUseCase';
-import { UserRepository } from '@infrastructure/database/repositories/UserRepository';
-import { loginSchema } from '@shared/schema';
+import { LoginUseCase } from '../../application/use-cases/auth/LoginUseCase.js';
+import { UserRepository } from '../../infrastructure/database/repositories/UserRepository.js';
+import { loginSchema } from '../../shared/schema.js';
 
 export class AuthController {
   async login(req: Request, res: Response, next: NextFunction) {
