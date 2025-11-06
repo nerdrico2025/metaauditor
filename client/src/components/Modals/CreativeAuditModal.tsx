@@ -58,6 +58,12 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
     queryKey: [`/api/creatives/${creative.id}/audits`],
   });
 
+  // Fetch campaign name if campaignId exists
+  const { data: campaign } = useQuery<any>({
+    queryKey: [`/api/campaigns/${creative.campaignId}`],
+    enabled: !!creative.campaignId,
+  });
+
   // Get the latest audit
   const latestAudit = audits && audits.length > 0 ? audits[0] : null;
 
@@ -259,23 +265,15 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
       <Dialog open={true} onOpenChange={onClose}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <div className="flex justify-between items-start">
-              <div>
-                <DialogTitle className="text-lg font-medium text-slate-900">
-                  {creative.name}
-                </DialogTitle>
+            <div>
+              <DialogTitle className="text-lg font-medium text-slate-900">
+                {creative.name}
+              </DialogTitle>
+              {campaign && (
                 <p className="mt-1 text-sm text-slate-500">
-                  {creative.campaignId ? `Campaign ID: ${creative.campaignId}` : 'Origem: Google Sheets'}
+                  Campanha: {campaign.name}
                 </p>
-                {(creative as any).campaignName && (
-                  <p className="text-xs text-slate-400">
-                    Campanha: {(creative as any).campaignName}
-                  </p>
-                )}
-              </div>
-              <Button variant="ghost" size="sm" onClick={onClose}>
-                <X className="h-4 w-4" />
-              </Button>
+              )}
             </div>
           </DialogHeader>
 
