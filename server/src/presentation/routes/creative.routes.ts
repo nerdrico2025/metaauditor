@@ -9,12 +9,49 @@ import { nanoid } from 'nanoid';
 const router = Router();
 const aiAnalysisService = new AIAnalysisService();
 
-// Get all creatives for user
+// Get all creatives for user with pagination and filters
 router.get('/', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user?.userId;
-    const creatives = await storage.getCreativesByUser(userId);
-    res.json(creatives);
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 50;
+    const campaignId = req.query.campaignId as string;
+    const status = req.query.status as string;
+    const search = req.query.search as string;
+    
+    let creatives = await storage.getCreativesByUser(userId);
+    
+    // Apply filters
+    if (campaignId) {
+      creatives = creatives.filter(c => c.campaignId === campaignId);
+    }
+    if (status && status !== 'all') {
+      creatives = creatives.filter(c => c.status === status);
+    }
+    if (search) {
+      const searchLower = search.toLowerCase();
+      creatives = creatives.filter(c => 
+        c.name.toLowerCase().includes(searchLower) ||
+        c.headline?.toLowerCase().includes(searchLower) ||
+        c.text?.toLowerCase().includes(searchLower)
+      );
+    }
+    
+    // Calculate pagination
+    const total = creatives.length;
+    const totalPages = Math.ceil(total / limit);
+    const offset = (page - 1) * limit;
+    const paginatedCreatives = creatives.slice(offset, offset + limit);
+    
+    res.json({
+      creatives: paginatedCreatives,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+      }
+    });
   } catch (error) {
     next(error);
   }
