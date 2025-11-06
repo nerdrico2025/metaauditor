@@ -1,3 +1,4 @@
+
 import express, { type Request, Response, NextFunction } from "express";
 import cors from "cors";
 import { setupVite, serveStatic, log } from "./vite";
@@ -8,12 +9,9 @@ import { storage } from "./src/shared/services/storage.service";
 
 // Import DDD routes
 import authRoutes from "./src/presentation/routes/auth.routes";
-import userRoutes from "./src/presentation/routes/user.routes"; // Corrected path
-import campaignRoutes from "./src/presentation/routes/campaign.routes"; // Corrected path
-import creativeRoutes from "./src/presentation/routes/creative.routes"; // Corrected path
-
-// Import legacy routes (será migrado gradualmente)
-import { registerRoutes as registerLegacyRoutes } from "./routes";
+import userRoutes from "./src/presentation/routes/user.routes";
+import campaignRoutes from "./src/presentation/routes/campaign.routes";
+import creativeRoutes from "./src/presentation/routes/creative.routes";
 
 const app = express();
 
@@ -31,6 +29,7 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Request logging middleware
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -62,14 +61,26 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  const server = require('http').createServer(app);
+
   // Register DDD routes (nova arquitetura)
   app.use('/api/auth', authRoutes);
   app.use('/api/users', userRoutes);
   app.use('/api/campaigns', campaignRoutes);
   app.use('/api/creatives', creativeRoutes);
 
-  // Register legacy routes (ainda necessário para outras rotas)
-  const server = await registerLegacyRoutes(app);
+  // Health check endpoints
+  app.get('/healthz', (req, res) => {
+    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+  });
+
+  app.head('/healthz', (req, res) => {
+    res.status(200).end();
+  });
+
+  app.head('/api', (req, res) => {
+    res.status(200).end();
+  });
 
   // Global error handler (DDD)
   app.use(errorHandler);
@@ -82,7 +93,6 @@ app.use((req, res, next) => {
   }
 
   const PORT = parseInt(process.env.PORT || '5000', 10);
-
   const isPreview = process.env.REPLIT_PREVIEW === 'true' || process.env.REPLIT_DEPLOYMENT === 'preview';
 
   server.listen({
@@ -90,10 +100,12 @@ app.use((req, res, next) => {
     host: "0.0.0.0",
     reusePort: true,
   }, async () => {
-    log(`serving on port ${PORT}`);
+    log(`🚀 Server running on port ${PORT}`);
+    log(`📐 Architecture: Domain-Driven Design (DDD)`);
+    log(`🔧 Environment: ${process.env.NODE_ENV || 'development'}`);
 
     if (isPreview) {
-      log(`🔍 PREVIEW mode detected - skipping heavy operations for faster startup`);
+      log(`🔍 PREVIEW mode - skipping heavy operations`);
       return;
     }
 
@@ -101,9 +113,9 @@ app.use((req, res, next) => {
       try {
         const isEmpty = await checkIfDatabaseEmpty();
         if (isEmpty) {
-          log(`🌱 Database is empty - seeding with demo data...`);
+          log(`🌱 Seeding database...`);
           await seedDatabase();
-          log(`✅ Database seeded successfully for production demo`);
+          log(`✅ Database seeded successfully`);
         }
       } catch (error) {
         console.error(`⚠️ Database seeding failed:`, error);
@@ -111,24 +123,14 @@ app.use((req, res, next) => {
 
       if (process.env.NODE_ENV !== 'production') {
         try {
-          cronManagerService.startAll(); // Updated to use cronManagerService
-          log(`🕐 Google Sheets sync cron jobs started successfully`);
+          cronManagerService.startAll();
+          log(`🕐 Cron jobs started`);
         } catch (error) {
           console.error(`❌ Failed to start cron jobs:`, error);
         }
       } else {
-        log(`🚀 Production server ready - cron jobs disabled in production`);
+        log(`🚀 Production mode - cron jobs disabled`);
       }
-
-      setTimeout(async () => {
-        log(`🔄 Starting production data sync...`);
-        try {
-          await triggerManualSync();
-          log(`✅ Production data sync completed`);
-        } catch (error) {
-          console.error(`⚠️ Production sync failed:`, error);
-        }
-      }, 1000);
     }, isPreview ? 0 : 3000);
   });
 })();

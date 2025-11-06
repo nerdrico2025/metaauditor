@@ -1,33 +1,29 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../../shared/errors/AppError';
-import { ZodError } from 'zod';
 
 export const errorHandler = (
-  err: Error,
+  err: Error | AppError,
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
+  console.error('🔥 Error:', err);
+
   if (err instanceof AppError) {
     return res.status(err.statusCode).json({
       status: 'error',
       message: err.message,
+      statusCode: err.statusCode,
     });
   }
 
-  if (err instanceof ZodError) {
-    return res.status(400).json({
-      status: 'error',
-      message: 'Dados inválidos',
-      errors: err.errors,
-    });
-  }
-
-  console.error('Erro não tratado:', err);
-
+  // Generic server error
   return res.status(500).json({
     status: 'error',
-    message: 'Erro interno do servidor',
+    message: process.env.NODE_ENV === 'production' 
+      ? 'Internal server error' 
+      : err.message,
+    statusCode: 500,
   });
 };
