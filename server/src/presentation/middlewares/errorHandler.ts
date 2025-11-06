@@ -1,16 +1,16 @@
 
 import { Request, Response, NextFunction } from 'express';
-import { AppError } from '../../shared/errors/AppError';
+import { AppException } from '@shared/errors/AppException';
 
 export const errorHandler = (
-  err: Error | AppError,
+  err: Error | AppException,
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   console.error('🔥 Error:', err);
 
-  if (err instanceof AppError) {
+  if (err instanceof AppException) {
     return res.status(err.statusCode).json({
       status: 'error',
       message: err.message,

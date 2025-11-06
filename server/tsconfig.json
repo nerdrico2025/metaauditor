@@ -24,6 +24,7 @@
       "@infrastructure/*": ["./src/infrastructure/*"],
       "@presentation/*": ["./src/presentation/*"],
       "@shared/*": ["./src/shared/*"],
+      "@shared/utils": ["./src/shared/utils"],
       "@drizzle/*": ["./drizzle/*"]
     }
   }

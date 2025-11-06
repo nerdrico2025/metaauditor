@@ -1,10 +1,9 @@
-
 import express from "express";
 import cors from "cors";
 import { setupVite, serveStatic, log } from "../vite";
-import { cronManagerService } from "@infrastructure/services/CronManagerService";
+import { cronOrchestratorService } from "@infrastructure/services/cronOrchestratorService";
 import { checkIfDatabaseEmpty, seedDatabase } from "../scripts/seedData";
-import { errorHandler } from "@shared/errors/AppError";
+import { errorHandler } from "@shared/errors/AppException";
 import { storage } from "@shared/services/storage.service";
 
 // Import DDD routes
@@ -125,7 +124,10 @@ export async function startServer() {
 
         if (process.env.NODE_ENV !== 'production') {
           try {
-            cronManagerService.startAll();
+            // Setup cron jobs
+            cronOrchestratorService.setupCronJobs();
+            log("✅ Cron jobs configured");
+            cronOrchestratorService.startAll();
             log(`🕐 Cron jobs started`);
           } catch (error) {
             console.error(`❌ Failed to start cron jobs:`, error);
@@ -133,7 +135,7 @@ export async function startServer() {
         } else {
           log(`🚀 Production mode - cron jobs disabled`);
         }
-        
+
         resolve();
       }, isPreview ? 0 : 3000);
     });

@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { IUserRepository } from '@application/repositories/IUserRepository';
-import { UnauthorizedError } from '@shared/errors/AppError';
+import { UnauthorizedException } from '@shared/errors/AppException';
 import { Email } from '@domain/value-objects/Email';
 
 export interface LoginDTO {
@@ -29,16 +29,16 @@ export class LoginUseCase {
 
     const user = await this.userRepository.findByEmail(email.toString());
     if (!user) {
-      throw new UnauthorizedError('Credenciais inválidas');
+      throw new UnauthorizedException('Credenciais inválidas');
     }
 
     const isPasswordValid = await bcrypt.compare(data.password, user.password);
     if (!isPasswordValid) {
-      throw new UnauthorizedError('Credenciais inválidas');
+      throw new UnauthorizedException('Credenciais inválidas');
     }
 
     if (!user.isActive) {
-      throw new UnauthorizedError('Usuário inativo');
+      throw new UnauthorizedException('Usuário inativo');
     }
 
     await this.userRepository.updateLastLogin(user.id);
