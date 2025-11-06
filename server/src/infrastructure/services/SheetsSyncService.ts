@@ -266,7 +266,6 @@ export class SheetsSyncService {
       // Clear existing data
       console.log(`🗑️ Clearing existing data from previous syncs`);
       await db.delete(campaignMetrics).where(eq(campaignMetrics.source, 'google_sheets'));
-      await db.delete(creatives).where(eq(creatives.status, 'imported_sheets'));
       console.log(`✅ Cleared existing Google Sheets data`);
       
       // Create campaigns and creatives from sheet data

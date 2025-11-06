@@ -402,7 +402,9 @@ export default function Campaigns() {
                               <TableCell>
                                 <div>
                                   <div className="font-medium text-slate-900">{campaign.name}</div>
-                                  <div className="text-sm text-slate-500">ID: {campaign.externalId}</div>
+                                  {campaign.account && (
+                                    <div className="text-sm text-slate-500">{campaign.account}</div>
+                                  )}
                                 </div>
                               </TableCell>
                               <TableCell>

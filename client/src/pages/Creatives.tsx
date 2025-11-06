@@ -331,6 +331,7 @@ export default function Creatives() {
                     <SelectItem value="all">Todos os Status</SelectItem>
                     <SelectItem value="active">Ativo</SelectItem>
                     <SelectItem value="paused">Pausado</SelectItem>
+                    <SelectItem value="campaign_paused">Campanha Pausada</SelectItem>
                     <SelectItem value="inactive">Inativo</SelectItem>
                   </SelectContent>
                 </Select>
