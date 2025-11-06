@@ -262,9 +262,14 @@ export default function Settings() {
   const syncIntegrationMutation = useMutation({
     mutationFn: (id: string) => apiRequest(`/api/integrations/${id}/sync`, { method: 'POST' }),
     onSuccess: (data: any) => {
+      const parts = [];
+      if (data.campaigns) parts.push(`${data.campaigns} campanhas`);
+      if (data.adSets) parts.push(`${data.adSets} ad sets`);
+      if (data.creatives) parts.push(`${data.creatives} anúncios`);
+      
       toast({ 
         title: 'Sincronização concluída!',
-        description: `${data.campaigns} campanhas e ${data.creatives} criativos sincronizados.`
+        description: parts.join(', ') + ' sincronizados.'
       });
       queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
       queryClient.invalidateQueries({ queryKey: ['/api/campaigns'] });

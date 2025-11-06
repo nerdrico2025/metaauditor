@@ -115,9 +115,30 @@ The system is designed to handle enterprise-scale creative auditing with automat
 
 ## Recent Updates (January 2025)
 
-### Complete Platform Integration System (Completed - November 6, 2025)
-- Implemented full Meta Ads and Google Ads integration with company-level token storage
-- Created MetaAdsService for Facebook/Instagram campaign and creative synchronization
+### Complete Meta Ads Hierarchy Integration (Completed - November 6, 2025)
+- Implemented **full Meta advertising hierarchy**: Account → Campaign → Ad Set → Ad (4 levels)
+- Created comprehensive `ad_sets` table in database schema with all required fields
+- Updated `creatives` table to reference `ad_set_id` instead of direct campaign linkage
+- Enhanced MetaAdsService with complete hierarchy support:
+  - `syncCampaigns()` - Fetch all campaigns from Meta account
+  - `syncAdSets()` - Fetch ad sets for each campaign
+  - `syncCreatives()` - Fetch ads (creatives) for each ad set
+  - Full insights and performance metrics for all levels
+- Implemented storage service CRUD methods for ad sets:
+  - `createAdSet()`, `getAdSetsByUser()`, `getAdSetsByCampaign()`
+  - `getAdSetById()`, `updateAdSet()`
+- Updated sync route (POST /api/integrations/:id/sync) to handle 3-level synchronization:
+  1. Sync campaigns from Meta account
+  2. For each campaign, sync its ad sets
+  3. For each ad set, sync its ads (creatives)
+- Added detailed console logging throughout sync process for monitoring
+- Multi-tenant architecture: Each company has its own tokens stored securely
+- Validates images before AI analysis - blocks placeholder images
+- Real-time sync status with last sync timestamp display
+- API response includes counts: campaigns, adSets, and creatives synced
+
+### Platform Integration System (Completed - November 6, 2025)
+- Full Meta Ads and Google Ads integration with company-level token storage
 - Created GoogleAdsService for Google Ads campaign and ad synchronization
 - Built comprehensive API routes for integration management (/api/integrations)
   - POST / - Create new integration with access tokens
@@ -133,9 +154,6 @@ The system is designed to handle enterprise-scale creative auditing with automat
   - Viewing all configured integrations
   - Syncing data with one-click refresh
   - Removing integrations
-- Multi-tenant architecture: Each company has its own tokens stored securely
-- Validates images before AI analysis - blocks placeholder images
-- Real-time sync status with last sync timestamp display
 
 ### Simplified Policies Page (Completed - September 13, 2025)
 - Replaced complex multi-policy interface with unified settings page
