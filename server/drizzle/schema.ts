@@ -1,3 +1,3 @@
 
-// drizzle/schema.ts
-export * from '../server/src/shared/schema';
+// server/drizzle/schema.ts
+export * from '../src/shared/schema';

@@ -1,5 +1,5 @@
 
-import { db } from '../server/src/infrastructure/database/connection';
+import { db } from '../src/infrastructure/database/connection';
 import * as schema from './schema';
 import bcrypt from 'bcryptjs';
 
