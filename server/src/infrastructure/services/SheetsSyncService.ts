@@ -1,7 +1,7 @@
 
 import { eq, sql } from 'drizzle-orm';
 import Papa from 'papaparse';
-import { campaignMetrics, campaigns, creatives, users, InsertCampaignMetrics } from '../../shared/schema.js';
+import { campaignMetrics, campaigns, creatives, users, integrations, InsertCampaignMetrics } from '../../shared/schema.js';
 import { db } from '../database/connection.js';
 import { nanoid } from 'nanoid';
 import { imageStorageService } from './ImageStorageService.js';
