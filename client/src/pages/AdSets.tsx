@@ -24,7 +24,22 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Filter, RefreshCw, Target } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { 
+  Search, 
+  RefreshCw, 
+  Target, 
+  DollarSign, 
+  TrendingUp,
+  Users,
+  Image as ImageIcon,
+  AlertCircle,
+  Layers,
+  ChevronRight,
+  Facebook
+} from "lucide-react";
+import { SiGoogle } from 'react-icons/si';
+import { Link } from "wouter";
 
 interface AdSet {
   id: string;
@@ -52,6 +67,7 @@ interface Campaign {
   name: string;
   externalId: string;
   platform: string;
+  status: string;
 }
 
 export default function AdSets() {
@@ -59,18 +75,16 @@ export default function AdSets() {
   const { isAuthenticated, isLoading } = useAuth();
   const queryClient = useQueryClient();
   
-  // Filters
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [campaignFilter, setCampaignFilter] = useState<string>("all");
   const [platformFilter, setPlatformFilter] = useState<string>("all");
 
-  // Redirect to home if not authenticated
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
+        title: "Não autenticado",
+        description: "Redirecionando para login...",
         variant: "destructive",
       });
       setTimeout(() => {
@@ -90,9 +104,13 @@ export default function AdSets() {
     enabled: isAuthenticated,
   });
 
-  // Mutation to sync all integrations
   const { data: integrations = [] } = useQuery<any[]>({
     queryKey: ['/api/integrations'],
+    enabled: isAuthenticated,
+  });
+
+  const { data: allCreatives = [] } = useQuery<any[]>({
+    queryKey: ['/api/creatives'],
     enabled: isAuthenticated,
   });
 
@@ -112,11 +130,23 @@ export default function AdSets() {
       queryClient.invalidateQueries({ queryKey: ["/api/adsets"] });
       queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
       queryClient.invalidateQueries({ queryKey: ["/api/integrations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/creatives"] });
       
-      const successCount = results.filter(r => r.status === 'fulfilled').length;
+      const fulfilled = results.filter(r => r.status === 'fulfilled');
+      const successData = fulfilled.map(r => r.status === 'fulfilled' ? r.value : null).filter(Boolean);
+      
+      const totalCampaigns = successData.reduce((sum, data: any) => sum + (data.campaigns || 0), 0);
+      const totalAdSets = successData.reduce((sum, data: any) => sum + (data.adSets || 0), 0);
+      const totalCreatives = successData.reduce((sum, data: any) => sum + (data.creatives || 0), 0);
+      
+      const parts = [];
+      if (totalCampaigns) parts.push(`${totalCampaigns} campanhas`);
+      if (totalAdSets) parts.push(`${totalAdSets} ad sets`);
+      if (totalCreatives) parts.push(`${totalCreatives} anúncios`);
+      
       toast({
         title: "Sincronização concluída!",
-        description: `${successCount} integração(ões) sincronizada(s) com sucesso.`,
+        description: parts.length > 0 ? parts.join(', ') + ' sincronizados.' : 'Sincronização concluída.',
       });
     },
     onError: () => {
@@ -132,7 +162,6 @@ export default function AdSets() {
     return null;
   }
 
-  // Filter ad sets
   const filteredAdSets = adSets?.filter((adSet) => {
     const matchesSearch = adSet.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          adSet.externalId.toLowerCase().includes(searchTerm.toLowerCase());
@@ -143,16 +172,21 @@ export default function AdSets() {
     return matchesSearch && matchesStatus && matchesCampaign && matchesPlatform;
   }) || [];
 
-  // Helper function to get campaign name
   const getCampaignName = (campaignId: string) => {
     const campaign = campaigns.find(c => c.id === campaignId);
-    return campaign?.name || 'Unknown Campaign';
+    return campaign?.name || 'Campanha Desconhecida';
   };
 
-  // Get unique platforms
-  const platforms = Array.from(new Set(adSets?.map(a => a.platform) || []));
+  const getCreativeCount = (adSetId: string) => {
+    return allCreatives.filter((creative: any) => creative.adSetId === adSetId).length;
+  };
 
-  // Format currency
+  const getPlatformIcon = (platform: string) => {
+    if (platform === 'meta') return <Facebook className="h-5 w-5 text-blue-600" />;
+    if (platform === 'google') return <SiGoogle className="h-5 w-5 text-red-600" />;
+    return <Target className="h-5 w-5 text-gray-600" />;
+  };
+
   const formatCurrency = (value: number | null) => {
     if (value === null) return '-';
     return new Intl.NumberFormat('pt-BR', {
@@ -161,13 +195,11 @@ export default function AdSets() {
     }).format(value);
   };
 
-  // Format number
   const formatNumber = (value: number | null) => {
     if (value === null) return '-';
     return new Intl.NumberFormat('pt-BR').format(value);
   };
 
-  // Get status badge variant
   const getStatusBadgeVariant = (status: string) => {
     switch (status.toLowerCase()) {
       case 'active':
@@ -181,221 +213,328 @@ export default function AdSets() {
     }
   };
 
+  const formatDate = (date: Date | null | string | undefined) => {
+    if (!date) return 'Nunca';
+    return new Date(date).toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const getMostRecentSync = () => {
+    if (!integrations.length) return null;
+    const syncs = integrations
+      .map(i => i.lastSync)
+      .filter(Boolean)
+      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+    return syncs[0] || null;
+  };
+
+  const metaAdSets = filteredAdSets.filter(a => a.platform === 'meta');
+  const activeAdSets = filteredAdSets.filter(a => a.status.toLowerCase() === 'active');
+  const totalSpend = filteredAdSets.reduce((sum, adSet) => sum + (adSet.spend || 0), 0);
+
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="flex h-screen bg-background">
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header title="Ad Sets" />
-        <main className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-7xl mx-auto space-y-6">
-            {/* Header Section */}
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                  Ad Sets (Grupos de Anúncios)
-                </h1>
-                <p className="text-gray-600 dark:text-gray-400 mt-1">
-                  Visualize e gerencie os grupos de anúncios das suas campanhas
-                </p>
-              </div>
-              <Button
-                onClick={() => syncAllMutation.mutate()}
-                disabled={syncAllMutation.isPending}
-                data-testid="button-sync-all"
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${syncAllMutation.isPending ? 'animate-spin' : ''}`} />
-                {syncAllMutation.isPending ? 'Sincronizando...' : 'Sincronizar Tudo'}
-              </Button>
-            </div>
-
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                        Total Ad Sets
-                      </p>
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                        {filteredAdSets.length}
-                      </p>
-                    </div>
-                    <Target className="h-8 w-8 text-orange-500" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                        Ativos
-                      </p>
-                      <p className="text-2xl font-bold text-green-600">
-                        {filteredAdSets.filter(a => a.status === 'ACTIVE').length}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                        Pausados
-                      </p>
-                      <p className="text-2xl font-bold text-yellow-600">
-                        {filteredAdSets.filter(a => a.status === 'PAUSED').length}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                        Total Gasto
-                      </p>
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                        {formatCurrency(filteredAdSets.reduce((sum, a) => sum + (a.spend || 0), 0))}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Filters */}
-            <Card>
-              <CardContent className="p-4">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <Input
-                      placeholder="Buscar por nome ou ID..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
-                      data-testid="input-search"
-                    />
-                  </div>
-
-                  <Select value={campaignFilter} onValueChange={setCampaignFilter}>
-                    <SelectTrigger data-testid="select-campaign-filter">
-                      <SelectValue placeholder="Todas as Campanhas" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todas as Campanhas</SelectItem>
-                      {campaigns.map((campaign) => (
-                        <SelectItem key={campaign.id} value={campaign.id}>
-                          {campaign.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger data-testid="select-status-filter">
-                      <SelectValue placeholder="Todos os Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos os Status</SelectItem>
-                      <SelectItem value="ACTIVE">Ativo</SelectItem>
-                      <SelectItem value="PAUSED">Pausado</SelectItem>
-                      <SelectItem value="ARCHIVED">Arquivado</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <Select value={platformFilter} onValueChange={setPlatformFilter}>
-                    <SelectTrigger data-testid="select-platform-filter">
-                      <SelectValue placeholder="Todas as Plataformas" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todas as Plataformas</SelectItem>
-                      {platforms.map((platform) => (
-                        <SelectItem key={platform} value={platform}>
-                          {platform === 'meta' ? 'Meta (Facebook/Instagram)' : platform}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+        <Header title="Grupos de Anúncios" />
+        <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900">
+          <div className="py-8">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                    Grupos de Anúncios (Ad Sets)
+                  </h1>
+                  <p className="text-gray-600 dark:text-gray-400 mt-2">
+                    Gerencie os grupos de anúncios das suas campanhas Meta Ads e Google Ads
+                  </p>
+                  {getMostRecentSync() && (
+                    <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
+                      Última sincronização: {formatDate(getMostRecentSync())}
+                    </p>
+                  )}
                 </div>
-              </CardContent>
-            </Card>
+                <Button
+                  onClick={() => syncAllMutation.mutate()}
+                  disabled={syncAllMutation.isPending || !integrations.length}
+                  className="bg-primary hover:bg-primary/90"
+                  data-testid="button-sync-all"
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${syncAllMutation.isPending ? 'animate-spin' : ''}`} />
+                  {syncAllMutation.isPending ? 'Sincronizando...' : 'Sincronizar Tudo'}
+                </Button>
+              </div>
 
-            {/* Ad Sets Table */}
-            <Card>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nome</TableHead>
-                      <TableHead>Campanha</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Plataforma</TableHead>
-                      <TableHead>Orçamento</TableHead>
-                      <TableHead>Impressões</TableHead>
-                      <TableHead>Cliques</TableHead>
-                      <TableHead>Gasto</TableHead>
-                      <TableHead>Conversões</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {adSetsLoading ? (
-                      Array.from({ length: 5 }).map((_, i) => (
-                        <TableRow key={i}>
-                          <TableCell colSpan={9}>
-                            <Skeleton className="h-8 w-full" />
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : filteredAdSets.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={9} className="text-center py-8 text-gray-500">
-                          Nenhum ad set encontrado. Sincronize suas integrações para importar dados.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      filteredAdSets.map((adSet) => (
-                        <TableRow key={adSet.id} data-testid={`row-adset-${adSet.id}`}>
-                          <TableCell className="font-medium">
-                            <div>
-                              <p className="font-medium">{adSet.name}</p>
-                              <p className="text-xs text-gray-500">ID: {adSet.externalId}</p>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <p className="text-sm">{getCampaignName(adSet.campaignId)}</p>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={getStatusBadgeVariant(adSet.status)}>
-                              {adSet.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline">
-                              {adSet.platform === 'meta' ? 'Meta' : adSet.platform}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{formatCurrency(adSet.budget)}</TableCell>
-                          <TableCell>{formatNumber(adSet.impressions)}</TableCell>
-                          <TableCell>{formatNumber(adSet.clicks)}</TableCell>
-                          <TableCell>{formatCurrency(adSet.spend)}</TableCell>
-                          <TableCell>{formatNumber(adSet.conversions)}</TableCell>
-                        </TableRow>
-                      ))
+              {integrations.length === 0 && (
+                <Alert className="mb-6 bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+                  <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  <AlertDescription className="text-blue-900 dark:text-blue-100">
+                    Você ainda não conectou nenhuma conta de anúncios. Vá para{' '}
+                    <Link href="/settings" className="font-semibold underline">Configurações</Link>
+                    {' '}para conectar suas contas Meta Ads ou Google Ads.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total de Ad Sets</p>
+                        <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2" data-testid="stat-total-adsets">
+                          {filteredAdSets.length}
+                        </p>
+                      </div>
+                      <Layers className="h-10 w-10 text-gray-400 dark:text-gray-500" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Ad Sets Meta Ads</p>
+                        <p className="text-3xl font-bold text-blue-600 dark:text-blue-400 mt-2" data-testid="stat-meta-adsets">
+                          {metaAdSets.length}
+                        </p>
+                      </div>
+                      <Facebook className="h-10 w-10 text-blue-600 dark:text-blue-400" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Ad Sets Ativos</p>
+                        <p className="text-3xl font-bold text-green-600 dark:text-green-400 mt-2" data-testid="stat-active-adsets">
+                          {activeAdSets.length}
+                        </p>
+                      </div>
+                      <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
+                        <div className="h-5 w-5 rounded-full bg-green-600 dark:bg-green-400"></div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Investimento Total</p>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white mt-2" data-testid="stat-total-spend">
+                          {formatCurrency(totalSpend)}
+                        </p>
+                      </div>
+                      <DollarSign className="h-10 w-10 text-orange-500" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card className="mb-6 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                <CardContent className="pt-6">
+                  <div className="flex flex-col lg:flex-row gap-4">
+                    <div className="flex-1">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
+                        <Input
+                          placeholder="Buscar por nome ou ID..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="pl-10 bg-white dark:bg-gray-800"
+                          data-testid="input-search-adsets"
+                        />
+                      </div>
+                    </div>
+                    
+                    <Select value={campaignFilter} onValueChange={setCampaignFilter}>
+                      <SelectTrigger className="w-full lg:w-[220px] bg-white dark:bg-gray-800" data-testid="select-campaign-filter">
+                        <SelectValue placeholder="Todas Campanhas" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas Campanhas</SelectItem>
+                        {campaigns.map((campaign) => (
+                          <SelectItem key={campaign.id} value={campaign.id}>
+                            {campaign.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <Select value={platformFilter} onValueChange={setPlatformFilter}>
+                      <SelectTrigger className="w-full lg:w-[180px] bg-white dark:bg-gray-800" data-testid="select-platform-filter">
+                        <SelectValue placeholder="Plataforma" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas Plataformas</SelectItem>
+                        <SelectItem value="meta">Meta Ads</SelectItem>
+                        <SelectItem value="google">Google Ads</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="w-full lg:w-[150px] bg-white dark:bg-gray-800" data-testid="select-status-filter">
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos Status</SelectItem>
+                        <SelectItem value="active">Ativo</SelectItem>
+                        <SelectItem value="paused">Pausado</SelectItem>
+                        <SelectItem value="archived">Arquivado</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    {(searchTerm || statusFilter !== "all" || campaignFilter !== "all" || platformFilter !== "all") && (
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setSearchTerm("");
+                          setStatusFilter("all");
+                          setCampaignFilter("all");
+                          setPlatformFilter("all");
+                        }}
+                        className="w-full lg:w-auto"
+                        data-testid="button-clear-filters"
+                      >
+                        Limpar Filtros
+                      </Button>
                     )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                <CardContent className="p-0">
+                  {adSetsLoading ? (
+                    <div className="p-6 space-y-4">
+                      {[...Array(5)].map((_, i) => (
+                        <Skeleton key={i} className="h-16 w-full" />
+                      ))}
+                    </div>
+                  ) : filteredAdSets.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Target className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                        {searchTerm || statusFilter !== "all" || campaignFilter !== "all" || platformFilter !== "all"
+                          ? "Nenhum ad set encontrado"
+                          : "Nenhum ad set sincronizado"
+                        }
+                      </h3>
+                      <p className="text-gray-600 dark:text-gray-400 mb-6">
+                        {searchTerm || statusFilter !== "all" || campaignFilter !== "all" || platformFilter !== "all"
+                          ? "Tente ajustar os filtros de busca."
+                          : "Conecte suas contas Meta Ads ou Google Ads e clique em 'Sincronizar Tudo'."
+                        }
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-gray-50 dark:bg-gray-900">
+                            <TableHead className="w-[50px]"></TableHead>
+                            <TableHead>Nome do Ad Set</TableHead>
+                            <TableHead>Campanha</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Orçamento</TableHead>
+                            <TableHead>Impressões</TableHead>
+                            <TableHead>Cliques</TableHead>
+                            <TableHead>Investimento</TableHead>
+                            <TableHead className="text-center">Anúncios</TableHead>
+                            <TableHead className="text-right">Ações</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredAdSets.map((adSet) => {
+                            const creativeCount = getCreativeCount(adSet.id);
+                            
+                            return (
+                              <TableRow key={adSet.id} className="hover:bg-gray-50 dark:hover:bg-gray-900/50" data-testid={`row-adset-${adSet.id}`}>
+                                <TableCell>
+                                  {getPlatformIcon(adSet.platform)}
+                                </TableCell>
+                                <TableCell>
+                                  <div>
+                                    <div className="font-medium text-gray-900 dark:text-white">{adSet.name}</div>
+                                    <div className="text-xs text-gray-500 dark:text-gray-500">ID: {adSet.externalId}</div>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                                    {getCampaignName(adSet.campaignId)}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant={getStatusBadgeVariant(adSet.status)}>
+                                    {adSet.status === 'active' ? 'Ativo' : 
+                                     adSet.status === 'paused' ? 'Pausado' : 
+                                     adSet.status === 'archived' ? 'Arquivado' : adSet.status}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  {adSet.budget ? (
+                                    <div className="flex items-center space-x-1 text-sm text-gray-600 dark:text-gray-400">
+                                      <DollarSign className="h-3 w-3" />
+                                      <span>{formatCurrency(adSet.budget)}</span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-sm text-gray-400 dark:text-gray-600">-</span>
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-sm text-gray-600 dark:text-gray-400">
+                                  {formatNumber(adSet.impressions)}
+                                </TableCell>
+                                <TableCell className="text-sm text-gray-600 dark:text-gray-400">
+                                  {formatNumber(adSet.clicks)}
+                                </TableCell>
+                                <TableCell className="text-sm text-gray-600 dark:text-gray-400">
+                                  {formatCurrency(adSet.spend)}
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    asChild
+                                    className="font-semibold"
+                                    data-testid={`button-view-creatives-${adSet.id}`}
+                                  >
+                                    <Link href="/creatives">
+                                      <ImageIcon className="h-4 w-4 mr-1" />
+                                      {creativeCount}
+                                    </Link>
+                                  </Button>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    data-testid={`button-details-${adSet.id}`}
+                                  >
+                                    <ChevronRight className="h-4 w-4" />
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+            </div>
           </div>
         </main>
       </div>
