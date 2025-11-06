@@ -104,18 +104,13 @@ export default function CampaignCreativesModal({
       <Dialog open={true} onOpenChange={onClose}>
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden">
           <DialogHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <DialogTitle className="text-xl font-semibold text-slate-900">
-                  Criativos da Campanha
-                </DialogTitle>
-                <DialogDescription className="text-slate-600 mt-1">
-                  {campaign.name} • {campaign.platform === 'meta' ? 'Meta Ads' : 'Google Ads'}
-                </DialogDescription>
-              </div>
-              <Button variant="ghost" size="sm" onClick={onClose}>
-                <X className="h-4 w-4" />
-              </Button>
+            <div>
+              <DialogTitle className="text-xl font-semibold text-slate-900">
+                Criativos da Campanha
+              </DialogTitle>
+              <DialogDescription className="text-slate-600 mt-1">
+                {campaign.name} • {campaign.platform === 'meta' ? 'Meta Ads' : 'Google Ads'}
+              </DialogDescription>
             </div>
           </DialogHeader>
 

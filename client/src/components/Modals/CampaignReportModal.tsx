@@ -117,15 +117,10 @@ export default function CampaignReportModal({
                 {campaign.name} • {campaign.platform === 'meta' ? 'Meta Ads' : 'Google Ads'}
               </DialogDescription>
             </div>
-            <div className="flex items-center space-x-2">
-              <Button variant="outline" size="sm">
-                <Download className="h-4 w-4 mr-2" />
-                Exportar PDF
-              </Button>
-              <Button variant="ghost" size="sm" onClick={onClose}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+            <Button variant="outline" size="sm">
+              <Download className="h-4 w-4 mr-2" />
+              Exportar PDF
+            </Button>
           </div>
         </DialogHeader>
 

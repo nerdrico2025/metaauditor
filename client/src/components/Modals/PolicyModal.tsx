@@ -157,14 +157,9 @@ export default function PolicyModal({ policy, onClose }: PolicyModalProps) {
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <div className="flex justify-between items-start">
-            <DialogTitle className="text-lg font-medium text-slate-900">
-              {policy ? 'Editar Política' : 'Nova Política'}
-            </DialogTitle>
-            <Button variant="ghost" size="sm" onClick={onClose}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
+          <DialogTitle className="text-lg font-medium text-slate-900">
+            {policy ? 'Editar Política' : 'Nova Política'}
+          </DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
