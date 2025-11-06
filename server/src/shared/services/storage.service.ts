@@ -51,6 +51,7 @@ export interface IStorage {
   upsertUser(user: UpsertUser): Promise<User>;
   createIntegration(integration: InsertIntegration): Promise<Integration>;
   getIntegrationsByUser(userId: string): Promise<Integration[]>;
+  getIntegrationById(id: string): Promise<Integration | undefined>;
   updateIntegration(id: string, data: Partial<InsertIntegration>): Promise<Integration | undefined>;
   deleteIntegration(integrationId: string, userId: string): Promise<void>;
   createCampaign(campaign: InsertCampaign): Promise<Campaign>;
@@ -179,6 +180,11 @@ export class DatabaseStorage implements IStorage {
 
   async getIntegrationsByUser(userId: string): Promise<Integration[]> {
     return await db.select().from(integrations).where(eq(integrations.userId, userId));
+  }
+
+  async getIntegrationById(id: string): Promise<Integration | undefined> {
+    const [integration] = await db.select().from(integrations).where(eq(integrations.id, id));
+    return integration;
   }
 
   async updateIntegration(id: string, data: Partial<InsertIntegration>): Promise<Integration | undefined> {
