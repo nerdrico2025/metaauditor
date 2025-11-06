@@ -217,6 +217,20 @@ export const contentCriteria = pgTable("content_criteria", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Google Sheets Configuration
+export const googleSheetsConfig = pgTable("google_sheets_config", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  companyId: uuid("company_id").references(() => companies.id, { onDelete: 'cascade' }),
+  sheetId: text("sheet_id").notNull(),
+  tabGid: text("tab_gid").default('0'),
+  name: text("name").notNull(),
+  status: varchar("status").default('active'),
+  lastSync: timestamp("last_sync"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Campaign Metrics
 export const campaignMetrics = pgTable("campaign_metrics", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
