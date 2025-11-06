@@ -11,6 +11,10 @@ import authRoutes from "./presentation/routes/auth.routes.js";
 import userRoutes from "./presentation/routes/user.routes.js";
 import campaignRoutes from "./presentation/routes/campaign.routes.js";
 import creativeRoutes from "./presentation/routes/creative.routes.js";
+import policyRoutes from "./presentation/routes/policy.routes.js";
+import integrationRoutes from "./presentation/routes/integration.routes.js";
+import dashboardRoutes from "./presentation/routes/dashboard.routes.js";
+import auditRoutes from "./presentation/routes/audit.routes.js";
 
 export async function startServer() {
   const app = express();
@@ -68,6 +72,10 @@ export async function startServer() {
   app.use('/api/users', userRoutes);
   app.use('/api/campaigns', campaignRoutes);
   app.use('/api/creatives', creativeRoutes);
+  app.use('/api/policies', policyRoutes);
+  app.use('/api/integrations', integrationRoutes);
+  app.use('/api/dashboard', dashboardRoutes);
+  app.use('/api/audits', auditRoutes);
 
   // Health check endpoints
   app.get('/healthz', (req, res) => {
