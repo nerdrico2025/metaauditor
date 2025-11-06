@@ -9,7 +9,8 @@
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc",
     "db:generate": "drizzle-kit generate --config=server/drizzle.config.ts",
-    "db:push": "drizzle-kit push --config=server/drizzle.config.ts"
+    "db:push": "drizzle-kit push --config=server/drizzle.config.ts",
+    "db:seed": "tsx drizzle/seed.ts"
   },
   "dependencies": {
     "@google-cloud/storage": "^7.17.0",
