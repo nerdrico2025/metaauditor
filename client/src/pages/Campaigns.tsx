@@ -1,5 +1,4 @@
-
-import { useEffect, useState, lazy, Suspense } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -25,46 +24,38 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BellRing, Calendar, DollarSign, BarChart3, Search, Eye, Edit, Trash2, Filter, Plus, RefreshCw } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { 
+  BellRing, 
+  Calendar, 
+  DollarSign, 
+  Search, 
+  RefreshCw,
+  AlertCircle,
+  Layers,
+  Image as ImageIcon,
+  Facebook,
+  ChevronRight
+} from "lucide-react";
+import { SiGoogle } from 'react-icons/si';
+import { Link } from "wouter";
 import type { Campaign } from "@shared/schema";
-
-// Lazy load modals to reduce chunk size
-const CampaignReportModal = lazy(() => import("@/components/Modals/CampaignReportModal"));
-const CampaignCreativesModal = lazy(() => import("@/components/Modals/CampaignCreativesModal"));
-const CampaignFormModal = lazy(() => import("@/components/Modals/CampaignFormModal"));
 
 export default function Campaigns() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
   const queryClient = useQueryClient();
-  const [selectedCampaignForReport, setSelectedCampaignForReport] = useState<Campaign | null>(null);
-  const [selectedCampaignForCreatives, setSelectedCampaignForCreatives] = useState<Campaign | null>(null);
-  const [campaignToDelete, setCampaignToDelete] = useState<Campaign | null>(null);
-  const [campaignToEdit, setCampaignToEdit] = useState<Campaign | null>(null);
-  const [isCreatingCampaign, setIsCreatingCampaign] = useState(false);
   
-  // Filters
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [platformFilter, setPlatformFilter] = useState<string>("all");
 
-  // Redirect to home if not authenticated
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
+        title: "Não autenticado",
+        description: "Redirecionando para login...",
         variant: "destructive",
       });
       setTimeout(() => {
@@ -79,39 +70,21 @@ export default function Campaigns() {
     enabled: isAuthenticated,
   });
 
-  // Fetch integrations to show last sync time
   const { data: integrations = [] } = useQuery<any[]>({
     queryKey: ['/api/integrations'],
     enabled: isAuthenticated,
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: async (campaignId: string) => {
-      const response = await fetch(`/api/campaigns/${campaignId}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
-      if (!response.ok) throw new Error('Failed to delete campaign');
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
-      toast({
-        title: "Sucesso",
-        description: "Campanha excluída com sucesso",
-      });
-      setCampaignToDelete(null);
-    },
-    onError: () => {
-      toast({
-        title: "Erro",
-        description: "Não foi possível excluir a campanha",
-        variant: "destructive",
-      });
-    },
+  const { data: allAdSets = [] } = useQuery<any[]>({
+    queryKey: ['/api/adsets'],
+    enabled: isAuthenticated,
   });
 
-  // Mutation to sync all integrations
+  const { data: allCreatives = [] } = useQuery<any[]>({
+    queryKey: ['/api/creatives'],
+    enabled: isAuthenticated,
+  });
+
   const syncAllMutation = useMutation({
     mutationFn: async () => {
       const results = await Promise.allSettled(
@@ -127,12 +100,24 @@ export default function Campaigns() {
     onSuccess: (results) => {
       queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
       queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/adsets'] });
       queryClient.invalidateQueries({ queryKey: ['/api/creatives'] });
       
-      const successCount = results.filter(r => r.status === 'fulfilled').length;
+      const fulfilled = results.filter(r => r.status === 'fulfilled');
+      const successData = fulfilled.map(r => r.status === 'fulfilled' ? r.value : null).filter(Boolean);
+      
+      const totalCampaigns = successData.reduce((sum, data: any) => sum + (data.campaigns || 0), 0);
+      const totalAdSets = successData.reduce((sum, data: any) => sum + (data.adSets || 0), 0);
+      const totalCreatives = successData.reduce((sum, data: any) => sum + (data.creatives || 0), 0);
+      
+      const parts = [];
+      if (totalCampaigns) parts.push(`${totalCampaigns} campanhas`);
+      if (totalAdSets) parts.push(`${totalAdSets} ad sets`);
+      if (totalCreatives) parts.push(`${totalCreatives} anúncios`);
+      
       toast({
         title: "Sincronização concluída!",
-        description: `${successCount} integração(ões) sincronizada(s) com sucesso.`,
+        description: parts.length > 0 ? parts.join(', ') + ' sincronizados.' : 'Sincronização concluída.',
       });
     },
     onError: () => {
@@ -147,8 +132,8 @@ export default function Campaigns() {
   useEffect(() => {
     if (error && isUnauthorizedError(error as Error)) {
       toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
+        title: "Não autenticado",
+        description: "Redirecionando para login...",
         variant: "destructive",
       });
       setTimeout(() => {
@@ -180,14 +165,9 @@ export default function Campaigns() {
   };
 
   const getPlatformIcon = (platform: string) => {
-    switch (platform) {
-      case 'meta':
-        return '📘';
-      case 'google':
-        return '🔍';
-      default:
-        return '📊';
-    }
+    if (platform === 'meta') return <Facebook className="h-5 w-5 text-blue-600" />;
+    if (platform === 'google') return <SiGoogle className="h-5 w-5 text-red-600" />;
+    return <BellRing className="h-5 w-5 text-gray-600" />;
   };
 
   const getPlatformName = (platform: string) => {
@@ -199,39 +179,6 @@ export default function Campaigns() {
       default:
         return platform;
     }
-  };
-
-  const getCampaignOrigin = (campaign: Campaign) => {
-    // Check if campaign integration is google_sheets
-    const integration = integrations.find(i => i.id === campaign.integrationId);
-    if (integration?.platform === 'google_sheets') {
-      return {
-        name: 'Planilha Google',
-        icon: '📊',
-        variant: 'outline' as const
-      };
-    }
-    
-    // Otherwise it's direct API integration
-    if (campaign.platform === 'meta') {
-      return {
-        name: 'API Meta Ads',
-        icon: '📘',
-        variant: 'default' as const
-      };
-    } else if (campaign.platform === 'google') {
-      return {
-        name: 'API Google Ads',
-        icon: '🔍',
-        variant: 'secondary' as const
-      };
-    }
-    
-    return {
-      name: 'Desconhecida',
-      icon: '❓',
-      variant: 'outline' as const
-    };
   };
 
   const formatDate = (date: Date | null | string | undefined) => {
@@ -254,7 +201,16 @@ export default function Campaigns() {
     return syncs[0] || null;
   };
 
-  // Filter campaigns
+  const getAdSetCount = (campaignId: string) => {
+    return allAdSets.filter((adSet: any) => adSet.campaignId === campaignId).length;
+  };
+
+  const getCreativeCount = (campaignId: string) => {
+    const campaignAdSets = allAdSets.filter((adSet: any) => adSet.campaignId === campaignId);
+    const adSetIds = campaignAdSets.map((adSet: any) => adSet.id);
+    return allCreatives.filter((creative: any) => adSetIds.includes(creative.adSetId)).length;
+  };
+
   const filteredCampaigns = campaigns?.filter((campaign) => {
     const matchesSearch = campaign.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          campaign.externalId.toLowerCase().includes(searchTerm.toLowerCase());
@@ -264,57 +220,119 @@ export default function Campaigns() {
     return matchesSearch && matchesStatus && matchesPlatform;
   }) || [];
 
+  const metaCampaigns = filteredCampaigns.filter(c => c.platform === 'meta');
+  const googleCampaigns = filteredCampaigns.filter(c => c.platform === 'google');
+  const activeCampaigns = filteredCampaigns.filter(c => c.status === 'active');
+
   return (
-    <div className="flex h-screen bg-slate-50">
+    <div className="flex h-screen bg-background">
       <Sidebar />
       
       <div className="flex flex-col flex-1 overflow-hidden">
         <Header title="Campanhas" />
         
-        <main className="flex-1 overflow-y-auto">
-          <div className="py-6">
+        <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900">
+          <div className="py-8">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              {/* Header com botão de sincronizar */}
-              <div className="flex justify-between items-center mb-6">
+              
+              <div className="flex justify-between items-start mb-6">
                 <div>
-                  <h2 className="text-2xl font-bold text-slate-900">Campanhas</h2>
+                  <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Campanhas</h1>
+                  <p className="text-gray-600 dark:text-gray-400 mt-2">
+                    Gerencie suas campanhas publicitárias do Meta Ads e Google Ads
+                  </p>
                   {getMostRecentSync() && (
-                    <p className="text-sm text-slate-600 mt-1">
+                    <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
                       Última sincronização: {formatDate(getMostRecentSync())}
                     </p>
                   )}
                 </div>
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => syncAllMutation.mutate()}
-                    disabled={syncAllMutation.isPending || !integrations.length}
-                    className="bg-primary hover:bg-primary/90"
-                    data-testid="button-sync-all-campaigns"
-                  >
-                    <RefreshCw className={`h-4 w-4 mr-2 ${syncAllMutation.isPending ? 'animate-spin' : ''}`} />
-                    {syncAllMutation.isPending ? 'Sincronizando...' : 'Sincronizar Todas'}
-                  </Button>
-                </div>
+                <Button
+                  onClick={() => syncAllMutation.mutate()}
+                  disabled={syncAllMutation.isPending || !integrations.length}
+                  className="bg-primary hover:bg-primary/90"
+                  data-testid="button-sync-all-campaigns"
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${syncAllMutation.isPending ? 'animate-spin' : ''}`} />
+                  {syncAllMutation.isPending ? 'Sincronizando...' : 'Sincronizar Tudo'}
+                </Button>
               </div>
 
-              {/* Filters */}
-              <Card className="mb-6 bg-white border-slate-200">
+              {integrations.length === 0 && (
+                <Alert className="mb-6 bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+                  <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  <AlertDescription className="text-blue-900 dark:text-blue-100">
+                    Você ainda não conectou nenhuma conta de anúncios. Vá para{' '}
+                    <Link href="/settings" className="font-semibold underline">Configurações</Link>
+                    {' '}para conectar suas contas Meta Ads ou Google Ads.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total de Campanhas</p>
+                        <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2" data-testid="stat-total-campaigns">
+                          {filteredCampaigns.length}
+                        </p>
+                      </div>
+                      <BellRing className="h-10 w-10 text-gray-400 dark:text-gray-500" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Campanhas Meta Ads</p>
+                        <p className="text-3xl font-bold text-blue-600 dark:text-blue-400 mt-2" data-testid="stat-meta-campaigns">
+                          {metaCampaigns.length}
+                        </p>
+                      </div>
+                      <Facebook className="h-10 w-10 text-blue-600 dark:text-blue-400" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Campanhas Ativas</p>
+                        <p className="text-3xl font-bold text-green-600 dark:text-green-400 mt-2" data-testid="stat-active-campaigns">
+                          {activeCampaigns.length}
+                        </p>
+                      </div>
+                      <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
+                        <div className="h-5 w-5 rounded-full bg-green-600 dark:bg-green-400"></div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card className="mb-6 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                 <CardContent className="pt-6">
                   <div className="flex flex-col sm:flex-row gap-4">
                     <div className="flex-1">
                       <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
                         <Input
                           placeholder="Buscar por nome ou ID..."
                           value={searchTerm}
                           onChange={(e) => setSearchTerm(e.target.value)}
-                          className="pl-10 bg-white"
+                          className="pl-10 bg-white dark:bg-gray-800"
+                          data-testid="input-search-campaigns"
                         />
                       </div>
                     </div>
                     
                     <Select value={platformFilter} onValueChange={setPlatformFilter}>
-                      <SelectTrigger className="w-full sm:w-[180px] bg-white">
+                      <SelectTrigger className="w-full sm:w-[180px] bg-white dark:bg-gray-800" data-testid="select-platform-filter">
                         <SelectValue placeholder="Plataforma" />
                       </SelectTrigger>
                       <SelectContent>
@@ -325,7 +343,7 @@ export default function Campaigns() {
                     </Select>
 
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
-                      <SelectTrigger className="w-full sm:w-[150px] bg-white">
+                      <SelectTrigger className="w-full sm:w-[150px] bg-white dark:bg-gray-800" data-testid="select-status-filter">
                         <SelectValue placeholder="Status" />
                       </SelectTrigger>
                       <SelectContent>
@@ -344,7 +362,8 @@ export default function Campaigns() {
                           setStatusFilter("all");
                           setPlatformFilter("all");
                         }}
-                        className="w-full sm:w-auto bg-white"
+                        className="w-full sm:w-auto"
+                        data-testid="button-clear-filters"
                       >
                         Limpar Filtros
                       </Button>
@@ -353,8 +372,7 @@ export default function Campaigns() {
                 </CardContent>
               </Card>
 
-              {/* Table */}
-              <Card className="bg-white border-slate-200">
+              <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                 <CardContent className="p-0">
                   {campaignsLoading ? (
                     <div className="p-6 space-y-4">
@@ -364,17 +382,17 @@ export default function Campaigns() {
                     </div>
                   ) : filteredCampaigns.length === 0 ? (
                     <div className="text-center py-12">
-                      <BellRing className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-slate-900 mb-2">
+                      <BellRing className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
                         {searchTerm || statusFilter !== "all" || platformFilter !== "all"
                           ? "Nenhuma campanha encontrada"
-                          : "Nenhuma campanha cadastrada"
+                          : "Nenhuma campanha sincronizada"
                         }
                       </h3>
-                      <p className="text-slate-600 mb-6">
+                      <p className="text-gray-600 dark:text-gray-400 mb-6">
                         {searchTerm || statusFilter !== "all" || platformFilter !== "all"
                           ? "Tente ajustar os filtros de busca."
-                          : "Conecte suas contas Meta Ads ou Google Ads para começar a sincronizar campanhas."
+                          : "Conecte suas contas Meta Ads ou Google Ads e clique em 'Sincronizar Tudo'."
                         }
                       </p>
                     </div>
@@ -382,183 +400,120 @@ export default function Campaigns() {
                     <div className="overflow-x-auto">
                       <Table>
                         <TableHeader>
-                          <TableRow>
+                          <TableRow className="bg-gray-50 dark:bg-gray-900">
                             <TableHead className="w-[50px]"></TableHead>
                             <TableHead>Nome da Campanha</TableHead>
-                            <TableHead>Conta</TableHead>
                             <TableHead>Plataforma</TableHead>
-                            <TableHead>Origem</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead>Orçamento</TableHead>
+                            <TableHead className="text-center">Ad Sets</TableHead>
+                            <TableHead className="text-center">Anúncios</TableHead>
                             <TableHead>Criada em</TableHead>
                             <TableHead className="text-right">Ações</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {filteredCampaigns.map((campaign) => (
-                            <TableRow key={campaign.id} className="hover:bg-slate-50">
-                              <TableCell>
-                                <span className="text-2xl">{getPlatformIcon(campaign.platform)}</span>
-                              </TableCell>
-                              <TableCell>
-                                <div className="font-medium text-slate-900">{campaign.name}</div>
-                              </TableCell>
-                              <TableCell>
-                                <span className="text-sm text-slate-600">
-                                  {campaign.account || '-'}
-                                </span>
-                              </TableCell>
-                              <TableCell>
-                                <span className="text-sm text-slate-600">
-                                  {getPlatformName(campaign.platform)}
-                                </span>
-                              </TableCell>
-                              <TableCell>
-                                {(() => {
-                                  const origin = getCampaignOrigin(campaign);
-                                  return (
-                                    <Badge variant={origin.variant} className="flex items-center gap-1 w-fit">
-                                      <span>{origin.icon}</span>
-                                      <span>{origin.name}</span>
-                                    </Badge>
-                                  );
-                                })()}
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant={getStatusBadgeVariant(campaign.status)}>
-                                  {campaign.status === 'active' ? 'Ativa' : 
-                                   campaign.status === 'paused' ? 'Pausada' : 'Inativa'}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                {campaign.budget ? (
-                                  <div className="flex items-center space-x-1 text-sm text-slate-600">
-                                    <DollarSign className="h-3 w-3" />
-                                    <span>R$ {parseFloat(campaign.budget).toFixed(2)}</span>
+                          {filteredCampaigns.map((campaign) => {
+                            const adSetCount = getAdSetCount(campaign.id);
+                            const creativeCount = getCreativeCount(campaign.id);
+                            
+                            return (
+                              <TableRow key={campaign.id} className="hover:bg-gray-50 dark:hover:bg-gray-900/50" data-testid={`row-campaign-${campaign.id}`}>
+                                <TableCell>
+                                  {getPlatformIcon(campaign.platform)}
+                                </TableCell>
+                                <TableCell>
+                                  <div>
+                                    <div className="font-medium text-gray-900 dark:text-white">{campaign.name}</div>
+                                    <div className="text-xs text-gray-500 dark:text-gray-500">ID: {campaign.externalId}</div>
                                   </div>
-                                ) : (
-                                  <span className="text-sm text-slate-400">-</span>
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center space-x-1 text-sm text-slate-600">
-                                  <Calendar className="h-3 w-3" />
-                                  <span>
-                                    {campaign.createdAt 
-                                      ? new Date(campaign.createdAt).toLocaleDateString('pt-BR')
-                                      : '-'
-                                    }
+                                </TableCell>
+                                <TableCell>
+                                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                                    {getPlatformName(campaign.platform)}
                                   </span>
-                                </div>
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex justify-end space-x-2">
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant={getStatusBadgeVariant(campaign.status)}>
+                                    {campaign.status === 'active' ? 'Ativa' : 
+                                     campaign.status === 'paused' ? 'Pausada' : 'Inativa'}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  {campaign.budget ? (
+                                    <div className="flex items-center space-x-1 text-sm text-gray-600 dark:text-gray-400">
+                                      <DollarSign className="h-3 w-3" />
+                                      <span>R$ {parseFloat(campaign.budget).toFixed(2)}</span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-sm text-gray-400 dark:text-gray-600">-</span>
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-center">
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={() => setSelectedCampaignForCreatives(campaign)}
-                                    title="Ver Criativos"
+                                    asChild
+                                    className="font-semibold"
+                                    data-testid={`button-view-adsets-${campaign.id}`}
                                   >
-                                    <Eye className="h-4 w-4" />
+                                    <Link href="/adsets">
+                                      <Layers className="h-4 w-4 mr-1" />
+                                      {adSetCount}
+                                    </Link>
                                   </Button>
+                                </TableCell>
+                                <TableCell className="text-center">
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={() => setSelectedCampaignForReport(campaign)}
-                                    title="Ver Relatório"
+                                    asChild
+                                    className="font-semibold"
+                                    data-testid={`button-view-creatives-${campaign.id}`}
                                   >
-                                    <BarChart3 className="h-4 w-4" />
+                                    <Link href="/creatives">
+                                      <ImageIcon className="h-4 w-4 mr-1" />
+                                      {creativeCount}
+                                    </Link>
                                   </Button>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center space-x-1 text-sm text-gray-600 dark:text-gray-400">
+                                    <Calendar className="h-3 w-3" />
+                                    <span>
+                                      {campaign.createdAt 
+                                        ? new Date(campaign.createdAt).toLocaleDateString('pt-BR')
+                                        : '-'
+                                      }
+                                    </span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-right">
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={() => setCampaignToEdit(campaign)}
-                                    title="Editar"
+                                    asChild
+                                    data-testid={`button-details-${campaign.id}`}
                                   >
-                                    <Edit className="h-4 w-4" />
+                                    <Link href={`/campaigns/${campaign.id}`}>
+                                      <ChevronRight className="h-4 w-4" />
+                                    </Link>
                                   </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => setCampaignToDelete(campaign)}
-                                    title="Excluir"
-                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
                         </TableBody>
                       </Table>
                     </div>
                   )}
-
-                  {/* Summary */}
-                  {!campaignsLoading && filteredCampaigns.length > 0 && (
-                    <div className="border-t border-slate-200 px-6 py-4">
-                      <div className="text-sm text-slate-600">
-                        Exibindo <span className="font-semibold">{filteredCampaigns.length}</span> de{' '}
-                        <span className="font-semibold">{campaigns?.length || 0}</span> campanhas
-                      </div>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
+
             </div>
           </div>
         </main>
       </div>
-      
-      {/* Modals */}
-      <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div></div>}>
-        {selectedCampaignForReport && (
-          <CampaignReportModal 
-            campaign={selectedCampaignForReport}
-            onClose={() => setSelectedCampaignForReport(null)}
-          />
-        )}
-        
-        {selectedCampaignForCreatives && (
-          <CampaignCreativesModal 
-            campaign={selectedCampaignForCreatives}
-            onClose={() => setSelectedCampaignForCreatives(null)}
-          />
-        )}
-
-        {(isCreatingCampaign || campaignToEdit) && (
-          <CampaignFormModal
-            campaign={campaignToEdit}
-            onClose={() => {
-              setIsCreatingCampaign(false);
-              setCampaignToEdit(null);
-            }}
-          />
-        )}
-      </Suspense>
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!campaignToDelete} onOpenChange={() => setCampaignToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir a campanha "<strong>{campaignToDelete?.name}</strong>"?
-              Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => campaignToDelete && deleteMutation.mutate(campaignToDelete.id)}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
