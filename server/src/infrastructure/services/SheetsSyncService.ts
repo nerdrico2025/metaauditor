@@ -11,8 +11,10 @@ interface RawMetricsData {
   'nome_conta': string;
   'ad_url': string;
   'campanha': string;
+  'campaign_status': string;
   'grupo_anuncios': string;
   'anuncios': string;
+  'ad_status': string;
   'impressoes': string;
   'cliques': string;
   'cpm': string;
@@ -343,6 +345,9 @@ export class SheetsSyncService {
       if (!row.campanha || campaignMap.has(row.campanha)) continue;
       
       try {
+        // Normalize campaign status: PAUSED -> paused, ACTIVE -> active
+        const normalizedStatus = row.campaign_status?.toUpperCase() === 'PAUSED' ? 'paused' : 'active';
+        
         // Create campaign with the real platform from integration dataSource
         const [campaign] = await db.insert(campaigns).values({
           companyId,
@@ -351,11 +356,12 @@ export class SheetsSyncService {
           externalId: `sheets_${nanoid(10)}`,
           name: row.campanha,
           platform: realPlatform, // Use dataSource to determine real platform
-          status: 'active',
+          status: normalizedStatus,
+          account: row.nome_conta?.trim() || null,
         }).returning({ id: campaigns.id });
         
         campaignMap.set(row.campanha, campaign.id);
-        console.log(`✅ Created campaign: ${row.campanha} (platform: ${realPlatform})`);
+        console.log(`✅ Created campaign: ${row.campanha} (platform: ${realPlatform}, account: ${row.nome_conta}, status: ${normalizedStatus})`);
       } catch (error) {
         console.log(`⚠️ Error creating campaign ${row.campanha}:`, error);
       }
@@ -368,6 +374,17 @@ export class SheetsSyncService {
       if (!campaignId || !row.anuncios) continue;
       
       try {
+        // Normalize ad status: CAMPAIGN_PAUSED -> campaign_paused, PAUSED -> paused, ACTIVE -> active
+        let normalizedAdStatus = 'active';
+        const adStatusUpper = row.ad_status?.toUpperCase();
+        if (adStatusUpper === 'CAMPAIGN_PAUSED') {
+          normalizedAdStatus = 'campaign_paused';
+        } else if (adStatusUpper === 'PAUSED') {
+          normalizedAdStatus = 'paused';
+        } else if (adStatusUpper === 'ACTIVE') {
+          normalizedAdStatus = 'active';
+        }
+        
         // Download and store image permanently if URL exists
         let permanentImageUrl: string | null = null;
         if (row.ad_url) {
@@ -382,7 +399,7 @@ export class SheetsSyncService {
           name: row.anuncios,
           type: 'image',
           imageUrl: permanentImageUrl || row.ad_url || null,
-          status: 'imported_sheets',
+          status: normalizedAdStatus,
           impressions: this.parseInteger(row.impressoes),
           clicks: this.parseInteger(row.cliques),
           conversions: this.parseInteger(row.conversas_iniciadas),

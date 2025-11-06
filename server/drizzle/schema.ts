@@ -114,6 +114,7 @@ export const campaigns = pgTable("campaigns", {
   name: text("name").notNull(),
   platform: varchar("platform").notNull(),
   status: varchar("status").notNull(),
+  account: varchar("account"),
   budget: decimal("budget", { precision: 10, scale: 2 }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
