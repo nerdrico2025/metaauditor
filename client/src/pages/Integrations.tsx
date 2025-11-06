@@ -634,7 +634,7 @@ export default function Integrations() {
                               Planilha: {integration.accountId || 'N/A'}
                             </p>
                             <p className="text-xs text-gray-500 dark:text-gray-500 mb-3">
-                              Última importação: {formatDate(integration.lastSync)}
+                              Última sincronização: {formatDate(integration.lastSync)}
                             </p>
                             <div className="flex gap-2">
                               <Button
@@ -644,8 +644,8 @@ export default function Integrations() {
                                 onClick={() => syncSheetsMutation.mutate(integration.id)}
                                 disabled={syncSheetsMutation.isPending}
                               >
-                                <Upload className="w-3 h-3 mr-1" />
-                                Importar
+                                <RefreshCw className="w-3 h-3 mr-1" />
+                                Sincronizar
                               </Button>
                               <Button
                                 size="sm"
