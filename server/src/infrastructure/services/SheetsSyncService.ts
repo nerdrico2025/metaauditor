@@ -330,6 +330,12 @@ export class SheetsSyncService {
     const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
     const companyId = user?.companyId || null;
     
+    // Get integration to determine the real platform (dataSource)
+    const [integration] = await db.select().from(integrations).where(eq(integrations.id, integrationId)).limit(1);
+    const realPlatform = integration?.dataSource || 'meta'; // Default to 'meta' if not specified
+    
+    console.log(`📊 Creating campaigns with platform: ${realPlatform} (from integration dataSource)`);
+    
     const campaignMap = new Map<string, string>();
     
     // Group data by campaign
@@ -337,20 +343,19 @@ export class SheetsSyncService {
       if (!row.campanha || campaignMap.has(row.campanha)) continue;
       
       try {
-        // Create campaign
-        // Note: Even though imported via Google Sheets, the actual platform is Meta (Facebook/Instagram)
+        // Create campaign with the real platform from integration dataSource
         const [campaign] = await db.insert(campaigns).values({
           companyId,
           userId,
           integrationId,
           externalId: `sheets_${nanoid(10)}`,
           name: row.campanha,
-          platform: 'meta', // Real platform is Meta, not Google Sheets
+          platform: realPlatform, // Use dataSource to determine real platform
           status: 'active',
         }).returning({ id: campaigns.id });
         
         campaignMap.set(row.campanha, campaign.id);
-        console.log(`✅ Created campaign: ${row.campanha}`);
+        console.log(`✅ Created campaign: ${row.campanha} (platform: ${realPlatform})`);
       } catch (error) {
         console.log(`⚠️ Error creating campaign ${row.campanha}:`, error);
       }
