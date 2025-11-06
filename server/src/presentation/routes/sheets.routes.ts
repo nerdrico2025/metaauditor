@@ -1,4 +1,5 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
+import { authenticateToken } from '../middlewares/auth.middleware.js';
 import { SheetsSyncService } from '../../infrastructure/services/SheetsSyncService.js';
 import { db } from '../../infrastructure/database/connection.js';
 import { googleSheetsConfig, integrations } from '../../shared/schema.js';
@@ -8,20 +9,16 @@ const router = Router();
 const sheetsSyncService = new SheetsSyncService();
 
 // Sync data from Google Sheets
-router.post('/sync-single-tab-now', async (req: Request, res: Response) => {
+router.post('/sync-single-tab-now', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const user = (req as any).user;
-    
-    if (!user) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+    const userId = (req as any).user?.userId;
     
     // Get or create a default integration for Google Sheets
     let [integration] = await db.select().from(integrations).where(eq(integrations.platform, 'google_sheets')).limit(1);
     
     if (!integration) {
       const [newIntegration] = await db.insert(integrations).values({
-        userId: user.id,
+        userId,
         platform: 'google_sheets',
         status: 'active',
         accountId: 'default',
@@ -29,34 +26,28 @@ router.post('/sync-single-tab-now', async (req: Request, res: Response) => {
       integration = newIntegration;
     }
     
-    const result = await sheetsSyncService.syncSingleTab(user.id, integration.id);
+    const result = await sheetsSyncService.syncSingleTab(userId, integration.id);
     
     return res.status(200).json(result);
   } catch (error) {
-    console.error('Error syncing Google Sheets:', error);
-    return res.status(500).json({ error: 'Failed to sync Google Sheets data' });
+    next(error);
   }
 });
 
 // Get sync status
-router.get('/sync/status', async (req: Request, res: Response) => {
+router.get('/sync/status', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const syncStatus = await sheetsSyncService.getSyncStatus();
     return res.status(200).json({ data: { syncStatus } });
   } catch (error) {
-    console.error('Error getting sync status:', error);
-    return res.status(500).json({ error: 'Failed to get sync status' });
+    next(error);
   }
 });
 
 // Create Google Sheets configuration
-router.post('/sheets/config', async (req: Request, res: Response) => {
+router.post('/sheets/config', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const user = (req as any).user;
-    
-    if (!user) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+    const userId = (req as any).user?.userId;
     
     const { sheetId, tabGid, name } = req.body;
     
@@ -65,8 +56,8 @@ router.post('/sheets/config', async (req: Request, res: Response) => {
     }
     
     const [config] = await db.insert(googleSheetsConfig).values({
-      userId: user.id,
-      companyId: user.companyId || null,
+      userId,
+      companyId: null,
       sheetId,
       tabGid: tabGid || '0',
       name,
@@ -75,38 +66,26 @@ router.post('/sheets/config', async (req: Request, res: Response) => {
     
     return res.status(201).json(config);
   } catch (error) {
-    console.error('Error creating Google Sheets config:', error);
-    return res.status(500).json({ error: 'Failed to create configuration' });
+    next(error);
   }
 });
 
 // Get all Google Sheets configurations
-router.get('/sheets/config', async (req: Request, res: Response) => {
+router.get('/sheets/config', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const user = (req as any).user;
+    const userId = (req as any).user?.userId;
     
-    if (!user) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-    
-    const configs = await db.select().from(googleSheetsConfig).where(eq(googleSheetsConfig.userId, user.id));
+    const configs = await db.select().from(googleSheetsConfig).where(eq(googleSheetsConfig.userId, userId));
     
     return res.status(200).json(configs);
   } catch (error) {
-    console.error('Error getting Google Sheets configs:', error);
-    return res.status(500).json({ error: 'Failed to get configurations' });
+    next(error);
   }
 });
 
 // Update Google Sheets configuration
-router.put('/sheets/config/:id', async (req: Request, res: Response) => {
+router.put('/sheets/config/:id', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const user = (req as any).user;
-    
-    if (!user) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-    
     const { id } = req.params;
     const { sheetId, tabGid, name, status } = req.body;
     
@@ -127,28 +106,20 @@ router.put('/sheets/config/:id', async (req: Request, res: Response) => {
     
     return res.status(200).json(config);
   } catch (error) {
-    console.error('Error updating Google Sheets config:', error);
-    return res.status(500).json({ error: 'Failed to update configuration' });
+    next(error);
   }
 });
 
 // Delete Google Sheets configuration
-router.delete('/sheets/config/:id', async (req: Request, res: Response) => {
+router.delete('/sheets/config/:id', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const user = (req as any).user;
-    
-    if (!user) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-    
     const { id } = req.params;
     
     await db.delete(googleSheetsConfig).where(eq(googleSheetsConfig.id, id));
     
     return res.status(204).send();
   } catch (error) {
-    console.error('Error deleting Google Sheets config:', error);
-    return res.status(500).json({ error: 'Failed to delete configuration' });
+    next(error);
   }
 });
 
