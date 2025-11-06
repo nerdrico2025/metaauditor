@@ -385,6 +385,7 @@ export default function Campaigns() {
                           <TableRow>
                             <TableHead className="w-[50px]"></TableHead>
                             <TableHead>Nome da Campanha</TableHead>
+                            <TableHead>Conta</TableHead>
                             <TableHead>Plataforma</TableHead>
                             <TableHead>Origem</TableHead>
                             <TableHead>Status</TableHead>
@@ -400,12 +401,12 @@ export default function Campaigns() {
                                 <span className="text-2xl">{getPlatformIcon(campaign.platform)}</span>
                               </TableCell>
                               <TableCell>
-                                <div>
-                                  <div className="font-medium text-slate-900">{campaign.name}</div>
-                                  {campaign.account && (
-                                    <div className="text-sm text-slate-500">{campaign.account}</div>
-                                  )}
-                                </div>
+                                <div className="font-medium text-slate-900">{campaign.name}</div>
+                              </TableCell>
+                              <TableCell>
+                                <span className="text-sm text-slate-600">
+                                  {campaign.account || '-'}
+                                </span>
                               </TableCell>
                               <TableCell>
                                 <span className="text-sm text-slate-600">
