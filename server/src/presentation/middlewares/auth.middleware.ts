@@ -2,6 +2,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { UnauthorizedException } from '../../shared/errors/AppException.js';
+import { storage } from '../../shared/services/storage.service.js';
 
 export const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers['authorization'];
@@ -17,5 +18,25 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
     next();
   } catch (error) {
     throw new UnauthorizedException('Token inválido');
+  }
+};
+
+export const requireSuperAdmin = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = (req as any).user?.userId;
+    
+    if (!userId) {
+      throw new UnauthorizedException('Usuário não autenticado');
+    }
+
+    const user = await storage.getUserById(userId);
+    
+    if (!user || user.role !== 'super_admin') {
+      throw new UnauthorizedException('Acesso negado. Apenas super administradores têm permissão.');
+    }
+
+    next();
+  } catch (error) {
+    next(error);
   }
 };

@@ -50,6 +50,29 @@ export const userRoleEnum = pgEnum('user_role', ['super_admin', 'company_admin',
 // Company status enum
 export const companyStatusEnum = pgEnum('company_status', ['active', 'suspended', 'trial', 'cancelled']);
 
+// Subscription Plans table (Plan templates)
+export const subscriptionPlans = pgTable("subscription_plans", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 100 }).notNull().unique(),
+  slug: varchar("slug", { length: 100 }).notNull().unique(),
+  description: text("description"),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  billingCycle: varchar("billing_cycle").notNull().default('monthly'), // 'monthly', 'yearly'
+  isActive: boolean("is_active").default(true),
+  
+  // Limites do plano
+  maxUsers: integer("max_users").notNull(),
+  maxCampaigns: integer("max_campaigns").notNull(),
+  maxAuditsPerMonth: integer("max_audits_per_month").notNull(),
+  maxIntegrations: integer("max_integrations").default(2),
+  
+  // Features
+  features: jsonb("features"), // Array of features
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Companies table (Tenants)
 export const companies = pgTable("companies", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -512,6 +535,12 @@ export const insertPerformanceBenchmarksSchema = createInsertSchema(performanceB
   updatedAt: true,
 });
 
+export const insertSubscriptionPlanSchema = createInsertSchema(subscriptionPlans).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Company schemas
 export const createCompanySchema = z.object({
   name: z.string().min(1, "Nome da empresa é obrigatório"),
@@ -657,6 +686,8 @@ export type InsertContentCriteria = z.infer<typeof insertContentCriteriaSchema>;
 export type ContentCriteria = typeof contentCriteria.$inferSelect;
 export type InsertPerformanceBenchmarks = z.infer<typeof insertPerformanceBenchmarksSchema>;
 export type PerformanceBenchmarks = typeof performanceBenchmarks.$inferSelect;
+export type InsertSubscriptionPlan = z.infer<typeof insertSubscriptionPlanSchema>;
+export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
 export type SettingsDTO = z.infer<typeof settingsDTO>;
 export type BrandSettings = SettingsDTO['brand'];
 export type BrandPolicySettings = SettingsDTO['brandPolicies'];

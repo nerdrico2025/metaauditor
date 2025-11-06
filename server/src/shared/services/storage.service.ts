@@ -16,6 +16,7 @@ import {
   campaignMetrics,
   performanceBenchmarks,
   platformSettings,
+  subscriptionPlans,
   type Company,
   type InsertCompany,
   type User,
@@ -44,6 +45,8 @@ import {
   type PerformanceBenchmarks,
   type InsertPlatformSettings,
   type PlatformSettings,
+  type InsertSubscriptionPlan,
+  type SubscriptionPlan,
 } from "../schema.js";
 
 export interface IStorage {
@@ -132,6 +135,11 @@ export interface IStorage {
   getPlatformSettingsByPlatform(platform: string): Promise<PlatformSettings | undefined>;
   upsertPlatformSettings(data: Omit<InsertPlatformSettings, 'id' | 'createdAt' | 'updatedAt'>): Promise<PlatformSettings>;
   deletePlatformSettings(platform: string): Promise<boolean>;
+  getAllSubscriptionPlans(): Promise<(typeof subscriptionPlans.$inferSelect)[]>;
+  getSubscriptionPlanById(id: string): Promise<typeof subscriptionPlans.$inferSelect | undefined>;
+  createSubscriptionPlan(plan: InsertSubscriptionPlan): Promise<typeof subscriptionPlans.$inferSelect>;
+  updateSubscriptionPlan(id: string, data: Partial<InsertSubscriptionPlan>): Promise<typeof subscriptionPlans.$inferSelect | undefined>;
+  deleteSubscriptionPlan(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -701,6 +709,34 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(platformSettings)
       .where(eq(platformSettings.platform, platform));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async getAllSubscriptionPlans(): Promise<(typeof subscriptionPlans.$inferSelect)[]> {
+    return await db.select().from(subscriptionPlans);
+  }
+
+  async getSubscriptionPlanById(id: string): Promise<typeof subscriptionPlans.$inferSelect | undefined> {
+    const [plan] = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.id, id));
+    return plan;
+  }
+
+  async createSubscriptionPlan(plan: InsertSubscriptionPlan): Promise<typeof subscriptionPlans.$inferSelect> {
+    const [newPlan] = await db.insert(subscriptionPlans).values(plan).returning();
+    return newPlan;
+  }
+
+  async updateSubscriptionPlan(id: string, data: Partial<InsertSubscriptionPlan>): Promise<typeof subscriptionPlans.$inferSelect | undefined> {
+    const [updated] = await db
+      .update(subscriptionPlans)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(subscriptionPlans.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteSubscriptionPlan(id: string): Promise<boolean> {
+    const result = await db.delete(subscriptionPlans).where(eq(subscriptionPlans.id, id));
     return (result.rowCount ?? 0) > 0;
   }
 }
