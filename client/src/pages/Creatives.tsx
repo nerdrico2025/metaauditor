@@ -220,7 +220,7 @@ export default function Creatives() {
     return syncs[0] || null;
   };
 
-  const filteredCreatives = creatives.filter((creative) => {
+  const filteredCreatives = (creatives || []).filter((creative) => {
     const matchesSearch = creative.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          creative.externalId?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "all" || creative.status.toLowerCase() === statusFilter;
