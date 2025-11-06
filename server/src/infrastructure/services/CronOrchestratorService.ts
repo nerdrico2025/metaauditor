@@ -15,22 +15,12 @@ export class CronOrchestratorService {
 
   /**
    * Configura os jobs do cron (sem iniciar).
+   * NOTA: Sincronização do Google Sheets é manual via interface, não automática
    */
   public setupCronJobs(): void {
-    // Exemplo: Agendar sincronização de planilhas a cada hora (sem iniciar)
-    const sheetsSyncJob = cron.schedule('0 * * * *', async () => {
-      console.log('Iniciando sincronização de planilhas...');
-      try {
-        await this.sheetsSyncService.sync();
-        console.log('Sincronização de planilhas concluída com sucesso.');
-      } catch (error) {
-        console.error('Erro ao sincronizar planilhas:', error);
-      }
-    }, {
-      scheduled: false
-    });
-    this.cronJobs.push(sheetsSyncJob);
-    console.log('Job de sincronização de planilhas configurado.');
+    // Google Sheets sync é manual - usuário configura via interface
+    // Não há jobs automáticos configurados
+    console.log('Cron jobs configurados (sincronização Google Sheets é manual).');
   }
 
   /**

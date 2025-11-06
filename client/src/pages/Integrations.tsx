@@ -13,10 +13,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, Plus, RefreshCw, Facebook, ExternalLink } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { Trash2, Plus, RefreshCw, Facebook, ExternalLink, FileSpreadsheet, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
 import { SiGoogle } from 'react-icons/si';
 
 const createIntegrationSchema = z.object({
@@ -37,14 +38,26 @@ interface Integration {
   createdAt: Date;
 }
 
+interface SyncStatus {
+  recordCount: number;
+  lastSyncBatch?: string;
+  latestRecord?: string;
+}
+
 export default function Integrations() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [createIntegrationDialogOpen, setCreateIntegrationDialogOpen] = useState(false);
 
   // Fetch integrations
-  const { data: integrations = [] } = useQuery<Integration[]>({
+  const { data: integrations = [], isLoading: integrationsLoading } = useQuery<Integration[]>({
     queryKey: ['/api/integrations'],
+    enabled: !!user,
+  });
+
+  // Fetch Google Sheets sync status
+  const { data: sheetsSyncStatus, isLoading: sheetsLoading } = useQuery<{ data: { syncStatus: SyncStatus } }>({
+    queryKey: ['/api/sync/status'],
     enabled: !!user,
   });
 
@@ -109,7 +122,26 @@ export default function Integrations() {
     },
   });
 
-  const formatDate = (date: Date | null) => {
+  const syncSheetsMutation = useMutation({
+    mutationFn: () => apiRequest('/api/sync-single-tab-now', { method: 'POST' }),
+    onSuccess: (data: any) => {
+      toast({
+        title: 'Sincronização concluída!',
+        description: `${data.totalInserted} registros importados com sucesso.`
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/sync/status'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/campaigns'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Erro na sincronização',
+        description: error.message,
+        variant: 'destructive'
+      });
+    },
+  });
+
+  const formatDate = (date: Date | null | string | undefined) => {
     if (!date) return 'Nunca';
     return new Date(date).toLocaleDateString('pt-BR', {
       day: '2-digit',
@@ -120,6 +152,13 @@ export default function Integrations() {
     });
   };
 
+  const getStatusIcon = (status: string) => {
+    if (status === 'active') {
+      return <CheckCircle2 className="w-4 h-4 text-green-600" />;
+    }
+    return <AlertCircle className="w-4 h-4 text-gray-400" />;
+  };
+
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />
@@ -127,180 +166,281 @@ export default function Integrations() {
       <div className="flex flex-col flex-1 overflow-hidden">
         <Header title="Integrações" />
         
-        <main className="flex-1 overflow-y-auto">
-          <div className="py-6">
+        <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900">
+          <div className="py-8">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="mb-6 flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-                      <ExternalLink className="h-6 w-6 text-primary-foreground" />
-                    </div>
-                    <div>
-                      <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Integrações de Plataformas</h1>
-                      <p className="text-gray-600 dark:text-gray-300">Configure integrações com Meta Ads e Google Ads para sincronizar campanhas e criativos</p>
-                    </div>
+              {/* Header */}
+              <div className="mb-8">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center shadow-sm">
+                    <ExternalLink className="h-6 w-6 text-primary-foreground" />
+                  </div>
+                  <div>
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Integrações</h1>
+                    <p className="text-gray-600 dark:text-gray-400 mt-1">Configure conexões com plataformas de anúncios e importação de dados</p>
                   </div>
                 </div>
               </div>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <div>
-                    <CardTitle>Minhas Integrações</CardTitle>
-                    <CardDescription>
-                      Gerencie suas conexões com plataformas de anúncios
-                    </CardDescription>
-                  </div>
-                  <Dialog open={createIntegrationDialogOpen} onOpenChange={setCreateIntegrationDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button data-testid="button-create-integration">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Nova Integração
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Criar Nova Integração</DialogTitle>
-                        <DialogDescription>
-                          Configure uma nova integração com Meta Ads ou Google Ads
-                        </DialogDescription>
-                      </DialogHeader>
-                      <form onSubmit={createIntegrationForm.handleSubmit((data) => createIntegrationMutation.mutate(data))}>
-                        <div className="space-y-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="platform">Plataforma</Label>
-                            <Select onValueChange={(value) => createIntegrationForm.setValue('platform', value as 'meta' | 'google')}>
-                              <SelectTrigger data-testid="select-platform">
-                                <SelectValue placeholder="Selecione a plataforma" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="meta">
-                                  <div className="flex items-center gap-2">
-                                    <Facebook className="w-4 h-4" />
-                                    Meta Ads (Facebook/Instagram)
-                                  </div>
-                                </SelectItem>
-                                <SelectItem value="google">
-                                  <div className="flex items-center gap-2">
-                                    <SiGoogle className="w-4 h-4" />
-                                    Google Ads
-                                  </div>
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
-                            {createIntegrationForm.formState.errors.platform && (
-                              <p className="text-sm text-red-600 dark:text-red-400">
-                                {createIntegrationForm.formState.errors.platform.message}
-                              </p>
-                            )}
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label htmlFor="accessToken">Access Token</Label>
-                            <Input
-                              id="accessToken"
-                              type="password"
-                              placeholder="Cole seu access token aqui"
-                              data-testid="input-access-token"
-                              {...createIntegrationForm.register('accessToken')}
-                            />
-                            {createIntegrationForm.formState.errors.accessToken && (
-                              <p className="text-sm text-red-600 dark:text-red-400">
-                                {createIntegrationForm.formState.errors.accessToken.message}
-                              </p>
-                            )}
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label htmlFor="refreshToken">Refresh Token (opcional)</Label>
-                            <Input
-                              id="refreshToken"
-                              type="password"
-                              placeholder="Cole seu refresh token aqui"
-                              data-testid="input-refresh-token"
-                              {...createIntegrationForm.register('refreshToken')}
-                            />
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label htmlFor="accountId">Account ID</Label>
-                            <Input
-                              id="accountId"
-                              placeholder="Ex: act_123456789 (Meta) ou 123-456-7890 (Google)"
-                              data-testid="input-account-id"
-                              {...createIntegrationForm.register('accountId')}
-                            />
-                            {createIntegrationForm.formState.errors.accountId && (
-                              <p className="text-sm text-red-600 dark:text-red-400">
-                                {createIntegrationForm.formState.errors.accountId.message}
-                              </p>
-                            )}
-                          </div>
-
-                          <Alert>
-                            <AlertDescription>
-                              <strong>Como obter suas credenciais:</strong>
-                              <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
-                                <li><strong>Meta Ads:</strong> Acesse Meta Business Manager → Configurações → Integrações → Access Token</li>
-                                <li><strong>Google Ads:</strong> Use OAuth 2.0 via Google Cloud Console</li>
-                              </ul>
-                            </AlertDescription>
-                          </Alert>
-                        </div>
-                        <DialogFooter className="mt-6">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => setCreateIntegrationDialogOpen(false)}
-                          >
-                            Cancelar
-                          </Button>
-                          <Button
-                            type="submit"
-                            disabled={createIntegrationMutation.isPending}
-                            data-testid="button-submit-create-integration"
-                          >
-                            {createIntegrationMutation.isPending ? 'Criando...' : 'Criar Integração'}
-                          </Button>
-                        </DialogFooter>
-                      </form>
-                    </DialogContent>
-                  </Dialog>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {integrations.length === 0 ? (
-                      <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                        Nenhuma integração configurada. Adicione uma nova integração para começar a sincronizar dados.
+              {/* Google Sheets Integration */}
+              <Card className="mb-6 border-2 shadow-sm">
+                <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950 border-b">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center">
+                        <FileSpreadsheet className="w-6 h-6 text-white" />
                       </div>
-                    ) : (
-                      integrations.map((integration) => (
+                      <div>
+                        <CardTitle className="text-xl">Google Sheets</CardTitle>
+                        <CardDescription className="mt-1">
+                          Importe dados de campanhas diretamente de planilhas Google
+                        </CardDescription>
+                      </div>
+                    </div>
+                    <Badge variant={sheetsSyncStatus?.data?.syncStatus?.recordCount ? 'default' : 'secondary'} className="text-sm px-3 py-1">
+                      {sheetsSyncStatus?.data?.syncStatus?.recordCount ? (
+                        <><CheckCircle2 className="w-4 h-4 mr-1" /> Configurado</>
+                      ) : (
+                        <><Clock className="w-4 h-4 mr-1" /> Aguardando dados</>
+                      )}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Total de Registros</div>
+                      <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                        {sheetsSyncStatus?.data?.syncStatus?.recordCount?.toLocaleString('pt-BR') || '0'}
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Último Lote</div>
+                      <div className="text-sm font-mono text-gray-900 dark:text-white truncate">
+                        {sheetsSyncStatus?.data?.syncStatus?.lastSyncBatch || 'N/A'}
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Última Sincronização</div>
+                      <div className="text-sm text-gray-900 dark:text-white">
+                        {formatDate(sheetsSyncStatus?.data?.syncStatus?.latestRecord)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <Alert className="mb-4">
+                    <ExternalLink className="h-4 w-4" />
+                    <AlertTitle>Planilha Configurada</AlertTitle>
+                    <AlertDescription className="mt-2">
+                      <a 
+                        href="https://docs.google.com/spreadsheets/d/1mOPjhRhBUP60GzZm0NAuUSYGzlE1bDbi414iYtlwZkA/edit?usp=sharing"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline font-medium inline-flex items-center gap-1"
+                      >
+                        Ver planilha no Google Sheets
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </AlertDescription>
+                  </Alert>
+
+                  <Button
+                    onClick={() => syncSheetsMutation.mutate()}
+                    disabled={syncSheetsMutation.isPending}
+                    className="w-full"
+                    size="lg"
+                    data-testid="button-sync-sheets"
+                  >
+                    <RefreshCw className={`w-5 h-5 mr-2 ${syncSheetsMutation.isPending ? 'animate-spin' : ''}`} />
+                    {syncSheetsMutation.isPending ? 'Sincronizando...' : 'Sincronizar Dados Agora'}
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Separator className="my-8" />
+
+              {/* Platform Integrations */}
+              <Card className="border-2 shadow-sm">
+                <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 border-b">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-xl">Integrações de Plataformas</CardTitle>
+                      <CardDescription className="mt-1">
+                        Conecte-se diretamente com Meta Ads e Google Ads para sincronizar campanhas e criativos
+                      </CardDescription>
+                    </div>
+                    <Dialog open={createIntegrationDialogOpen} onOpenChange={setCreateIntegrationDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button data-testid="button-create-integration" size="sm">
+                          <Plus className="w-4 h-4 mr-2" />
+                          Nova Integração
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-[500px]">
+                        <DialogHeader>
+                          <DialogTitle>Criar Nova Integração</DialogTitle>
+                          <DialogDescription>
+                            Configure uma nova integração com Meta Ads ou Google Ads
+                          </DialogDescription>
+                        </DialogHeader>
+                        <form onSubmit={createIntegrationForm.handleSubmit((data) => createIntegrationMutation.mutate(data))}>
+                          <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="platform">Plataforma</Label>
+                              <Select onValueChange={(value) => createIntegrationForm.setValue('platform', value as 'meta' | 'google')}>
+                                <SelectTrigger data-testid="select-platform">
+                                  <SelectValue placeholder="Selecione a plataforma" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="meta">
+                                    <div className="flex items-center gap-2">
+                                      <Facebook className="w-4 h-4" />
+                                      Meta Ads (Facebook/Instagram)
+                                    </div>
+                                  </SelectItem>
+                                  <SelectItem value="google">
+                                    <div className="flex items-center gap-2">
+                                      <SiGoogle className="w-4 h-4" />
+                                      Google Ads
+                                    </div>
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                              {createIntegrationForm.formState.errors.platform && (
+                                <p className="text-sm text-red-600 dark:text-red-400">
+                                  {createIntegrationForm.formState.errors.platform.message}
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor="accessToken">Access Token</Label>
+                              <Input
+                                id="accessToken"
+                                type="password"
+                                placeholder="Cole seu access token aqui"
+                                data-testid="input-access-token"
+                                {...createIntegrationForm.register('accessToken')}
+                              />
+                              {createIntegrationForm.formState.errors.accessToken && (
+                                <p className="text-sm text-red-600 dark:text-red-400">
+                                  {createIntegrationForm.formState.errors.accessToken.message}
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor="refreshToken">Refresh Token (opcional)</Label>
+                              <Input
+                                id="refreshToken"
+                                type="password"
+                                placeholder="Cole seu refresh token aqui"
+                                data-testid="input-refresh-token"
+                                {...createIntegrationForm.register('refreshToken')}
+                              />
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor="accountId">Account ID</Label>
+                              <Input
+                                id="accountId"
+                                placeholder="Ex: act_123456789 (Meta) ou 123-456-7890 (Google)"
+                                data-testid="input-account-id"
+                                {...createIntegrationForm.register('accountId')}
+                              />
+                              {createIntegrationForm.formState.errors.accountId && (
+                                <p className="text-sm text-red-600 dark:text-red-400">
+                                  {createIntegrationForm.formState.errors.accountId.message}
+                                </p>
+                              )}
+                            </div>
+
+                            <Alert>
+                              <AlertCircle className="h-4 w-4" />
+                              <AlertTitle>Como obter suas credenciais</AlertTitle>
+                              <AlertDescription className="text-xs mt-2">
+                                <ul className="list-disc list-inside space-y-1">
+                                  <li><strong>Meta Ads:</strong> Business Manager → Configurações → Access Token</li>
+                                  <li><strong>Google Ads:</strong> Google Cloud Console → OAuth 2.0</li>
+                                </ul>
+                              </AlertDescription>
+                            </Alert>
+                          </div>
+                          <DialogFooter>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => setCreateIntegrationDialogOpen(false)}
+                            >
+                              Cancelar
+                            </Button>
+                            <Button
+                              type="submit"
+                              disabled={createIntegrationMutation.isPending}
+                              data-testid="button-submit-create-integration"
+                            >
+                              {createIntegrationMutation.isPending ? 'Criando...' : 'Criar Integração'}
+                            </Button>
+                          </DialogFooter>
+                        </form>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  {integrationsLoading ? (
+                    <div className="text-center py-8 text-gray-500">Carregando integrações...</div>
+                  ) : integrations.length === 0 ? (
+                    <div className="text-center py-12">
+                      <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <ExternalLink className="w-8 h-8 text-gray-400" />
+                      </div>
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                        Nenhuma integração configurada
+                      </h3>
+                      <p className="text-gray-500 dark:text-gray-400 mb-4">
+                        Adicione uma nova integração para começar a sincronizar dados de campanhas
+                      </p>
+                      <Button onClick={() => setCreateIntegrationDialogOpen(true)} variant="outline">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Adicionar Primeira Integração
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {integrations.map((integration) => (
                         <div
                           key={integration.id}
-                          className="flex items-center justify-between p-4 border rounded-lg"
+                          className="flex items-center justify-between p-5 border-2 rounded-lg hover:border-primary/50 transition-colors bg-white dark:bg-gray-800"
                           data-testid={`integration-item-${integration.id}`}
                         >
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-4 flex-1">
+                            <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+                              integration.platform === 'meta' ? 'bg-blue-100 dark:bg-blue-900' : 'bg-red-100 dark:bg-red-900'
+                            }`}>
                               {integration.platform === 'meta' ? (
-                                <Facebook className="w-5 h-5 text-blue-600" />
+                                <Facebook className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                               ) : (
-                                <SiGoogle className="w-5 h-5 text-red-600" />
+                                <SiGoogle className="w-6 h-6 text-red-600 dark:text-red-400" />
                               )}
-                              <p className="font-medium">
-                                {integration.platform === 'meta' ? 'Meta Ads' : 'Google Ads'}
-                              </p>
-                              <Badge variant={integration.status === 'active' ? 'default' : 'secondary'}>
-                                {integration.status === 'active' ? 'Ativa' : 'Inativa'}
-                              </Badge>
                             </div>
-                            <p className="text-sm text-gray-600 dark:text-gray-300">
-                              Account ID: {integration.accountId}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              Última sincronização: {formatDate(integration.lastSync)}
-                            </p>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h3 className="font-semibold text-gray-900 dark:text-white">
+                                  {integration.platform === 'meta' ? 'Meta Ads' : 'Google Ads'}
+                                </h3>
+                                {getStatusIcon(integration.status)}
+                                <Badge variant={integration.status === 'active' ? 'default' : 'secondary'} className="text-xs">
+                                  {integration.status === 'active' ? 'Ativa' : 'Inativa'}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                Account ID: <span className="font-mono">{integration.accountId}</span>
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                                Última sincronização: {formatDate(integration.lastSync)}
+                              </p>
+                            </div>
                           </div>
                           <div className="flex items-center gap-2">
                             <Button
@@ -310,7 +450,8 @@ export default function Integrations() {
                               disabled={syncIntegrationMutation.isPending}
                               data-testid={`button-sync-integration-${integration.id}`}
                             >
-                              <RefreshCw className={`w-4 h-4 ${syncIntegrationMutation.isPending ? 'animate-spin' : ''}`} />
+                              <RefreshCw className={`w-4 h-4 mr-2 ${syncIntegrationMutation.isPending ? 'animate-spin' : ''}`} />
+                              Sincronizar
                             </Button>
                             <Button
                               variant="destructive"
@@ -327,9 +468,9 @@ export default function Integrations() {
                             </Button>
                           </div>
                         </div>
-                      ))
-                    )}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
