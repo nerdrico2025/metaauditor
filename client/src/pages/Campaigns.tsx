@@ -79,6 +79,12 @@ export default function Campaigns() {
     enabled: isAuthenticated,
   });
 
+  // Fetch integrations to show last sync time
+  const { data: integrations = [] } = useQuery<any[]>({
+    queryKey: ['/api/integrations'],
+    enabled: isAuthenticated,
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async (campaignId: string) => {
       const response = await fetch(`/api/campaigns/${campaignId}`, {
@@ -100,6 +106,39 @@ export default function Campaigns() {
       toast({
         title: "Erro",
         description: "Não foi possível excluir a campanha",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutation to sync all integrations
+  const syncAllMutation = useMutation({
+    mutationFn: async () => {
+      const results = await Promise.allSettled(
+        integrations.map((integration) =>
+          fetch(`/api/integrations/${integration.id}/sync`, {
+            method: 'POST',
+            credentials: 'include',
+          }).then(res => res.json())
+        )
+      );
+      return results;
+    },
+    onSuccess: (results) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/creatives'] });
+      
+      const successCount = results.filter(r => r.status === 'fulfilled').length;
+      toast({
+        title: "Sincronização concluída!",
+        description: `${successCount} integração(ões) sincronizada(s) com sucesso.`,
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Não foi possível sincronizar as integrações",
         variant: "destructive",
       });
     },
@@ -162,6 +201,59 @@ export default function Campaigns() {
     }
   };
 
+  const getCampaignOrigin = (campaign: Campaign) => {
+    // Check if campaign integration is google_sheets
+    const integration = integrations.find(i => i.id === campaign.integrationId);
+    if (integration?.platform === 'google_sheets') {
+      return {
+        name: 'Planilha Google',
+        icon: '📊',
+        variant: 'outline' as const
+      };
+    }
+    
+    // Otherwise it's direct API integration
+    if (campaign.platform === 'meta') {
+      return {
+        name: 'API Meta Ads',
+        icon: '📘',
+        variant: 'default' as const
+      };
+    } else if (campaign.platform === 'google') {
+      return {
+        name: 'API Google Ads',
+        icon: '🔍',
+        variant: 'secondary' as const
+      };
+    }
+    
+    return {
+      name: 'Desconhecida',
+      icon: '❓',
+      variant: 'outline' as const
+    };
+  };
+
+  const formatDate = (date: Date | null | string | undefined) => {
+    if (!date) return 'Nunca';
+    return new Date(date).toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const getMostRecentSync = () => {
+    if (!integrations.length) return null;
+    const syncs = integrations
+      .map(i => i.lastSync)
+      .filter(Boolean)
+      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+    return syncs[0] || null;
+  };
+
   // Filter campaigns
   const filteredCampaigns = campaigns?.filter((campaign) => {
     const matchesSearch = campaign.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -182,16 +274,27 @@ export default function Campaigns() {
         <main className="flex-1 overflow-y-auto">
           <div className="py-6">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              {/* Header com botão de criar */}
+              {/* Header com botão de sincronizar */}
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-slate-900">Campanhas</h2>
-                <Button
-                  onClick={() => setIsCreatingCampaign(true)}
-                  className="bg-primary hover:bg-primary/90"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Nova Campanha
-                </Button>
+                <div>
+                  <h2 className="text-2xl font-bold text-slate-900">Campanhas</h2>
+                  {getMostRecentSync() && (
+                    <p className="text-sm text-slate-600 mt-1">
+                      Última sincronização: {formatDate(getMostRecentSync())}
+                    </p>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => syncAllMutation.mutate()}
+                    disabled={syncAllMutation.isPending || !integrations.length}
+                    className="bg-primary hover:bg-primary/90"
+                    data-testid="button-sync-all-campaigns"
+                  >
+                    <RefreshCw className={`h-4 w-4 mr-2 ${syncAllMutation.isPending ? 'animate-spin' : ''}`} />
+                    {syncAllMutation.isPending ? 'Sincronizando...' : 'Sincronizar Todas'}
+                  </Button>
+                </div>
               </div>
 
               {/* Filters */}
@@ -283,6 +386,7 @@ export default function Campaigns() {
                             <TableHead className="w-[50px]"></TableHead>
                             <TableHead>Nome da Campanha</TableHead>
                             <TableHead>Plataforma</TableHead>
+                            <TableHead>Origem</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead>Orçamento</TableHead>
                             <TableHead>Criada em</TableHead>
@@ -305,6 +409,17 @@ export default function Campaigns() {
                                 <span className="text-sm text-slate-600">
                                   {getPlatformName(campaign.platform)}
                                 </span>
+                              </TableCell>
+                              <TableCell>
+                                {(() => {
+                                  const origin = getCampaignOrigin(campaign);
+                                  return (
+                                    <Badge variant={origin.variant} className="flex items-center gap-1 w-fit">
+                                      <span>{origin.icon}</span>
+                                      <span>{origin.name}</span>
+                                    </Badge>
+                                  );
+                                })()}
                               </TableCell>
                               <TableCell>
                                 <Badge variant={getStatusBadgeVariant(campaign.status)}>
