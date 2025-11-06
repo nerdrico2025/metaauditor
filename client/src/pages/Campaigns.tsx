@@ -36,7 +36,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BellRing, Calendar, DollarSign, BarChart3, Search, Eye, Edit, Trash2, Filter, Plus } from "lucide-react";
+import { BellRing, Calendar, DollarSign, BarChart3, Search, Eye, Edit, Trash2, Filter, Plus, RefreshCw } from "lucide-react";
 import type { Campaign } from "@shared/schema";
 
 // Lazy load modals to reduce chunk size
