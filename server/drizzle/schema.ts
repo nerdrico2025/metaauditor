@@ -93,7 +93,7 @@ export const users = pgTable("users", {
 export const integrations = pgTable("integrations", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
-  platform: varchar("platform").notNull(),
+  platform: varchar("platform").notNull(), // 'meta', 'google', 'google_sheets'
   accessToken: text("access_token"),
   refreshToken: text("refresh_token"),
   accountId: varchar("account_id"),
@@ -101,6 +101,7 @@ export const integrations = pgTable("integrations", {
   lastSync: timestamp("last_sync"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  dataSource: varchar("data_source"), // For google_sheets: 'meta' or 'google' to indicate real platform
 });
 
 // Campaigns
