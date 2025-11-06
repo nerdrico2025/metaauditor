@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
-import { Search, BarChart3, BellRing, Image, FileText, Settings, History, LogOut, ExternalLink, ChevronDown, ChevronRight, Building2, Shield } from "lucide-react";
+import { Search, BarChart3, BellRing, Target, Image, FileText, Settings, History, LogOut, ExternalLink, ChevronDown, ChevronRight, Building2, Shield } from "lucide-react";
 import { useTranslation } from 'react-i18next';
 
 interface NavigationItem {
@@ -15,6 +15,7 @@ interface NavigationItem {
 const navigation: NavigationItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: BarChart3 },
   { name: 'Campanhas', href: '/campaigns', icon: BellRing },
+  { name: 'Ad Sets', href: '/adsets', icon: Target },
   { name: 'Criativos', href: '/creatives', icon: Image },
   { name: 'Relatórios', href: '/reports', icon: FileText },
   { name: 'Histórico', href: '/history', icon: History },

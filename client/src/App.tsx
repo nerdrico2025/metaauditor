@@ -12,6 +12,7 @@ import ContentCriteria from "@/pages/ContentCriteria";
 import SuperAdmin from "@/pages/SuperAdmin";
 import Dashboard from "@/pages/Dashboard";
 import Campaigns from "@/pages/Campaigns";
+import AdSets from "@/pages/AdSets";
 import Creatives from "@/pages/Creatives";
 import Reports from "@/pages/Reports";
 import Policies from "@/pages/Policies";
@@ -42,6 +43,11 @@ function Router() {
       <Route path="/campaigns">
         <ProtectedRoute>
           <Campaigns />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/adsets">
+        <ProtectedRoute>
+          <AdSets />
         </ProtectedRoute>
       </Route>
       <Route path="/creatives">

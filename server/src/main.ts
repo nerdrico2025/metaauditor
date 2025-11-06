@@ -10,6 +10,7 @@ import { storage } from "./shared/services/storage.service.js";
 import authRoutes from "./presentation/routes/auth.routes.js";
 import userRoutes from "./presentation/routes/user.routes.js";
 import campaignRoutes from "./presentation/routes/campaign.routes.js";
+import adSetRoutes from "./presentation/routes/adset.routes.js";
 import creativeRoutes from "./presentation/routes/creative.routes.js";
 import policyRoutes from "./presentation/routes/policy.routes.js";
 import integrationRoutes from "./presentation/routes/integration.routes.js";
@@ -77,6 +78,7 @@ export async function startServer() {
   app.use('/api/auth', authRoutes);
   app.use('/api/users', userRoutes);
   app.use('/api/campaigns', campaignRoutes);
+  app.use('/api/adsets', adSetRoutes);
   app.use('/api/creatives', creativeRoutes);
   app.use('/api/policies', policyRoutes);
   app.use('/api/integrations', integrationRoutes);
