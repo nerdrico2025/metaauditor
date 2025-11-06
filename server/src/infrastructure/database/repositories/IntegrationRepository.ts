@@ -1,9 +1,9 @@
 
 import { eq } from 'drizzle-orm';
 import { db } from '../connection';
-import { integrations } from '../../../shared/schema';
+import { integrations } from '../schema';
 import type { Integration as IntegrationEntity } from '../../../domain/entities/Integration';
-import type { InsertIntegration, Integration } from '../../../../../shared/schema';
+import type { InsertIntegration, Integration } from '../schema';
 
 export interface IIntegrationRepository {
   findById(id: string): Promise<IntegrationEntity | null>;

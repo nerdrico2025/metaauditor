@@ -1,9 +1,9 @@
 
 import { eq, desc } from 'drizzle-orm';
 import { db } from '../connection';
-import { audits } from '../../../shared/schema';
+import { audits } from '../schema';
 import type { Audit as AuditEntity } from '../../../domain/entities/Audit';
-import type { InsertAudit, Audit } from '../../../../../shared/schema';
+import type { InsertAudit, Audit } from '../schema';
 
 export interface IAuditRepository {
   findById(id: string): Promise<AuditEntity | null>;

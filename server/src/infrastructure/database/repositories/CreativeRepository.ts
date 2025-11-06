@@ -1,9 +1,9 @@
 
 import { eq } from 'drizzle-orm';
 import { db } from '../connection';
-import { creatives } from '../../../shared/schema';
+import { creatives } from '../schema';
 import type { Creative as CreativeEntity } from '../../../domain/entities/Creative';
-import type { InsertCreative, Creative } from '../../../../../shared/schema';
+import type { InsertCreative, Creative } from '../schema';
 
 export interface ICreativeRepository {
   findById(id: string): Promise<CreativeEntity | null>;

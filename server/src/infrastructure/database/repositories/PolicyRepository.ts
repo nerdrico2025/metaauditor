@@ -1,9 +1,9 @@
 
 import { eq } from 'drizzle-orm';
 import { db } from '../connection';
-import { policies } from '../../../shared/schema';
+import { policies } from '../schema';
 import type { Policy as PolicyEntity } from '../../../domain/entities/Policy';
-import type { InsertPolicy, Policy } from '../../../../../shared/schema';
+import type { InsertPolicy, Policy } from '../schema';
 
 export interface IPolicyRepository {
   findById(id: string): Promise<PolicyEntity | null>;
