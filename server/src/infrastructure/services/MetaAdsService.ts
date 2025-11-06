@@ -1,6 +1,7 @@
 
 import type { Integration, InsertCampaign, InsertCreative } from '../../shared/schema.js';
 import { nanoid } from 'nanoid';
+import { imageStorageService } from './ImageStorageService.js';
 
 interface MetaAdAccount {
   id: string;
@@ -134,10 +135,17 @@ export class MetaAdsService {
       const data = await response.json();
       const ads: MetaAd[] = data.data || [];
 
-      // Get insights for each ad
+      // Get insights for each ad and download images
       const creativesWithMetrics = await Promise.all(
         ads.map(async (ad) => {
           const insights = await this.getAdInsights(integration.accessToken!, ad.id);
+          
+          // Download and store image permanently if it exists
+          let permanentImageUrl: string | null = null;
+          if (ad.creative.image_url) {
+            console.log(`🖼️  Downloading image for Meta ad ${ad.id}...`);
+            permanentImageUrl = await imageStorageService.downloadAndSaveImage(ad.creative.image_url);
+          }
           
           return {
             id: nanoid(),
@@ -146,7 +154,7 @@ export class MetaAdsService {
             externalId: ad.id,
             name: ad.name,
             type: ad.creative.video_url ? 'video' : 'image',
-            imageUrl: ad.creative.image_url || null,
+            imageUrl: permanentImageUrl || ad.creative.image_url || null,
             videoUrl: ad.creative.video_url || null,
             text: ad.creative.body || null,
             headline: ad.creative.title || null,

@@ -4,6 +4,7 @@ import Papa from 'papaparse';
 import { campaignMetrics, campaigns, creatives, users, InsertCampaignMetrics } from '../../shared/schema.js';
 import { db } from '../database/connection.js';
 import { nanoid } from 'nanoid';
+import { imageStorageService } from './ImageStorageService.js';
 
 interface RawMetricsData {
   'data': string;
@@ -361,13 +362,20 @@ export class SheetsSyncService {
       if (!campaignId || !row.anuncios) continue;
       
       try {
+        // Download and store image permanently if URL exists
+        let permanentImageUrl: string | null = null;
+        if (row.ad_url) {
+          console.log(`🖼️  Downloading image for creative ${row.anuncios}...`);
+          permanentImageUrl = await imageStorageService.downloadAndSaveImage(row.ad_url);
+        }
+        
         await db.insert(creatives).values({
           userId,
           campaignId,
           externalId: `sheets_${nanoid(10)}`,
           name: row.anuncios,
           type: 'image',
-          imageUrl: row.ad_url || null,
+          imageUrl: permanentImageUrl || row.ad_url || null,
           status: 'imported_sheets',
           impressions: this.parseInteger(row.impressoes),
           clicks: this.parseInteger(row.cliques),

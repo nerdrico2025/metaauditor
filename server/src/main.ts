@@ -17,6 +17,7 @@ import dashboardRoutes from "./presentation/routes/dashboard.routes.js";
 import auditRoutes from "./presentation/routes/audit.routes.js";
 import companyRoutes from "./presentation/routes/company.routes.js";
 import sheetsRoutes from "./presentation/routes/sheets.routes.js";
+import imageMigrationRoutes from "./presentation/routes/image-migration.routes.js";
 
 export async function startServer() {
   const app = express();
@@ -34,6 +35,9 @@ export async function startServer() {
 
   app.use(express.json());
   app.use(express.urlencoded({ extended: false }));
+  
+  // Serve uploaded images
+  app.use('/uploads', express.static('server/public/uploads'));
 
   // Request logging middleware
   app.use((req, res, next) => {
@@ -80,6 +84,7 @@ export async function startServer() {
   app.use('/api/audits', auditRoutes);
   app.use('/api/company', companyRoutes);
   app.use('/api', sheetsRoutes);
+  app.use('/api/admin', imageMigrationRoutes);
 
   // Health check endpoints
   app.get('/healthz', (req, res) => {

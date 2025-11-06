@@ -1,6 +1,7 @@
 
 import type { Integration, InsertCampaign, InsertCreative } from '../../shared/schema.js';
 import { nanoid } from 'nanoid';
+import { imageStorageService } from './ImageStorageService.js';
 
 interface GoogleAdsCampaign {
   id: string;
@@ -186,7 +187,8 @@ export class GoogleAdsService {
       const data = await response.json();
       const ads = data.results || [];
 
-      return ads.map((result: any) => {
+      // Process ads and download images
+      return await Promise.all(ads.map(async (result: any) => {
         const ad = result.adGroupAd.ad;
         const metrics = result.metrics || {};
 
@@ -204,6 +206,13 @@ export class GoogleAdsService {
         } else if (ad.imageAd) {
           type = 'image';
           imageUrl = ad.imageAd.imageUrl || null;
+          
+          // Download and store image permanently if it exists
+          if (imageUrl) {
+            console.log(`🖼️  Downloading image for Google ad ${ad.id}...`);
+            const permanentUrl = await imageStorageService.downloadAndSaveImage(imageUrl);
+            imageUrl = permanentUrl || imageUrl;
+          }
         } else if (ad.videoAd) {
           type = 'video';
           videoUrl = `https://www.youtube.com/watch?v=${ad.videoAd.video.youtubeVideoId}`;
@@ -231,7 +240,7 @@ export class GoogleAdsService {
           createdAt: new Date(),
           updatedAt: new Date(),
         };
-      });
+      }));
     } catch (error) {
       console.error('Error syncing Google Ads creatives:', error);
       throw error;
