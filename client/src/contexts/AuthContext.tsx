@@ -39,7 +39,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const loadUser = async () => {
       if (token) {
         try {
-          const userData = await apiRequest('/api/auth/user');
+          const userData = await apiRequest('/api/auth/me');
           setUser(userData);
         } catch (error) {
           // Token is invalid, remove it
