@@ -144,6 +144,7 @@ export const CreativeImage = ({
       className={imageClassName}
       onError={() => setImageError(true)}
       data-testid={`img-creative-${creative.id}`}
+      loading="lazy"
     />
   );
 };

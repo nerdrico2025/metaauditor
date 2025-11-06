@@ -38,6 +38,113 @@ function CreativeAnalysisIndicator({ creativeId }: { creativeId: string }) {
   );
 }
 
+// Hook to check if creative has audit
+function useCreativeHasAudit(creativeId: string) {
+  const { data: audits, isLoading } = useQuery<Audit[]>({
+    queryKey: [`/api/creatives/${creativeId}/audits`],
+  });
+  
+  return {
+    hasAudit: audits && audits.length > 0,
+    isLoading
+  };
+}
+
+// Component for creative table row
+function CreativeTableRow({ 
+  creative, 
+  onView, 
+  onAnalyze,
+  getCampaignName,
+  getStatusBadgeVariant
+}: {
+  creative: Creative;
+  onView: () => void;
+  onAnalyze: () => void;
+  getCampaignName: (id: string | null) => string;
+  getStatusBadgeVariant: (status: string) => any;
+}) {
+  const { hasAudit, isLoading } = useCreativeHasAudit(creative.id);
+  
+  return (
+    <TableRow data-testid={`row-creative-${creative.id}`}>
+      <TableCell>
+        {creative.imageUrl && !creative.imageUrl.includes('placeholder') ? (
+          <img 
+            src={creative.imageUrl} 
+            alt={creative.name}
+            className="w-20 h-20 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+            onClick={onView}
+            onError={(e) => {
+              e.currentTarget.src = 'https://via.placeholder.com/80?text=IMG';
+            }}
+          />
+        ) : (
+          <div className="w-20 h-20 bg-slate-100 rounded-lg flex items-center justify-center">
+            <ImageIcon className="h-8 w-8 text-slate-400" />
+          </div>
+        )}
+      </TableCell>
+      <TableCell className="font-medium">
+        <div className="max-w-xs">
+          <div className="truncate mb-1">{creative.name}</div>
+          <Badge variant={getStatusBadgeVariant(creative.status)} className="text-xs">
+            {creative.status === 'active' ? 'Ativo' : 
+             creative.status === 'paused' ? 'Pausado' : 'Inativo'}
+          </Badge>
+          {creative.headline && (
+            <div className="text-xs text-slate-500 truncate mt-1">{creative.headline}</div>
+          )}
+        </div>
+      </TableCell>
+      <TableCell>
+        <span className="text-sm text-slate-600">
+          {getCampaignName(creative.campaignId)}
+        </span>
+      </TableCell>
+      <TableCell className="text-right">
+        {creative.impressions?.toLocaleString() || 0}
+      </TableCell>
+      <TableCell className="text-right">
+        {creative.clicks?.toLocaleString() || 0}
+      </TableCell>
+      <TableCell className="text-right">
+        {creative.ctr || '0'}%
+      </TableCell>
+      <TableCell className="text-right">
+        {creative.conversions || 0}
+      </TableCell>
+      <TableCell className="text-center">
+        <CreativeAnalysisIndicator creativeId={creative.id} />
+      </TableCell>
+      <TableCell className="text-right">
+        <div className="flex justify-end space-x-2">
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={onView}
+            data-testid={`button-view-${creative.id}`}
+            title="Ver detalhes"
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={onAnalyze}
+            disabled={isLoading || hasAudit}
+            data-testid={`button-analyze-${creative.id}`}
+            title={hasAudit ? "Criativo já analisado" : "Analisar criativo"}
+          >
+            <BarChart3 className="h-4 w-4 mr-1" />
+            {hasAudit ? 'Analisado' : 'Analisar'}
+          </Button>
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+}
+
 interface PaginatedResponse {
   creatives: Creative[];
   pagination: {
@@ -223,80 +330,14 @@ export default function Creatives() {
                       </TableHeader>
                       <TableBody>
                         {creatives.map((creative) => (
-                          <TableRow key={creative.id} data-testid={`row-creative-${creative.id}`}>
-                            <TableCell>
-                              {creative.imageUrl && !creative.imageUrl.includes('placeholder') ? (
-                                <img 
-                                  src={creative.imageUrl} 
-                                  alt={creative.name}
-                                  className="w-20 h-20 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
-                                  onClick={() => setSelectedCreative(creative)}
-                                  onError={(e) => {
-                                    e.currentTarget.src = 'https://via.placeholder.com/80?text=IMG';
-                                  }}
-                                />
-                              ) : (
-                                <div className="w-20 h-20 bg-slate-100 rounded-lg flex items-center justify-center">
-                                  <ImageIcon className="h-8 w-8 text-slate-400" />
-                                </div>
-                              )}
-                            </TableCell>
-                            <TableCell className="font-medium">
-                              <div className="max-w-xs">
-                                <div className="truncate mb-1">{creative.name}</div>
-                                <Badge variant={getStatusBadgeVariant(creative.status)} className="text-xs">
-                                  {creative.status === 'active' ? 'Ativo' : 
-                                   creative.status === 'paused' ? 'Pausado' : 'Inativo'}
-                                </Badge>
-                                {creative.headline && (
-                                  <div className="text-xs text-slate-500 truncate mt-1">{creative.headline}</div>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <span className="text-sm text-slate-600">
-                                {getCampaignName(creative.campaignId)}
-                              </span>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {creative.impressions?.toLocaleString() || 0}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {creative.clicks?.toLocaleString() || 0}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {creative.ctr || '0'}%
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {creative.conversions || 0}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <CreativeAnalysisIndicator creativeId={creative.id} />
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end space-x-2">
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  onClick={() => setSelectedCreative(creative)}
-                                  data-testid={`button-view-${creative.id}`}
-                                  title="Ver detalhes"
-                                >
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                                <Button 
-                                  variant="outline" 
-                                  size="sm"
-                                  onClick={() => setSelectedCreativeForAnalysis(creative)}
-                                  data-testid={`button-analyze-${creative.id}`}
-                                  title="Analisar criativo"
-                                >
-                                  <BarChart3 className="h-4 w-4 mr-1" />
-                                  Analisar
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
+                          <CreativeTableRow 
+                            key={creative.id}
+                            creative={creative}
+                            onView={() => setSelectedCreative(creative)}
+                            onAnalyze={() => setSelectedCreativeForAnalysis(creative)}
+                            getCampaignName={getCampaignName}
+                            getStatusBadgeVariant={getStatusBadgeVariant}
+                          />
                         ))}
                       </TableBody>
                     </Table>

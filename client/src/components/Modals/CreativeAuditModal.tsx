@@ -282,12 +282,9 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Creative Preview */}
             <div className="space-y-4">
-              <div 
-                className="border border-slate-200 rounded-lg p-4 bg-slate-50 cursor-pointer"
-                onClick={() => setImageZoomed(true)}
-              >
+              <div className="border border-slate-200 rounded-lg p-4 bg-slate-50">
                 {creative.imageUrl ? (
-                  <div className="relative">
+                  <div className="relative cursor-pointer" onClick={() => setImageZoomed(true)}>
                     <CreativeImage 
                       creative={creative}
                       className="w-full h-auto rounded-lg hover:opacity-90 transition-opacity"
@@ -339,15 +336,30 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="text-sm font-medium text-slate-900">Resultados da Auditoria</h4>
-                  {!latestAudit && (
+                  <div className="flex gap-2">
+                    {latestAudit && (
+                      <Button 
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          // TODO: Implement report generation
+                          toast({
+                            title: "Relatório",
+                            description: "Funcionalidade em desenvolvimento",
+                          });
+                        }}
+                      >
+                        Ver Relatório
+                      </Button>
+                    )}
                     <Button 
                       size="sm" 
                       onClick={handleAnalyze}
-                      disabled={analyzeMutation.isPending}
+                      disabled={analyzeMutation.isPending || !!latestAudit}
                     >
                       {analyzeMutation.isPending ? 'Analisando...' : 'Analisar'}
                     </Button>
-                  )}
+                  </div>
                 </div>
 
                 {auditsLoading ? (
