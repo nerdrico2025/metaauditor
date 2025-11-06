@@ -10,7 +10,7 @@ export function useAuth() {
   // No more development/demo mode - always use real API authentication
 
   const { data: user, isLoading, error } = useQuery({
-    queryKey: ['/api/auth/user'],
+    queryKey: ['/api/auth/me'],
     retry: false,
     staleTime: 5 * 60 * 1000,
     refetchInterval: false,
@@ -23,7 +23,7 @@ export function useAuth() {
         throw new Error('No authentication token');
       }
       
-      const response = await fetch('/api/auth/user', {
+      const response = await fetch('/api/auth/me', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -63,8 +63,8 @@ export function useAuth() {
       }
       
       // Update user data in cache
-      queryClient.setQueryData(['/api/auth/user'], data.user);
-      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      queryClient.setQueryData(['/api/auth/me'], data.user);
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
     },
   });
 
@@ -90,8 +90,8 @@ export function useAuth() {
       }
       
       // Update user data in cache
-      queryClient.setQueryData(['/api/auth/user'], data.user);
-      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      queryClient.setQueryData(['/api/auth/me'], data.user);
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
     },
   });
 
@@ -108,7 +108,7 @@ export function useAuth() {
     },
     onSuccess: () => {
       // Clear any cached data
-      queryClient.setQueryData(['/api/auth/user'], null);
+      queryClient.setQueryData(['/api/auth/me'], null);
       queryClient.clear();
     },
   });

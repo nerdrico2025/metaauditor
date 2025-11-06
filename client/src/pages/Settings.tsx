@@ -38,7 +38,7 @@ const createUserSchema = z.object({
   password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
   firstName: z.string().min(1, 'Nome é obrigatório'),
   lastName: z.string().min(1, 'Sobrenome é obrigatório'),
-  role: z.enum(['administrador', 'operador']),
+  role: z.enum(['company_admin', 'operador', 'super_admin']),
 });
 
 const updateUserSchema = z.object({
@@ -58,7 +58,7 @@ interface User {
   email: string;
   firstName: string | null;
   lastName: string | null;
-  role: 'administrador' | 'operador';
+  role: 'company_admin' | 'operador' | 'super_admin';
   isActive: boolean;
   lastLoginAt: Date | null;
   createdAt: Date | null;
@@ -124,7 +124,7 @@ export default function Settings() {
     onSuccess: () => {
       toast({ title: 'Perfil atualizado com sucesso!' });
       queryClient.invalidateQueries({ queryKey: ['/api/profile'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
     },
     onError: (error: any) => {
       toast({ 
@@ -322,8 +322,8 @@ export default function Settings() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Badge variant={user?.role === 'administrador' ? 'default' : 'secondary'}>
-                    {user?.role === 'administrador' ? 'Administrador' : 'Operador'}
+                  <Badge variant={user?.role === 'company_admin' || user?.role === 'super_admin' ? 'default' : 'secondary'}>
+                    {user?.role === 'company_admin' ? 'Administrador' : user?.role === 'super_admin' ? 'Super Admin' : 'Operador'}
                   </Badge>
                   {isMasterUser(user?.email || '') && (
                     <Badge variant="outline">Usuário Master</Badge>
@@ -531,13 +531,14 @@ export default function Settings() {
 
                         <div className="space-y-2">
                           <Label htmlFor="createRole">Nível de Acesso</Label>
-                          <Select onValueChange={(value) => createUserForm.setValue('role', value as 'administrador' | 'operador')}>
+                          <Select onValueChange={(value) => createUserForm.setValue('role', value as 'company_admin' | 'operador' | 'super_admin')}>
                             <SelectTrigger data-testid="select-create-role">
                               <SelectValue placeholder="Selecione o nível" />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="operador">Operador</SelectItem>
-                              <SelectItem value="administrador">Administrador</SelectItem>
+                              <SelectItem value="company_admin">Administrador</SelectItem>
+                              {user?.role === 'super_admin' && <SelectItem value="super_admin">Super Admin</SelectItem>}
                             </SelectContent>
                           </Select>
                           {createUserForm.formState.errors.role && (
@@ -580,8 +581,8 @@ export default function Settings() {
                           <p className="font-medium">
                             {userItem.firstName} {userItem.lastName}
                           </p>
-                          <Badge variant={userItem.role === 'administrador' ? 'default' : 'secondary'}>
-                            {userItem.role === 'administrador' ? 'Admin' : 'Operador'}
+                          <Badge variant={userItem.role === 'company_admin' || userItem.role === 'super_admin' ? 'default' : 'secondary'}>
+                            {userItem.role === 'company_admin' ? 'Admin' : userItem.role === 'super_admin' ? 'Super Admin' : 'Operador'}
                           </Badge>
                           {isMasterUser(userItem.email) && (
                             <Badge variant="outline">Master</Badge>
@@ -694,7 +695,7 @@ export default function Settings() {
                         <Label htmlFor="updateRole">Nível de Acesso</Label>
                         <Select 
                           defaultValue={editUserDialog.user.role}
-                          onValueChange={(value) => updateUserForm.setValue('role', value as 'administrador' | 'operador')}
+                          onValueChange={(value) => updateUserForm.setValue('role', value as 'company_admin' | 'operador' | 'super_admin')}
                           disabled={isMasterUser(editUserDialog.user.email)}
                         >
                           <SelectTrigger data-testid="select-update-role">
@@ -702,7 +703,8 @@ export default function Settings() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="operador">Operador</SelectItem>
-                            <SelectItem value="administrador">Administrador</SelectItem>
+                            <SelectItem value="company_admin">Administrador</SelectItem>
+                            {user?.role === 'super_admin' && <SelectItem value="super_admin">Super Admin</SelectItem>}
                           </SelectContent>
                         </Select>
                         {isMasterUser(editUserDialog.user.email) && (
