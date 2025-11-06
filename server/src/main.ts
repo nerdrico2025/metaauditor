@@ -2,16 +2,16 @@
 import express from "express";
 import cors from "cors";
 import { setupVite, serveStatic, log } from "../vite";
-import { cronManagerService } from "./application/services/CronManagerService";
+import { cronManagerService } from "@application/services/CronManagerService";
 import { checkIfDatabaseEmpty, seedDatabase } from "../scripts/seedData";
-import { errorHandler } from "./shared/errors/AppError";
-import { storage } from "./shared/services/storage.service";
+import { errorHandler } from "@shared/errors/AppError";
+import { storage } from "@shared/services/storage.service";
 
 // Import DDD routes
-import authRoutes from "./presentation/routes/auth.routes";
-import userRoutes from "./presentation/routes/user.routes";
-import campaignRoutes from "./presentation/routes/campaign.routes";
-import creativeRoutes from "./presentation/routes/creative.routes";
+import authRoutes from "@presentation/routes/auth.routes";
+import userRoutes from "@presentation/routes/user.routes";
+import campaignRoutes from "@presentation/routes/campaign.routes";
+import creativeRoutes from "@presentation/routes/creative.routes";
 
 export async function startServer() {
   const app = express();

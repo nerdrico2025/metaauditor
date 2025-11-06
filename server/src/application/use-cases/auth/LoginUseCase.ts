@@ -1,8 +1,7 @@
-
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { IUserRepository } from '../../repositories/IUserRepository';
-import { UnauthorizedError } from '../../../shared/errors/AppError';
+import { IUserRepository } from '@application/repositories/IUserRepository';
+import { UnauthorizedError } from '@shared/errors/AppError';
 import { Email } from '../../../domain/value-objects/Email';
 
 export interface LoginDTO {
@@ -27,7 +26,7 @@ export class LoginUseCase {
 
   async execute(data: LoginDTO): Promise<LoginResponse> {
     const email = new Email(data.email);
-    
+
     const user = await this.userRepository.findByEmail(email.toString());
     if (!user) {
       throw new UnauthorizedError('Credenciais inválidas');
