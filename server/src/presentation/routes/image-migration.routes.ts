@@ -79,7 +79,7 @@ router.post('/migrate-images', authenticateToken, async (req: Request, res: Resp
  */
 router.get('/migration-status', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const [stats] = await db.execute(sql`
+    const result = await db.execute(sql`
       SELECT 
         COUNT(*) as total,
         COUNT(CASE WHEN image_url LIKE '/uploads/%' THEN 1 END) as migrated,
@@ -88,7 +88,7 @@ router.get('/migration-status', authenticateToken, async (req: Request, res: Res
       FROM ${creatives}
     `);
     
-    res.json(stats);
+    res.json(result.rows[0] || {});
   } catch (error) {
     next(error);
   }
