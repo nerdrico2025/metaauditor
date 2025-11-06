@@ -1,5 +1,5 @@
 
-import type { Integration, InsertCampaign, InsertCreative } from '../../shared/schema.js';
+import type { Integration, InsertCampaign, InsertCreative, InsertAdSet } from '../../shared/schema.js';
 import { nanoid } from 'nanoid';
 import { imageStorageService } from './ImageStorageService.js';
 
@@ -14,11 +14,26 @@ interface MetaCampaign {
   name: string;
   status: string;
   objective: string;
+  account_id?: string;
+}
+
+interface MetaAdSet {
+  id: string;
+  name: string;
+  status: string;
+  campaign_id: string;
+  daily_budget?: string;
+  lifetime_budget?: string;
+  bid_strategy?: string;
+  targeting?: any;
+  start_time?: string;
+  end_time?: string;
 }
 
 interface MetaAd {
   id: string;
   name: string;
+  adset_id: string;
   creative: {
     id: string;
     name: string;
@@ -43,7 +58,7 @@ interface MetaAdInsights {
 }
 
 export class MetaAdsService {
-  private readonly apiVersion = 'v18.0';
+  private readonly apiVersion = 'v21.0';
   private readonly baseUrl = 'https://graph.facebook.com';
 
   /**
@@ -68,6 +83,27 @@ export class MetaAdsService {
   }
 
   /**
+   * Get account name by ID
+   */
+  async getAccountName(accessToken: string, accountId: string): Promise<string> {
+    try {
+      const response = await fetch(
+        `${this.baseUrl}/${this.apiVersion}/${accountId}?fields=name&access_token=${accessToken}`
+      );
+      
+      if (!response.ok) {
+        return 'Unknown Account';
+      }
+
+      const data = await response.json();
+      return data.name || 'Unknown Account';
+    } catch (error) {
+      console.error('Error fetching account name:', error);
+      return 'Unknown Account';
+    }
+  }
+
+  /**
    * Sync campaigns from Meta Ads
    */
   async syncCampaigns(
@@ -80,6 +116,9 @@ export class MetaAdsService {
     }
 
     try {
+      // Get account name
+      const accountName = await this.getAccountName(integration.accessToken, integration.accountId);
+      
       const response = await fetch(
         `${this.baseUrl}/${this.apiVersion}/${integration.accountId}/campaigns?fields=id,name,status,objective&access_token=${integration.accessToken}`
       );
@@ -92,7 +131,6 @@ export class MetaAdsService {
       const campaigns: MetaCampaign[] = data.data || [];
 
       return campaigns.map((campaign) => ({
-        id: nanoid(),
         companyId,
         userId,
         integrationId: integration.id,
@@ -100,9 +138,9 @@ export class MetaAdsService {
         name: campaign.name,
         platform: 'meta',
         status: campaign.status.toLowerCase(),
+        account: accountName,
+        objective: campaign.objective,
         budget: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
       }));
     } catch (error) {
       console.error('Error syncing Meta campaigns:', error);
@@ -111,11 +149,56 @@ export class MetaAdsService {
   }
 
   /**
-   * Sync creatives (ads) from Meta Ads
+   * Sync ad sets (Grupos de Anúncios) from a campaign
+   */
+  async syncAdSets(
+    integration: Integration,
+    campaignExternalId: string,
+    campaignId: string,
+    userId: string
+  ): Promise<InsertAdSet[]> {
+    if (!integration.accessToken) {
+      throw new Error('Missing access token');
+    }
+
+    try {
+      const response = await fetch(
+        `${this.baseUrl}/${this.apiVersion}/${campaignExternalId}/adsets?fields=id,name,status,daily_budget,lifetime_budget,bid_strategy,targeting,start_time,end_time&access_token=${integration.accessToken}`
+      );
+
+      if (!response.ok) {
+        throw new Error(`Meta API error: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const adSets: MetaAdSet[] = data.data || [];
+
+      return adSets.map((adSet) => ({
+        userId,
+        campaignId,
+        externalId: adSet.id,
+        name: adSet.name,
+        status: adSet.status.toLowerCase(),
+        dailyBudget: adSet.daily_budget ? (parseFloat(adSet.daily_budget) / 100).toString() : null,
+        lifetimeBudget: adSet.lifetime_budget ? (parseFloat(adSet.lifetime_budget) / 100).toString() : null,
+        bidStrategy: adSet.bid_strategy || null,
+        targeting: adSet.targeting || null,
+        startTime: adSet.start_time ? new Date(adSet.start_time) : null,
+        endTime: adSet.end_time ? new Date(adSet.end_time) : null,
+      }));
+    } catch (error) {
+      console.error('Error syncing Meta ad sets:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Sync creatives (ads) from an Ad Set
    */
   async syncCreatives(
     integration: Integration,
-    campaignExternalId: string,
+    adSetExternalId: string,
+    adSetId: string,
     campaignId: string,
     userId: string
   ): Promise<InsertCreative[]> {
@@ -125,7 +208,7 @@ export class MetaAdsService {
 
     try {
       const response = await fetch(
-        `${this.baseUrl}/${this.apiVersion}/${campaignExternalId}/ads?fields=id,name,creative{id,name,image_url,video_url,title,body,call_to_action_type},status&access_token=${integration.accessToken}`
+        `${this.baseUrl}/${this.apiVersion}/${adSetExternalId}/ads?fields=id,name,adset_id,creative{id,name,image_url,video_url,title,body,call_to_action_type},status&access_token=${integration.accessToken}`
       );
 
       if (!response.ok) {
@@ -148,9 +231,9 @@ export class MetaAdsService {
           }
           
           return {
-            id: nanoid(),
             userId,
             campaignId,
+            adSetId,
             externalId: ad.id,
             name: ad.name,
             type: ad.creative.video_url ? 'video' : 'image',
@@ -166,8 +249,6 @@ export class MetaAdsService {
             conversions: this.getConversions(insights),
             ctr: insights.ctr || '0',
             cpc: insights.cpc || '0',
-            createdAt: new Date(),
-            updatedAt: new Date(),
           };
         })
       );
