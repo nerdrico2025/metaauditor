@@ -1,43 +1,141 @@
 
-import express from 'express';
-import cors from 'cors';
-import authRoutes from './presentation/routes/auth.routes';
-import { errorHandler } from './presentation/middlewares/errorHandler';
+import express from "express";
+import cors from "cors";
+import { setupVite, serveStatic, log } from "../vite";
+import { cronManagerService } from "./application/services/CronManagerService";
+import { checkIfDatabaseEmpty, seedDatabase } from "../scripts/seedData";
+import { errorHandler } from "./shared/errors/AppError";
+import { storage } from "./shared/services/storage.service";
 
-const app = express();
+// Import DDD routes
+import authRoutes from "./presentation/routes/auth.routes";
+import userRoutes from "./presentation/routes/user.routes";
+import campaignRoutes from "./presentation/routes/campaign.routes";
+import creativeRoutes from "./presentation/routes/creative.routes";
 
-// CORS configuration
-app.use(cors({
-  origin: process.env.NODE_ENV === 'development' 
-    ? ['http://localhost:5000', 'http://0.0.0.0:5000']
-    : true,
-  credentials: true,
-}));
+export async function startServer() {
+  const app = express();
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+  // Setup storage in app locals for middleware access
+  app.locals.storage = storage;
 
-// Request logging
-app.use((req, res, next) => {
-  const start = Date.now();
-  res.on('finish', () => {
-    const duration = Date.now() - start;
-    if (req.path.startsWith('/api')) {
-      console.log(`${req.method} ${req.path} ${res.statusCode} in ${duration}ms`);
-    }
+  // CORS configuration
+  app.use(cors({
+    origin: process.env.NODE_ENV === 'development'
+      ? ['http://localhost:5000', 'http://0.0.0.0:5000']
+      : true,
+    credentials: true,
+  }));
+
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: false }));
+
+  // Request logging middleware
+  app.use((req, res, next) => {
+    const start = Date.now();
+    const path = req.path;
+    let capturedJsonResponse: Record<string, any> | undefined = undefined;
+
+    const originalResJson = res.json;
+    res.json = function (bodyJson, ...args) {
+      capturedJsonResponse = bodyJson;
+      return originalResJson.apply(res, [bodyJson, ...args]);
+    };
+
+    res.on("finish", () => {
+      const duration = Date.now() - start;
+      if (path.startsWith("/api")) {
+        let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+        if (capturedJsonResponse) {
+          logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+        }
+
+        if (logLine.length > 80) {
+          logLine = logLine.slice(0, 79) + "…";
+        }
+
+        log(logLine);
+      }
+    });
+
+    next();
   });
-  next();
-});
 
-// Routes
-app.use('/api/auth', authRoutes);
+  const server = require('http').createServer(app);
 
-// Health check
-app.get('/healthz', (req, res) => {
-  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
-});
+  // Register DDD routes
+  app.use('/api/auth', authRoutes);
+  app.use('/api/users', userRoutes);
+  app.use('/api/campaigns', campaignRoutes);
+  app.use('/api/creatives', creativeRoutes);
 
-// Global error handler
-app.use(errorHandler);
+  // Health check endpoints
+  app.get('/healthz', (req, res) => {
+    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+  });
 
-export default app;
+  app.head('/healthz', (req, res) => {
+    res.status(200).end();
+  });
+
+  app.head('/api', (req, res) => {
+    res.status(200).end();
+  });
+
+  // Global error handler
+  app.use(errorHandler);
+
+  // Vite setup
+  if (app.get("env") === "development") {
+    await setupVite(app, server);
+  } else {
+    serveStatic(app);
+  }
+
+  const PORT = parseInt(process.env.PORT || '5000', 10);
+  const isPreview = process.env.REPLIT_PREVIEW === 'true' || process.env.REPLIT_DEPLOYMENT === 'preview';
+
+  return new Promise<void>((resolve) => {
+    server.listen({
+      port: PORT,
+      host: "0.0.0.0",
+      reusePort: true,
+    }, async () => {
+      log(`🚀 Server running on port ${PORT}`);
+      log(`📐 Architecture: Domain-Driven Design (DDD)`);
+      log(`🔧 Environment: ${process.env.NODE_ENV || 'development'}`);
+
+      if (isPreview) {
+        log(`🔍 PREVIEW mode - skipping heavy operations`);
+        resolve();
+        return;
+      }
+
+      setTimeout(async () => {
+        try {
+          const isEmpty = await checkIfDatabaseEmpty();
+          if (isEmpty) {
+            log(`🌱 Seeding database...`);
+            await seedDatabase();
+            log(`✅ Database seeded successfully`);
+          }
+        } catch (error) {
+          console.error(`⚠️ Database seeding failed:`, error);
+        }
+
+        if (process.env.NODE_ENV !== 'production') {
+          try {
+            cronManagerService.startAll();
+            log(`🕐 Cron jobs started`);
+          } catch (error) {
+            console.error(`❌ Failed to start cron jobs:`, error);
+          }
+        } else {
+          log(`🚀 Production mode - cron jobs disabled`);
+        }
+        
+        resolve();
+      }, isPreview ? 0 : 3000);
+    });
+  });
+}

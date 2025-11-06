@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import { db } from '../server/src/shared/config/database';
+import { db } from '../src/shared/config/database';
 import {
   users,
   posts,
@@ -8,7 +8,7 @@ import {
   comments,
   PostCategory,
   PostTag,
-} from '../server/src/shared/schema';
+} from '../src/shared/schema';
 
 export async function checkIfDatabaseEmpty(): Promise<boolean> {
   try {
