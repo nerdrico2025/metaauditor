@@ -55,18 +55,6 @@ export default function Integrations() {
   const [googleDialogOpen, setGoogleDialogOpen] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [isConnectingMeta, setIsConnectingMeta] = useState(false);
-  const [syncModalOpen, setSyncModalOpen] = useState(false);
-  const [syncStatus, setSyncStatus] = useState({
-    message: 'Iniciando sincronização...',
-    campaigns: 0,
-    adSets: 0,
-    creatives: 0,
-    hasError: false,
-    errorMessage: '',
-    isInProgress: false,
-    currentProgress: ''
-  });
-  const [currentSyncId, setCurrentSyncId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [integrationToDelete, setIntegrationToDelete] = useState<Integration | null>(null);
 
@@ -125,72 +113,23 @@ export default function Integrations() {
 
   const syncIntegrationMutation = useMutation({
     mutationFn: async (id: string) => {
-      // Store current sync ID for retry
-      setCurrentSyncId(id);
-      
-      // Open sync modal
-      setSyncModalOpen(true);
-      setSyncStatus({
-        message: 'Conectando à plataforma de anúncios...',
-        campaigns: 0,
-        adSets: 0,
-        creatives: 0,
-        hasError: false,
-        errorMessage: ''
-      });
-
-      try {
-        // Start sync
-        const result = await apiRequest(`/api/integrations/${id}/sync`, { method: 'POST' });
-        
-        // Update final status
-        setSyncStatus({
-          message: 'Sincronização concluída com sucesso!',
-          campaigns: result.campaigns || 0,
-          adSets: result.adSets || 0,
-          creatives: result.creatives || 0,
-          hasError: false,
-          errorMessage: ''
-        });
-
-        return result;
-      } catch (error: any) {
-        // Even on error, try to get partial results from error response
-        const partialData = error.data || {};
-        
-        setSyncStatus({
-          message: 'Sincronização parcial - alguns dados foram sincronizados',
-          campaigns: partialData.campaigns || 0,
-          adSets: partialData.adSets || 0,
-          creatives: partialData.creatives || 0,
-          hasError: true,
-          errorMessage: 'Limite de requisições da API atingido. Aguarde alguns minutos e tente novamente para continuar.'
-        });
-        
-        throw error;
-      }
+      // Just trigger sync, don't wait for completion
+      await apiRequest(`/api/integrations/${id}/sync`, { method: 'POST' });
+      return { started: true };
     },
-    onSuccess: (data: any) => {
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
-        
-        const parts = [];
-        if (data.campaigns) parts.push(`${data.campaigns} campanhas`);
-        if (data.adSets) parts.push(`${data.adSets} ad sets`);
-        if (data.creatives) parts.push(`${data.creatives} anúncios`);
-        
-        toast({ 
-          title: '✅ Sincronização concluída!',
-          description: parts.join(', ') + ' sincronizados.'
-        });
-        
-        setSyncModalOpen(false);
-        setCurrentSyncId(null);
-      }, 2000); // Keep modal open for 2s to show success
+    onSuccess: () => {
+      toast({ 
+        title: '🔄 Sincronização iniciada!',
+        description: 'O processo está rodando. Dependendo do volume de dados, pode levar alguns minutos. Atualize a página para ver o progresso.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
     },
     onError: (error: any) => {
-      // Don't close modal on error - show partial results and retry option
-      queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
+      toast({ 
+        title: 'Erro ao iniciar sincronização',
+        description: error.message,
+        variant: 'destructive'
+      });
     },
   });
 
@@ -888,147 +827,6 @@ export default function Integrations() {
                       </Button>
                     </DialogFooter>
                   </form>
-                </DialogContent>
-              </Dialog>
-
-              {/* Modal de Sincronização */}
-              <Dialog open={syncModalOpen} onOpenChange={(open) => {
-                // Prevent closing during sync
-                if (!syncStatus.isInProgress) {
-                  setSyncModalOpen(open);
-                }
-              }}>
-                <DialogContent className="max-w-md" onInteractOutside={(e) => e.preventDefault()}>
-                  <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                      {syncStatus.isInProgress ? (
-                        <>
-                          <RefreshCw className="h-5 w-5 animate-spin text-blue-600" />
-                          Sincronizando...
-                        </>
-                      ) : syncStatus.hasError ? (
-                        <>
-                          <AlertCircle className="h-5 w-5 text-amber-600" />
-                          Sincronização Parcial
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircle2 className="h-5 w-5 text-green-600" />
-                          Sincronização Concluída
-                        </>
-                      )}
-                    </DialogTitle>
-                    <DialogDescription>
-                      {syncStatus.message}
-                    </DialogDescription>
-                  </DialogHeader>
-                  
-                  <div className="py-6 space-y-4">
-                    {syncStatus.isInProgress ? (
-                      <>
-                        <div className="flex items-center justify-center">
-                          <div className="relative">
-                            <div className="w-24 h-24 border-4 border-gray-200 rounded-full"></div>
-                            <div className="absolute top-0 left-0 w-24 h-24 border-4 border-blue-600 rounded-full animate-spin border-t-transparent"></div>
-                          </div>
-                        </div>
-                        
-                        <div className="space-y-3 text-center">
-                          {syncStatus.currentProgress && (
-                            <div className="bg-blue-50 dark:bg-blue-900 rounded-lg p-3 border border-blue-200">
-                              <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                                {syncStatus.currentProgress}
-                              </p>
-                            </div>
-                          )}
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            Sincronizando campanhas, ad sets e anúncios em tempo real
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-500">
-                            Aguardando 8s entre campanhas e 5s entre ad sets para evitar limite de taxa
-                          </p>
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-4">
-                          <div className="bg-green-50 dark:bg-green-950 rounded-lg p-3 text-center border border-green-200">
-                            <div className="text-2xl font-bold text-green-600">{syncStatus.campaigns}</div>
-                            <div className="text-xs text-green-700 dark:text-green-300 mt-1">Campanhas</div>
-                          </div>
-                          <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-3 text-center border border-blue-200">
-                            <div className="text-2xl font-bold text-blue-600">{syncStatus.adSets}</div>
-                            <div className="text-xs text-blue-700 dark:text-blue-300 mt-1">Ad Sets</div>
-                          </div>
-                          <div className="bg-purple-50 dark:bg-purple-950 rounded-lg p-3 text-center border border-purple-200">
-                            <div className="text-2xl font-bold text-purple-600">{syncStatus.creatives}</div>
-                            <div className="text-xs text-purple-700 dark:text-purple-300 mt-1">Anúncios</div>
-                          </div>
-                        </div>
-
-                        <Alert className="bg-blue-50 dark:bg-blue-950 border-blue-200">
-                          <Info className="h-4 w-4 text-blue-600" />
-                          <AlertDescription className="text-blue-900 dark:text-blue-100 text-sm">
-                            <strong>Aguarde...</strong> Não feche esta janela durante a sincronização.
-                          </AlertDescription>
-                        </Alert>
-                      </>
-                    ) : (
-                      <>
-                        <div className="grid grid-cols-3 gap-4">
-                          <div className="bg-green-50 dark:bg-green-950 rounded-lg p-4 text-center border border-green-200">
-                            <div className="text-3xl font-bold text-green-600">{syncStatus.campaigns}</div>
-                            <div className="text-xs text-green-700 dark:text-green-300 mt-1">Campanhas</div>
-                          </div>
-                          <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-4 text-center border border-blue-200">
-                            <div className="text-3xl font-bold text-blue-600">{syncStatus.adSets}</div>
-                            <div className="text-xs text-blue-700 dark:text-blue-300 mt-1">Ad Sets</div>
-                          </div>
-                          <div className="bg-purple-50 dark:bg-purple-950 rounded-lg p-4 text-center border border-purple-200">
-                            <div className="text-3xl font-bold text-purple-600">{syncStatus.creatives}</div>
-                            <div className="text-xs text-purple-700 dark:text-purple-300 mt-1">Anúncios</div>
-                          </div>
-                        </div>
-
-                        {syncStatus.hasError ? (
-                          <>
-                            <Alert className="bg-amber-50 dark:bg-amber-950 border-amber-200">
-                              <AlertCircle className="h-4 w-4 text-amber-600" />
-                              <AlertDescription className="text-amber-900 dark:text-amber-100 text-sm">
-                                <strong>Atenção:</strong> {syncStatus.errorMessage}
-                              </AlertDescription>
-                            </Alert>
-                            
-                            <div className="flex gap-2">
-                              <Button 
-                                onClick={() => currentSyncId && syncIntegrationMutation.mutate(currentSyncId)} 
-                                className="flex-1"
-                                variant="default"
-                                disabled={syncIntegrationMutation.isPending}
-                              >
-                                <RefreshCw className="h-4 w-4 mr-2" />
-                                Continuar Sincronização
-                              </Button>
-                              <Button 
-                                onClick={() => {
-                                  setSyncModalOpen(false);
-                                  setCurrentSyncId(null);
-                                }} 
-                                variant="outline"
-                              >
-                                Fechar
-                              </Button>
-                            </div>
-                          </>
-                        ) : (
-                          <Alert className="bg-green-50 dark:bg-green-950 border-green-200">
-                            <CheckCircle2 className="h-4 w-4 text-green-600" />
-                            <AlertDescription className="text-green-900 dark:text-green-100 text-sm">
-                              Todos os dados foram sincronizados com sucesso!
-                            </AlertDescription>
-                          </Alert>
-                        )}
-                      </>
-                    )}
-                  </div>
                 </DialogContent>
               </Dialog>
 
