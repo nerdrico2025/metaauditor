@@ -13,8 +13,13 @@ interface MetaCampaign {
   id: string;
   name: string;
   status: string;
+  effective_status?: string;
   objective: string;
   account_id?: string;
+  created_time?: string;
+  updated_time?: string;
+  daily_budget?: string;
+  lifetime_budget?: string;
 }
 
 interface MetaAdSet {
@@ -110,25 +115,44 @@ export class MetaAdsService {
   private async fetchAllPages<T>(url: string): Promise<T[]> {
     const allData: T[] = [];
     let nextUrl: string | null = url;
+    let pageCount = 0;
+
+    console.log(`🔍 Starting pagination from URL: ${url.substring(0, 100)}...`);
 
     while (nextUrl) {
+      pageCount++;
+      console.log(`📄 Fetching page ${pageCount}...`);
+      
       const response = await fetch(nextUrl);
       
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`❌ Meta API error on page ${pageCount}:`, errorText);
         throw new Error(`Meta API error: ${response.statusText}`);
       }
 
       const data: any = await response.json();
-      allData.push(...(data.data || []));
+      const pageData = data.data || [];
+      allData.push(...pageData);
+      
+      console.log(`  ✅ Page ${pageCount}: fetched ${pageData.length} items (total so far: ${allData.length})`);
+      console.log(`  📋 Paging info:`, {
+        hasNext: !!data.paging?.next,
+        hasPrevious: !!data.paging?.previous,
+        cursors: data.paging?.cursors
+      });
       
       // Check if there's a next page
       nextUrl = data.paging?.next || null;
       
       if (nextUrl) {
-        console.log(`📄 Fetching next page... (current count: ${allData.length})`);
+        console.log(`  ➡️  Next page URL exists, continuing...`);
+      } else {
+        console.log(`  🏁 No more pages, pagination complete`);
       }
     }
 
+    console.log(`✅ Pagination finished: ${pageCount} pages, ${allData.length} total items`);
     return allData;
   }
 
@@ -148,10 +172,12 @@ export class MetaAdsService {
       // Get account name
       const accountName = await this.getAccountName(integration.accessToken, integration.accountId);
       
-      const url = `${this.baseUrl}/${this.apiVersion}/${integration.accountId}/campaigns?fields=id,name,status,objective&limit=100&access_token=${integration.accessToken}`;
+      const url = `${this.baseUrl}/${this.apiVersion}/${integration.accountId}/campaigns?fields=id,name,status,effective_status,objective,created_time,updated_time,daily_budget,lifetime_budget&limit=100&access_token=${integration.accessToken}`;
+      
+      console.log(`🚀 Fetching campaigns from account: ${integration.accountId}`);
       const campaigns = await this.fetchAllPages<MetaCampaign>(url);
       
-      console.log(`✅ Fetched ${campaigns.length} campaigns total`);
+      console.log(`✅ Fetched ${campaigns.length} campaigns total from Meta API`);
 
       return campaigns.map((campaign) => ({
         companyId,
