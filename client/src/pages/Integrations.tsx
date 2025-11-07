@@ -209,7 +209,8 @@ export default function Integrations() {
       currentProgress: ''
     });
 
-    const eventSource = new EventSourcePolyfill(`/api/integrations/${integrationId}/sync-stream`, {
+    const token = localStorage.getItem('auth_token');
+    const eventSource = new EventSourcePolyfill(`/api/integrations/${integrationId}/sync-stream?token=${token}`, {
       withCredentials: true
     });
 
