@@ -132,6 +132,8 @@ export const integrations = pgTable("integrations", {
   accessToken: text("access_token"),
   refreshToken: text("refresh_token"),
   accountId: varchar("account_id"),
+  accountName: text("account_name"), // Nome da conta de anúncios
+  accountStatus: varchar("account_status"), // Status da conta (ACTIVE, DISABLED, etc)
   status: varchar("status").default('active'),
   lastSync: timestamp("last_sync"),
   createdAt: timestamp("created_at").defaultNow(),

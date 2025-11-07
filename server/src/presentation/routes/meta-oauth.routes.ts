@@ -149,6 +149,8 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
       await storage.updateIntegration(metaIntegration.id, {
         accessToken,
         accountId: firstAccount.id,
+        accountName: firstAccount.name,
+        accountStatus: firstAccount.account_status === 1 ? 'ACTIVE' : 'DISABLED',
         status: 'active',
       });
     } else {
@@ -157,6 +159,8 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
         platform: 'meta',
         accessToken,
         accountId: firstAccount.id,
+        accountName: firstAccount.name,
+        accountStatus: firstAccount.account_status === 1 ? 'ACTIVE' : 'DISABLED',
         status: 'active',
       });
     }

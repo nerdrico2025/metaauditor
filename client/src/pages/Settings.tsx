@@ -83,6 +83,8 @@ interface Integration {
   id: string;
   platform: string;
   accountId: string | null;
+  accountName: string | null;
+  accountStatus: string | null;
   status: string;
   lastSync: Date | null;
   createdAt: Date;
@@ -390,27 +392,66 @@ export default function Settings() {
   const isMasterUser = (userEmail: string) => userEmail === 'rafael@clickhero.com.br';
 
   const handleConnectMetaOAuth = async () => {
-    setIsConnectingMeta(true);
     try {
-      const response = await fetch('/api/auth/meta/connect', {
-        method: 'GET',
-        credentials: 'include',
-      });
+      setIsConnectingMeta(true);
+      const data = await apiRequest('/api/auth/meta/connect');
       
-      if (!response.ok) {
-        throw new Error('Falha ao obter URL de autenticação');
-      }
-      
-      const data = await response.json();
       if (data.authUrl) {
-        window.location.href = data.authUrl;
+        // Open OAuth in popup window
+        const width = 600;
+        const height = 700;
+        const left = window.screen.width / 2 - width / 2;
+        const top = window.screen.height / 2 - height / 2;
+        
+        const popup = window.open(
+          data.authUrl,
+          'MetaOAuth',
+          `width=${width},height=${height},left=${left},top=${top},toolbar=0,scrollbars=1,status=0,resizable=1,location=1,menuBar=0`
+        );
+
+        // Listen for messages from popup
+        const handleMessage = (event: MessageEvent) => {
+          if (event.data.type === 'META_OAUTH_SUCCESS') {
+            toast({
+              title: 'Conectado com sucesso!',
+              description: 'Sua conta Meta Ads foi conectada.',
+            });
+            queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
+            setIsConnectingMeta(false);
+            window.removeEventListener('message', handleMessage);
+          } else if (event.data.type === 'META_OAUTH_ERROR') {
+            toast({
+              title: 'Erro ao conectar',
+              description: event.data.message || 'Ocorreu um erro durante a autenticação',
+              variant: 'destructive'
+            });
+            setIsConnectingMeta(false);
+            window.removeEventListener('message', handleMessage);
+          }
+        };
+
+        window.addEventListener('message', handleMessage);
+
+        // Check if popup was closed manually
+        const checkClosed = setInterval(() => {
+          if (popup?.closed) {
+            clearInterval(checkClosed);
+            setIsConnectingMeta(false);
+            window.removeEventListener('message', handleMessage);
+          }
+        }, 1000);
       } else {
-        throw new Error('URL de autenticação não fornecida');
+        toast({
+          title: 'Erro ao conectar',
+          description: data.error || 'Não foi possível gerar a URL de autenticação',
+          variant: 'destructive'
+        });
+        setIsConnectingMeta(false);
       }
     } catch (error: any) {
       toast({
-        title: 'Erro ao conectar com Meta',
-        description: error.message || 'Não foi possível iniciar a autenticação OAuth',
+        title: 'Erro ao conectar',
+        description: error.message || 'Erro ao iniciar processo de autenticação OAuth',
         variant: 'destructive'
       });
       setIsConnectingMeta(false);
@@ -796,14 +837,29 @@ export default function Settings() {
                             {integration.platform === 'meta' ? 'Meta Ads' : 'Google Ads'}
                           </p>
                           <Badge variant={integration.status === 'active' ? 'default' : 'secondary'}>
-                            {integration.status === 'active' ? 'Ativa' : 'Inativa'}
+                            {integration.status === 'active' ? 'Conectada' : 'Inativa'}
                           </Badge>
                         </div>
+                        {integration.accountName && (
+                          <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                            {integration.accountName}
+                          </p>
+                        )}
                         <p className="text-sm text-gray-600 dark:text-gray-300">
                           Account ID: {integration.accountId}
                         </p>
+                        {integration.accountStatus && (
+                          <p className="text-xs text-gray-500">
+                            Status: <span className={integration.accountStatus === 'ACTIVE' ? 'text-green-600' : 'text-red-600'}>
+                              {integration.accountStatus === 'ACTIVE' ? '✓ Ativa' : '⚠ Desativada'}
+                            </span>
+                          </p>
+                        )}
                         <p className="text-xs text-gray-500">
-                          Última sincronização: {formatDate(integration.lastSync)}
+                          Última Sinc: {formatDate(integration.lastSync)}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          Criada em: {formatDate(integration.createdAt)}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
