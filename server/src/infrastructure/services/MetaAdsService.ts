@@ -105,7 +105,35 @@ export class MetaAdsService {
   }
 
   /**
-   * Sync campaigns from Meta Ads
+   * Helper method to fetch all pages from Meta API
+   */
+  private async fetchAllPages<T>(url: string): Promise<T[]> {
+    const allData: T[] = [];
+    let nextUrl: string | null = url;
+
+    while (nextUrl) {
+      const response = await fetch(nextUrl);
+      
+      if (!response.ok) {
+        throw new Error(`Meta API error: ${response.statusText}`);
+      }
+
+      const data: any = await response.json();
+      allData.push(...(data.data || []));
+      
+      // Check if there's a next page
+      nextUrl = data.paging?.next || null;
+      
+      if (nextUrl) {
+        console.log(`📄 Fetching next page... (current count: ${allData.length})`);
+      }
+    }
+
+    return allData;
+  }
+
+  /**
+   * Sync campaigns from Meta Ads (with pagination)
    */
   async syncCampaigns(
     integration: Integration,
@@ -120,16 +148,10 @@ export class MetaAdsService {
       // Get account name
       const accountName = await this.getAccountName(integration.accessToken, integration.accountId);
       
-      const response = await fetch(
-        `${this.baseUrl}/${this.apiVersion}/${integration.accountId}/campaigns?fields=id,name,status,objective&access_token=${integration.accessToken}`
-      );
-
-      if (!response.ok) {
-        throw new Error(`Meta API error: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      const campaigns: MetaCampaign[] = data.data || [];
+      const url = `${this.baseUrl}/${this.apiVersion}/${integration.accountId}/campaigns?fields=id,name,status,objective&limit=100&access_token=${integration.accessToken}`;
+      const campaigns = await this.fetchAllPages<MetaCampaign>(url);
+      
+      console.log(`✅ Fetched ${campaigns.length} campaigns total`);
 
       return campaigns.map((campaign) => ({
         companyId,
@@ -150,7 +172,7 @@ export class MetaAdsService {
   }
 
   /**
-   * Sync ad sets (Grupos de Anúncios) from a campaign
+   * Sync ad sets (Grupos de Anúncios) from a campaign (with pagination)
    */
   async syncAdSets(
     integration: Integration,
@@ -163,16 +185,8 @@ export class MetaAdsService {
     }
 
     try {
-      const response = await fetch(
-        `${this.baseUrl}/${this.apiVersion}/${campaignExternalId}/adsets?fields=id,name,status,daily_budget,lifetime_budget,bid_strategy,targeting,start_time,end_time&access_token=${integration.accessToken}`
-      );
-
-      if (!response.ok) {
-        throw new Error(`Meta API error: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      const adSets: MetaAdSet[] = data.data || [];
+      const url = `${this.baseUrl}/${this.apiVersion}/${campaignExternalId}/adsets?fields=id,name,status,daily_budget,lifetime_budget,bid_strategy,targeting,start_time,end_time&limit=100&access_token=${integration.accessToken}`;
+      const adSets = await this.fetchAllPages<MetaAdSet>(url);
 
       return adSets.map((adSet) => ({
         userId,
@@ -194,7 +208,7 @@ export class MetaAdsService {
   }
 
   /**
-   * Sync creatives (ads) from an Ad Set
+   * Sync creatives (ads) from an Ad Set (with pagination)
    */
   async syncCreatives(
     integration: Integration,
@@ -208,18 +222,8 @@ export class MetaAdsService {
     }
 
     try {
-      const response = await fetch(
-        `${this.baseUrl}/${this.apiVersion}/${adSetExternalId}/ads?fields=id,name,status,creative{id,name,image_url,body,title,call_to_action_type}&access_token=${integration.accessToken}`
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('Meta API error response:', errorData);
-        throw new Error(`Meta API error: ${response.statusText} - ${JSON.stringify(errorData)}`);
-      }
-
-      const data = await response.json();
-      const ads: MetaAd[] = data.data || [];
+      const url = `${this.baseUrl}/${this.apiVersion}/${adSetExternalId}/ads?fields=id,name,status,creative{id,name,image_url,body,title,call_to_action_type}&limit=100&access_token=${integration.accessToken}`;
+      const ads = await this.fetchAllPages<MetaAd>(url);
 
       // Get insights for each ad and download images
       const creativesWithMetrics = await Promise.all(
@@ -228,7 +232,7 @@ export class MetaAdsService {
           
           // Download and store image permanently if it exists
           let permanentImageUrl: string | null = null;
-          if (ad.creative.image_url) {
+          if (ad.creative?.image_url) {
             console.log(`🖼️  Downloading image for Meta ad ${ad.id}...`);
             permanentImageUrl = await imageStorageService.downloadAndSaveImage(ad.creative.image_url);
           }
