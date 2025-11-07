@@ -115,6 +115,13 @@ The system is designed to handle enterprise-scale creative auditing with automat
 
 ## Recent Updates (January 2025)
 
+### Image Storage & Data Deletion (November 7, 2025)
+- Fixed SQL error when deleting integrations (switched from `ANY` to `inArray`)
+- Implemented automatic image file deletion when creatives are removed
+- Reverted to local image storage: downloads images from Meta API and saves to `/uploads/creatives/`
+- Images are now permanently stored locally (no expiration issues)
+- When deleting integration with "Delete all data", associated image files are automatically removed from filesystem
+
 ### Complete Meta Ads Hierarchy Integration (Completed - November 6, 2025)
 - Implemented **full Meta advertising hierarchy**: Account → Campaign → Ad Set → Ad (4 levels)
 - Created comprehensive `ad_sets` table in database schema with all required fields

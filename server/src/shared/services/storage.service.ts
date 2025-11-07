@@ -1,6 +1,6 @@
 
 import { db } from '../../infrastructure/database/connection';
-import { eq, desc, sql, and, count } from "drizzle-orm";
+import { eq, desc, sql, and, count, inArray } from "drizzle-orm";
 import {
   companies,
   users,
@@ -240,35 +240,33 @@ export class DatabaseStorage implements IStorage {
       const campaignIds = integrationCampaigns.map(c => c.id);
       
       if (campaignIds.length > 0) {
+        // Get all creatives to delete their images
+        const creativesToDelete = await db
+          .select()
+          .from(creatives)
+          .where(inArray(creatives.campaignId, campaignIds));
+        
+        // Delete image files from filesystem
+        for (const creative of creativesToDelete) {
+          if (creative.imageUrl && creative.imageUrl.startsWith('/uploads/')) {
+            await this.deleteImageFile(creative.imageUrl);
+          }
+        }
+        
         // Delete all creatives from these campaigns
         await db
           .delete(creatives)
-          .where(
-            and(
-              eq(creatives.userId, userId),
-              sql`${creatives.campaignId} = ANY(${campaignIds})`
-            )
-          );
+          .where(inArray(creatives.campaignId, campaignIds));
         
         // Delete all ad sets from these campaigns
         await db
           .delete(adSets)
-          .where(
-            and(
-              eq(adSets.userId, userId),
-              sql`${adSets.campaignId} = ANY(${campaignIds})`
-            )
-          );
+          .where(inArray(adSets.campaignId, campaignIds));
         
         // Delete all campaigns from this integration
         await db
           .delete(campaigns)
-          .where(
-            and(
-              eq(campaigns.userId, userId),
-              eq(campaigns.integrationId, integrationId)
-            )
-          );
+          .where(eq(campaigns.integrationId, integrationId));
       }
     }
     
@@ -276,6 +274,20 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(integrations)
       .where(and(eq(integrations.id, integrationId), eq(integrations.userId, userId)));
+  }
+
+  private async deleteImageFile(imageUrl: string): Promise<void> {
+    try {
+      const { unlink } = await import('fs/promises');
+      const { join } = await import('path');
+      
+      // Convert URL path to filesystem path
+      const filepath = join(process.cwd(), 'server', 'public', imageUrl);
+      await unlink(filepath);
+      console.log(`🗑️  Deleted image file: ${filepath}`);
+    } catch (error) {
+      console.log(`⚠️  Could not delete image file ${imageUrl}:`, error);
+    }
   }
 
   async createCampaign(campaign: InsertCampaign): Promise<Campaign> {

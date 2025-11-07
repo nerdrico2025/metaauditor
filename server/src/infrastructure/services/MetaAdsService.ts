@@ -1,6 +1,7 @@
 
 import type { Integration, InsertCampaign, InsertCreative, InsertAdSet } from '../../shared/schema.js';
 import { nanoid } from 'nanoid';
+import { imageStorageService } from './ImageStorageService.js';
 
 interface MetaAdAccount {
   id: string;
@@ -41,7 +42,6 @@ interface MetaAd {
   creative: {
     id: string;
     name: string;
-    image_hash?: string;
     image_url?: string;
     video_url?: string;
     title?: string;
@@ -299,29 +299,22 @@ export class MetaAdsService {
     }
 
     try {
-      const url = `${this.baseUrl}/${this.apiVersion}/${adSetExternalId}/ads?fields=id,name,status,creative{id,name,image_hash,image_url,body,title,call_to_action_type}&limit=100&access_token=${integration.accessToken}`;
+      const url = `${this.baseUrl}/${this.apiVersion}/${adSetExternalId}/ads?fields=id,name,status,creative{id,name,image_url,body,title,call_to_action_type}&limit=100&access_token=${integration.accessToken}`;
       const ads = await this.fetchAllPages<MetaAd>(url);
 
-      // Get insights for each ad and permanent image URLs
+      // Get insights for each ad and download images locally
       const creativesWithMetrics = await Promise.all(
         ads.map(async (ad) => {
           const insights = await this.getAdInsights(integration.accessToken!, ad.id);
           
-          // Get permanent image URL from image_hash
+          // Download and save image locally
           let imageUrl = ad.creative?.image_url || null;
-          if (ad.creative?.image_hash && integration.accountId) {
-            try {
-              const permanentUrl = await this.getImagePermalinkFromHash(
-                integration.accessToken!,
-                integration.accountId,
-                ad.creative.image_hash
-              );
-              if (permanentUrl) {
-                imageUrl = permanentUrl;
-                console.log(`🖼️  Got permanent URL for ad ${ad.id}`);
-              }
-            } catch (error) {
-              console.log(`⚠️  Could not get permanent URL for hash ${ad.creative.image_hash}, using temporary URL`);
+          if (imageUrl) {
+            console.log(`🖼️  Downloading image for ad ${ad.id}...`);
+            const localUrl = await imageStorageService.downloadAndSaveImage(imageUrl);
+            if (localUrl) {
+              imageUrl = localUrl;
+              console.log(`✅ Image saved locally: ${localUrl}`);
             }
           }
           
@@ -352,31 +345,6 @@ export class MetaAdsService {
     } catch (error) {
       console.error('Error syncing Meta creatives:', error);
       throw error;
-    }
-  }
-
-  /**
-   * Get permanent image URL from image hash
-   */
-  private async getImagePermalinkFromHash(
-    accessToken: string,
-    accountId: string,
-    imageHash: string
-  ): Promise<string | null> {
-    try {
-      const response = await fetch(
-        `${this.baseUrl}/${this.apiVersion}/act_${accountId}/adimages?fields=permalink_url&hashes=["${imageHash}"]&access_token=${accessToken}`
-      );
-
-      if (!response.ok) {
-        return null;
-      }
-
-      const data = await response.json();
-      return data.data?.[0]?.permalink_url || null;
-    } catch (error) {
-      console.error(`Error getting permalink for hash ${imageHash}:`, error);
-      return null;
     }
   }
 
