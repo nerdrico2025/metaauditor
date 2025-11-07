@@ -36,12 +36,20 @@ import {
 import { SiGoogle } from 'react-icons/si';
 import { Link } from "wouter";
 import type { Creative, Campaign, Audit } from "@shared/schema";
+import { DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface AdSet {
   id: string;
   name: string;
   campaignId: string;
   platform: string;
+}
+
+interface Policy {
+  id: string;
+  name: string;
+  isDefault: boolean;
+  scope: 'global' | 'campaign';
 }
 
 function CreativeAnalysisIndicator({ creativeId }: { creativeId: string }) {
@@ -66,6 +74,30 @@ function CreativeAnalysisIndicator({ creativeId }: { creativeId: string }) {
   );
 }
 
+function CreativeAuditButton({ creativeId, onViewAudit }: { creativeId: string; onViewAudit: (audit: Audit) => void }) {
+  const { data: audits, isLoading } = useQuery<Audit[]>({
+    queryKey: [`/api/creatives/${creativeId}/audits`],
+  });
+
+  if (isLoading || !audits || audits.length === 0) {
+    return null;
+  }
+
+  const latestAudit = audits[audits.length - 1];
+
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={() => onViewAudit(latestAudit)}
+      title="Ver análise"
+      data-testid={`button-view-audit-${creativeId}`}
+    >
+      <Eye className="h-4 w-4" />
+    </Button>
+  );
+}
+
 export default function Creatives() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
@@ -78,6 +110,12 @@ export default function Creatives() {
   const [adSetFilter, setAdSetFilter] = useState("all");
   const [platformFilter, setPlatformFilter] = useState("all");
   const [selectedCreatives, setSelectedCreatives] = useState<string[]>([]);
+  const [showPolicySelectionDialog, setShowPolicySelectionDialog] = useState(false);
+  const [selectedPolicyId, setSelectedPolicyId] = useState<string | null>(null);
+  const [pendingAnalysisType, setPendingAnalysisType] = useState<'single' | 'selected' | 'all' | null>(null);
+  const [pendingCreativeId, setPendingCreativeId] = useState<string | null>(null);
+  const [viewingAudit, setViewingAudit] = useState<Audit | null>(null);
+  const [showAuditDialog, setShowAuditDialog] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -112,6 +150,11 @@ export default function Creatives() {
 
   const { data: integrations = [] } = useQuery<any[]>({
     queryKey: ['/api/integrations'],
+    enabled: isAuthenticated,
+  });
+
+  const { data: policies = [] } = useQuery<Policy[]>({
+    queryKey: ['/api/policies'],
     enabled: isAuthenticated,
   });
 
@@ -285,6 +328,18 @@ export default function Creatives() {
     );
   };
 
+  const checkPolicyBeforeAnalysis = (type: 'single' | 'selected' | 'all', creativeId?: string) => {
+    const hasDefaultPolicy = policies.some(p => p.isDefault && p.scope === 'global');
+    
+    if (!hasDefaultPolicy) {
+      setPendingAnalysisType(type);
+      setPendingCreativeId(creativeId || null);
+      setShowPolicySelectionDialog(true);
+      return false;
+    }
+    return true;
+  };
+
   const handleAnalyzeSelected = () => {
     if (selectedCreatives.length === 0) {
       toast({
@@ -294,6 +349,8 @@ export default function Creatives() {
       });
       return;
     }
+    
+    if (!checkPolicyBeforeAnalysis('selected')) return;
     analyzeBatchMutation.mutate(selectedCreatives);
   };
 
@@ -307,7 +364,40 @@ export default function Creatives() {
       });
       return;
     }
+    
+    if (!checkPolicyBeforeAnalysis('all')) return;
     analyzeBatchMutation.mutate(allIds);
+  };
+
+  const handleAnalyzeSingle = (creativeId: string) => {
+    if (!checkPolicyBeforeAnalysis('single', creativeId)) return;
+    analyzeCreativeMutation.mutate(creativeId);
+  };
+
+  const proceedWithSelectedPolicy = () => {
+    if (!selectedPolicyId) {
+      toast({
+        title: 'Selecione uma política',
+        description: 'Escolha uma política para continuar com a análise.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setShowPolicySelectionDialog(false);
+    
+    if (pendingAnalysisType === 'single' && pendingCreativeId) {
+      analyzeCreativeMutation.mutate(pendingCreativeId);
+    } else if (pendingAnalysisType === 'selected') {
+      analyzeBatchMutation.mutate(selectedCreatives);
+    } else if (pendingAnalysisType === 'all') {
+      const allIds = filteredCreatives.map(c => c.id);
+      analyzeBatchMutation.mutate(allIds);
+    }
+    
+    setPendingAnalysisType(null);
+    setPendingCreativeId(null);
+    setSelectedPolicyId(null);
   };
 
   const filteredCreatives = creatives.filter((creative) => {
@@ -688,20 +778,17 @@ export default function Creatives() {
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={() => analyzeCreativeMutation.mutate(creative.id)}
+                                    onClick={() => handleAnalyzeSingle(creative.id)}
                                     disabled={analyzeCreativeMutation.isPending}
                                     title="Analisar este anúncio"
                                     data-testid={`button-analyze-${creative.id}`}
                                   >
                                     <Sparkles className={`h-4 w-4 ${analyzeCreativeMutation.isPending ? 'animate-spin' : ''}`} />
                                   </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    data-testid={`button-details-${creative.id}`}
-                                  >
-                                    <ChevronRight className="h-4 w-4" />
-                                  </Button>
+                                  <CreativeAuditButton creativeId={creative.id} onViewAudit={(audit) => {
+                                    setViewingAudit(audit);
+                                    setShowAuditDialog(true);
+                                  }} />
                                 </div>
                               </TableCell>
                             </TableRow>
@@ -717,6 +804,113 @@ export default function Creatives() {
           </div>
         </main>
       </div>
+
+      {/* Policy Selection Dialog */}
+      <Dialog open={showPolicySelectionDialog} onOpenChange={setShowPolicySelectionDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Selecionar Política para Análise</DialogTitle>
+            <DialogDescription>
+              Nenhuma política padrão definida. Por favor, selecione uma política para usar na análise dos anúncios.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Select value={selectedPolicyId || ''} onValueChange={setSelectedPolicyId}>
+              <SelectTrigger data-testid="select-policy">
+                <SelectValue placeholder="Escolha uma política..." />
+              </SelectTrigger>
+              <SelectContent>
+                {policies.filter(p => p.scope === 'global').map((policy) => (
+                  <SelectItem key={policy.id} value={policy.id}>
+                    {policy.name} {policy.isDefault ? '(Padrão)' : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowPolicySelectionDialog(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={proceedWithSelectedPolicy} data-testid="button-confirm-policy">
+                Continuar com Análise
+              </Button>
+            </div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              Dica: Você pode definir uma política padrão em{' '}
+              <Link href="/policies" className="text-primary underline">Políticas</Link>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Audit View Dialog */}
+      <Dialog open={showAuditDialog} onOpenChange={setShowAuditDialog}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle>Resultado da Análise</DialogTitle>
+            <DialogDescription>
+              Análise de conformidade e performance do anúncio
+            </DialogDescription>
+          </DialogHeader>
+          {viewingAudit && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-center">
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Score de Conformidade</p>
+                      <p className="text-3xl font-bold text-primary">{viewingAudit.complianceScore}%</p>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-center">
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Score de Performance</p>
+                      <p className="text-3xl font-bold text-primary">{viewingAudit.performanceScore}%</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+              
+              <div>
+                <h3 className="font-semibold mb-2">Status</h3>
+                <Badge variant={viewingAudit.status === 'conforme' ? 'default' : 'destructive'}>
+                  {viewingAudit.status === 'conforme' ? 'Conforme' :
+                   viewingAudit.status === 'parcialmente_conforme' ? 'Parcialmente Conforme' :
+                   'Não Conforme'}
+                </Badge>
+              </div>
+
+              {viewingAudit.issues && viewingAudit.issues.length > 0 && (
+                <div>
+                  <h3 className="font-semibold mb-2">Problemas Encontrados</h3>
+                  <ul className="list-disc list-inside space-y-1">
+                    {viewingAudit.issues.map((issue: string, i: number) => (
+                      <li key={i} className="text-sm text-gray-700 dark:text-gray-300">{issue}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {viewingAudit.recommendations && viewingAudit.recommendations.length > 0 && (
+                <div>
+                  <h3 className="font-semibold mb-2">Recomendações</h3>
+                  <ul className="list-disc list-inside space-y-1">
+                    {viewingAudit.recommendations.map((rec: string, i: number) => (
+                      <li key={i} className="text-sm text-gray-700 dark:text-gray-300">{rec}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div className="flex justify-end">
+                <Button onClick={() => setShowAuditDialog(false)}>Fechar</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {zoomedCreative && (
         <Dialog open={!!zoomedCreative} onOpenChange={() => setZoomedCreative(null)}>
