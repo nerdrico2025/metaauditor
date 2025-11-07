@@ -9,7 +9,7 @@
   --muted-foreground: hsl(0, 0%, 16%); /* Dark Gray: #2a2a2a */
   --popover: hsl(228, 10%, 93%); /* White: #ecedef */
   --popover-foreground: hsl(96, 12%, 3%); /* Black: #0c0d0a */
-  --card: hsl(0, 100%, 93%); /* White: #ecedef */
+  --card: hsl(0, 100%, 100%); /* White: #ecedef */
   --card-foreground: hsl(96, 12%, 3%); /* Black: #0c0d0a */
   --border: hsl(218, 8%, 90%); /* White 2: #e6e7e9 */
   --input: hsl(218, 8%, 90%); /* White 2: #e6e7e9 */
