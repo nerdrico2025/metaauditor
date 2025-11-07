@@ -109,10 +109,12 @@ export default function AdSets() {
     enabled: isAuthenticated,
   });
 
-  const { data: allCreatives = [] } = useQuery<any[]>({
+  const { data: creativesData } = useQuery<any>({
     queryKey: ['/api/creatives'],
     enabled: isAuthenticated,
   });
+  
+  const allCreatives = creativesData?.creatives || [];
 
   const syncAllMutation = useMutation({
     mutationFn: async () => {
@@ -178,6 +180,7 @@ export default function AdSets() {
   };
 
   const getCreativeCount = (adSetId: string) => {
+    if (!Array.isArray(allCreatives)) return 0;
     return allCreatives.filter((creative: any) => creative.adSetId === adSetId).length;
   };
 

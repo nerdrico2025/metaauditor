@@ -80,10 +80,12 @@ export default function Campaigns() {
     enabled: isAuthenticated,
   });
 
-  const { data: allCreatives = [] } = useQuery<any[]>({
+  const { data: creativesData } = useQuery<any>({
     queryKey: ['/api/creatives'],
     enabled: isAuthenticated,
   });
+  
+  const allCreatives = creativesData?.creatives || [];
 
   const syncAllMutation = useMutation({
     mutationFn: async () => {
