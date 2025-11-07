@@ -183,4 +183,94 @@ router.get('/:id/audits', authenticateToken, async (req: Request, res: Response,
   }
 });
 
+// Analyze multiple creatives with AI (batch)
+router.post('/analyze-batch', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = (req as any).user?.userId;
+    const { creativeIds } = req.body;
+    
+    if (!creativeIds || !Array.isArray(creativeIds) || creativeIds.length === 0) {
+      return res.status(400).json({ message: 'Lista de creative IDs é obrigatória' });
+    }
+
+    // Get brand configuration and content criteria for the user (once)
+    const brandConfigs = await storage.getBrandConfigurationsByUser(userId);
+    const brandConfig = brandConfigs.length > 0 ? brandConfigs[0] : null;
+    
+    const contentCriteriaList = await storage.getContentCriteriaByUser(userId);
+    const contentCriteria = contentCriteriaList.length > 0 ? contentCriteriaList[0] : null;
+    
+    const performanceBenchmarks = await storage.getPerformanceBenchmarksByUser(userId);
+
+    const results = {
+      success: [],
+      failed: [],
+      total: creativeIds.length
+    };
+
+    // Process each creative
+    for (const creativeId of creativeIds) {
+      try {
+        const creative = await storage.getCreativeById(creativeId);
+        
+        if (!creative || creative.userId !== userId) {
+          results.failed.push({ id: creativeId, error: 'Criativo não encontrado' });
+          continue;
+        }
+
+        // Skip creatives without valid images
+        if (!creative.imageUrl || creative.imageUrl.includes('placeholder.com')) {
+          results.failed.push({ id: creativeId, error: 'Criativo sem imagem válida' });
+          continue;
+        }
+
+        // Perform AI analysis
+        const complianceAnalysis = await aiAnalysisService.analyzeCreativeCompliance(
+          creative,
+          brandConfig,
+          contentCriteria
+        );
+        
+        const performanceAnalysis = await aiAnalysisService.analyzeCreativePerformance(
+          creative,
+          performanceBenchmarks
+        );
+
+        // Calculate overall compliance status
+        const complianceStatus = complianceAnalysis.score >= 80 ? 'conforme' : 
+                                complianceAnalysis.score >= 60 ? 'parcialmente_conforme' : 
+                                'nao_conforme';
+
+        // Create audit record
+        const audit = await storage.createAudit({
+          creativeId: creative.id,
+          userId,
+          status: complianceStatus,
+          complianceScore: complianceAnalysis.score,
+          performanceScore: performanceAnalysis.score,
+          issues: complianceAnalysis.issues,
+          recommendations: [...complianceAnalysis.recommendations, ...performanceAnalysis.recommendations],
+          aiAnalysis: {
+            compliance: complianceAnalysis,
+            performance: performanceAnalysis,
+          },
+        });
+
+        results.success.push({ id: creativeId, auditId: audit.id });
+      } catch (error) {
+        console.error(`Error analyzing creative ${creativeId}:`, error);
+        results.failed.push({ 
+          id: creativeId, 
+          error: error instanceof Error ? error.message : 'Erro desconhecido' 
+        });
+      }
+    }
+
+    res.json(results);
+  } catch (error) {
+    console.error('Error in batch analysis:', error);
+    next(error);
+  }
+});
+
 export default router;

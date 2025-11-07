@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import Sidebar from "@/components/Layout/Sidebar";
@@ -27,7 +28,10 @@ import {
   TrendingUp,
   MousePointer,
   BarChart3,
-  ChevronRight
+  ChevronRight,
+  Sparkles,
+  CheckSquare,
+  Square
 } from "lucide-react";
 import { SiGoogle } from 'react-icons/si';
 import { Link } from "wouter";
@@ -73,6 +77,7 @@ export default function Creatives() {
   const [campaignFilter, setCampaignFilter] = useState("all");
   const [adSetFilter, setAdSetFilter] = useState("all");
   const [platformFilter, setPlatformFilter] = useState("all");
+  const [selectedCreatives, setSelectedCreatives] = useState<string[]>([]);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -108,6 +113,50 @@ export default function Creatives() {
   const { data: integrations = [] } = useQuery<any[]>({
     queryKey: ['/api/integrations'],
     enabled: isAuthenticated,
+  });
+
+  const analyzeCreativeMutation = useMutation({
+    mutationFn: (creativeId: string) => 
+      apiRequest(`/api/creatives/${creativeId}/analyze`, { method: 'POST' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/creatives'] });
+      toast({ 
+        title: '✅ Análise concluída!',
+        description: 'O criativo foi analisado com sucesso.',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Erro na análise',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const analyzeBatchMutation = useMutation({
+    mutationFn: (creativeIds: string[]) => 
+      apiRequest('/api/creatives/analyze-batch', { 
+        method: 'POST',
+        body: JSON.stringify({ creativeIds }),
+      }),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/creatives'] });
+      const successCount = data.success?.length || 0;
+      const failedCount = data.failed?.length || 0;
+      toast({ 
+        title: '✅ Análise em lote concluída!',
+        description: `${successCount} anúncios analisados com sucesso. ${failedCount > 0 ? `${failedCount} falharam.` : ''}`,
+      });
+      setSelectedCreatives([]); // Clear selection
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Erro na análise',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
   });
 
   const syncAllMutation = useMutation({
@@ -222,6 +271,45 @@ export default function Creatives() {
     return syncs[0] || null;
   };
 
+  const toggleSelectAll = () => {
+    if (selectedCreatives.length === filteredCreatives.length) {
+      setSelectedCreatives([]);
+    } else {
+      setSelectedCreatives(filteredCreatives.map(c => c.id));
+    }
+  };
+
+  const toggleSelectCreative = (id: string) => {
+    setSelectedCreatives(prev => 
+      prev.includes(id) ? prev.filter(cid => cid !== id) : [...prev, id]
+    );
+  };
+
+  const handleAnalyzeSelected = () => {
+    if (selectedCreatives.length === 0) {
+      toast({
+        title: 'Nenhum anúncio selecionado',
+        description: 'Selecione pelo menos um anúncio para analisar.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    analyzeBatchMutation.mutate(selectedCreatives);
+  };
+
+  const handleAnalyzeAll = () => {
+    const allIds = filteredCreatives.map(c => c.id);
+    if (allIds.length === 0) {
+      toast({
+        title: 'Nenhum anúncio disponível',
+        description: 'Não há anúncios para analisar.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    analyzeBatchMutation.mutate(allIds);
+  };
+
   const filteredCreatives = creatives.filter((creative) => {
     const matchesSearch = creative.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          creative.externalId?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -247,29 +335,71 @@ export default function Creatives() {
           <div className="py-8">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                    Anúncios (Creatives)
-                  </h1>
-                  <p className="text-gray-600 dark:text-gray-400 mt-2">
-                    Gerencie os anúncios das suas campanhas Meta Ads e Google Ads
-                  </p>
-                  {getMostRecentSync() && (
-                    <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
-                      Última sincronização: {formatDate(getMostRecentSync())}
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                      Anúncios (Creatives)
+                    </h1>
+                    <p className="text-gray-600 dark:text-gray-400 mt-2">
+                      Gerencie os anúncios das suas campanhas Meta Ads e Google Ads
                     </p>
-                  )}
+                    {getMostRecentSync() && (
+                      <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
+                        Última sincronização: {formatDate(getMostRecentSync())}
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    onClick={() => syncAllMutation.mutate()}
+                    disabled={syncAllMutation.isPending || !integrations.length}
+                    variant="outline"
+                    data-testid="button-sync-all"
+                  >
+                    <RefreshCw className={`h-4 w-4 mr-2 ${syncAllMutation.isPending ? 'animate-spin' : ''}`} />
+                    {syncAllMutation.isPending ? 'Sincronizando...' : 'Sincronizar'}
+                  </Button>
                 </div>
-                <Button
-                  onClick={() => syncAllMutation.mutate()}
-                  disabled={syncAllMutation.isPending || !integrations.length}
-                  className="bg-primary hover:bg-primary/90"
-                  data-testid="button-sync-all"
-                >
-                  <RefreshCw className={`h-4 w-4 mr-2 ${syncAllMutation.isPending ? 'animate-spin' : ''}`} />
-                  {syncAllMutation.isPending ? 'Sincronizando...' : 'Sincronizar Tudo'}
-                </Button>
+
+                {selectedCreatives.length > 0 && (
+                  <div className="flex items-center gap-3 p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <div className="flex-1 flex items-center gap-2">
+                      <Sparkles className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                      <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                        {selectedCreatives.length} anúncio{selectedCreatives.length !== 1 ? 's' : ''} selecionado{selectedCreatives.length !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                    <Button
+                      onClick={handleAnalyzeSelected}
+                      disabled={analyzeBatchMutation.isPending}
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                      data-testid="button-analyze-selected"
+                    >
+                      <Sparkles className={`h-4 w-4 mr-2 ${analyzeBatchMutation.isPending ? 'animate-spin' : ''}`} />
+                      {analyzeBatchMutation.isPending ? 'Analisando...' : `Analisar ${selectedCreatives.length > 1 ? 'Selecionados' : 'Selecionado'}`}
+                    </Button>
+                    <Button
+                      onClick={() => setSelectedCreatives([])}
+                      variant="ghost"
+                      size="sm"
+                      data-testid="button-clear-selection"
+                    >
+                      Limpar seleção
+                    </Button>
+                  </div>
+                )}
+
+                {filteredCreatives.length > 0 && selectedCreatives.length === 0 && (
+                  <Button
+                    onClick={handleAnalyzeAll}
+                    disabled={analyzeBatchMutation.isPending}
+                    className="bg-primary hover:bg-primary/90"
+                    data-testid="button-analyze-all"
+                  >
+                    <Sparkles className={`h-4 w-4 mr-2 ${analyzeBatchMutation.isPending ? 'animate-spin' : ''}`} />
+                    {analyzeBatchMutation.isPending ? 'Analisando...' : `Analisar Todos (${filteredCreatives.length})`}
+                  </Button>
+                )}
               </div>
 
               {integrations.length === 0 && (
@@ -457,6 +587,19 @@ export default function Creatives() {
                       <Table>
                         <TableHeader>
                           <TableRow className="bg-gray-50 dark:bg-gray-900">
+                            <TableHead className="w-[50px]">
+                              <button
+                                onClick={toggleSelectAll}
+                                className="flex items-center justify-center w-5 h-5"
+                                data-testid="checkbox-select-all"
+                              >
+                                {selectedCreatives.length === filteredCreatives.length && filteredCreatives.length > 0 ? (
+                                  <CheckSquare className="h-5 w-5 text-primary" />
+                                ) : (
+                                  <Square className="h-5 w-5 text-gray-400" />
+                                )}
+                              </button>
+                            </TableHead>
                             <TableHead className="w-[100px]"></TableHead>
                             <TableHead className="w-[50px]"></TableHead>
                             <TableHead>Nome do Anúncio</TableHead>
@@ -477,6 +620,19 @@ export default function Creatives() {
                               className="hover:bg-gray-50 dark:hover:bg-gray-900/50" 
                               data-testid={`row-creative-${creative.id}`}
                             >
+                              <TableCell>
+                                <button
+                                  onClick={() => toggleSelectCreative(creative.id)}
+                                  className="flex items-center justify-center w-5 h-5"
+                                  data-testid={`checkbox-select-${creative.id}`}
+                                >
+                                  {selectedCreatives.includes(creative.id) ? (
+                                    <CheckSquare className="h-5 w-5 text-primary" />
+                                  ) : (
+                                    <Square className="h-5 w-5 text-gray-400" />
+                                  )}
+                                </button>
+                              </TableCell>
                               <TableCell>
                                 <div onClick={() => setZoomedCreative(creative)} className="cursor-pointer">
                                   <CreativeImage 
@@ -528,13 +684,25 @@ export default function Creatives() {
                                 <CreativeAnalysisIndicator creativeId={creative.id} />
                               </TableCell>
                               <TableCell className="text-right">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  data-testid={`button-details-${creative.id}`}
-                                >
-                                  <ChevronRight className="h-4 w-4" />
-                                </Button>
+                                <div className="flex items-center justify-end gap-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => analyzeCreativeMutation.mutate(creative.id)}
+                                    disabled={analyzeCreativeMutation.isPending}
+                                    title="Analisar este anúncio"
+                                    data-testid={`button-analyze-${creative.id}`}
+                                  >
+                                    <Sparkles className={`h-4 w-4 ${analyzeCreativeMutation.isPending ? 'animate-spin' : ''}`} />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    data-testid={`button-details-${creative.id}`}
+                                  >
+                                    <ChevronRight className="h-4 w-4" />
+                                  </Button>
+                                </div>
                               </TableCell>
                             </TableRow>
                           ))}
