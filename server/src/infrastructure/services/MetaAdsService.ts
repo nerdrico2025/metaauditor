@@ -49,6 +49,7 @@ interface MetaAd {
 interface MetaAdInsights {
   impressions?: string;
   clicks?: string;
+  spend?: string;
   ctr?: string;
   cpc?: string;
   actions?: Array<{
@@ -271,15 +272,27 @@ export class MetaAdsService {
   ): Promise<MetaAdInsights> {
     try {
       const response = await fetch(
-        `${this.baseUrl}/${this.apiVersion}/${adId}/insights?fields=impressions,clicks,ctr,cpc,actions&access_token=${accessToken}`
+        `${this.baseUrl}/${this.apiVersion}/${adId}/insights?fields=impressions,clicks,spend,ctr,cpc,actions&access_token=${accessToken}`
       );
 
       if (!response.ok) {
+        console.log(`⚠️  Failed to get insights for ad ${adId}: ${response.statusText}`);
         return {};
       }
 
       const data = await response.json();
-      return data.data?.[0] || {};
+      const insights = data.data?.[0] || {};
+      
+      console.log(`📊 Ad ${adId} insights:`, {
+        impressions: insights.impressions || '0',
+        clicks: insights.clicks || '0',
+        spend: insights.spend || '0',
+        ctr: insights.ctr || '0',
+        cpc: insights.cpc || '0',
+        actions: insights.actions?.length || 0
+      });
+      
+      return insights;
     } catch (error) {
       console.error('Error fetching ad insights:', error);
       return {};
