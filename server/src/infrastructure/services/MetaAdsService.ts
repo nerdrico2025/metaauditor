@@ -63,11 +63,22 @@ interface MetaAdInsights {
   }>;
 }
 
+export interface SyncProgressCallback {
+  (event: 'campaigns' | 'adsets' | 'ads', current: number, total: number, itemName?: string): void;
+}
+
 export class MetaAdsService {
   private readonly apiVersion = 'v21.0';
   private readonly baseUrl = 'https://graph.facebook.com';
-  private readonly requestDelay = 1000; // 1s delay between requests
+  private readonly requestDelay = 2000; // 2s delay between page requests
+  private readonly campaignDelay = 8000; // 8s delay between campaigns
+  private readonly adSetDelay = 5000; // 5s delay between ad sets
   private readonly maxRetries = 5; // More retries with longer waits
+  private progressCallback?: SyncProgressCallback;
+
+  setProgressCallback(callback: SyncProgressCallback) {
+    this.progressCallback = callback;
+  }
 
   /**
    * Sleep for specified milliseconds

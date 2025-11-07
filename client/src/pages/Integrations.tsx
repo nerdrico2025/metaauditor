@@ -62,7 +62,9 @@ export default function Integrations() {
     adSets: 0,
     creatives: 0,
     hasError: false,
-    errorMessage: ''
+    errorMessage: '',
+    isInProgress: false,
+    currentProgress: ''
   });
   const [currentSyncId, setCurrentSyncId] = useState<string | null>(null);
 
@@ -190,9 +192,89 @@ export default function Integrations() {
     },
   });
 
+  const handleSyncWithSSE = (integrationId: string) => {
+    setCurrentSyncId(integrationId);
+    setSyncModalOpen(true);
+    setSyncStatus({
+      message: 'Conectando...',
+      campaigns: 0,
+      adSets: 0,
+      creatives: 0,
+      hasError: false,
+      errorMessage: '',
+      isInProgress: true,
+      currentProgress: ''
+    });
+
+    const eventSource = new EventSource(`/api/integrations/${integrationId}/sync-stream`);
+
+    eventSource.addEventListener('progress', (event: MessageEvent) => {
+      const data = JSON.parse(event.data);
+      setSyncStatus(prev => ({
+        ...prev,
+        message: data.message,
+        currentProgress: data.message,
+        campaigns: data.campaigns || prev.campaigns,
+        adSets: data.adSets || prev.adSets,
+        creatives: data.creatives || prev.creatives
+      }));
+    });
+
+    eventSource.addEventListener('error', (event: MessageEvent) => {
+      const data = JSON.parse(event.data);
+      setSyncStatus(prev => ({
+        ...prev,
+        hasError: true,
+        errorMessage: data.message,
+        isInProgress: false
+      }));
+      if (!data.partial) {
+        eventSource.close();
+      }
+    });
+
+    eventSource.addEventListener('complete', (event: MessageEvent) => {
+      const data = JSON.parse(event.data);
+      setSyncStatus({
+        message: data.message,
+        campaigns: data.campaigns,
+        adSets: data.adSets,
+        creatives: data.creatives,
+        hasError: false,
+        errorMessage: '',
+        isInProgress: false,
+        currentProgress: ''
+      });
+      eventSource.close();
+      queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/campaigns'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/adsets'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/creatives'] });
+      
+      setTimeout(() => {
+        setSyncModalOpen(false);
+        setCurrentSyncId(null);
+        toast({
+          title: '✅ Sincronização concluída!',
+          description: `${data.campaigns} campanhas, ${data.adSets} ad sets, ${data.creatives} anúncios`
+        });
+      }, 2000);
+    });
+
+    eventSource.onerror = () => {
+      eventSource.close();
+      setSyncStatus(prev => ({
+        ...prev,
+        hasError: true,
+        errorMessage: 'Erro na conexão com o servidor',
+        isInProgress: false
+      }));
+    };
+  };
+
   const handleRetrySyn = () => {
     if (currentSyncId) {
-      syncIntegrationMutation.mutate(currentSyncId);
+      handleSyncWithSSE(currentSyncId);
     }
   };
 
@@ -569,11 +651,11 @@ export default function Integrations() {
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    onClick={() => syncIntegrationMutation.mutate(integration.id)}
-                                    disabled={syncIntegrationMutation.isPending}
+                                    onClick={() => handleSyncWithSSE(integration.id)}
+                                    disabled={syncStatus.isInProgress}
                                     className="flex-1"
                                   >
-                                    <RefreshCw className={`w-3 h-3 mr-1 ${syncIntegrationMutation.isPending ? 'animate-spin' : ''}`} />
+                                    <RefreshCw className={`w-3 h-3 mr-1 ${syncStatus.isInProgress ? 'animate-spin' : ''}`} />
                                     Sincronizar
                                   </Button>
                                   <Button
@@ -688,11 +770,11 @@ export default function Integrations() {
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    onClick={() => syncIntegrationMutation.mutate(integration.id)}
-                                    disabled={syncIntegrationMutation.isPending}
+                                    onClick={() => handleSyncWithSSE(integration.id)}
+                                    disabled={syncStatus.isInProgress}
                                     className="flex-1"
                                   >
-                                    <RefreshCw className={`w-3 h-3 mr-1 ${syncIntegrationMutation.isPending ? 'animate-spin' : ''}`} />
+                                    <RefreshCw className={`w-3 h-3 mr-1 ${syncStatus.isInProgress ? 'animate-spin' : ''}`} />
                                     Sincronizar
                                   </Button>
                                   <Button
@@ -845,14 +927,14 @@ export default function Integrations() {
               {/* Modal de Sincronização */}
               <Dialog open={syncModalOpen} onOpenChange={(open) => {
                 // Prevent closing during sync
-                if (!syncIntegrationMutation.isPending) {
+                if (!syncStatus.isInProgress) {
                   setSyncModalOpen(open);
                 }
               }}>
                 <DialogContent className="max-w-md" onInteractOutside={(e) => e.preventDefault()}>
                   <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                      {syncIntegrationMutation.isPending ? (
+                      {syncStatus.isInProgress ? (
                         <>
                           <RefreshCw className="h-5 w-5 animate-spin text-blue-600" />
                           Sincronizando...
@@ -875,7 +957,7 @@ export default function Integrations() {
                   </DialogHeader>
                   
                   <div className="py-6 space-y-4">
-                    {syncIntegrationMutation.isPending ? (
+                    {syncStatus.isInProgress ? (
                       <>
                         <div className="flex items-center justify-center">
                           <div className="relative">
@@ -884,13 +966,35 @@ export default function Integrations() {
                           </div>
                         </div>
                         
-                        <div className="space-y-2 text-center">
+                        <div className="space-y-3 text-center">
+                          {syncStatus.currentProgress && (
+                            <div className="bg-blue-50 dark:bg-blue-900 rounded-lg p-3 border border-blue-200">
+                              <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                                {syncStatus.currentProgress}
+                              </p>
+                            </div>
+                          )}
                           <p className="text-sm text-gray-600 dark:text-gray-400">
-                            Estamos sincronizando suas campanhas, ad sets e anúncios.
+                            Sincronizando campanhas, ad sets e anúncios em tempo real
                           </p>
-                          <p className="text-sm text-gray-500 dark:text-gray-500">
-                            Este processo pode levar alguns minutos dependendo da quantidade de dados.
+                          <p className="text-xs text-gray-500 dark:text-gray-500">
+                            Aguardando 8s entre campanhas e 5s entre ad sets para evitar limite de taxa
                           </p>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-4">
+                          <div className="bg-green-50 dark:bg-green-950 rounded-lg p-3 text-center border border-green-200">
+                            <div className="text-2xl font-bold text-green-600">{syncStatus.campaigns}</div>
+                            <div className="text-xs text-green-700 dark:text-green-300 mt-1">Campanhas</div>
+                          </div>
+                          <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-3 text-center border border-blue-200">
+                            <div className="text-2xl font-bold text-blue-600">{syncStatus.adSets}</div>
+                            <div className="text-xs text-blue-700 dark:text-blue-300 mt-1">Ad Sets</div>
+                          </div>
+                          <div className="bg-purple-50 dark:bg-purple-950 rounded-lg p-3 text-center border border-purple-200">
+                            <div className="text-2xl font-bold text-purple-600">{syncStatus.creatives}</div>
+                            <div className="text-xs text-purple-700 dark:text-purple-300 mt-1">Anúncios</div>
+                          </div>
                         </div>
 
                         <Alert className="bg-blue-50 dark:bg-blue-950 border-blue-200">
@@ -931,7 +1035,7 @@ export default function Integrations() {
                                 onClick={handleRetrySyn} 
                                 className="flex-1"
                                 variant="default"
-                                disabled={syncIntegrationMutation.isPending}
+                                disabled={syncStatus.isInProgress}
                               >
                                 <RefreshCw className="h-4 w-4 mr-2" />
                                 Continuar Sincronização
