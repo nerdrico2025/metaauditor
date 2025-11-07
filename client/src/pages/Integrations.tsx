@@ -52,6 +52,7 @@ export default function Integrations() {
   const [metaDialogOpen, setMetaDialogOpen] = useState(false);
   const [googleDialogOpen, setGoogleDialogOpen] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [isConnectingMeta, setIsConnectingMeta] = useState(false);
 
   const { data: integrations = [], isLoading: integrationsLoading } = useQuery<Integration[]>({
     queryKey: ['/api/integrations'],
@@ -144,6 +145,32 @@ export default function Integrations() {
     },
   });
 
+  const handleConnectMetaOAuth = async () => {
+    try {
+      setIsConnectingMeta(true);
+      const response = await fetch('/api/auth/meta/connect');
+      const data = await response.json();
+      
+      if (data.authUrl) {
+        window.location.href = data.authUrl;
+      } else {
+        toast({
+          title: 'Erro ao conectar',
+          description: data.error || 'Não foi possível gerar a URL de autenticação',
+          variant: 'destructive'
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Erro ao conectar',
+        description: 'Erro ao iniciar processo de autenticação OAuth',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsConnectingMeta(false);
+    }
+  };
+
   const handleCopy = (text: string, field: string) => {
     navigator.clipboard.writeText(text);
     setCopiedField(field);
@@ -166,10 +193,18 @@ export default function Integrations() {
 
   const MetaSetupGuide = () => (
     <div className="space-y-6">
+      <Alert className="bg-green-50 dark:bg-green-950 border-green-200">
+        <CheckCircle2 className="h-4 w-4 text-green-600" />
+        <AlertDescription className="text-green-900 dark:text-green-100">
+          <strong>✨ Recomendado: Use o botão "Conectar com OAuth"</strong><br />
+          Conexão automática e segura em 1 clique, sem precisar copiar tokens manualmente!
+        </AlertDescription>
+      </Alert>
+
       <Alert className="bg-blue-50 dark:bg-blue-950 border-blue-200">
         <Info className="h-4 w-4 text-blue-600" />
         <AlertDescription className="text-blue-900 dark:text-blue-100">
-          Siga o passo-a-passo abaixo para conectar sua conta Meta Ads (Facebook & Instagram)
+          <strong>Conexão Manual</strong> - Use apenas se preferir configurar manualmente ou para troubleshooting
         </AlertDescription>
       </Alert>
 
@@ -404,9 +439,25 @@ export default function Integrations() {
                             </div>
                           </div>
                           {metaIntegrations.length === 0 && (
-                            <Button onClick={() => setMetaDialogOpen(true)} size="sm">
-                              Conectar
-                            </Button>
+                            <div className="flex gap-2">
+                              <Button 
+                                onClick={handleConnectMetaOAuth} 
+                                size="sm"
+                                disabled={isConnectingMeta}
+                                data-testid="button-connect-meta-oauth"
+                              >
+                                <SiFacebook className="w-4 h-4 mr-2" />
+                                {isConnectingMeta ? 'Conectando...' : 'Conectar com OAuth'}
+                              </Button>
+                              <Button 
+                                onClick={() => setMetaDialogOpen(true)} 
+                                size="sm" 
+                                variant="outline"
+                                data-testid="button-connect-meta-manual"
+                              >
+                                Manual
+                              </Button>
+                            </div>
                           )}
                         </div>
                       </CardHeader>
