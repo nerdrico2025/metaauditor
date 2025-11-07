@@ -67,6 +67,8 @@ export default function Integrations() {
     currentProgress: ''
   });
   const [currentSyncId, setCurrentSyncId] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [integrationToDelete, setIntegrationToDelete] = useState<Integration | null>(null);
 
   const { data: integrations = [], isLoading: integrationsLoading } = useQuery<Integration[]>({
     queryKey: ['/api/integrations'],
@@ -278,15 +280,37 @@ export default function Integrations() {
     }
   };
 
-  const deleteIntegrationMutation = useMutation({
-    mutationFn: (id: string) => apiRequest(`/api/integrations/${id}`, { method: 'DELETE' }),
+  const disableIntegrationMutation = useMutation({
+    mutationFn: (id: string) => apiRequest(`/api/integrations/${id}/disable`, { method: 'POST' }),
     onSuccess: () => {
-      toast({ title: 'Integração removida com sucesso!' });
+      toast({ title: '✓ Integração desconectada. Os dados foram mantidos.' });
       queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
+      setDeleteDialogOpen(false);
+      setIntegrationToDelete(null);
     },
     onError: (error: any) => {
       toast({ 
-        title: 'Erro ao remover integração',
+        title: 'Erro ao desconectar integração',
+        description: error.message,
+        variant: 'destructive'
+      });
+    },
+  });
+
+  const deleteIntegrationMutation = useMutation({
+    mutationFn: (id: string) => apiRequest(`/api/integrations/${id}?deleteData=true`, { method: 'DELETE' }),
+    onSuccess: () => {
+      toast({ title: '✓ Integração e todos os dados foram excluídos' });
+      queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/campaigns'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/adsets'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/creatives'] });
+      setDeleteDialogOpen(false);
+      setIntegrationToDelete(null);
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: 'Erro ao excluir integração',
         description: error.message,
         variant: 'destructive'
       });
@@ -693,9 +717,8 @@ export default function Integrations() {
                                     size="sm"
                                     variant="destructive"
                                     onClick={() => {
-                                      if (confirm('Tem certeza? Isso removerá todas as campanhas vinculadas.')) {
-                                        deleteIntegrationMutation.mutate(integration.id);
-                                      }
+                                      setIntegrationToDelete(integration);
+                                      setDeleteDialogOpen(true);
                                     }}
                                   >
                                     <Trash2 className="w-3 h-3" />
@@ -812,9 +835,8 @@ export default function Integrations() {
                                     size="sm"
                                     variant="destructive"
                                     onClick={() => {
-                                      if (confirm('Tem certeza? Isso removerá todas as campanhas vinculadas.')) {
-                                        deleteIntegrationMutation.mutate(integration.id);
-                                      }
+                                      setIntegrationToDelete(integration);
+                                      setDeleteDialogOpen(true);
                                     }}
                                   >
                                     <Trash2 className="w-3 h-3" />
@@ -1093,6 +1115,63 @@ export default function Integrations() {
                       </>
                     )}
                   </div>
+                </DialogContent>
+              </Dialog>
+
+              {/* Modal de Confirmação de Exclusão */}
+              <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <AlertCircle className="h-5 w-5 text-amber-600" />
+                      O que deseja fazer?
+                    </DialogTitle>
+                    <DialogDescription>
+                      Você está removendo a integração: <strong>{integrationToDelete?.accountName || 'Conta'}</strong>
+                    </DialogDescription>
+                  </DialogHeader>
+                  
+                  <div className="py-4 space-y-4">
+                    <Alert className="bg-blue-50 dark:bg-blue-950 border-blue-200">
+                      <Info className="h-4 w-4 text-blue-600" />
+                      <AlertDescription className="text-blue-900 dark:text-blue-100 text-sm">
+                        <strong>Desconectar:</strong> Mantém todas as campanhas, ad sets e anúncios já sincronizados. Você pode reconectar depois.
+                      </AlertDescription>
+                    </Alert>
+
+                    <Alert className="bg-red-50 dark:bg-red-950 border-red-200">
+                      <AlertCircle className="h-4 w-4 text-red-600" />
+                      <AlertDescription className="text-red-900 dark:text-red-100 text-sm">
+                        <strong>Excluir tudo:</strong> Remove a integração e TODOS os dados (campanhas, ad sets, anúncios). Ação permanente!
+                      </AlertDescription>
+                    </Alert>
+                  </div>
+
+                  <DialogFooter className="flex-col sm:flex-row gap-2">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setDeleteDialogOpen(false)}
+                      className="w-full sm:w-auto"
+                    >
+                      Cancelar
+                    </Button>
+                    <Button 
+                      variant="secondary"
+                      onClick={() => integrationToDelete && disableIntegrationMutation.mutate(integrationToDelete.id)}
+                      disabled={disableIntegrationMutation.isPending || deleteIntegrationMutation.isPending}
+                      className="w-full sm:w-auto"
+                    >
+                      {disableIntegrationMutation.isPending ? 'Desconectando...' : 'Desconectar (manter dados)'}
+                    </Button>
+                    <Button 
+                      variant="destructive"
+                      onClick={() => integrationToDelete && deleteIntegrationMutation.mutate(integrationToDelete.id)}
+                      disabled={disableIntegrationMutation.isPending || deleteIntegrationMutation.isPending}
+                      className="w-full sm:w-auto"
+                    >
+                      {deleteIntegrationMutation.isPending ? 'Excluindo...' : 'Excluir tudo'}
+                    </Button>
+                  </DialogFooter>
                 </DialogContent>
               </Dialog>
 

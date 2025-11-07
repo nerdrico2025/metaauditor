@@ -49,12 +49,30 @@ router.put('/:id', authenticateToken, async (req: Request, res: Response, next: 
   }
 });
 
+// Disable integration (keep data)
+router.post('/:id/disable', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = (req as any).user?.userId;
+    const integration = await storage.disableIntegration(req.params.id, userId);
+    if (!integration) {
+      return res.status(404).json({ message: 'Integração não encontrada' });
+    }
+    res.json({ message: 'Integração desconectada. Os dados foram mantidos.', integration });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Delete integration
 router.delete('/:id', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user?.userId;
-    await storage.deleteIntegration(req.params.id, userId);
-    res.json({ message: 'Integração excluída com sucesso' });
+    const deleteData = req.query.deleteData !== 'false'; // Default true
+    await storage.deleteIntegration(req.params.id, userId, deleteData);
+    const message = deleteData 
+      ? 'Integração e todos os dados foram excluídos' 
+      : 'Integração excluída (dados mantidos)';
+    res.json({ message });
   } catch (error) {
     next(error);
   }
