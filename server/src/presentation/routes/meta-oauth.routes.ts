@@ -131,50 +131,14 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
 
     const accessToken = longLivedData.access_token || shortLivedToken;
 
-    // First, get Business Manager accounts that were authorized
-    const businessesUrl = `https://graph.facebook.com/v21.0/me/businesses?access_token=${accessToken}&fields=id,name,verification_status&limit=100`;
-    const businessesResponse = await fetch(businessesUrl);
-    const businessesData = await businessesResponse.json() as { data?: Array<{ id: string; name: string }> };
+    // Get ALL ad accounts that user has access to (personal + Business Manager)
+    // This includes all accounts the user authorized during OAuth
+    const adAccountsUrl = `https://graph.facebook.com/v21.0/me/adaccounts?access_token=${accessToken}&fields=id,name,account_status&limit=500`;
+    const adAccountsResponse = await fetch(adAccountsUrl);
+    const adAccountsData = await adAccountsResponse.json() as AdAccountsResponse;
 
-    console.log('🏢 Business Managers found:', businessesData.data?.length || 0);
-    console.log('📋 Businesses:', businessesData.data?.map((b: any) => ({ id: b.id, name: b.name })));
-
-    // Get ad accounts from authorized Business Managers only
-    let allAdAccounts: any[] = [];
-    
-    if (businessesData.data && businessesData.data.length > 0) {
-      // Get ad accounts from each Business Manager
-      for (const business of businessesData.data) {
-        const bmAdAccountsUrl = `https://graph.facebook.com/v21.0/${business.id}/adaccounts?access_token=${accessToken}&fields=id,name,account_status&limit=500`;
-        const bmAdAccountsResponse = await fetch(bmAdAccountsUrl);
-        const bmAdAccountsData = await bmAdAccountsResponse.json() as { data?: any[] };
-        
-        if (bmAdAccountsData.data && bmAdAccountsData.data.length > 0) {
-          console.log(`  ✅ Found ${bmAdAccountsData.data.length} ad accounts in BM "${business.name}"`);
-          allAdAccounts.push(...bmAdAccountsData.data);
-        }
-      }
-    } else {
-      // Fallback: if no Business Manager, get personal ad accounts
-      console.log('⚠️ No Business Manager found, fetching personal ad accounts...');
-      const adAccountsUrl = `https://graph.facebook.com/v21.0/me/adaccounts?access_token=${accessToken}&fields=id,name,account_status&limit=500`;
-      const adAccountsResponse = await fetch(adAccountsUrl);
-      const adAccountsData = await adAccountsResponse.json() as AdAccountsResponse;
-      
-      if (adAccountsData.data && adAccountsData.data.length > 0) {
-        allAdAccounts = adAccountsData.data;
-      }
-    }
-
-    // Remove duplicates (in case an account appears in multiple BMs)
-    const uniqueAccounts = Array.from(
-      new Map(allAdAccounts.map(acc => [acc.id, acc])).values()
-    );
-
-    const adAccountsData = { data: uniqueAccounts };
-
-    console.log('📊 Total unique ad accounts found:', adAccountsData.data.length);
-    console.log('📋 Ad Accounts:', adAccountsData.data.map((a: any) => ({ id: a.id, name: a.name })));
+    console.log('📊 Ad Accounts found:', adAccountsData.data?.length || 0);
+    console.log('📋 Ad Accounts:', adAccountsData.data?.map(a => ({ id: a.id, name: a.name })));
 
     if (!adAccountsData.data || adAccountsData.data.length === 0) {
       console.error('❌ No ad accounts found');
@@ -261,8 +225,8 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
         <body>
           <div class="container">
             <h2>🎯 Selecione a Conta de Anúncios</h2>
-            <p><strong>✅ Contas do Business Manager Autorizado</strong><br>
-            Encontramos ${adAccountsData.data.length} conta(s) do Business Manager que você autorizou. Selecione qual deseja conectar:</p>
+            <p><strong>✅ Contas Autorizadas</strong><br>
+            Encontramos ${adAccountsData.data.length} conta(s) de anúncios. Selecione qual deseja conectar ao ClickAuditor:</p>
             <div class="account-list">
               ${adAccountsData.data.map(account => `
                 <div class="account-item" onclick="selectAccount('${account.id}', '${account.name.replace(/'/g, "\\'")}', ${account.account_status})">
