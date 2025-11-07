@@ -60,8 +60,11 @@ export default function Integrations() {
     message: 'Iniciando sincronização...',
     campaigns: 0,
     adSets: 0,
-    creatives: 0
+    creatives: 0,
+    hasError: false,
+    errorMessage: ''
   });
+  const [currentSyncId, setCurrentSyncId] = useState<string | null>(null);
 
   const { data: integrations = [], isLoading: integrationsLoading } = useQuery<Integration[]>({
     queryKey: ['/api/integrations'],
@@ -118,31 +121,53 @@ export default function Integrations() {
 
   const syncIntegrationMutation = useMutation({
     mutationFn: async (id: string) => {
+      // Store current sync ID for retry
+      setCurrentSyncId(id);
+      
       // Open sync modal
       setSyncModalOpen(true);
       setSyncStatus({
         message: 'Conectando à plataforma de anúncios...',
         campaigns: 0,
         adSets: 0,
-        creatives: 0
+        creatives: 0,
+        hasError: false,
+        errorMessage: ''
       });
 
-      // Start sync
-      const result = await apiRequest(`/api/integrations/${id}/sync`, { method: 'POST' });
-      
-      // Update final status
-      setSyncStatus({
-        message: 'Sincronização concluída!',
-        campaigns: result.campaigns || 0,
-        adSets: result.adSets || 0,
-        creatives: result.creatives || 0
-      });
+      try {
+        // Start sync
+        const result = await apiRequest(`/api/integrations/${id}/sync`, { method: 'POST' });
+        
+        // Update final status
+        setSyncStatus({
+          message: 'Sincronização concluída com sucesso!',
+          campaigns: result.campaigns || 0,
+          adSets: result.adSets || 0,
+          creatives: result.creatives || 0,
+          hasError: false,
+          errorMessage: ''
+        });
 
-      return result;
+        return result;
+      } catch (error: any) {
+        // Even on error, try to get partial results from error response
+        const partialData = error.data || {};
+        
+        setSyncStatus({
+          message: 'Sincronização parcial - alguns dados foram sincronizados',
+          campaigns: partialData.campaigns || 0,
+          adSets: partialData.adSets || 0,
+          creatives: partialData.creatives || 0,
+          hasError: true,
+          errorMessage: 'Limite de requisições da API atingido. Aguarde alguns minutos e tente novamente para continuar.'
+        });
+        
+        throw error;
+      }
     },
     onSuccess: (data: any) => {
       setTimeout(() => {
-        setSyncModalOpen(false);
         queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
         
         const parts = [];
@@ -154,17 +179,22 @@ export default function Integrations() {
           title: '✅ Sincronização concluída!',
           description: parts.join(', ') + ' sincronizados.'
         });
+        
+        setSyncModalOpen(false);
+        setCurrentSyncId(null);
       }, 2000); // Keep modal open for 2s to show success
     },
     onError: (error: any) => {
-      setSyncModalOpen(false);
-      toast({ 
-        title: 'Erro na sincronização',
-        description: error.message,
-        variant: 'destructive'
-      });
+      // Don't close modal on error - show partial results and retry option
+      queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
     },
   });
+
+  const handleRetrySyn = () => {
+    if (currentSyncId) {
+      syncIntegrationMutation.mutate(currentSyncId);
+    }
+  };
 
   const deleteIntegrationMutation = useMutation({
     mutationFn: (id: string) => apiRequest(`/api/integrations/${id}`, { method: 'DELETE' }),
@@ -827,6 +857,11 @@ export default function Integrations() {
                           <RefreshCw className="h-5 w-5 animate-spin text-blue-600" />
                           Sincronizando...
                         </>
+                      ) : syncStatus.hasError ? (
+                        <>
+                          <AlertCircle className="h-5 w-5 text-amber-600" />
+                          Sincronização Parcial
+                        </>
                       ) : (
                         <>
                           <CheckCircle2 className="h-5 w-5 text-green-600" />
@@ -882,12 +917,44 @@ export default function Integrations() {
                           </div>
                         </div>
 
-                        <Alert className="bg-green-50 dark:bg-green-950 border-green-200">
-                          <CheckCircle2 className="h-4 w-4 text-green-600" />
-                          <AlertDescription className="text-green-900 dark:text-green-100 text-sm">
-                            Todos os dados foram sincronizados com sucesso!
-                          </AlertDescription>
-                        </Alert>
+                        {syncStatus.hasError ? (
+                          <>
+                            <Alert className="bg-amber-50 dark:bg-amber-950 border-amber-200">
+                              <AlertCircle className="h-4 w-4 text-amber-600" />
+                              <AlertDescription className="text-amber-900 dark:text-amber-100 text-sm">
+                                <strong>Atenção:</strong> {syncStatus.errorMessage}
+                              </AlertDescription>
+                            </Alert>
+                            
+                            <div className="flex gap-2">
+                              <Button 
+                                onClick={handleRetrySyn} 
+                                className="flex-1"
+                                variant="default"
+                                disabled={syncIntegrationMutation.isPending}
+                              >
+                                <RefreshCw className="h-4 w-4 mr-2" />
+                                Continuar Sincronização
+                              </Button>
+                              <Button 
+                                onClick={() => {
+                                  setSyncModalOpen(false);
+                                  setCurrentSyncId(null);
+                                }} 
+                                variant="outline"
+                              >
+                                Fechar
+                              </Button>
+                            </div>
+                          </>
+                        ) : (
+                          <Alert className="bg-green-50 dark:bg-green-950 border-green-200">
+                            <CheckCircle2 className="h-4 w-4 text-green-600" />
+                            <AlertDescription className="text-green-900 dark:text-green-100 text-sm">
+                              Todos os dados foram sincronizados com sucesso!
+                            </AlertDescription>
+                          </Alert>
+                        )}
                       </>
                     )}
                   </div>

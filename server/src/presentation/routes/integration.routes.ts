@@ -86,100 +86,123 @@ router.post('/:id/sync', authenticateToken, async (req: Request, res: Response, 
     if (integration.platform === 'meta') {
       console.log('🚀 Starting Meta Ads sync with full hierarchy...');
       
-      // Sync Meta Ads campaigns
-      const campaigns = await metaAdsService.syncCampaigns(integration, userId, companyId);
-      console.log(`📊 Found ${campaigns.length} campaigns`);
-      
-      for (let i = 0; i < campaigns.length; i++) {
-        const campaign = campaigns[i];
+      try {
+        // Sync Meta Ads campaigns
+        const campaigns = await metaAdsService.syncCampaigns(integration, userId, companyId);
+        console.log(`📊 Found ${campaigns.length} campaigns`);
         
-        // Check if campaign exists by externalId
-        const existingCampaigns = await storage.getCampaignsByUser(userId);
-        let dbCampaign = existingCampaigns.find(c => c.externalId === campaign.externalId);
-        
-        if (dbCampaign) {
-          // Update existing campaign
-          await storage.updateCampaign(dbCampaign.id, campaign);
-          console.log(`🔄 Campaign updated: ${campaign.name}`);
-        } else {
-          // Create new campaign
-          dbCampaign = await storage.createCampaign(campaign);
-          console.log(`✅ Campaign created: ${campaign.name}`);
-        }
-        syncedCampaigns++;
-        
-        if (!dbCampaign) continue;
-
-        // Add delay between campaigns to avoid rate limit
-        if (i > 0 && i % 5 === 0) {
-          console.log(`⏱️  Processed ${i} campaigns, pausing 2s to avoid rate limit...`);
-          await new Promise(resolve => setTimeout(resolve, 2000));
-        }
-
-        // Sync ad sets for each campaign
-        const adSets = await metaAdsService.syncAdSets(
-          integration,
-          campaign.externalId,
-          dbCampaign.id,
-          userId
-        );
-        console.log(`  📋 Found ${adSets.length} ad sets in campaign ${campaign.name}`);
-
-        for (let j = 0; j < adSets.length; j++) {
-          const adSet = adSets[j];
+        for (let i = 0; i < campaigns.length; i++) {
+          const campaign = campaigns[i];
+          console.log(`\n📌 Processing campaign ${i + 1}/${campaigns.length}: ${campaign.name}`);
           
-          // Check if ad set exists by externalId
-          const existingAdSets = await storage.getAdSetsByUser(userId);
-          let dbAdSet = existingAdSets.find(a => a.externalId === adSet.externalId);
-          
-          if (dbAdSet) {
-            // Update existing ad set
-            await storage.updateAdSet(dbAdSet.id, adSet);
-            console.log(`  🔄 Ad Set updated: ${adSet.name}`);
-          } else {
-            // Create new ad set
-            dbAdSet = await storage.createAdSet(adSet);
-            console.log(`  ✅ Ad Set created: ${adSet.name}`);
-          }
-          syncedAdSets++;
-          
-          if (!dbAdSet || !dbCampaign) continue;
-
-          // Add small delay between ad sets
-          if (j > 0 && j % 3 === 0) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
-          }
-
-          // Sync creatives for each ad set
-          const creatives = await metaAdsService.syncCreatives(
-            integration,
-            adSet.externalId,
-            dbAdSet.id,
-            dbCampaign.id,
-            userId
-          );
-          console.log(`    🎨 Found ${creatives.length} ads in ad set ${adSet.name}`);
-
-          for (const creative of creatives) {
-            // Check if creative exists by externalId
-            const existingCreatives = await storage.getCreativesByUser(userId);
-            const existingCreative = existingCreatives.find(c => c.externalId === creative.externalId);
+          try {
+            // Check if campaign exists by externalId
+            const existingCampaigns = await storage.getCampaignsByUser(userId);
+            let dbCampaign = existingCampaigns.find(c => c.externalId === campaign.externalId);
             
-            if (existingCreative) {
-              // Update existing creative
-              await storage.updateCreative(existingCreative.id, creative);
-              console.log(`    🔄 Creative updated: ${creative.name}`);
+            if (dbCampaign) {
+              // Update existing campaign
+              await storage.updateCampaign(dbCampaign.id, campaign);
+              console.log(`🔄 Campaign updated: ${campaign.name}`);
             } else {
-              // Create new creative
-              await storage.createCreative(creative);
-              console.log(`    ✅ Creative created: ${creative.name}`);
+              // Create new campaign
+              dbCampaign = await storage.createCampaign(campaign);
+              console.log(`✅ Campaign created: ${campaign.name}`);
             }
-            syncedCreatives++;
+            syncedCampaigns++;
+            
+            if (!dbCampaign) continue;
+
+            // Add longer delay between campaigns to avoid rate limit
+            if (i > 0 && i % 3 === 0) {
+              console.log(`⏱️  Processed ${i} campaigns, pausing 5s to avoid rate limit...`);
+              await new Promise(resolve => setTimeout(resolve, 5000));
+            }
+
+            // Sync ad sets for each campaign
+            const adSets = await metaAdsService.syncAdSets(
+              integration,
+              campaign.externalId,
+              dbCampaign.id,
+              userId
+            );
+            console.log(`  📋 Found ${adSets.length} ad sets in campaign ${campaign.name}`);
+
+            for (let j = 0; j < adSets.length; j++) {
+              const adSet = adSets[j];
+              console.log(`  📌 Processing ad set ${j + 1}/${adSets.length}: ${adSet.name}`);
+              
+              try {
+                // Check if ad set exists by externalId
+                const existingAdSets = await storage.getAdSetsByUser(userId);
+                let dbAdSet = existingAdSets.find(a => a.externalId === adSet.externalId);
+                
+                if (dbAdSet) {
+                  // Update existing ad set
+                  await storage.updateAdSet(dbAdSet.id, adSet);
+                  console.log(`  🔄 Ad Set updated: ${adSet.name}`);
+                } else {
+                  // Create new ad set
+                  dbAdSet = await storage.createAdSet(adSet);
+                  console.log(`  ✅ Ad Set created: ${adSet.name}`);
+                }
+                syncedAdSets++;
+                
+                if (!dbAdSet || !dbCampaign) continue;
+
+                // Add delay between ad sets
+                if (j > 0 && j % 2 === 0) {
+                  console.log(`  ⏱️  Pausing 3s between ad sets...`);
+                  await new Promise(resolve => setTimeout(resolve, 3000));
+                }
+
+                // Sync creatives for each ad set
+                const creatives = await metaAdsService.syncCreatives(
+                  integration,
+                  adSet.externalId,
+                  dbAdSet.id,
+                  dbCampaign.id,
+                  userId
+                );
+                console.log(`    🎨 Found ${creatives.length} ads in ad set ${adSet.name}`);
+
+                for (let k = 0; k < creatives.length; k++) {
+                  const creative = creatives[k];
+                  console.log(`    📌 Processing ad ${k + 1}/${creatives.length}: ${creative.name}`);
+                  
+                  // Check if creative exists by externalId
+                  const existingCreatives = await storage.getCreativesByUser(userId);
+                  const existingCreative = existingCreatives.find(c => c.externalId === creative.externalId);
+                  
+                  if (existingCreative) {
+                    // Update existing creative
+                    await storage.updateCreative(existingCreative.id, creative);
+                    console.log(`    🔄 Creative updated: ${creative.name}`);
+                  } else {
+                    // Create new creative
+                    await storage.createCreative(creative);
+                    console.log(`    ✅ Creative created: ${creative.name}`);
+                  }
+                  syncedCreatives++;
+                }
+              } catch (adSetError: any) {
+                console.error(`❌ Error processing ad set ${adSet.name}:`, adSetError.message);
+                // Continue with next ad set instead of failing completely
+                continue;
+              }
+            }
+          } catch (campaignError: any) {
+            console.error(`❌ Error processing campaign ${campaign.name}:`, campaignError.message);
+            // Continue with next campaign instead of failing completely
+            continue;
           }
         }
+        
+        console.log(`🎉 Meta sync completed: ${syncedCampaigns} campaigns, ${syncedAdSets} ad sets, ${syncedCreatives} ads`);
+      } catch (error: any) {
+        console.error('❌ Error during sync, but returning partial results:', error.message);
+        // Return partial results instead of throwing
       }
-      
-      console.log(`🎉 Meta sync completed: ${syncedCampaigns} campaigns, ${syncedAdSets} ad sets, ${syncedCreatives} ads`);
     } else if (integration.platform === 'google') {
       // Sync Google Ads campaigns
       const campaigns = await googleAdsService.syncCampaigns(integration, userId, companyId);

@@ -66,8 +66,8 @@ interface MetaAdInsights {
 export class MetaAdsService {
   private readonly apiVersion = 'v21.0';
   private readonly baseUrl = 'https://graph.facebook.com';
-  private readonly requestDelay = 500; // 500ms delay between requests
-  private readonly maxRetries = 3;
+  private readonly requestDelay = 1000; // 1s delay between requests
+  private readonly maxRetries = 5; // More retries with longer waits
 
   /**
    * Sleep for specified milliseconds
@@ -91,7 +91,7 @@ export class MetaAdsService {
         
         // Rate limit errors: code 17, 4, 80004
         if ((errorCode === 17 || errorCode === 4 || errorCode === 80004) && retryCount < this.maxRetries) {
-          const waitTime = Math.pow(2, retryCount) * 2000; // Exponential backoff: 2s, 4s, 8s
+          const waitTime = Math.pow(2, retryCount) * 3000; // Exponential backoff: 3s, 6s, 12s, 24s, 48s
           console.log(`⏱️ Rate limit hit, waiting ${waitTime/1000}s before retry ${retryCount + 1}/${this.maxRetries}...`);
           await this.sleep(waitTime);
           return this.fetchWithRetry(url, retryCount + 1);
