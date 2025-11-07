@@ -20,6 +20,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Plus, Edit, Trash, Shield, TrendingUp, Palette, Globe, Target } from "lucide-react";
 import { ChipsInput } from "@/components/ChipsInput";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface Policy {
   id: string;
@@ -239,7 +240,7 @@ export default function Policies() {
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header />
+        <Header title="Políticas de Validação" />
         <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900">
           <div className="py-8">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -414,6 +415,41 @@ export default function Policies() {
                 />
               </div>
 
+              {scope === 'campaign' && (
+                <div className="space-y-2">
+                  <Label>Selecionar Campanhas</Label>
+                  <div className="border rounded-md p-4 max-h-48 overflow-y-auto space-y-2">
+                    {campaigns.length === 0 ? (
+                      <p className="text-sm text-gray-500">Nenhuma campanha disponível</p>
+                    ) : (
+                      campaigns.map((campaign) => (
+                        <div key={campaign.id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`campaign-${campaign.id}`}
+                            checked={(form.watch('campaignIds') || []).includes(campaign.id)}
+                            onCheckedChange={(checked) => {
+                              const current = form.watch('campaignIds') || [];
+                              if (checked) {
+                                form.setValue('campaignIds', [...current, campaign.id]);
+                              } else {
+                                form.setValue('campaignIds', current.filter(id => id !== campaign.id));
+                              }
+                            }}
+                            data-testid={`checkbox-campaign-${campaign.id}`}
+                          />
+                          <Label htmlFor={`campaign-${campaign.id}`} className="font-normal cursor-pointer">
+                            {campaign.name}
+                          </Label>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    {(form.watch('campaignIds') || []).length} campanha(s) selecionada(s)
+                  </p>
+                </div>
+              )}
+
               <div className="flex items-center space-x-2">
                 <Switch
                   id="isDefault"
@@ -444,14 +480,29 @@ export default function Policies() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="logoUrl">URL do Logo</Label>
+                  <Label htmlFor="logoUrl">Logo da Marca (URL)</Label>
                   <Input 
                     id="logoUrl" 
                     type="url"
-                    placeholder="https://..."
+                    placeholder="https://exemplo.com/logo.png"
                     {...form.register('logoUrl')} 
                     data-testid="input-logo-url"
                   />
+                  {form.watch('logoUrl') && (
+                    <div className="mt-2 p-2 border rounded bg-gray-50 dark:bg-gray-800">
+                      <img 
+                        src={form.watch('logoUrl')} 
+                        alt="Logo preview" 
+                        className="h-16 w-auto object-contain"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  )}
+                  <p className="text-xs text-gray-500">
+                    Cole a URL pública da imagem do logo
+                  </p>
                 </div>
 
                 <div className="space-y-2">
