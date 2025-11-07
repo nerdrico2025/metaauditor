@@ -201,14 +201,43 @@ export const creatives = pgTable("creatives", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Policies
+// Policies (consolidated validation rules)
 export const policies = pgTable("policies", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   name: text("name").notNull(),
   description: text("description"),
-  rules: jsonb("rules").notNull(),
-  performanceThresholds: jsonb("performance_thresholds"),
+  
+  // Scope: 'global' applies to all campaigns, 'campaign' applies to specific campaigns
+  scope: varchar("scope").notNull().default('global'),
+  campaignIds: jsonb("campaign_ids"), // Array of campaign IDs when scope is 'campaign'
+  
+  // Brand Configuration
+  brandName: text("brand_name"),
+  logoUrl: text("logo_url"),
+  primaryColor: varchar("primary_color", { length: 7 }),
+  secondaryColor: varchar("secondary_color", { length: 7 }),
+  accentColor: varchar("accent_color", { length: 7 }),
+  brandGuidelines: text("brand_guidelines"),
+  
+  // Content Criteria
+  requiredKeywords: jsonb("required_keywords"),
+  prohibitedKeywords: jsonb("prohibited_keywords"),
+  requiredPhrases: jsonb("required_phrases"),
+  prohibitedPhrases: jsonb("prohibited_phrases"),
+  minTextLength: integer("min_text_length"),
+  maxTextLength: integer("max_text_length"),
+  requiresLogo: boolean("requires_logo").default(false),
+  requiresBrandColors: boolean("requires_brand_colors").default(false),
+  
+  // Performance Thresholds
+  ctrMin: decimal("ctr_min", { precision: 5, scale: 3 }),
+  ctrTarget: decimal("ctr_target", { precision: 5, scale: 3 }),
+  cpcMax: decimal("cpc_max", { precision: 10, scale: 2 }),
+  cpcTarget: decimal("cpc_target", { precision: 10, scale: 2 }),
+  conversionsMin: integer("conversions_min"),
+  conversionsTarget: integer("conversions_target"),
+  
   status: varchar("status").default('active'),
   isDefault: boolean("is_default").default(false),
   createdAt: timestamp("created_at").defaultNow(),
