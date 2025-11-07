@@ -482,14 +482,46 @@ export default function Policies() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="logoUrl">Logo da Marca (URL)</Label>
-                  <Input 
-                    id="logoUrl" 
-                    type="url"
-                    placeholder="https://exemplo.com/logo.png"
-                    {...form.register('logoUrl')} 
-                    data-testid="input-logo-url"
-                  />
+                  <Label htmlFor="logoUpload">Logo da Marca</Label>
+                  <div className="flex gap-2">
+                    <Input 
+                      id="logoUpload" 
+                      type="file"
+                      accept="image/*"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        
+                        const formData = new FormData();
+                        formData.append('logo', file);
+                        
+                        try {
+                          const response = await fetch('/api/policies/upload-logo', {
+                            method: 'POST',
+                            body: formData,
+                          });
+                          
+                          if (response.ok) {
+                            const data = await response.json();
+                            form.setValue('logoUrl', data.url);
+                            toast({
+                              title: 'Logo enviado!',
+                              description: 'O logo foi carregado com sucesso.',
+                            });
+                          } else {
+                            throw new Error('Erro ao fazer upload');
+                          }
+                        } catch (error) {
+                          toast({
+                            title: 'Erro no upload',
+                            description: 'Não foi possível enviar o logo.',
+                            variant: 'destructive',
+                          });
+                        }
+                      }}
+                      data-testid="input-logo-upload"
+                    />
+                  </div>
                   {form.watch('logoUrl') && (
                     <div className="mt-2 p-2 border rounded bg-gray-50 dark:bg-gray-800">
                       <img 
@@ -503,7 +535,7 @@ export default function Policies() {
                     </div>
                   )}
                   <p className="text-xs text-gray-500">
-                    Cole a URL pública da imagem do logo
+                    Faça upload da imagem do logo (JPG, PNG, GIF, SVG - máx. 5MB)
                   </p>
                 </div>
 
