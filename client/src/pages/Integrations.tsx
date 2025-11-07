@@ -296,20 +296,50 @@ export default function Integrations() {
   const handleConnectMetaOAuth = async () => {
     try {
       setIsConnectingMeta(true);
+      
+      // CRITICAL: Open popup IMMEDIATELY (synchronously) to avoid browser blocking
+      const width = 600;
+      const height = 700;
+      const left = window.screen.width / 2 - width / 2;
+      const top = window.screen.height / 2 - height / 2;
+      
+      // Open blank popup window instantly
+      const popup = window.open(
+        'about:blank',
+        'MetaOAuth',
+        `width=${width},height=${height},left=${left},top=${top},toolbar=0,scrollbars=1,status=0,resizable=1,location=1,menuBar=0`
+      );
+      
+      if (!popup) {
+        toast({
+          title: 'Popup bloqueado',
+          description: 'Por favor, permita popups para este site e tente novamente.',
+          variant: 'destructive'
+        });
+        setIsConnectingMeta(false);
+        return;
+      }
+
+      // Show loading message in popup while fetching auth URL
+      popup.document.write(`
+        <html>
+          <head><title>Conectando...</title></head>
+          <body style="display: flex; align-items: center; justify-content: center; height: 100vh; font-family: Arial, sans-serif; background: #f5f5f5;">
+            <div style="text-align: center;">
+              <div style="font-size: 48px; margin-bottom: 16px;">⏳</div>
+              <h2 style="margin: 0; color: #333;">Conectando ao Meta...</h2>
+              <p style="color: #666;">Aguarde um momento...</p>
+            </div>
+          </body>
+        </html>
+      `);
+
+      // Now fetch the auth URL asynchronously and redirect popup
       const data = await apiRequest('/api/auth/meta/connect');
       
       if (data.authUrl) {
-        // Open OAuth in popup window
-        const width = 600;
-        const height = 700;
-        const left = window.screen.width / 2 - width / 2;
-        const top = window.screen.height / 2 - height / 2;
-        
-        const popup = window.open(
-          data.authUrl,
-          'MetaOAuth',
-          `width=${width},height=${height},left=${left},top=${top},toolbar=0,scrollbars=1,status=0,resizable=1,location=1,menuBar=0`
-        );
+        // Redirect popup to actual OAuth URL
+        popup.location.href = data.authUrl;
 
         // Listen for messages from popup
         const handleMessage = (event: MessageEvent) => {
@@ -343,6 +373,7 @@ export default function Integrations() {
           }
         }, 1000);
       } else {
+        popup.close();
         toast({
           title: 'Erro ao conectar',
           description: data.error || 'Não foi possível gerar a URL de autenticação',

@@ -131,19 +131,66 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
 
     const accessToken = longLivedData.access_token || shortLivedToken;
 
-    // Get ALL ad accounts that user has access to (personal + Business Manager)
-    // This includes all accounts the user authorized during OAuth
-    const adAccountsUrl = `https://graph.facebook.com/v21.0/me/adaccounts?access_token=${accessToken}&fields=id,name,account_status&limit=500`;
-    const adAccountsResponse = await fetch(adAccountsUrl);
-    const adAccountsData = await adAccountsResponse.json() as AdAccountsResponse;
+    // Step 1: Get ONLY the Business Managers that were AUTHORIZED during OAuth
+    const businessesUrl = `https://graph.facebook.com/v21.0/me/businesses?access_token=${accessToken}&fields=id,name,verification_status&limit=100`;
+    const businessesResponse = await fetch(businessesUrl);
+    const businessesData = await businessesResponse.json() as { data?: Array<{ id: string; name: string }> };
 
-    console.log('📊 Ad Accounts found:', adAccountsData.data?.length || 0);
-    console.log('📋 Ad Accounts:', adAccountsData.data?.map(a => ({ id: a.id, name: a.name })));
+    console.log('🔐 Business Managers AUTHORIZED in OAuth:', businessesData.data?.length || 0);
+    console.log('📋 Authorized Businesses:', businessesData.data?.map((b: any) => ({ id: b.id, name: b.name })));
+
+    let allAdAccounts: any[] = [];
+    
+    if (businessesData.data && businessesData.data.length > 0) {
+      // Step 2: Get ad accounts ONLY from AUTHORIZED Business Managers
+      for (const business of businessesData.data) {
+        console.log(`🔍 Fetching ad accounts from authorized BM: ${business.name} (${business.id})`);
+        const bmAdAccountsUrl = `https://graph.facebook.com/v21.0/${business.id}/owned_ad_accounts?access_token=${accessToken}&fields=id,name,account_status&limit=500`;
+        const bmAdAccountsResponse = await fetch(bmAdAccountsUrl);
+        const bmAdAccountsData = await bmAdAccountsResponse.json() as { data?: any[] };
+        
+        if (bmAdAccountsData.data && bmAdAccountsData.data.length > 0) {
+          console.log(`  ✅ Found ${bmAdAccountsData.data.length} ad accounts in authorized BM "${business.name}"`);
+          // Tag each account with the BM name for display
+          const accountsWithBM = bmAdAccountsData.data.map(acc => ({
+            ...acc,
+            business_name: business.name,
+            business_id: business.id
+          }));
+          allAdAccounts.push(...accountsWithBM);
+        } else {
+          console.log(`  ⚠️ No ad accounts in BM "${business.name}"`);
+        }
+      }
+    } else {
+      // Fallback: if no Business Manager was authorized, try personal ad accounts
+      console.log('⚠️ No Business Manager authorized, trying personal ad accounts...');
+      const personalAccountsUrl = `https://graph.facebook.com/v21.0/me/adaccounts?access_token=${accessToken}&fields=id,name,account_status&limit=500`;
+      const personalAccountsResponse = await fetch(personalAccountsUrl);
+      const personalAccountsData = await personalAccountsResponse.json() as AdAccountsResponse;
+      
+      if (personalAccountsData.data && personalAccountsData.data.length > 0) {
+        allAdAccounts = personalAccountsData.data.map(acc => ({
+          ...acc,
+          business_name: 'Conta Pessoal',
+          business_id: null
+        }));
+      }
+    }
+
+    // Remove duplicates (in case an account appears in multiple BMs)
+    const uniqueAccounts = Array.from(
+      new Map(allAdAccounts.map(acc => [acc.id, acc])).values()
+    );
+
+    const adAccountsData = { data: uniqueAccounts };
+
+    console.log('📊 Total unique AUTHORIZED ad accounts found:', adAccountsData.data.length);
+    console.log('📋 Authorized Ad Accounts:', adAccountsData.data.map((a: any) => ({ id: a.id, name: a.name, bm: a.business_name })));
 
     if (!adAccountsData.data || adAccountsData.data.length === 0) {
-      console.error('❌ No ad accounts found');
-      console.error('❌ API Response:', adAccountsData);
-      return sendResultAndClose(false, 'Nenhuma conta de anúncios encontrada. Verifique as permissões do Business Manager.');
+      console.error('❌ No ad accounts found in authorized Business Managers');
+      return sendResultAndClose(false, 'Nenhuma conta encontrada nos Business Managers autorizados. Verifique se você tem contas de anúncios nos BMs que autorizou.');
     }
 
     // Store access token and accounts for user to select
@@ -204,6 +251,12 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
               color: #666;
               font-family: monospace;
             }
+            .account-bm {
+              font-size: 12px;
+              color: #1877f2;
+              margin-top: 4px;
+              font-weight: 500;
+            }
             .account-status {
               display: inline-block;
               margin-top: 8px;
@@ -225,13 +278,14 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
         <body>
           <div class="container">
             <h2>🎯 Selecione a Conta de Anúncios</h2>
-            <p><strong>✅ Contas Autorizadas</strong><br>
-            Encontramos ${adAccountsData.data.length} conta(s) de anúncios. Selecione qual deseja conectar ao ClickAuditor:</p>
+            <p><strong>✅ Contas dos Business Managers Autorizados</strong><br>
+            Encontramos ${adAccountsData.data.length} conta(s) de anúncios nos BMs que você autorizou. Selecione qual deseja conectar:</p>
             <div class="account-list">
               ${adAccountsData.data.map(account => `
                 <div class="account-item" onclick="selectAccount('${account.id}', '${account.name.replace(/'/g, "\\'")}', ${account.account_status})">
                   <div class="account-name">${account.name}</div>
                   <div class="account-id">${account.id}</div>
+                  ${account.business_name ? `<div class="account-bm">🏢 ${account.business_name}</div>` : ''}
                   <span class="account-status ${account.account_status === 1 ? 'status-active' : 'status-disabled'}">
                     ${account.account_status === 1 ? '✓ Ativa' : '⚠ Desativada'}
                   </span>
