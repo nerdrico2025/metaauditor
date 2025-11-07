@@ -40,6 +40,8 @@ interface Integration {
   id: string;
   platform: string;
   accountId: string | null;
+  accountName: string | null;
+  accountStatus: string | null;
   status: string;
   lastSync: Date | null;
   createdAt: Date;
@@ -463,12 +465,28 @@ export default function Integrations() {
                                 </div>
                                 
                                 <div className="space-y-1">
+                                  {integration.accountName && (
+                                    <div className="flex items-center justify-between text-sm">
+                                      <span className="text-gray-500">Conta:</span>
+                                      <span className="font-semibold text-gray-900 dark:text-white">
+                                        {integration.accountName}
+                                      </span>
+                                    </div>
+                                  )}
                                   <div className="flex items-center justify-between text-sm">
                                     <span className="text-gray-500">Account ID:</span>
                                     <span className="font-mono text-gray-900 dark:text-white">
                                       {integration.accountId}
                                     </span>
                                   </div>
+                                  {integration.accountStatus && (
+                                    <div className="flex items-center justify-between text-sm">
+                                      <span className="text-gray-500">Status:</span>
+                                      <span className={`font-medium ${integration.accountStatus === 'ACTIVE' ? 'text-green-600' : 'text-red-600'}`}>
+                                        {integration.accountStatus === 'ACTIVE' ? '✓ Ativa' : '⚠ Desativada'}
+                                      </span>
+                                    </div>
+                                  )}
                                   <div className="flex items-center justify-between text-sm">
                                     <span className="text-gray-500">Última Sinc:</span>
                                     <span className="text-gray-900 dark:text-white">

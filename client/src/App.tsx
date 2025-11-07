@@ -6,7 +6,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, ProtectedRoute } from "@/contexts/AuthContext";
 import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
-import Settings from "@/pages/Settings";
 import BrandSettings from "@/pages/BrandSettings";
 import ContentCriteria from "@/pages/ContentCriteria";
 import SuperAdmin from "@/pages/SuperAdmin";
@@ -25,16 +24,6 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Landing} />
-      <Route path="/settings">
-        <ProtectedRoute>
-          <Settings />
-        </ProtectedRoute>
-      </Route>
-      <Route path="/profile">
-        <ProtectedRoute>
-          <Settings />
-        </ProtectedRoute>
-      </Route>
       <Route path="/dashboard">
         <ProtectedRoute>
           <Dashboard />

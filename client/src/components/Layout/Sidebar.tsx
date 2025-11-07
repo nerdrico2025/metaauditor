@@ -25,22 +25,16 @@ const navigation: NavigationItem[] = [
   },
   { name: 'Relatórios', href: '/reports', icon: FileText },
   { name: 'Histórico', href: '/history', icon: History },
-  { 
-    name: 'Configurações', 
-    icon: Settings,
-    children: [
-      { name: 'Políticas de Validação', href: '/policies', icon: Shield },
-      { name: 'Integrações', href: '/integrations', icon: ExternalLink },
-      { name: 'Dados da Empresa', href: '/company', icon: Building2 },
-    ]
-  },
+  { name: 'Políticas de Validação', href: '/policies', icon: Shield },
+  { name: 'Integrações', href: '/integrations', icon: ExternalLink },
+  { name: 'Dados da Empresa', href: '/company', icon: Building2 },
 ];
 
 export default function Sidebar() {
   const [location, setLocation] = useLocation();
   const { user, logout, isSuperAdmin } = useAuth();
   const { t } = useTranslation();
-  const [expandedItems, setExpandedItems] = useState<string[]>(['Campanhas', 'Configurações']);
+  const [expandedItems, setExpandedItems] = useState<string[]>(['Campanhas']);
 
   // Don't show regular sidebar for super admin
   if (isSuperAdmin) {
