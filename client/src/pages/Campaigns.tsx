@@ -202,10 +202,12 @@ export default function Campaigns() {
   };
 
   const getAdSetCount = (campaignId: string) => {
+    if (!Array.isArray(allAdSets)) return 0;
     return allAdSets.filter((adSet: any) => adSet.campaignId === campaignId).length;
   };
 
   const getCreativeCount = (campaignId: string) => {
+    if (!Array.isArray(allAdSets) || !Array.isArray(allCreatives)) return 0;
     const campaignAdSets = allAdSets.filter((adSet: any) => adSet.campaignId === campaignId);
     const adSetIds = campaignAdSets.map((adSet: any) => adSet.id);
     return allCreatives.filter((creative: any) => adSetIds.includes(creative.adSetId)).length;
