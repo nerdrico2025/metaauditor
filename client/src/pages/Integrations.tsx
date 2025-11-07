@@ -20,6 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Trash2, RefreshCw, CheckCircle2, AlertCircle, Info, ExternalLink, Copy, Check } from 'lucide-react';
 import { SiFacebook, SiGoogle } from 'react-icons/si';
 import { Textarea } from '@/components/ui/textarea';
+import { EventSourcePolyfill } from 'event-source-polyfill';
 
 const metaIntegrationSchema = z.object({
   accessToken: z.string().min(1, 'Access token é obrigatório'),
@@ -208,9 +209,12 @@ export default function Integrations() {
       currentProgress: ''
     });
 
-    const eventSource = new EventSource(`/api/integrations/${integrationId}/sync-stream`);
+    const eventSource = new EventSourcePolyfill(`/api/integrations/${integrationId}/sync-stream`, {
+      withCredentials: true
+    });
 
     eventSource.addEventListener('progress', (event: MessageEvent) => {
+      if (!event.data) return;
       const data = JSON.parse(event.data);
       setSyncStatus(prev => ({
         ...prev,
@@ -223,6 +227,16 @@ export default function Integrations() {
     });
 
     eventSource.addEventListener('error', (event: MessageEvent) => {
+      if (!event.data) {
+        eventSource.close();
+        setSyncStatus(prev => ({
+          ...prev,
+          hasError: true,
+          errorMessage: 'Erro de conexão. Verifique sua autenticação.',
+          isInProgress: false
+        }));
+        return;
+      }
       const data = JSON.parse(event.data);
       setSyncStatus(prev => ({
         ...prev,
@@ -236,6 +250,7 @@ export default function Integrations() {
     });
 
     eventSource.addEventListener('complete', (event: MessageEvent) => {
+      if (!event.data) return;
       const data = JSON.parse(event.data);
       setSyncStatus({
         message: data.message,
