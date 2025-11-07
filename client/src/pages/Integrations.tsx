@@ -151,13 +151,56 @@ export default function Integrations() {
       const data = await apiRequest('/api/auth/meta/connect');
       
       if (data.authUrl) {
-        window.location.href = data.authUrl;
+        // Open OAuth in popup window
+        const width = 600;
+        const height = 700;
+        const left = window.screen.width / 2 - width / 2;
+        const top = window.screen.height / 2 - height / 2;
+        
+        const popup = window.open(
+          data.authUrl,
+          'MetaOAuth',
+          `width=${width},height=${height},left=${left},top=${top},toolbar=0,scrollbars=1,status=0,resizable=1,location=1,menuBar=0`
+        );
+
+        // Listen for messages from popup
+        const handleMessage = (event: MessageEvent) => {
+          if (event.data.type === 'META_OAUTH_SUCCESS') {
+            toast({
+              title: 'Conectado com sucesso!',
+              description: 'Sua conta Meta Ads foi conectada.',
+            });
+            queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
+            setIsConnectingMeta(false);
+            window.removeEventListener('message', handleMessage);
+          } else if (event.data.type === 'META_OAUTH_ERROR') {
+            toast({
+              title: 'Erro ao conectar',
+              description: event.data.message || 'Ocorreu um erro durante a autenticação',
+              variant: 'destructive'
+            });
+            setIsConnectingMeta(false);
+            window.removeEventListener('message', handleMessage);
+          }
+        };
+
+        window.addEventListener('message', handleMessage);
+
+        // Check if popup was closed manually
+        const checkClosed = setInterval(() => {
+          if (popup?.closed) {
+            clearInterval(checkClosed);
+            setIsConnectingMeta(false);
+            window.removeEventListener('message', handleMessage);
+          }
+        }, 1000);
       } else {
         toast({
           title: 'Erro ao conectar',
           description: data.error || 'Não foi possível gerar a URL de autenticação',
           variant: 'destructive'
         });
+        setIsConnectingMeta(false);
       }
     } catch (error: any) {
       toast({
@@ -165,7 +208,6 @@ export default function Integrations() {
         description: error.message || 'Erro ao iniciar processo de autenticação OAuth',
         variant: 'destructive'
       });
-    } finally {
       setIsConnectingMeta(false);
     }
   };

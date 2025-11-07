@@ -54,13 +54,44 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
   try {
     const { code, state, error: oauthError } = req.query;
 
+    // Helper function to send result and close popup
+    const sendResultAndClose = (success: boolean, message: string) => {
+      const html = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>OAuth Callback</title>
+          </head>
+          <body>
+            <script>
+              if (window.opener) {
+                window.opener.postMessage({
+                  type: '${success ? 'META_OAUTH_SUCCESS' : 'META_OAUTH_ERROR'}',
+                  message: '${message}'
+                }, '*');
+                setTimeout(() => window.close(), 500);
+              } else {
+                window.location.href = '/?${success ? 'success' : 'error'}=${message}';
+              }
+            </script>
+            <p style="text-align: center; font-family: sans-serif; margin-top: 50px;">
+              ${success ? '✅ Conectado com sucesso!' : '❌ Erro na conexão'}
+              <br><br>
+              Esta janela será fechada automaticamente...
+            </p>
+          </body>
+        </html>
+      `;
+      return res.send(html);
+    };
+
     // Check for OAuth errors
     if (oauthError) {
-      return res.redirect(`/?error=${oauthError}`);
+      return sendResultAndClose(false, `OAuth error: ${oauthError}`);
     }
 
     if (!code || !state) {
-      return res.redirect('/?error=missing_code_or_state');
+      return sendResultAndClose(false, 'Código ou state ausente');
     }
 
     // Decode state to get userId
@@ -71,7 +102,7 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
     const settings = await storage.getPlatformSettingsByPlatform('meta');
     
     if (!settings) {
-      return res.redirect('/?error=meta_app_not_configured');
+      return sendResultAndClose(false, 'App Meta não configurado');
     }
 
     const redirectUri = settings.redirectUri || `${process.env.REPL_URL || 'http://localhost:5000'}/auth/meta/callback`;
@@ -84,7 +115,7 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
 
     if (!tokenData.access_token) {
       console.error('Token exchange failed:', tokenData);
-      return res.redirect('/?error=token_exchange_failed');
+      return sendResultAndClose(false, 'Falha ao trocar código por token');
     }
 
     const shortLivedToken = tokenData.access_token;
@@ -103,7 +134,7 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
     const adAccountsData = await adAccountsResponse.json() as AdAccountsResponse;
 
     if (!adAccountsData.data || adAccountsData.data.length === 0) {
-      return res.redirect('/?error=no_ad_accounts');
+      return sendResultAndClose(false, 'Nenhuma conta de anúncios encontrada');
     }
 
     // Store accounts in session/temp storage for selection
@@ -130,11 +161,39 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
       });
     }
 
-    // Redirect to integrations page with success message
-    res.redirect('/?tab=integrations&success=meta_connected');
+    // Success - send message and close popup
+    return sendResultAndClose(true, 'Conta Meta Ads conectada com sucesso!');
   } catch (error) {
     console.error('OAuth callback error:', error);
-    res.redirect('/?error=oauth_callback_failed');
+    
+    // Try to send error to popup
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>OAuth Error</title>
+        </head>
+        <body>
+          <script>
+            if (window.opener) {
+              window.opener.postMessage({
+                type: 'META_OAUTH_ERROR',
+                message: 'Erro durante autenticação OAuth'
+              }, '*');
+              setTimeout(() => window.close(), 500);
+            } else {
+              window.location.href = '/?error=oauth_callback_failed';
+            }
+          </script>
+          <p style="text-align: center; font-family: sans-serif; margin-top: 50px;">
+            ❌ Erro na conexão
+            <br><br>
+            Esta janela será fechada automaticamente...
+          </p>
+        </body>
+      </html>
+    `;
+    res.send(html);
   }
 });
 
