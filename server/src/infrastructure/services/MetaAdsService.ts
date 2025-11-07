@@ -208,11 +208,13 @@ export class MetaAdsService {
 
     try {
       const response = await fetch(
-        `${this.baseUrl}/${this.apiVersion}/${adSetExternalId}/ads?fields=id,name,adset_id,creative{id,name,image_url,video_url,title,body,call_to_action_type},status&access_token=${integration.accessToken}`
+        `${this.baseUrl}/${this.apiVersion}/${adSetExternalId}/ads?fields=id,name,status,creative{id,name,image_url,body,title,call_to_action_type}&access_token=${integration.accessToken}`
       );
 
       if (!response.ok) {
-        throw new Error(`Meta API error: ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Meta API error response:', errorData);
+        throw new Error(`Meta API error: ${response.statusText} - ${JSON.stringify(errorData)}`);
       }
 
       const data = await response.json();
@@ -236,13 +238,13 @@ export class MetaAdsService {
             adSetId,
             externalId: ad.id,
             name: ad.name,
-            type: ad.creative.video_url ? 'video' : 'image',
-            imageUrl: permanentImageUrl || ad.creative.image_url || null,
-            videoUrl: ad.creative.video_url || null,
-            text: ad.creative.body || null,
-            headline: ad.creative.title || null,
+            type: 'image', // Default to image, video support can be added later
+            imageUrl: permanentImageUrl || ad.creative?.image_url || null,
+            videoUrl: null,
+            text: ad.creative?.body || null,
+            headline: ad.creative?.title || null,
             description: null,
-            callToAction: ad.creative.call_to_action_type || null,
+            callToAction: ad.creative?.call_to_action_type || null,
             status: ad.status.toLowerCase(),
             impressions: parseInt(insights.impressions || '0'),
             clicks: parseInt(insights.clicks || '0'),
