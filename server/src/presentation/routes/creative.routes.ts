@@ -125,25 +125,38 @@ router.post('/:id/analyze', authenticateToken, async (req: Request, res: Respons
       });
     }
 
-    // Get brand configuration and content criteria for the user
-    const brandConfigs = await storage.getBrandConfigurationsByUser(userId);
-    const brandConfig = brandConfigs.length > 0 ? brandConfigs[0] : null;
+    // Get applicable policy for this creative
+    const policies = await storage.getPoliciesByUser(userId);
     
-    const contentCriteriaList = await storage.getContentCriteriaByUser(userId);
-    const contentCriteria = contentCriteriaList.length > 0 ? contentCriteriaList[0] : null;
+    // Find policy: first try campaign-specific, then use default or first global
+    let applicablePolicy = policies.find(p => 
+      p.scope === 'campaign' && 
+      p.campaignIds && 
+      Array.isArray(p.campaignIds) &&
+      p.campaignIds.includes(creative.campaignId)
+    );
     
-    const performanceBenchmarks = await storage.getPerformanceBenchmarksByUser(userId);
+    if (!applicablePolicy) {
+      applicablePolicy = policies.find(p => p.isDefault && p.scope === 'global');
+    }
+    
+    if (!applicablePolicy) {
+      applicablePolicy = policies.find(p => p.scope === 'global');
+    }
 
-    // Perform AI analysis
+    if (!applicablePolicy && policies.length > 0) {
+      applicablePolicy = policies[0];
+    }
+
+    // Perform AI analysis using the selected policy
     const complianceAnalysis = await aiAnalysisService.analyzeCreativeCompliance(
       creative,
-      brandConfig,
-      contentCriteria
+      applicablePolicy
     );
     
     const performanceAnalysis = await aiAnalysisService.analyzeCreativePerformance(
       creative,
-      performanceBenchmarks
+      applicablePolicy
     );
 
     // Calculate overall compliance status
@@ -151,10 +164,11 @@ router.post('/:id/analyze', authenticateToken, async (req: Request, res: Respons
                             complianceAnalysis.score >= 60 ? 'parcialmente_conforme' : 
                             'nao_conforme';
 
-    // Create audit record
+    // Create audit record with policy reference
     const audit = await storage.createAudit({
       creativeId: creative.id,
       userId,
+      policyId: applicablePolicy?.id,
       status: complianceStatus,
       complianceScore: complianceAnalysis.score,
       performanceScore: performanceAnalysis.score,
@@ -163,6 +177,7 @@ router.post('/:id/analyze', authenticateToken, async (req: Request, res: Respons
       aiAnalysis: {
         compliance: complianceAnalysis,
         performance: performanceAnalysis,
+        policyUsed: applicablePolicy?.name || 'No policy',
       },
     });
 
@@ -193,14 +208,8 @@ router.post('/analyze-batch', authenticateToken, async (req: Request, res: Respo
       return res.status(400).json({ message: 'Lista de creative IDs é obrigatória' });
     }
 
-    // Get brand configuration and content criteria for the user (once)
-    const brandConfigs = await storage.getBrandConfigurationsByUser(userId);
-    const brandConfig = brandConfigs.length > 0 ? brandConfigs[0] : null;
-    
-    const contentCriteriaList = await storage.getContentCriteriaByUser(userId);
-    const contentCriteria = contentCriteriaList.length > 0 ? contentCriteriaList[0] : null;
-    
-    const performanceBenchmarks = await storage.getPerformanceBenchmarksByUser(userId);
+    // Get all policies for user (will be selected per creative)
+    const policies = await storage.getPoliciesByUser(userId);
 
     const results = {
       success: [],
@@ -224,16 +233,35 @@ router.post('/analyze-batch', authenticateToken, async (req: Request, res: Respo
           continue;
         }
 
-        // Perform AI analysis
+        // Find applicable policy for this creative
+        let applicablePolicy = policies.find(p => 
+          p.scope === 'campaign' && 
+          p.campaignIds && 
+          Array.isArray(p.campaignIds) &&
+          p.campaignIds.includes(creative.campaignId)
+        );
+        
+        if (!applicablePolicy) {
+          applicablePolicy = policies.find(p => p.isDefault && p.scope === 'global');
+        }
+        
+        if (!applicablePolicy) {
+          applicablePolicy = policies.find(p => p.scope === 'global');
+        }
+
+        if (!applicablePolicy && policies.length > 0) {
+          applicablePolicy = policies[0];
+        }
+
+        // Perform AI analysis using the selected policy
         const complianceAnalysis = await aiAnalysisService.analyzeCreativeCompliance(
           creative,
-          brandConfig,
-          contentCriteria
+          applicablePolicy
         );
         
         const performanceAnalysis = await aiAnalysisService.analyzeCreativePerformance(
           creative,
-          performanceBenchmarks
+          applicablePolicy
         );
 
         // Calculate overall compliance status
@@ -241,10 +269,11 @@ router.post('/analyze-batch', authenticateToken, async (req: Request, res: Respo
                                 complianceAnalysis.score >= 60 ? 'parcialmente_conforme' : 
                                 'nao_conforme';
 
-        // Create audit record
+        // Create audit record with policy reference
         const audit = await storage.createAudit({
           creativeId: creative.id,
           userId,
+          policyId: applicablePolicy?.id,
           status: complianceStatus,
           complianceScore: complianceAnalysis.score,
           performanceScore: performanceAnalysis.score,
@@ -253,6 +282,7 @@ router.post('/analyze-batch', authenticateToken, async (req: Request, res: Respo
           aiAnalysis: {
             compliance: complianceAnalysis,
             performance: performanceAnalysis,
+            policyUsed: applicablePolicy?.name || 'No policy',
           },
         });
 

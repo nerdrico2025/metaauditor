@@ -1,6 +1,6 @@
 
 import OpenAI from "openai";
-import type { Creative, BrandConfiguration, ContentCriteria, PerformanceBenchmarks } from "../../shared/schema.js";
+import type { Creative, Policy } from "../../shared/schema.js";
 
 let openai: OpenAI | null = null;
 
@@ -41,26 +41,25 @@ export interface PerformanceAnalysis {
 export class AIAnalysisService {
   async analyzeCreativeCompliance(
     creative: Creative,
-    brandConfig?: BrandConfiguration | null,
-    contentCriteria?: ContentCriteria | null
+    policy?: Policy | null
   ): Promise<ComplianceAnalysis> {
     try {
-      const brandRequirements = brandConfig ? `
+      const brandRequirements = policy ? `
 Brand Requirements:
-- Brand Name: ${brandConfig.brandName}
-- Primary Color: ${brandConfig.primaryColor || 'Not specified'}
-- Secondary Color: ${brandConfig.secondaryColor || 'Not specified'}
-- Accent Color: ${brandConfig.accentColor || 'Not specified'}
-- Brand Guidelines: ${brandConfig.brandGuidelines || 'Not specified'}
-- Logo URL: ${brandConfig.logoUrl ? 'Logo provided' : 'No logo provided'}` : '\nNo brand configuration found.';
+- Brand Name: ${policy.brandName || 'Not specified'}
+- Primary Color: ${policy.primaryColor || 'Not specified'}
+- Secondary Color: ${policy.secondaryColor || 'Not specified'}
+- Accent Color: ${policy.accentColor || 'Not specified'}
+- Brand Guidelines: ${policy.brandGuidelines || 'Not specified'}
+- Logo URL: ${policy.logoUrl ? 'Logo provided' : 'No logo provided'}` : '\nNo brand configuration found.';
 
-      const contentRequirements = contentCriteria ? `
+      const contentRequirements = policy ? `
 Content Criteria:
-- Criteria Name: ${contentCriteria.name}
-- Required Keywords: ${contentCriteria.requiredKeywords ? JSON.stringify(contentCriteria.requiredKeywords) : 'None'}
-- Prohibited Keywords: ${contentCriteria.prohibitedKeywords ? JSON.stringify(contentCriteria.prohibitedKeywords) : 'None'}
-- Requires Logo: ${contentCriteria.requiresLogo ? 'Yes' : 'No'}
-- Requires Brand Colors: ${contentCriteria.requiresBrandColors ? 'Yes' : 'No'}` : '\nNo content criteria found.';
+- Policy Name: ${policy.name}
+- Required Keywords: ${policy.requiredKeywords ? JSON.stringify(policy.requiredKeywords) : 'None'}
+- Prohibited Keywords: ${policy.prohibitedKeywords ? JSON.stringify(policy.prohibitedKeywords) : 'None'}
+- Requires Logo: ${policy.requiresLogo ? 'Yes' : 'No'}
+- Requires Brand Colors: ${policy.requiresBrandColors ? 'Yes' : 'No'}` : '\nNo content criteria found.';
 
       const prompt = `Analise este criativo publicitário para conformidade com a marca baseado na configuração específica da marca e critérios de conteúdo do usuário:
 
@@ -144,7 +143,7 @@ RESPONDA OBRIGATORIAMENTE EM PORTUGUÊS-BR. Responda com JSON neste formato: {
 
   async analyzeCreativePerformance(
     creative: Creative,
-    performanceBenchmarks?: PerformanceBenchmarks | null
+    policy?: Policy | null
   ): Promise<PerformanceAnalysis> {
     try {
       const ctr = parseFloat(creative.ctr || "0");
@@ -153,14 +152,14 @@ RESPONDA OBRIGATORIAMENTE EM PORTUGUÊS-BR. Responda com JSON neste formato: {
       const clicks = creative.clicks || 1;
       const conversionRate = conversions / Math.max(clicks, 1);
 
-      const benchmarksContext = performanceBenchmarks ? `
+      const benchmarksContext = policy ? `
 Performance Benchmarks (user-defined thresholds):
-- CTR Minimum: ${performanceBenchmarks.ctrMin || 'Not set'}%
-- CTR Target: ${performanceBenchmarks.ctrTarget || 'Not set'}%
-- CPC Maximum: $${performanceBenchmarks.cpcMax || 'Not set'}
-- CPC Target: $${performanceBenchmarks.cpcTarget || 'Not set'}
-- Conversions Minimum: ${performanceBenchmarks.conversionsMin || 'Not set'}
-- Conversions Target: ${performanceBenchmarks.conversionsTarget || 'Not set'}` : '\nNo performance benchmarks configured.';
+- CTR Minimum: ${policy.ctrMin || 'Not set'}%
+- CTR Target: ${policy.ctrTarget || 'Not set'}%
+- CPC Maximum: $${policy.cpcMax || 'Not set'}
+- CPC Target: $${policy.cpcTarget || 'Not set'}
+- Conversions Minimum: ${policy.conversionsMin || 'Not set'}
+- Conversions Target: ${policy.conversionsTarget || 'Not set'}` : '\nNo performance benchmarks configured.';
 
       const prompt = `Analise a performance deste criativo publicitário contra os benchmarks definidos pelo usuário:
 
