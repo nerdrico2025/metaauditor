@@ -20,7 +20,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Trash2, RefreshCw, CheckCircle2, AlertCircle, Info, ExternalLink, Copy, Check } from 'lucide-react';
 import { SiFacebook, SiGoogle } from 'react-icons/si';
 import { Textarea } from '@/components/ui/textarea';
-import { EventSourcePolyfill } from 'event-source-polyfill';
 
 const metaIntegrationSchema = z.object({
   accessToken: z.string().min(1, 'Access token é obrigatório'),
@@ -194,107 +193,6 @@ export default function Integrations() {
       queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
     },
   });
-
-  const handleSyncWithSSE = (integrationId: string) => {
-    setCurrentSyncId(integrationId);
-    setSyncModalOpen(true);
-    setSyncStatus({
-      message: 'Conectando...',
-      campaigns: 0,
-      adSets: 0,
-      creatives: 0,
-      hasError: false,
-      errorMessage: '',
-      isInProgress: true,
-      currentProgress: ''
-    });
-
-    const token = localStorage.getItem('auth_token');
-    const eventSource = new EventSourcePolyfill(`/api/integrations/${integrationId}/sync-stream?token=${token}`, {
-      withCredentials: true
-    });
-
-    eventSource.addEventListener('progress', (event: MessageEvent) => {
-      if (!event.data) return;
-      const data = JSON.parse(event.data);
-      setSyncStatus(prev => ({
-        ...prev,
-        message: data.message,
-        currentProgress: data.message,
-        campaigns: data.campaigns || prev.campaigns,
-        adSets: data.adSets || prev.adSets,
-        creatives: data.creatives || prev.creatives
-      }));
-    });
-
-    eventSource.addEventListener('error', (event: MessageEvent) => {
-      if (!event.data) {
-        eventSource.close();
-        setSyncStatus(prev => ({
-          ...prev,
-          hasError: true,
-          errorMessage: 'Erro de conexão. Verifique sua autenticação.',
-          isInProgress: false
-        }));
-        return;
-      }
-      const data = JSON.parse(event.data);
-      setSyncStatus(prev => ({
-        ...prev,
-        hasError: true,
-        errorMessage: data.message,
-        isInProgress: false
-      }));
-      if (!data.partial) {
-        eventSource.close();
-      }
-    });
-
-    eventSource.addEventListener('complete', (event: MessageEvent) => {
-      if (!event.data) return;
-      const data = JSON.parse(event.data);
-      setSyncStatus({
-        message: data.message,
-        campaigns: data.campaigns,
-        adSets: data.adSets,
-        creatives: data.creatives,
-        hasError: false,
-        errorMessage: '',
-        isInProgress: false,
-        currentProgress: ''
-      });
-      eventSource.close();
-      queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/campaigns'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/adsets'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/creatives'] });
-      
-      setTimeout(() => {
-        setSyncModalOpen(false);
-        setCurrentSyncId(null);
-        toast({
-          title: '✅ Sincronização concluída!',
-          description: `${data.campaigns} campanhas, ${data.adSets} ad sets, ${data.creatives} anúncios`
-        });
-      }, 2000);
-    });
-
-    eventSource.onerror = () => {
-      eventSource.close();
-      setSyncStatus(prev => ({
-        ...prev,
-        hasError: true,
-        errorMessage: 'Erro na conexão com o servidor',
-        isInProgress: false
-      }));
-    };
-  };
-
-  const handleRetrySyn = () => {
-    if (currentSyncId) {
-      handleSyncWithSSE(currentSyncId);
-    }
-  };
 
   const disableIntegrationMutation = useMutation({
     mutationFn: (id: string) => apiRequest(`/api/integrations/${id}/disable`, { method: 'POST' }),
@@ -722,11 +620,11 @@ export default function Integrations() {
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    onClick={() => handleSyncWithSSE(integration.id)}
-                                    disabled={syncStatus.isInProgress}
+                                    onClick={() => syncIntegrationMutation.mutate(integration.id)}
+                                    disabled={syncIntegrationMutation.isPending}
                                     className="flex-1"
                                   >
-                                    <RefreshCw className={`w-3 h-3 mr-1 ${syncStatus.isInProgress ? 'animate-spin' : ''}`} />
+                                    <RefreshCw className={`w-3 h-3 mr-1 ${syncIntegrationMutation.isPending ? 'animate-spin' : ''}`} />
                                     Sincronizar
                                   </Button>
                                   <Button
@@ -840,11 +738,11 @@ export default function Integrations() {
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    onClick={() => handleSyncWithSSE(integration.id)}
-                                    disabled={syncStatus.isInProgress}
+                                    onClick={() => syncIntegrationMutation.mutate(integration.id)}
+                                    disabled={syncIntegrationMutation.isPending}
                                     className="flex-1"
                                   >
-                                    <RefreshCw className={`w-3 h-3 mr-1 ${syncStatus.isInProgress ? 'animate-spin' : ''}`} />
+                                    <RefreshCw className={`w-3 h-3 mr-1 ${syncIntegrationMutation.isPending ? 'animate-spin' : ''}`} />
                                     Sincronizar
                                   </Button>
                                   <Button
@@ -1101,10 +999,10 @@ export default function Integrations() {
                             
                             <div className="flex gap-2">
                               <Button 
-                                onClick={handleRetrySyn} 
+                                onClick={() => currentSyncId && syncIntegrationMutation.mutate(currentSyncId)} 
                                 className="flex-1"
                                 variant="default"
-                                disabled={syncStatus.isInProgress}
+                                disabled={syncIntegrationMutation.isPending}
                               >
                                 <RefreshCw className="h-4 w-4 mr-2" />
                                 Continuar Sincronização
