@@ -66,6 +66,52 @@ interface MetaAdInsights {
 export class MetaAdsService {
   private readonly apiVersion = 'v21.0';
   private readonly baseUrl = 'https://graph.facebook.com';
+  private readonly requestDelay = 500; // 500ms delay between requests
+  private readonly maxRetries = 3;
+
+  /**
+   * Sleep for specified milliseconds
+   */
+  private sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Fetch with retry logic for rate limits
+   */
+  private async fetchWithRetry(url: string, retryCount = 0): Promise<any> {
+    try {
+      const response = await fetch(url);
+      const data: any = await response.json();
+
+      // Check for rate limit error
+      if (data.error) {
+        const errorCode = data.error.code;
+        const errorSubcode = data.error.error_subcode;
+        
+        // Rate limit errors: code 17, 4, 80004
+        if ((errorCode === 17 || errorCode === 4 || errorCode === 80004) && retryCount < this.maxRetries) {
+          const waitTime = Math.pow(2, retryCount) * 2000; // Exponential backoff: 2s, 4s, 8s
+          console.log(`⏱️ Rate limit hit, waiting ${waitTime/1000}s before retry ${retryCount + 1}/${this.maxRetries}...`);
+          await this.sleep(waitTime);
+          return this.fetchWithRetry(url, retryCount + 1);
+        }
+
+        // Other errors or max retries reached
+        throw new Error(`Meta API error: ${data.error.message}`);
+      }
+
+      return data;
+    } catch (error) {
+      if (retryCount < this.maxRetries && error instanceof Error && error.message.includes('fetch')) {
+        const waitTime = Math.pow(2, retryCount) * 1000;
+        console.log(`⏱️ Network error, retrying in ${waitTime/1000}s...`);
+        await this.sleep(waitTime);
+        return this.fetchWithRetry(url, retryCount + 1);
+      }
+      throw error;
+    }
+  }
 
   /**
    * Get ad accounts for the connected Meta user
@@ -110,7 +156,7 @@ export class MetaAdsService {
   }
 
   /**
-   * Helper method to fetch all pages from Meta API
+   * Helper method to fetch all pages from Meta API with throttling and retry
    */
   private async fetchAllPages<T>(url: string): Promise<T[]> {
     const allData: T[] = [];
@@ -123,15 +169,8 @@ export class MetaAdsService {
       pageCount++;
       console.log(`📄 Fetching page ${pageCount}...`);
       
-      const response = await fetch(nextUrl);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`❌ Meta API error on page ${pageCount}:`, errorText);
-        throw new Error(`Meta API error: ${response.statusText}`);
-      }
-
-      const data: any = await response.json();
+      // Use fetchWithRetry instead of direct fetch
+      const data: any = await this.fetchWithRetry(nextUrl);
       const pageData = data.data || [];
       allData.push(...pageData);
       
@@ -146,7 +185,8 @@ export class MetaAdsService {
       nextUrl = data.paging?.next || null;
       
       if (nextUrl) {
-        console.log(`  ➡️  Next page URL exists, continuing...`);
+        console.log(`  ➡️  Next page URL exists, waiting ${this.requestDelay}ms before next request...`);
+        await this.sleep(this.requestDelay); // Throttle requests
       } else {
         console.log(`  🏁 No more pages, pagination complete`);
       }

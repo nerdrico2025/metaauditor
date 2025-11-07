@@ -90,7 +90,9 @@ router.post('/:id/sync', authenticateToken, async (req: Request, res: Response, 
       const campaigns = await metaAdsService.syncCampaigns(integration, userId, companyId);
       console.log(`📊 Found ${campaigns.length} campaigns`);
       
-      for (const campaign of campaigns) {
+      for (let i = 0; i < campaigns.length; i++) {
+        const campaign = campaigns[i];
+        
         // Check if campaign exists by externalId
         const existingCampaigns = await storage.getCampaignsByUser(userId);
         let dbCampaign = existingCampaigns.find(c => c.externalId === campaign.externalId);
@@ -108,6 +110,12 @@ router.post('/:id/sync', authenticateToken, async (req: Request, res: Response, 
         
         if (!dbCampaign) continue;
 
+        // Add delay between campaigns to avoid rate limit
+        if (i > 0 && i % 5 === 0) {
+          console.log(`⏱️  Processed ${i} campaigns, pausing 2s to avoid rate limit...`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+
         // Sync ad sets for each campaign
         const adSets = await metaAdsService.syncAdSets(
           integration,
@@ -117,7 +125,9 @@ router.post('/:id/sync', authenticateToken, async (req: Request, res: Response, 
         );
         console.log(`  📋 Found ${adSets.length} ad sets in campaign ${campaign.name}`);
 
-        for (const adSet of adSets) {
+        for (let j = 0; j < adSets.length; j++) {
+          const adSet = adSets[j];
+          
           // Check if ad set exists by externalId
           const existingAdSets = await storage.getAdSetsByUser(userId);
           let dbAdSet = existingAdSets.find(a => a.externalId === adSet.externalId);
@@ -134,6 +144,11 @@ router.post('/:id/sync', authenticateToken, async (req: Request, res: Response, 
           syncedAdSets++;
           
           if (!dbAdSet || !dbCampaign) continue;
+
+          // Add small delay between ad sets
+          if (j > 0 && j % 3 === 0) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
 
           // Sync creatives for each ad set
           const creatives = await metaAdsService.syncCreatives(
