@@ -148,8 +148,7 @@ export default function Integrations() {
   const handleConnectMetaOAuth = async () => {
     try {
       setIsConnectingMeta(true);
-      const response = await fetch('/api/auth/meta/connect');
-      const data = await response.json();
+      const data = await apiRequest('/api/auth/meta/connect');
       
       if (data.authUrl) {
         window.location.href = data.authUrl;
@@ -160,10 +159,10 @@ export default function Integrations() {
           variant: 'destructive'
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: 'Erro ao conectar',
-        description: 'Erro ao iniciar processo de autenticação OAuth',
+        description: error.message || 'Erro ao iniciar processo de autenticação OAuth',
         variant: 'destructive'
       });
     } finally {
@@ -196,92 +195,32 @@ export default function Integrations() {
       <Alert className="bg-green-50 dark:bg-green-950 border-green-200">
         <CheckCircle2 className="h-4 w-4 text-green-600" />
         <AlertDescription className="text-green-900 dark:text-green-100">
-          <strong>✨ Recomendado: Use o botão "Conectar com OAuth"</strong><br />
-          Conexão automática e segura em 1 clique, sem precisar copiar tokens manualmente!
+          <strong>✨ Conexão 100% Automática via OAuth</strong><br />
+          Clique em "Conectar", faça login no Facebook e pronto! O sistema faz tudo automaticamente.
         </AlertDescription>
       </Alert>
 
       <Alert className="bg-blue-50 dark:bg-blue-950 border-blue-200">
         <Info className="h-4 w-4 text-blue-600" />
         <AlertDescription className="text-blue-900 dark:text-blue-100">
-          <strong>Conexão Manual</strong> - Use apenas se preferir configurar manualmente ou para troubleshooting
+          <strong>Como funciona:</strong><br />
+          1. Clique no botão "Conectar"<br />
+          2. Você será redirecionado para o Facebook<br />
+          3. Faça login e autorize o acesso<br />
+          4. Selecione suas contas de anúncios<br />
+          5. Pronto! Suas campanhas serão sincronizadas automaticamente
         </AlertDescription>
       </Alert>
 
-      <div className="space-y-4">
-        <div className="flex gap-4">
-          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold">1</div>
-          <div className="flex-1">
-            <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Acesse o Meta Business Manager</h4>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-              Vá para <code className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">business.facebook.com</code>
-            </p>
-            <Button variant="outline" size="sm" asChild>
-              <a href="https://business.facebook.com" target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="w-4 h-4 mr-2" />
-                Abrir Business Manager
-              </a>
-            </Button>
-          </div>
-        </div>
-
-        <div className="flex gap-4">
-          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold">2</div>
-          <div className="flex-1">
-            <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Obtenha o Account ID</h4>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Navegue até: <strong>Configurações → Contas de Anúncio</strong><br />
-              Copie o ID da sua conta (formato: <code className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">act_123456789</code>)
-            </p>
-          </div>
-        </div>
-
-        <div className="flex gap-4">
-          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold">3</div>
-          <div className="flex-1">
-            <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Gere um Access Token</h4>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-              Acesse o Graph API Explorer para gerar um token de acesso
-            </p>
-            <div className="space-y-2">
-              <Button variant="outline" size="sm" asChild>
-                <a href="https://developers.facebook.com/tools/explorer" target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  Abrir Graph API Explorer
-                </a>
-              </Button>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Selecione as permissões: <strong>ads_read, ads_management</strong>
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex gap-4">
-          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold">4</div>
-          <div className="flex-1">
-            <h4 className="font-semibold text-gray-900 dark:text-white mb-2">(Opcional) Gere um Token de Longa Duração</h4>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-              Tokens padrão expiram em 1-2 horas. Para produção, converta para token de longa duração (60 dias)
-            </p>
-            <Button variant="outline" size="sm" asChild>
-              <a href="https://developers.facebook.com/docs/facebook-login/guides/access-tokens/get-long-lived" target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="w-4 h-4 mr-2" />
-                Ver Documentação
-              </a>
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      <Alert className="bg-amber-50 dark:bg-amber-950 border-amber-200">
-        <AlertCircle className="h-4 w-4 text-amber-600" />
-        <AlertDescription className="text-amber-900 dark:text-amber-100">
-          <strong>⚠️ Importante:</strong>
+      <Alert className="bg-purple-50 dark:bg-purple-950 border-purple-200">
+        <CheckCircle2 className="h-4 w-4 text-purple-600" />
+        <AlertDescription className="text-purple-900 dark:text-purple-100">
+          <strong>✅ Vantagens do OAuth:</strong>
           <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
-            <li>Mantenha suas credenciais seguras e nunca as compartilhe</li>
-            <li>Tokens têm validade limitada - use tokens de longa duração</li>
-            <li>Teste a conexão após configurar</li>
+            <li>Conexão segura sem expor tokens</li>
+            <li>Tokens renovados automaticamente (60 dias)</li>
+            <li>Selecione múltiplas contas de anúncios</li>
+            <li>Processo em menos de 1 minuto</li>
           </ul>
         </AlertDescription>
       </Alert>
@@ -439,25 +378,15 @@ export default function Integrations() {
                             </div>
                           </div>
                           {metaIntegrations.length === 0 && (
-                            <div className="flex gap-2">
-                              <Button 
-                                onClick={handleConnectMetaOAuth} 
-                                size="sm"
-                                disabled={isConnectingMeta}
-                                data-testid="button-connect-meta-oauth"
-                              >
-                                <SiFacebook className="w-4 h-4 mr-2" />
-                                {isConnectingMeta ? 'Conectando...' : 'Conectar com OAuth'}
-                              </Button>
-                              <Button 
-                                onClick={() => setMetaDialogOpen(true)} 
-                                size="sm" 
-                                variant="outline"
-                                data-testid="button-connect-meta-manual"
-                              >
-                                Manual
-                              </Button>
-                            </div>
+                            <Button 
+                              onClick={handleConnectMetaOAuth} 
+                              size="sm"
+                              disabled={isConnectingMeta}
+                              data-testid="button-connect-meta-oauth"
+                            >
+                              <SiFacebook className="w-4 h-4 mr-2" />
+                              {isConnectingMeta ? 'Conectando...' : 'Conectar'}
+                            </Button>
                           )}
                         </div>
                       </CardHeader>
