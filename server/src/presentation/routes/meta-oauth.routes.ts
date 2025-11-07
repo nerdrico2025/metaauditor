@@ -35,13 +35,16 @@ router.get('/connect', authenticateToken, async (req: Request, res: Response, ne
       });
     }
 
-    // Build OAuth URL
+    // Build OAuth URL with ALL necessary scopes for Business Manager
     const redirectUri = settings.redirectUri || `${process.env.REPL_URL || 'http://localhost:5000'}/auth/meta/callback`;
-    const scope = 'ads_management,ads_read,business_management';
+    const scope = 'ads_management,ads_read,business_management,read_insights';
     const state = Buffer.from(JSON.stringify({ userId })).toString('base64');
 
-    const authUrl = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${settings.appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}&state=${state}`;
+    // Add config_id parameter to ensure we're requesting business assets
+    const authUrl = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${settings.appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}&state=${state}&auth_type=rerequest`;
 
+    console.log('🔗 Meta OAuth URL generated with scopes:', scope);
+    
     // Return the URL to frontend
     res.json({ authUrl });
   } catch (error) {
@@ -128,18 +131,25 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
 
     const accessToken = longLivedData.access_token || shortLivedToken;
 
-    // Get ad accounts for this user
-    const adAccountsUrl = `https://graph.facebook.com/v21.0/me/adaccounts?access_token=${accessToken}&fields=id,name,account_status`;
+    // Get ALL ad accounts: personal + Business Manager accounts
+    // Using limit=500 to get all accounts
+    const adAccountsUrl = `https://graph.facebook.com/v21.0/me/adaccounts?access_token=${accessToken}&fields=id,name,account_status&limit=500`;
     const adAccountsResponse = await fetch(adAccountsUrl);
     const adAccountsData = await adAccountsResponse.json() as AdAccountsResponse;
 
+    console.log('📊 Ad Accounts found:', adAccountsData.data?.length || 0);
+    console.log('📋 Ad Accounts:', adAccountsData.data?.map(a => ({ id: a.id, name: a.name })));
+
     if (!adAccountsData.data || adAccountsData.data.length === 0) {
-      return sendResultAndClose(false, 'Nenhuma conta de anúncios encontrada');
+      console.error('❌ No ad accounts found. Token scopes:', scope);
+      console.error('❌ API Response:', adAccountsData);
+      return sendResultAndClose(false, 'Nenhuma conta de anúncios encontrada. Verifique as permissões do Business Manager.');
     }
 
     // Store accounts in session/temp storage for selection
     // For now, auto-select the first account
     const firstAccount = adAccountsData.data[0];
+    console.log('✅ Auto-selected account:', firstAccount.id, firstAccount.name);
 
     // Create or update integration
     const existingIntegrations = await storage.getIntegrationsByUser(userId);
