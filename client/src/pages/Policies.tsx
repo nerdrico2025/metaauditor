@@ -450,15 +450,17 @@ export default function Policies() {
                 </div>
               )}
 
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="isDefault"
-                  checked={form.watch('isDefault')}
-                  onCheckedChange={(checked) => form.setValue('isDefault', checked)}
-                  data-testid="switch-is-default"
-                />
-                <Label htmlFor="isDefault">Definir como política padrão</Label>
-              </div>
+              {scope === 'global' && (
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="isDefault"
+                    checked={form.watch('isDefault')}
+                    onCheckedChange={(checked) => form.setValue('isDefault', checked)}
+                    data-testid="switch-is-default"
+                  />
+                  <Label htmlFor="isDefault">Definir como política padrão</Label>
+                </div>
+              )}
             </div>
 
             {/* Brand Configuration */}
