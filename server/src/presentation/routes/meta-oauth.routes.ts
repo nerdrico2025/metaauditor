@@ -146,37 +146,134 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
       return sendResultAndClose(false, 'Nenhuma conta de anúncios encontrada. Verifique as permissões do Business Manager.');
     }
 
-    // Store accounts in session/temp storage for selection
-    // For now, auto-select the first account
-    const firstAccount = adAccountsData.data[0];
-    console.log('✅ Auto-selected account:', firstAccount.id, firstAccount.name);
-
-    // Create or update integration
-    const existingIntegrations = await storage.getIntegrationsByUser(userId);
-    const metaIntegration = existingIntegrations.find(i => i.platform === 'meta');
-
-    if (metaIntegration) {
-      await storage.updateIntegration(metaIntegration.id, {
-        accessToken,
-        accountId: firstAccount.id,
-        accountName: firstAccount.name,
-        accountStatus: firstAccount.account_status === 1 ? 'ACTIVE' : 'DISABLED',
-        status: 'active',
-      });
-    } else {
-      await storage.createIntegration({
-        userId,
-        platform: 'meta',
-        accessToken,
-        accountId: firstAccount.id,
-        accountName: firstAccount.name,
-        accountStatus: firstAccount.account_status === 1 ? 'ACTIVE' : 'DISABLED',
-        status: 'active',
-      });
-    }
-
-    // Success - send message and close popup
-    return sendResultAndClose(true, 'Conta Meta Ads conectada com sucesso!');
+    // Store access token and accounts for user to select
+    // Send accounts list back to popup for selection
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Selecione a Conta</title>
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              padding: 20px;
+              background: #f5f5f5;
+            }
+            .container {
+              max-width: 500px;
+              margin: 0 auto;
+              background: white;
+              border-radius: 12px;
+              padding: 24px;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            }
+            h2 {
+              margin: 0 0 8px 0;
+              font-size: 20px;
+              color: #1a1a1a;
+            }
+            p {
+              margin: 0 0 20px 0;
+              color: #666;
+              font-size: 14px;
+            }
+            .account-list {
+              max-height: 400px;
+              overflow-y: auto;
+            }
+            .account-item {
+              border: 2px solid #e0e0e0;
+              border-radius: 8px;
+              padding: 16px;
+              margin-bottom: 12px;
+              cursor: pointer;
+              transition: all 0.2s;
+            }
+            .account-item:hover {
+              border-color: #1877f2;
+              background: #f0f8ff;
+            }
+            .account-name {
+              font-weight: 600;
+              font-size: 16px;
+              color: #1a1a1a;
+              margin-bottom: 4px;
+            }
+            .account-id {
+              font-size: 13px;
+              color: #666;
+              font-family: monospace;
+            }
+            .account-status {
+              display: inline-block;
+              margin-top: 8px;
+              padding: 4px 8px;
+              border-radius: 4px;
+              font-size: 12px;
+              font-weight: 500;
+            }
+            .status-active {
+              background: #e7f5e7;
+              color: #2e7d32;
+            }
+            .status-disabled {
+              background: #fff3e0;
+              color: #e65100;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h2>🎯 Selecione a Conta de Anúncios</h2>
+            <p>Encontramos ${adAccountsData.data.length} conta(s). Selecione a conta do Business Manager que deseja conectar:</p>
+            <div class="account-list">
+              ${adAccountsData.data.map(account => `
+                <div class="account-item" onclick="selectAccount('${account.id}', '${account.name.replace(/'/g, "\\'")}', ${account.account_status})">
+                  <div class="account-name">${account.name}</div>
+                  <div class="account-id">${account.id}</div>
+                  <span class="account-status ${account.account_status === 1 ? 'status-active' : 'status-disabled'}">
+                    ${account.account_status === 1 ? '✓ Ativa' : '⚠ Desativada'}
+                  </span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+          <script>
+            async function selectAccount(accountId, accountName, accountStatus) {
+              try {
+                const response = await fetch('/api/auth/meta/select-account', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    userId: '${userId}',
+                    accessToken: '${accessToken}',
+                    accountId,
+                    accountName,
+                    accountStatus: accountStatus === 1 ? 'ACTIVE' : 'DISABLED'
+                  })
+                });
+                
+                if (response.ok) {
+                  if (window.opener) {
+                    window.opener.postMessage({
+                      type: 'META_OAUTH_SUCCESS',
+                      message: 'Conta conectada: ' + accountName
+                    }, '*');
+                  }
+                  setTimeout(() => window.close(), 500);
+                } else {
+                  alert('Erro ao conectar conta');
+                }
+              } catch (error) {
+                alert('Erro ao conectar conta: ' + error.message);
+              }
+            }
+          </script>
+        </body>
+      </html>
+    `;
+    
+    return res.send(html);
   } catch (error) {
     console.error('OAuth callback error:', error);
     
@@ -208,6 +305,47 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
       </html>
     `;
     res.send(html);
+  }
+});
+
+// Save selected account
+router.post('/select-account', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { userId, accessToken, accountId, accountName, accountStatus } = req.body;
+
+    if (!userId || !accessToken || !accountId) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // Create or update integration
+    const existingIntegrations = await storage.getIntegrationsByUser(userId);
+    const metaIntegration = existingIntegrations.find(i => i.platform === 'meta');
+
+    if (metaIntegration) {
+      await storage.updateIntegration(metaIntegration.id, {
+        accessToken,
+        accountId,
+        accountName,
+        accountStatus,
+        status: 'active',
+      });
+    } else {
+      await storage.createIntegration({
+        userId,
+        platform: 'meta',
+        accessToken,
+        accountId,
+        accountName,
+        accountStatus,
+        status: 'active',
+      });
+    }
+
+    console.log(`✅ Account selected and saved: ${accountId} - ${accountName}`);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error saving selected account:', error);
+    next(error);
   }
 });
 
