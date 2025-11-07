@@ -211,7 +211,11 @@ router.post('/analyze-batch', authenticateToken, async (req: Request, res: Respo
     // Get all policies for user (will be selected per creative)
     const policies = await storage.getPoliciesByUser(userId);
 
-    const results = {
+    const results: {
+      success: Array<{ id: string; auditId: string }>;
+      failed: Array<{ id: string; error: string }>;
+      total: number;
+    } = {
       success: [],
       failed: [],
       total: creativeIds.length
