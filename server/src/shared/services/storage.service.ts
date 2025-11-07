@@ -220,6 +220,47 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteIntegration(integrationId: string, userId: string): Promise<void> {
+    // Get all campaigns from this integration first
+    const integrationCampaigns = await db
+      .select()
+      .from(campaigns)
+      .where(eq(campaigns.integrationId, integrationId));
+    
+    const campaignIds = integrationCampaigns.map(c => c.id);
+    
+    if (campaignIds.length > 0) {
+      // Delete all creatives from these campaigns
+      await db
+        .delete(creatives)
+        .where(
+          and(
+            eq(creatives.userId, userId),
+            sql`${creatives.campaignId} = ANY(${campaignIds})`
+          )
+        );
+      
+      // Delete all ad sets from these campaigns
+      await db
+        .delete(adSets)
+        .where(
+          and(
+            eq(adSets.userId, userId),
+            sql`${adSets.campaignId} = ANY(${campaignIds})`
+          )
+        );
+      
+      // Delete all campaigns from this integration
+      await db
+        .delete(campaigns)
+        .where(
+          and(
+            eq(campaigns.userId, userId),
+            eq(campaigns.integrationId, integrationId)
+          )
+        );
+    }
+    
+    // Finally, delete the integration
     await db
       .delete(integrations)
       .where(and(eq(integrations.id, integrationId), eq(integrations.userId, userId)));

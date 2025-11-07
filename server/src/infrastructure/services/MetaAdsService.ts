@@ -1,7 +1,6 @@
 
 import type { Integration, InsertCampaign, InsertCreative, InsertAdSet } from '../../shared/schema.js';
 import { nanoid } from 'nanoid';
-import { imageStorageService } from './ImageStorageService.js';
 
 interface MetaAdAccount {
   id: string;
@@ -302,17 +301,10 @@ export class MetaAdsService {
       const url = `${this.baseUrl}/${this.apiVersion}/${adSetExternalId}/ads?fields=id,name,status,creative{id,name,image_url,body,title,call_to_action_type}&limit=100&access_token=${integration.accessToken}`;
       const ads = await this.fetchAllPages<MetaAd>(url);
 
-      // Get insights for each ad and download images
+      // Get insights for each ad - use Meta's image URLs directly (no download)
       const creativesWithMetrics = await Promise.all(
         ads.map(async (ad) => {
           const insights = await this.getAdInsights(integration.accessToken!, ad.id);
-          
-          // Download and store image permanently if it exists
-          let permanentImageUrl: string | null = null;
-          if (ad.creative?.image_url) {
-            console.log(`🖼️  Downloading image for Meta ad ${ad.id}...`);
-            permanentImageUrl = await imageStorageService.downloadAndSaveImage(ad.creative.image_url);
-          }
           
           return {
             userId,
@@ -321,7 +313,7 @@ export class MetaAdsService {
             externalId: ad.id,
             name: ad.name,
             type: 'image', // Default to image, video support can be added later
-            imageUrl: permanentImageUrl || ad.creative?.image_url || null,
+            imageUrl: ad.creative?.image_url || null, // Use Meta's URL directly
             videoUrl: null,
             text: ad.creative?.body || null,
             headline: ad.creative?.title || null,
