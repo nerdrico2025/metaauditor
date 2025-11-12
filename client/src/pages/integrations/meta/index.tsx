@@ -106,33 +106,21 @@ export default function MetaIntegrations() {
       setSyncSteps([{ ...initialSteps[0], status: 'loading' as const }]);
       
       try {
-        const response = await fetch(`/api/integrations/${id}/sync`, {
-          method: 'POST',
-          credentials: 'include',
+        const data = await apiRequest(`/api/integrations/${id}/sync`, { 
+          method: 'POST'
         });
         
-        const data = await response.json();
+        const itemCount = (data.campaigns || 0) + (data.adSets || 0) + (data.creatives || 0);
+        setSyncSteps([{ 
+          ...initialSteps[0], 
+          status: 'success' as const, 
+          count: itemCount,
+          total: itemCount 
+        }]);
+        setSyncedItems(itemCount);
+        setTotalItems(itemCount);
         
-        if (response.ok) {
-          const itemCount = (data.campaigns || 0) + (data.adSets || 0) + (data.creatives || 0);
-          setSyncSteps([{ 
-            ...initialSteps[0], 
-            status: 'success' as const, 
-            count: itemCount,
-            total: itemCount 
-          }]);
-          setSyncedItems(itemCount);
-          setTotalItems(itemCount);
-          
-          return { success: true, data };
-        } else {
-          setSyncSteps([{ 
-            ...initialSteps[0], 
-            status: 'error' as const, 
-            error: data.error || 'Erro na sincronização' 
-          }]);
-          throw new Error(data.error || 'Sync failed');
-        }
+        return { success: true, data };
       } catch (error: any) {
         setSyncSteps([{ 
           ...initialSteps[0], 
