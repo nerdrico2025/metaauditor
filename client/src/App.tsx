@@ -6,14 +6,18 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, ProtectedRoute } from "@/contexts/AuthContext";
 import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
-import SuperAdmin from "@/pages/SuperAdmin";
 import Dashboard from "@/pages/dashboard";
-import Campaigns from "@/pages/campaigns";
-import AdSets from "@/pages/AdSets";
-import Creatives from "@/pages/creatives";
 import Reports from "@/pages/Reports";
 import Policies from "@/pages/policies";
 import History from "@/pages/History";
+
+// Admin
+import SuperAdmin from "@/pages/admin";
+
+// Campaigns Module
+import Campaigns from "@/pages/campaigns";
+import AdSets from "@/pages/campaigns/ad-sets";
+import Creatives from "@/pages/campaigns/creatives";
 
 // Integrations
 import Integrations from "@/pages/integrations";
