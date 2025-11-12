@@ -65,6 +65,8 @@ export interface IStorage {
   updateIntegration(id: string, data: Partial<InsertIntegration>): Promise<Integration | undefined>;
   deleteIntegration(integrationId: string, userId: string): Promise<void>;
   getSyncHistoryByUser(userId: string): Promise<any[]>;
+  createSyncHistory(data: { integrationId: string; userId: string; status: string; type: string; metadata?: any }): Promise<any>;
+  updateSyncHistory(id: string, data: { status?: string; completedAt?: Date; campaignsSynced?: number; adSetsSynced?: number; creativeSynced?: number; errorMessage?: string; metadata?: any }): Promise<any>;
   createCampaign(campaign: InsertCampaign): Promise<Campaign>;
   getCampaignsByUser(userId: string): Promise<Campaign[]>;
   getCampaignById(id: string): Promise<Campaign | undefined>;
@@ -229,6 +231,43 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(syncHistory.startedAt))
       .limit(50);
     return history;
+  }
+
+  async createSyncHistory(data: {
+    integrationId: string;
+    userId: string;
+    status: string;
+    type: string;
+    metadata?: any;
+  }): Promise<any> {
+    const [record] = await db
+      .insert(syncHistory)
+      .values({
+        ...data,
+        startedAt: new Date(),
+        campaignsSynced: 0,
+        adSetsSynced: 0,
+        creativeSynced: 0,
+      })
+      .returning();
+    return record;
+  }
+
+  async updateSyncHistory(id: string, data: {
+    status?: string;
+    completedAt?: Date;
+    campaignsSynced?: number;
+    adSetsSynced?: number;
+    creativeSynced?: number;
+    errorMessage?: string;
+    metadata?: any;
+  }): Promise<any> {
+    const [updated] = await db
+      .update(syncHistory)
+      .set(data)
+      .where(eq(syncHistory.id, id))
+      .returning();
+    return updated;
   }
 
   async disableIntegration(integrationId: string, userId: string): Promise<Integration | undefined> {

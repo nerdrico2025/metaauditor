@@ -254,6 +254,15 @@ router.post('/:id/sync', authenticateToken, async (req: Request, res: Response, 
       const isIncremental = lastSync && (Date.now() - lastSync.getTime() < 7 * 24 * 60 * 60 * 1000); // Within 7 days
       const syncType = isIncremental ? 'incremental' : 'full';
       
+      // Create sync history record
+      const syncHistoryRecord = await storage.createSyncHistory({
+        integrationId: integration.id,
+        userId,
+        status: 'running',
+        type: syncType,
+        metadata: { platform: 'meta' }
+      });
+      
       console.log(`🚀 Starting Meta Ads ${syncType} sync with BATCH REQUESTS (optimized for rate limits)...`);
       if (isIncremental) {
         console.log(`📅 Syncing changes since ${lastSync.toISOString()}`);
@@ -354,8 +363,34 @@ router.post('/:id/sync', authenticateToken, async (req: Request, res: Response, 
         }
         
         console.log(`🎉 Meta sync completed with BATCH REQUESTS: ${syncedCampaigns} campaigns, ${syncedAdSets} ad sets, ${syncedCreatives} ads`);
+        
+        // Update sync history with success
+        await storage.updateSyncHistory(syncHistoryRecord.id, {
+          status: 'completed',
+          completedAt: new Date(),
+          campaignsSynced: syncedCampaigns,
+          adSetsSynced: syncedAdSets,
+          creativeSynced: syncedCreatives
+        });
+        
+        // Update integration's lastFullSync if this was a full sync
+        if (syncType === 'full') {
+          await storage.updateIntegration(integration.id, {
+            lastFullSync: new Date()
+          });
+        }
       } catch (error: any) {
         console.error('❌ Error during sync, but returning partial results:', error.message);
+        
+        // Update sync history with error/partial status
+        await storage.updateSyncHistory(syncHistoryRecord.id, {
+          status: syncedCampaigns > 0 ? 'partial' : 'failed',
+          completedAt: new Date(),
+          campaignsSynced: syncedCampaigns,
+          adSetsSynced: syncedAdSets,
+          creativeSynced: syncedCreatives,
+          errorMessage: error.message
+        });
       }
     } else if (integration.platform === 'google') {
       // Sync Google Ads campaigns
