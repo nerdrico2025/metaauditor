@@ -34,7 +34,22 @@ export default function Sidebar() {
   const [location, setLocation] = useLocation();
   const { user, logout, isSuperAdmin } = useAuth();
   const { t } = useTranslation();
-  const [expandedItems, setExpandedItems] = useState<string[]>(['Campanhas']);
+  
+  // Initialize expanded items based on current location
+  const getInitialExpandedItems = () => {
+    const expanded: string[] = [];
+    navigation.forEach(item => {
+      if (item.children) {
+        const hasActiveChild = item.children.some(child => child.href === location);
+        if (hasActiveChild) {
+          expanded.push(item.name);
+        }
+      }
+    });
+    return expanded;
+  };
+  
+  const [expandedItems, setExpandedItems] = useState<string[]>(getInitialExpandedItems);
 
   // Don't show regular sidebar for super admin
   if (isSuperAdmin) {
@@ -48,6 +63,16 @@ export default function Sidebar() {
   const handleNavigation = (href: string) => (e: React.MouseEvent) => {
     e.preventDefault();
     setLocation(href);
+    
+    // Auto-expand parent menu if navigating to a child
+    navigation.forEach(item => {
+      if (item.children) {
+        const isChildActive = item.children.some(child => child.href === href);
+        if (isChildActive && !expandedItems.includes(item.name)) {
+          setExpandedItems(prev => [...prev, item.name]);
+        }
+      }
+    });
   };
 
   const toggleExpanded = (itemName: string) => {
