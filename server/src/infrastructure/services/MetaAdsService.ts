@@ -88,6 +88,74 @@ export class MetaAdsService {
   }
 
   /**
+   * Execute batch request to Meta API (up to 50 requests in one call)
+   * This significantly reduces rate limiting issues
+   */
+  private async batchRequest<T = any>(
+    accessToken: string,
+    requests: Array<{ method: string; relative_url: string }>
+  ): Promise<T[]> {
+    if (requests.length === 0) {
+      return [];
+    }
+
+    // Meta allows max 50 requests per batch
+    const BATCH_SIZE = 50;
+    const results: T[] = [];
+
+    // Split into chunks of 50
+    for (let i = 0; i < requests.length; i += BATCH_SIZE) {
+      const batch = requests.slice(i, i + BATCH_SIZE);
+      
+      console.log(`📦 Executing batch request ${Math.floor(i/BATCH_SIZE) + 1}/${Math.ceil(requests.length/BATCH_SIZE)} with ${batch.length} sub-requests`);
+
+      try {
+        const response = await fetch(
+          `${this.baseUrl}/${this.apiVersion}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              access_token: accessToken,
+              batch: batch,
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(`Batch request failed: ${response.statusText}`);
+        }
+
+        const batchResults = await response.json();
+        
+        // Parse each result
+        for (const result of batchResults) {
+          if (result.code === 200) {
+            const body = JSON.parse(result.body);
+            results.push(body);
+          } else {
+            console.warn(`⚠️  Sub-request failed with code ${result.code}:`, result.body);
+            results.push(null as any);
+          }
+        }
+
+        // Small delay between batch requests
+        if (i + BATCH_SIZE < requests.length) {
+          await this.sleep(1000);
+        }
+      } catch (error) {
+        console.error('Batch request error:', error);
+        throw error;
+      }
+    }
+
+    console.log(`✅ Batch request completed: ${results.filter(r => r !== null).length}/${requests.length} successful`);
+    return results.filter(r => r !== null);
+  }
+
+  /**
    * Fetch with retry logic for rate limits
    */
   private async fetchWithRetry(url: string, retryCount = 0): Promise<any> {
