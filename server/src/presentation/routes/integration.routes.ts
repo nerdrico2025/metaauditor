@@ -338,14 +338,16 @@ router.post('/:id/sync', authenticateToken, async (req: Request, res: Response, 
       const campaigns = await googleAdsService.syncCampaigns(integration, userId, companyId);
       
       for (const campaign of campaigns) {
-        await storage.createCampaign(campaign);
+        const dbCampaign = await storage.createCampaign(campaign);
         syncedCampaigns++;
+
+        if (!dbCampaign) continue;
 
         // Sync creatives for each campaign
         const creatives = await googleAdsService.syncCreatives(
           integration,
           campaign.externalId,
-          campaign.id,
+          dbCampaign.id,
           userId
         );
 

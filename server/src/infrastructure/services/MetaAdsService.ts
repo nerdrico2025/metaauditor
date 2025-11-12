@@ -128,7 +128,7 @@ export class MetaAdsService {
           throw new Error(`Batch request failed: ${response.statusText}`);
         }
 
-        const batchResults = await response.json();
+        const batchResults: any = await response.json();
         
         // Parse each result
         for (const result of batchResults) {
@@ -205,7 +205,7 @@ export class MetaAdsService {
         throw new Error(`Meta API error: ${response.statusText}`);
       }
 
-      const data = await response.json();
+      const data: any = await response.json();
       return data.data || [];
     } catch (error) {
       console.error('Error fetching Meta ad accounts:', error);
@@ -226,7 +226,7 @@ export class MetaAdsService {
         return 'Unknown Account';
       }
 
-      const data = await response.json();
+      const data: any = await response.json();
       return data.name || 'Unknown Account';
     } catch (error) {
       console.error('Error fetching account name:', error);
@@ -249,7 +249,7 @@ export class MetaAdsService {
       console.log(`📄 Fetching page ${pageCount}...`);
       
       // Use fetchWithRetry instead of direct fetch
-      const data: any = await this.fetchWithRetry(nextUrl);
+      const data = await this.fetchWithRetry(nextUrl);
       const pageData = data.data || [];
       allData.push(...pageData);
       
@@ -536,7 +536,7 @@ export class MetaAdsService {
         return {};
       }
 
-      const data = await response.json();
+      const data: any = await response.json();
       const insights = data.data?.[0] || {};
       
       return insights;
@@ -590,7 +590,7 @@ export class MetaAdsService {
         throw new Error('Failed to refresh Meta token');
       }
 
-      const data = await response.json();
+      const data: any = await response.json();
       return data.access_token;
     } catch (error) {
       console.error('Error refreshing Meta token:', error);
