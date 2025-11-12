@@ -189,6 +189,9 @@ export const adSets = pgTable("ad_sets", {
   targeting: jsonb("targeting"),
   startTime: timestamp("start_time"),
   endTime: timestamp("end_time"),
+  impressions: integer("impressions").default(0),
+  clicks: integer("clicks").default(0),
+  spend: decimal("spend", { precision: 10, scale: 2 }).default("0"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

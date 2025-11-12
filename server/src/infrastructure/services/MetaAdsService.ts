@@ -309,18 +309,28 @@ export class MetaAdsService {
       
       console.log(`✅ Fetched ${campaigns.length} campaigns from Meta API`);
 
-      return campaigns.map((campaign) => ({
-        companyId,
-        userId,
-        integrationId: integration.id,
-        externalId: campaign.id,
-        name: campaign.name,
-        platform: 'meta',
-        status: campaign.status.toLowerCase(),
-        account: accountName,
-        objective: campaign.objective,
-        budget: null,
-      }));
+      return campaigns.map((campaign) => {
+        // Use daily_budget or lifetime_budget (convert from cents to dollars)
+        let budget = null;
+        if (campaign.daily_budget) {
+          budget = (parseFloat(campaign.daily_budget) / 100).toString();
+        } else if (campaign.lifetime_budget) {
+          budget = (parseFloat(campaign.lifetime_budget) / 100).toString();
+        }
+        
+        return {
+          companyId,
+          userId,
+          integrationId: integration.id,
+          externalId: campaign.id,
+          name: campaign.name,
+          platform: 'meta',
+          status: campaign.status.toLowerCase(),
+          account: accountName,
+          objective: campaign.objective,
+          budget,
+        };
+      });
     } catch (error) {
       console.error('Error syncing Meta campaigns:', error);
       throw error;
@@ -351,13 +361,30 @@ export class MetaAdsService {
     try {
       const results = await this.batchRequest<any>(integration.accessToken, requests);
       const adSetsByCampaign = new Map<string, InsertAdSet[]>();
-
-      // Process results for each campaign
+      
+      // Collect all ad set IDs for batch insights fetch
+      const allAdSetIds: string[] = [];
+      const adSetMap = new Map<string, { campaign: any; adSet: MetaAdSet }>();
+      
       results.forEach((result, index) => {
         const campaign = campaigns[index];
         const adSets = result?.data || [];
+        
+        adSets.forEach((adSet: MetaAdSet) => {
+          allAdSetIds.push(adSet.id);
+          adSetMap.set(adSet.id, { campaign, adSet });
+        });
+      });
 
-        const insertAdSets = adSets.map((adSet: MetaAdSet) => ({
+      // Fetch insights for all ad sets in batch
+      const insightsMap = await this.getAdSetInsightsBatch(integration.accessToken, allAdSetIds);
+
+      // Build final ad sets with metrics
+      adSetMap.forEach((data, adSetId) => {
+        const { campaign, adSet } = data;
+        const insights = insightsMap.get(adSetId) || {};
+        
+        const insertAdSet: InsertAdSet = {
           userId,
           campaignId: campaign.dbId,
           externalId: adSet.id,
@@ -369,12 +396,17 @@ export class MetaAdsService {
           targeting: adSet.targeting || null,
           startTime: adSet.start_time ? new Date(adSet.start_time) : null,
           endTime: adSet.end_time ? new Date(adSet.end_time) : null,
-        }));
-
-        adSetsByCampaign.set(campaign.dbId, insertAdSets);
+          impressions: parseInt(insights.impressions || '0'),
+          clicks: parseInt(insights.clicks || '0'),
+          spend: insights.spend || '0',
+        };
+        
+        const existing = adSetsByCampaign.get(campaign.dbId) || [];
+        existing.push(insertAdSet);
+        adSetsByCampaign.set(campaign.dbId, existing);
       });
 
-      console.log(`✅ Fetched ad sets for ${adSetsByCampaign.size} campaigns`);
+      console.log(`✅ Fetched ad sets with metrics for ${adSetsByCampaign.size} campaigns`);
       return adSetsByCampaign;
     } catch (error) {
       console.error('Error syncing ad sets in batch:', error);
@@ -400,19 +432,30 @@ export class MetaAdsService {
       const url = `${this.baseUrl}/${this.apiVersion}/${campaignExternalId}/adsets?fields=id,name,status,daily_budget,lifetime_budget,bid_strategy,targeting,start_time,end_time&limit=100&access_token=${integration.accessToken}`;
       const adSets = await this.fetchAllPages<MetaAdSet>(url);
 
-      return adSets.map((adSet) => ({
-        userId,
-        campaignId,
-        externalId: adSet.id,
-        name: adSet.name,
-        status: adSet.status.toLowerCase(),
-        dailyBudget: adSet.daily_budget ? (parseFloat(adSet.daily_budget) / 100).toString() : null,
-        lifetimeBudget: adSet.lifetime_budget ? (parseFloat(adSet.lifetime_budget) / 100).toString() : null,
-        bidStrategy: adSet.bid_strategy || null,
-        targeting: adSet.targeting || null,
-        startTime: adSet.start_time ? new Date(adSet.start_time) : null,
-        endTime: adSet.end_time ? new Date(adSet.end_time) : null,
-      }));
+      // Fetch insights for all ad sets
+      const adSetIds = adSets.map(as => as.id);
+      const insightsMap = await this.getAdSetInsightsBatch(integration.accessToken!, adSetIds);
+
+      return adSets.map((adSet) => {
+        const insights = insightsMap.get(adSet.id) || {};
+        
+        return {
+          userId,
+          campaignId,
+          externalId: adSet.id,
+          name: adSet.name,
+          status: adSet.status.toLowerCase(),
+          dailyBudget: adSet.daily_budget ? (parseFloat(adSet.daily_budget) / 100).toString() : null,
+          lifetimeBudget: adSet.lifetime_budget ? (parseFloat(adSet.lifetime_budget) / 100).toString() : null,
+          bidStrategy: adSet.bid_strategy || null,
+          targeting: adSet.targeting || null,
+          startTime: adSet.start_time ? new Date(adSet.start_time) : null,
+          endTime: adSet.end_time ? new Date(adSet.end_time) : null,
+          impressions: parseInt(insights.impressions || '0'),
+          clicks: parseInt(insights.clicks || '0'),
+          spend: insights.spend || '0',
+        };
+      });
     } catch (error) {
       console.error('Error syncing Meta ad sets:', error);
       throw error;
@@ -484,6 +527,47 @@ export class MetaAdsService {
     } catch (error) {
       console.error('Error syncing Meta creatives:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Get ad set insights (metrics) for multiple ad sets using batch request
+   */
+  private async getAdSetInsightsBatch(
+    accessToken: string,
+    adSetIds: string[]
+  ): Promise<Map<string, MetaAdInsights>> {
+    if (adSetIds.length === 0) {
+      return new Map();
+    }
+
+    console.log(`📊 Fetching insights for ${adSetIds.length} ad sets using batch requests...`);
+
+    // Create batch requests for all ad sets
+    const requests = adSetIds.map(adSetId => ({
+      method: 'GET',
+      relative_url: `${adSetId}/insights?fields=impressions,clicks,spend`
+    }));
+
+    try {
+      const results = await this.batchRequest<any>(accessToken, requests);
+      const insightsMap = new Map<string, MetaAdInsights>();
+
+      // Map results back to ad set IDs
+      results.forEach((result, index) => {
+        const adSetId = adSetIds[index];
+        if (result && result.data && result.data.length > 0) {
+          insightsMap.set(adSetId, result.data[0]);
+        } else {
+          insightsMap.set(adSetId, {});
+        }
+      });
+
+      console.log(`✅ Successfully fetched insights for ${insightsMap.size}/${adSetIds.length} ad sets`);
+      return insightsMap;
+    } catch (error) {
+      console.error('Error fetching batch ad set insights:', error);
+      return new Map();
     }
   }
 
