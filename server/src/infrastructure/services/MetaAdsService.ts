@@ -276,12 +276,14 @@ export class MetaAdsService {
   }
 
   /**
-   * Sync campaigns from Meta Ads (with pagination)
+   * Sync campaigns from Meta Ads (with pagination and optional incremental sync)
+   * @param since - Only fetch campaigns updated after this timestamp (incremental sync)
    */
   async syncCampaigns(
     integration: Integration,
     userId: string,
-    companyId: string | null
+    companyId: string | null,
+    since?: Date
   ): Promise<InsertCampaign[]> {
     if (!integration.accessToken || !integration.accountId) {
       throw new Error('Missing access token or account ID');
@@ -291,12 +293,21 @@ export class MetaAdsService {
       // Get account name
       const accountName = await this.getAccountName(integration.accessToken, integration.accountId);
       
-      const url = `${this.baseUrl}/${this.apiVersion}/${integration.accountId}/campaigns?fields=id,name,status,effective_status,objective,created_time,updated_time,daily_budget,lifetime_budget&limit=100&access_token=${integration.accessToken}`;
+      // Build URL with optional filtering
+      let url = `${this.baseUrl}/${this.apiVersion}/${integration.accountId}/campaigns?fields=id,name,status,effective_status,objective,created_time,updated_time,daily_budget,lifetime_budget&limit=100&access_token=${integration.accessToken}`;
       
-      console.log(`🚀 Fetching campaigns from account: ${integration.accountId}`);
+      // Add filtering for incremental sync
+      if (since) {
+        const sinceTimestamp = Math.floor(since.getTime() / 1000);
+        url += `&filtering=[{"field":"updated_time","operator":"GREATER_THAN","value":${sinceTimestamp}}]`;
+        console.log(`🔄 Fetching campaigns updated since ${since.toISOString()} (incremental sync)`);
+      } else {
+        console.log(`🚀 Fetching ALL campaigns (full sync)`);
+      }
+      
       const campaigns = await this.fetchAllPages<MetaCampaign>(url);
       
-      console.log(`✅ Fetched ${campaigns.length} campaigns total from Meta API`);
+      console.log(`✅ Fetched ${campaigns.length} campaigns from Meta API`);
 
       return campaigns.map((campaign) => ({
         companyId,

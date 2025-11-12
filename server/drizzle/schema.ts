@@ -136,9 +136,26 @@ export const integrations = pgTable("integrations", {
   accountStatus: varchar("account_status"), // Status da conta (ACTIVE, DISABLED, etc)
   status: varchar("status").default('active'),
   lastSync: timestamp("last_sync"),
+  lastFullSync: timestamp("last_full_sync"), // Last complete sync (not incremental)
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
   dataSource: varchar("data_source"), // For google_sheets: 'meta' or 'google' to indicate real platform
+});
+
+// Sync history table to track all synchronizations
+export const syncHistory = pgTable("sync_history", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  integrationId: uuid("integration_id").notNull().references(() => integrations.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  status: varchar("status").notNull(), // 'running', 'completed', 'failed', 'partial'
+  type: varchar("type").notNull(), // 'full', 'incremental'
+  startedAt: timestamp("started_at").notNull().defaultNow(),
+  completedAt: timestamp("completed_at"),
+  campaignsSynced: integer("campaigns_synced").default(0),
+  adSetsSynced: integer("ad_sets_synced").default(0),
+  creativeSynced: integer("creatives_synced").default(0),
+  errorMessage: text("error_message"),
+  metadata: jsonb("metadata"), // Additional sync metadata
 });
 
 // Campaigns
@@ -393,6 +410,18 @@ export const integrationsRelations = relations(integrations, ({ one, many }) => 
     references: [users.id],
   }),
   campaigns: many(campaigns),
+  syncHistory: many(syncHistory),
+}));
+
+export const syncHistoryRelations = relations(syncHistory, ({ one }) => ({
+  integration: one(integrations, {
+    fields: [syncHistory.integrationId],
+    references: [integrations.id],
+  }),
+  user: one(users, {
+    fields: [syncHistory.userId],
+    references: [users.id],
+  }),
 }));
 
 export const campaignsRelations = relations(campaigns, ({ one, many }) => ({

@@ -238,12 +238,25 @@ router.post('/:id/sync', authenticateToken, async (req: Request, res: Response, 
 
     // Sync based on platform
     if (integration.platform === 'meta') {
-      console.log('🚀 Starting Meta Ads sync with BATCH REQUESTS (optimized for rate limits)...');
+      // Determine if this is an incremental sync
+      const lastSync = integration.lastSync;
+      const isIncremental = lastSync && (Date.now() - lastSync.getTime() < 7 * 24 * 60 * 60 * 1000); // Within 7 days
+      const syncType = isIncremental ? 'incremental' : 'full';
+      
+      console.log(`🚀 Starting Meta Ads ${syncType} sync with BATCH REQUESTS (optimized for rate limits)...`);
+      if (isIncremental) {
+        console.log(`📅 Syncing changes since ${lastSync.toISOString()}`);
+      }
       
       try {
-        // Step 1: Sync Meta Ads campaigns
-        const campaigns = await metaAdsService.syncCampaigns(integration, userId, companyId);
-        console.log(`📊 Found ${campaigns.length} campaigns`);
+        // Step 1: Sync Meta Ads campaigns (incremental if possible)
+        const campaigns = await metaAdsService.syncCampaigns(
+          integration, 
+          userId, 
+          companyId,
+          isIncremental ? lastSync : undefined
+        );
+        console.log(`📊 Found ${campaigns.length} campaigns ${isIncremental ? '(updated)' : '(total)'}`);
         
         // Step 2: Save all campaigns to DB first
         const dbCampaignsMap = new Map<string, string>(); // externalId -> dbId
