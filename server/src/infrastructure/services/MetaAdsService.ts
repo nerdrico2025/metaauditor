@@ -399,10 +399,12 @@ export class MetaAdsService {
         const insights = insightsMap.get(adSetId) || {};
         
         const insertAdSet: InsertAdSet = {
+          companyId,
           userId,
           campaignId: campaign.dbId,
           externalId: adSet.id,
           name: adSet.name,
+          platform: 'meta',
           status: adSet.status.toLowerCase(),
           dailyBudget: adSet.daily_budget ? (parseFloat(adSet.daily_budget) / 100).toString() : null,
           lifetimeBudget: adSet.lifetime_budget ? (parseFloat(adSet.lifetime_budget) / 100).toString() : null,
@@ -454,10 +456,12 @@ export class MetaAdsService {
         const insights = insightsMap.get(adSet.id) || {};
         
         return {
+          companyId: null,
           userId,
           campaignId,
           externalId: adSet.id,
           name: adSet.name,
+          platform: 'meta',
           status: adSet.status.toLowerCase(),
           dailyBudget: adSet.daily_budget ? (parseFloat(adSet.daily_budget) / 100).toString() : null,
           lifetimeBudget: adSet.lifetime_budget ? (parseFloat(adSet.lifetime_budget) / 100).toString() : null,
@@ -515,11 +519,13 @@ export class MetaAdsService {
           }
           
           return {
+            companyId: null,
             userId,
             campaignId,
             adSetId,
             externalId: ad.id,
             name: ad.name,
+            platform: 'meta',
             type: 'image', // Default to image, video support can be added later
             imageUrl,
             videoUrl: null,

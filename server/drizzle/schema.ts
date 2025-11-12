@@ -178,10 +178,12 @@ export const campaigns = pgTable("campaigns", {
 // Ad Sets (Grupos de Anúncios)
 export const adSets = pgTable("ad_sets", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: uuid("company_id").references(() => companies.id, { onDelete: 'cascade' }),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   campaignId: uuid("campaign_id").notNull().references(() => campaigns.id, { onDelete: 'cascade' }),
   externalId: varchar("external_id").notNull(),
   name: text("name").notNull(),
+  platform: varchar("platform").notNull(), // 'meta', 'google'
   status: varchar("status").notNull(),
   dailyBudget: decimal("daily_budget", { precision: 10, scale: 2 }),
   lifetimeBudget: decimal("lifetime_budget", { precision: 10, scale: 2 }),
@@ -199,6 +201,7 @@ export const adSets = pgTable("ad_sets", {
 // Creatives (Anúncios)
 export const creatives = pgTable("creatives", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: uuid("company_id").references(() => companies.id, { onDelete: 'cascade' }),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   campaignId: uuid("campaign_id").notNull().references(() => campaigns.id, { onDelete: 'cascade' }),
   adSetId: uuid("ad_set_id").references(() => adSets.id, { onDelete: 'cascade' }),
@@ -212,6 +215,7 @@ export const creatives = pgTable("creatives", {
   description: text("description"),
   callToAction: text("call_to_action"),
   status: varchar("status").notNull(),
+  platform: varchar("platform").notNull(), // 'meta', 'google'
   impressions: integer("impressions").default(0),
   clicks: integer("clicks").default(0),
   conversions: integer("conversions").default(0),
@@ -224,6 +228,7 @@ export const creatives = pgTable("creatives", {
 // Policies (consolidated validation rules)
 export const policies = pgTable("policies", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: uuid("company_id").references(() => companies.id, { onDelete: 'cascade' }),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   name: text("name").notNull(),
   description: text("description"),
@@ -267,8 +272,9 @@ export const policies = pgTable("policies", {
 // Audits
 export const audits = pgTable("audits", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: uuid("company_id").references(() => companies.id, { onDelete: 'cascade' }),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
-  creativeId: uuid("creative_id").notNull(),
+  creativeId: uuid("creative_id").notNull().references(() => creatives.id, { onDelete: 'cascade' }),
   policyId: uuid("policy_id").references(() => policies.id),
   status: varchar("status").notNull(),
   complianceScore: decimal("compliance_score", { precision: 5, scale: 2 }).notNull(),
@@ -293,6 +299,7 @@ export const auditActions = pgTable("audit_actions", {
 // Brand Configurations
 export const brandConfigurations = pgTable("brand_configurations", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: uuid("company_id").references(() => companies.id, { onDelete: 'cascade' }),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   logoUrl: text("logo_url"),
   brandName: text("brand_name").notNull(),
@@ -309,6 +316,7 @@ export const brandConfigurations = pgTable("brand_configurations", {
 // Content Criteria
 export const contentCriteria = pgTable("content_criteria", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: uuid("company_id").references(() => companies.id, { onDelete: 'cascade' }),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   name: text("name").notNull(),
   description: text("description"),
