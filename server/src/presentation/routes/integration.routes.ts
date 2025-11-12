@@ -309,7 +309,8 @@ router.post('/:id/sync', authenticateToken, async (req: Request, res: Response, 
         const adSetsByCampaign = await metaAdsService.syncAllAdSetsBatch(
           integration,
           campaignParams,
-          userId
+          userId,
+          companyId
         );
 
         // Step 4: Save ad sets and sync creatives
@@ -340,7 +341,8 @@ router.post('/:id/sync', authenticateToken, async (req: Request, res: Response, 
                 adSet.externalId,
                 dbAdSet.id,
                 campaignDbId,
-                userId
+                userId,
+                companyId
               );
               console.log(`    🎨 Found ${creatives.length} ads in ad set ${adSet.name}`);
 

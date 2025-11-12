@@ -358,7 +358,8 @@ export class MetaAdsService {
   async syncAllAdSetsBatch(
     integration: Integration,
     campaigns: Array<{ externalId: string; dbId: string }>,
-    userId: string
+    userId: string,
+    companyId: string | null
   ): Promise<Map<string, InsertAdSet[]>> {
     if (!integration.accessToken) {
       throw new Error('Missing access token');
@@ -488,7 +489,8 @@ export class MetaAdsService {
     adSetExternalId: string,
     adSetId: string,
     campaignId: string,
-    userId: string
+    userId: string,
+    companyId: string | null = null
   ): Promise<InsertCreative[]> {
     if (!integration.accessToken) {
       throw new Error('Missing access token');
@@ -519,7 +521,7 @@ export class MetaAdsService {
           }
           
           return {
-            companyId: null,
+            companyId,
             userId,
             campaignId,
             adSetId,
