@@ -249,9 +249,12 @@ router.post('/:id/sync', authenticateToken, async (req: Request, res: Response, 
 
     // Sync based on platform
     if (integration.platform === 'meta') {
+      // Check if we have any data - if not, force full sync
+      const hasCampaigns = (await storage.getCampaignsByUser(userId)).length > 0;
+      
       // Determine if this is an incremental sync
       const lastSync = integration.lastSync;
-      const isIncremental = lastSync && (Date.now() - lastSync.getTime() < 7 * 24 * 60 * 60 * 1000); // Within 7 days
+      const isIncremental = hasCampaigns && lastSync && (Date.now() - lastSync.getTime() < 7 * 24 * 60 * 60 * 1000); // Within 7 days
       const syncType = isIncremental ? 'incremental' : 'full';
       
       // Create sync history record

@@ -1,0 +1,65 @@
+API Request: {method: 'POST', url: '/api/integrations/d8b37b4b-9f56-4a23-b257-d8950ac7283c/sync', hasData: false, hasToken: true, dataKeys: Array(0)}
+chunk-WERSD76P.js?v=cde2e441:521 Warning: validateDOMNesting(...): <div> cannot appear as a descendant of <p>.
+    at div
+    at p
+    at https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-GCLFTVUM.js?v=cde2e441:42:13
+    at https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-BGAIPZJK.js?v=cde2e441:283:13
+    at _c9 (https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev/src/components/ui/dialog.tsx:182:12)
+    at div
+    at DialogHeader (https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev/src/components/ui/dialog.tsx:107:3)
+    at div
+    at https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-GCLFTVUM.js?v=cde2e441:42:13
+    at https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-2VKD3KMB.js?v=cde2e441:61:7
+    at https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-Z7JUZCUR.js?v=cde2e441:43:13
+    at https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-Z7JUZCUR.js?v=cde2e441:20:13
+    at https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-GCLFTVUM.js?v=cde2e441:42:13
+    at https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-2355K7T4.js?v=cde2e441:29:5
+    at https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-BGAIPZJK.js?v=cde2e441:235:13
+    at https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-BGAIPZJK.js?v=cde2e441:158:58
+    at Presence (https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-MDWGCUOC.js?v=cde2e441:24:11)
+    at https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-BGAIPZJK.js?v=cde2e441:149:64
+    at https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-Z7JUZCUR.js?v=cde2e441:43:13
+    at https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-Z7JUZCUR.js?v=cde2e441:20:13
+    at https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-GCLFTVUM.js?v=cde2e441:42:13
+    at https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-2VKD3KMB.js?v=cde2e441:260:22
+    at Presence (https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-MDWGCUOC.js?v=cde2e441:24:11)
+    at Provider (https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-PLT6GTVM.js?v=cde2e441:38:15)
+    at DialogPortal (https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-BGAIPZJK.js?v=cde2e441:111:11)
+    at _c3 (https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev/src/components/ui/dialog.tsx:52:12)
+    at Provider (https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-PLT6GTVM.js?v=cde2e441:38:15)
+    at Dialog (https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-BGAIPZJK.js?v=cde2e441:52:5)
+    at SyncLoadingModal (https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev/src/pages/integrations/components/SyncLoadingModal.tsx:22:3)
+    at div
+    at MetaIntegrations (https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev/src/pages/integrations/meta/index.tsx:36:20)
+    at ProtectedRoute (https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev/src/contexts/AuthContext.tsx:110:3)
+    at Route (https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=cde2e441:265:16)
+    at Switch (https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=cde2e441:321:17)
+    at Router
+    at Provider (https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-PLT6GTVM.js?v=cde2e441:38:15)
+    at TooltipProvider (https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=cde2e441:64:5)
+    at AuthProvider (https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev/src/contexts/AuthContext.tsx:21:32)
+    at QueryClientProvider (https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=cde2e441:2805:3)
+    at App
+printWarning @ chunk-WERSD76P.js?v=cde2e441:521
+error @ chunk-WERSD76P.js?v=cde2e441:505
+validateDOMNesting @ chunk-WERSD76P.js?v=cde2e441:8256
+createInstance @ chunk-WERSD76P.js?v=cde2e441:8328
+completeWork @ chunk-WERSD76P.js?v=cde2e441:16290
+completeUnitOfWork @ chunk-WERSD76P.js?v=cde2e441:19224
+performUnitOfWork @ chunk-WERSD76P.js?v=cde2e441:19206
+workLoopSync @ chunk-WERSD76P.js?v=cde2e441:19137
+renderRootSync @ chunk-WERSD76P.js?v=cde2e441:19116
+performSyncWorkOnRoot @ chunk-WERSD76P.js?v=cde2e441:18874
+flushSyncCallbacks @ chunk-WERSD76P.js?v=cde2e441:9119
+(anonymous) @ chunk-WERSD76P.js?v=cde2e441:18627Understand this error
+queryClient.ts:56 📡 API Response: {method: 'POST', url: '/api/integrations/d8b37b4b-9f56-4a23-b257-d8950ac7283c/sync', status: 200, statusText: 'OK', ok: true, …}
+queryClient.ts:103 🔄 Query Request: {url: '/api/integrations', hasToken: true}
+queryClient.ts:103 🔄 Query Request: {url: '/api/integrations/sync-history', hasToken: true}
+queryClient.ts:103 🔄 Query Request: {url: '/api/campaigns', hasToken: true}
+queryClient.ts:103 🔄 Query Request: {url: '/api/adsets', hasToken: true}
+queryClient.ts:103 🔄 Query Request: {url: '/api/creatives', hasToken: true}
+queryClient.ts:114 📡 Query Response: {url: '/api/integrations', status: 200, statusText: 'OK', ok: true, headers: {…}}
+queryClient.ts:114 📡 Query Response: {url: '/api/creatives', status: 200, statusText: 'OK', ok: true, headers: {…}}
+queryClient.ts:114 📡 Query Response: {url: '/api/integrations/sync-history', status: 200, statusText: 'OK', ok: true, headers: {…}}
+queryClient.ts:114 📡 Query Response: {url: '/api/adsets', status: 200, statusText: 'OK', ok: true, headers: {…}}
+queryClient.ts:114 📡 Query Response: {url: '/api/campaigns', status: 200, statusText: 'OK', ok: true, headers: {…}}
