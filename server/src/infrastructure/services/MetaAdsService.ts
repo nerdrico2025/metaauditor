@@ -317,7 +317,63 @@ export class MetaAdsService {
   }
 
   /**
-   * Sync ad sets (Grupos de Anúncios) from a campaign (with pagination)
+   * Sync ad sets for multiple campaigns using batch requests (OPTIMIZED)
+   * This replaces calling syncAdSets() in a loop
+   */
+  async syncAllAdSetsBatch(
+    integration: Integration,
+    campaigns: Array<{ externalId: string; dbId: string }>,
+    userId: string
+  ): Promise<Map<string, InsertAdSet[]>> {
+    if (!integration.accessToken) {
+      throw new Error('Missing access token');
+    }
+
+    console.log(`📦 Fetching ad sets for ${campaigns.length} campaigns using batch requests...`);
+
+    // Create batch requests for all campaigns
+    const requests = campaigns.map(campaign => ({
+      method: 'GET',
+      relative_url: `${campaign.externalId}/adsets?fields=id,name,status,daily_budget,lifetime_budget,bid_strategy,targeting,start_time,end_time&limit=100`
+    }));
+
+    try {
+      const results = await this.batchRequest<any>(integration.accessToken, requests);
+      const adSetsByCampaign = new Map<string, InsertAdSet[]>();
+
+      // Process results for each campaign
+      results.forEach((result, index) => {
+        const campaign = campaigns[index];
+        const adSets = result?.data || [];
+
+        const insertAdSets = adSets.map((adSet: MetaAdSet) => ({
+          userId,
+          campaignId: campaign.dbId,
+          externalId: adSet.id,
+          name: adSet.name,
+          status: adSet.status.toLowerCase(),
+          dailyBudget: adSet.daily_budget ? (parseFloat(adSet.daily_budget) / 100).toString() : null,
+          lifetimeBudget: adSet.lifetime_budget ? (parseFloat(adSet.lifetime_budget) / 100).toString() : null,
+          bidStrategy: adSet.bid_strategy || null,
+          targeting: adSet.targeting || null,
+          startTime: adSet.start_time ? new Date(adSet.start_time) : null,
+          endTime: adSet.end_time ? new Date(adSet.end_time) : null,
+        }));
+
+        adSetsByCampaign.set(campaign.dbId, insertAdSets);
+      });
+
+      console.log(`✅ Fetched ad sets for ${adSetsByCampaign.size} campaigns`);
+      return adSetsByCampaign;
+    } catch (error) {
+      console.error('Error syncing ad sets in batch:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Sync ad sets (Grupos de Anúncios) from a single campaign (with pagination)
+   * @deprecated Use syncAllAdSetsBatch for better performance when syncing multiple campaigns
    */
   async syncAdSets(
     integration: Integration,
