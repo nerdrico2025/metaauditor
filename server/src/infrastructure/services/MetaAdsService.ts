@@ -99,11 +99,11 @@ export class MetaAdsService {
       return [];
     }
 
-    // Meta allows max 50 requests per batch
-    const BATCH_SIZE = 50;
+    // Reduced from 50 to 10 to avoid Meta rate limits
+    const BATCH_SIZE = 10;
     const results: T[] = [];
 
-    // Split into chunks of 50
+    // Split into chunks of 10
     for (let i = 0; i < requests.length; i += BATCH_SIZE) {
       const batch = requests.slice(i, i + BATCH_SIZE);
       
@@ -157,7 +157,8 @@ export class MetaAdsService {
 
         // Longer delay between batch requests to avoid rate limits
         if (i + BATCH_SIZE < requests.length) {
-          await this.sleep(2000); // Increased from 1s to 2s
+          console.log(`⏸️  Waiting 3 seconds before next batch to avoid rate limits...`);
+          await this.sleep(3000); // Increased to 3s to avoid rate limits
         }
       } catch (error) {
         console.error('Batch request error:', error);
@@ -332,6 +333,9 @@ export class MetaAdsService {
           budget = (parseFloat(campaign.lifetime_budget) / 100).toString();
         }
         
+        // Use effective_status instead of status for more accurate campaign state
+        const status = campaign.effective_status?.toLowerCase() || campaign.status.toLowerCase();
+        
         return {
           companyId,
           userId,
@@ -339,7 +343,7 @@ export class MetaAdsService {
           externalId: campaign.id,
           name: campaign.name,
           platform: 'meta',
-          status: campaign.status.toLowerCase(),
+          status,
           account: accountName,
           objective: campaign.objective,
           budget,
