@@ -164,6 +164,11 @@ export default function AdSets() {
     },
   });
 
+  // Reset to page 1 when filters change - must be before early return
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, campaignFilter, platformFilter]);
+
   if (isLoading || !isAuthenticated) {
     return null;
   }
@@ -191,11 +196,6 @@ export default function AdSets() {
     if (!Array.isArray(allCreatives)) return 0;
     return allCreatives.filter((creative: any) => creative.adSetId === adSetId).length;
   };
-
-  // Reset to page 1 when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, statusFilter, campaignFilter, platformFilter]);
 
   const getPlatformIcon = (platform: string) => {
     if (platform === 'meta') return <Facebook className="h-5 w-5 text-blue-600" />;

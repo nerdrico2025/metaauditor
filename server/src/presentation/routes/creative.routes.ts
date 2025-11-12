@@ -307,4 +307,15 @@ router.post('/analyze-batch', authenticateToken, async (req: Request, res: Respo
   }
 });
 
+// Delete all creatives for user
+router.delete('/bulk/all', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = (req as any).user?.userId;
+    await storage.deleteAllCreativesByUser(userId);
+    res.json({ message: 'Todos os anúncios foram excluídos com sucesso' });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

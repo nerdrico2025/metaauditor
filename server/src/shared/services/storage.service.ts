@@ -72,16 +72,20 @@ export interface IStorage {
   getCampaignById(id: string): Promise<Campaign | undefined>;
   getCampaignByIdWithCompanyCheck(id: string, userId: string): Promise<Campaign | undefined>;
   updateCampaign(id: string, data: Partial<InsertCampaign>): Promise<Campaign | undefined>;
+  deleteCampaign(id: string): Promise<boolean>;
+  deleteAllCampaignsByUser(userId: string): Promise<void>;
   createAdSet(adSet: InsertAdSet): Promise<AdSet>;
   getAdSetsByUser(userId: string): Promise<AdSet[]>;
   getAdSetsByCampaign(campaignId: string): Promise<AdSet[]>;
   getAdSetById(id: string): Promise<AdSet | undefined>;
   updateAdSet(id: string, data: Partial<InsertAdSet>): Promise<AdSet | undefined>;
+  deleteAllAdSetsByUser(userId: string): Promise<void>;
   createCreative(creative: InsertCreative): Promise<Creative>;
   getCreativesByUser(userId: string): Promise<Creative[]>;
   getCreativesByCampaign(campaignId: string): Promise<Creative[]>;
   getCreativeById(id: string): Promise<Creative | undefined>;
   updateCreative(id: string, data: Partial<InsertCreative>): Promise<Creative | undefined>;
+  deleteAllCreativesByUser(userId: string): Promise<void>;
   createPolicy(policy: InsertPolicy): Promise<Policy>;
   getPoliciesByUser(userId: string): Promise<Policy[]>;
   getPolicyById(id: string): Promise<Policy | undefined>;
@@ -854,6 +858,23 @@ export class DatabaseStorage implements IStorage {
   async deleteSubscriptionPlan(id: string): Promise<boolean> {
     const result = await db.delete(subscriptionPlans).where(eq(subscriptionPlans.id, id));
     return (result.rowCount ?? 0) > 0;
+  }
+
+  async deleteCampaign(id: string): Promise<boolean> {
+    const result = await db.delete(campaigns).where(eq(campaigns.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async deleteAllCampaignsByUser(userId: string): Promise<void> {
+    await db.delete(campaigns).where(eq(campaigns.userId, userId));
+  }
+
+  async deleteAllAdSetsByUser(userId: string): Promise<void> {
+    await db.delete(adSets).where(eq(adSets.userId, userId));
+  }
+
+  async deleteAllCreativesByUser(userId: string): Promise<void> {
+    await db.delete(creatives).where(eq(creatives.userId, userId));
   }
 }
 

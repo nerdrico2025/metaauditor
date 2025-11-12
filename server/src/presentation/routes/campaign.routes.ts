@@ -57,6 +57,17 @@ router.put('/:id', authenticateToken, async (req: Request, res: Response, next: 
   }
 });
 
+// Delete all campaigns for user
+router.delete('/bulk/all', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = (req as any).user?.userId;
+    await storage.deleteAllCampaignsByUser(userId);
+    res.json({ message: 'Todas as campanhas foram excluídas com sucesso' });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Delete campaign
 router.delete('/:id', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -64,7 +75,7 @@ router.delete('/:id', authenticateToken, async (req: Request, res: Response, nex
     if (!campaign) {
       return res.status(404).json({ message: 'Campanha não encontrada' });
     }
-    // Note: Implement actual delete in storage if needed
+    await storage.deleteCampaign(req.params.id);
     res.json({ message: 'Campanha excluída com sucesso' });
   } catch (error) {
     next(error);
