@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import Sidebar from "@/components/Layout/Sidebar";
 import Header from "@/components/Layout/Header";
+import { Pagination } from "@/components/Pagination";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,8 @@ export default function Campaigns() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [platformFilter, setPlatformFilter] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -224,9 +227,18 @@ export default function Campaigns() {
     return matchesSearch && matchesStatus && matchesPlatform;
   }) || [];
 
+  const totalPages = Math.ceil(filteredCampaigns.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedCampaigns = filteredCampaigns.slice(startIndex, startIndex + itemsPerPage);
+
   const metaCampaigns = filteredCampaigns.filter(c => c.platform === 'meta');
   const googleCampaigns = filteredCampaigns.filter(c => c.platform === 'google');
   const activeCampaigns = filteredCampaigns.filter(c => c.status === 'active');
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, platformFilter]);
 
   return (
     <div className="flex h-screen bg-background">
@@ -417,7 +429,7 @@ export default function Campaigns() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {filteredCampaigns.map((campaign) => {
+                          {paginatedCampaigns.map((campaign) => {
                             const adSetCount = getAdSetCount(campaign.id);
                             const creativeCount = getCreativeCount(campaign.id);
                             
@@ -509,6 +521,14 @@ export default function Campaigns() {
                           })}
                         </TableBody>
                       </Table>
+                      <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        totalItems={filteredCampaigns.length}
+                        itemsPerPage={itemsPerPage}
+                        onPageChange={setCurrentPage}
+                        itemName="campanhas"
+                      />
                     </div>
                   )}
                 </CardContent>
