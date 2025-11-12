@@ -370,10 +370,14 @@ export class MetaAdsService {
       const url = `${this.baseUrl}/${this.apiVersion}/${adSetExternalId}/ads?fields=id,name,status,creative{id,name,image_url,body,title,call_to_action_type}&limit=100&access_token=${integration.accessToken}`;
       const ads = await this.fetchAllPages<MetaAd>(url);
 
-      // Get insights for each ad and download images locally
+      // Get insights for ALL ads in ONE batch request instead of individual calls
+      const adIds = ads.map(ad => ad.id);
+      const insightsMap = await this.getAdInsightsBatch(integration.accessToken!, adIds);
+
+      // Download images and map insights
       const creativesWithMetrics = await Promise.all(
         ads.map(async (ad) => {
-          const insights = await this.getAdInsights(integration.accessToken!, ad.id);
+          const insights = insightsMap.get(ad.id) || {};
           
           // Download and save image locally
           let imageUrl = ad.creative?.image_url || null;
@@ -417,7 +421,50 @@ export class MetaAdsService {
   }
 
   /**
-   * Get ad insights (metrics)
+   * Get ad insights (metrics) for multiple ads using batch request
+   * This is MUCH more efficient than calling getAdInsights for each ad
+   */
+  private async getAdInsightsBatch(
+    accessToken: string,
+    adIds: string[]
+  ): Promise<Map<string, MetaAdInsights>> {
+    if (adIds.length === 0) {
+      return new Map();
+    }
+
+    console.log(`📊 Fetching insights for ${adIds.length} ads using batch requests...`);
+
+    // Create batch requests for all ads
+    const requests = adIds.map(adId => ({
+      method: 'GET',
+      relative_url: `${adId}/insights?fields=impressions,clicks,spend,ctr,cpc,actions`
+    }));
+
+    try {
+      const results = await this.batchRequest<any>(accessToken, requests);
+      const insightsMap = new Map<string, MetaAdInsights>();
+
+      // Map results back to ad IDs
+      results.forEach((result, index) => {
+        const adId = adIds[index];
+        if (result && result.data && result.data.length > 0) {
+          insightsMap.set(adId, result.data[0]);
+        } else {
+          insightsMap.set(adId, {});
+        }
+      });
+
+      console.log(`✅ Successfully fetched insights for ${insightsMap.size}/${adIds.length} ads`);
+      return insightsMap;
+    } catch (error) {
+      console.error('Error fetching batch ad insights:', error);
+      return new Map();
+    }
+  }
+
+  /**
+   * Get ad insights (metrics) - legacy method for single ad
+   * @deprecated Use getAdInsightsBatch for better performance
    */
   private async getAdInsights(
     accessToken: string,
@@ -435,15 +482,6 @@ export class MetaAdsService {
 
       const data = await response.json();
       const insights = data.data?.[0] || {};
-      
-      console.log(`📊 Ad ${adId} insights:`, {
-        impressions: insights.impressions || '0',
-        clicks: insights.clicks || '0',
-        spend: insights.spend || '0',
-        ctr: insights.ctr || '0',
-        cpc: insights.cpc || '0',
-        actions: insights.actions?.length || 0
-      });
       
       return insights;
     } catch (error) {
