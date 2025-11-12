@@ -7,11 +7,12 @@ import Header from '@/components/Layout/Header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { HelpCircle } from 'lucide-react';
+import { HelpCircle, Trash2 } from 'lucide-react';
 import { SiFacebook } from 'react-icons/si';
 import { HowToConnectModal } from '../components/HowToConnectModal';
 import { DeleteConfirmationDialog } from '../components/DeleteConfirmationDialog';
 import { IntegrationCard } from '../components/IntegrationCard';
+import { DeleteAllDataDialog } from '@/components/DeleteAllDataDialog';
 
 interface Integration {
   id: string;
@@ -46,6 +47,7 @@ export default function MetaIntegrations() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [integrationToDelete, setIntegrationToDelete] = useState<Integration | null>(null);
+  const [deleteAllDialogOpen, setDeleteAllDialogOpen] = useState(false);
 
   const { data: integrations = [], isLoading } = useQuery<Integration[]>({
     queryKey: ['/api/integrations'],
@@ -56,6 +58,22 @@ export default function MetaIntegrations() {
     queryKey: ['/api/integrations/sync-history'],
     enabled: !!user,
   });
+
+  const { data: campaigns = [] } = useQuery<any[]>({
+    queryKey: ['/api/campaigns'],
+    enabled: !!user,
+  });
+
+  const { data: adSets = [] } = useQuery<any[]>({
+    queryKey: ['/api/adsets'],
+    enabled: !!user,
+  });
+
+  const { data: creativesData } = useQuery<{ creatives: any[] }>({
+    queryKey: ['/api/creatives'],
+    enabled: !!user,
+  });
+  const creatives = creativesData?.creatives || [];
 
   const syncMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -95,12 +113,40 @@ export default function MetaIntegrations() {
       queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
       queryClient.invalidateQueries({ queryKey: ['/api/campaigns'] });
       queryClient.invalidateQueries({ queryKey: ['/api/creatives'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/adsets'] });
       setDeleteDialogOpen(false);
       setIntegrationToDelete(null);
     },
     onError: (error: any) => {
       toast({ 
         title: 'Erro ao excluir integração',
+        description: error.message,
+        variant: 'destructive'
+      });
+    },
+  });
+
+  const deleteAllDataMutation = useMutation({
+    mutationFn: async () => {
+      await Promise.all([
+        apiRequest('/api/campaigns/bulk/all', { method: 'DELETE' }),
+        apiRequest('/api/adsets/bulk/all', { method: 'DELETE' }),
+        apiRequest('/api/creatives/bulk/all', { method: 'DELETE' }),
+      ]);
+    },
+    onSuccess: () => {
+      toast({ 
+        title: '✓ Todos os dados foram excluídos',
+        description: `${campaigns.length} campanhas, ${adSets.length} grupos de anúncios e ${creatives.length} anúncios foram removidos permanentemente.`
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/campaigns'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/adsets'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/creatives'] });
+      setDeleteAllDialogOpen(false);
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: 'Erro ao excluir dados',
         description: error.message,
         variant: 'destructive'
       });
@@ -259,25 +305,51 @@ export default function MetaIntegrations() {
                       </p>
                     </div>
                   ) : (
-                    <div className="space-y-4">
-                      {metaIntegrations.map((integration) => {
-                        const integrationHistory = syncHistory.filter(h => h.integrationId === integration.id);
-                        
-                        return (
-                          <IntegrationCard
-                            key={integration.id}
-                            integration={integration}
-                            syncHistory={integrationHistory}
-                            onSync={() => syncMutation.mutate(integration.id)}
-                            onDelete={() => {
-                              setIntegrationToDelete(integration);
-                              setDeleteDialogOpen(true);
-                            }}
-                            isSyncing={syncMutation.isPending}
-                          />
-                        );
-                      })}
-                    </div>
+                    <>
+                      <div className="space-y-4">
+                        {metaIntegrations.map((integration) => {
+                          const integrationHistory = syncHistory.filter(h => h.integrationId === integration.id);
+                          
+                          return (
+                            <IntegrationCard
+                              key={integration.id}
+                              integration={integration}
+                              syncHistory={integrationHistory}
+                              onSync={() => syncMutation.mutate(integration.id)}
+                              onDelete={() => {
+                                setIntegrationToDelete(integration);
+                                setDeleteDialogOpen(true);
+                              }}
+                              isSyncing={syncMutation.isPending}
+                            />
+                          );
+                        })}
+                      </div>
+
+                      {(campaigns.length > 0 || adSets.length > 0 || creatives.length > 0) && (
+                        <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                                Zona de Perigo
+                              </h3>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                {campaigns.length} campanhas, {adSets.length} grupos de anúncios e {creatives.length} anúncios sincronizados
+                              </p>
+                            </div>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => setDeleteAllDialogOpen(true)}
+                              data-testid="button-delete-all-meta-data"
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Excluir Todos os Dados
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
                 </CardContent>
               </Card>
@@ -305,6 +377,15 @@ export default function MetaIntegrations() {
           }
         }}
         isDeleting={deleteMutation.isPending}
+      />
+
+      <DeleteAllDataDialog
+        open={deleteAllDialogOpen}
+        onOpenChange={setDeleteAllDialogOpen}
+        onConfirm={() => deleteAllDataMutation.mutate()}
+        isDeleting={deleteAllDataMutation.isPending}
+        dataType="Dados Meta"
+        count={campaigns.length + adSets.length + creatives.length}
       />
     </div>
   );
