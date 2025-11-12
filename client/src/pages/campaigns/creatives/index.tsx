@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import Sidebar from "@/components/Layout/Sidebar";
 import Header from "@/components/Layout/Header";
+import { Pagination } from "@/components/Pagination";
 import { CreativeImage } from "./components/CreativeImage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,7 +37,7 @@ import {
   Palette
 } from "lucide-react";
 import { SiGoogle } from 'react-icons/si';
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import type { Creative, Campaign, Audit } from "@shared/schema";
 import { DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -105,6 +106,7 @@ export default function Creatives() {
   const { isAuthenticated, isLoading } = useAuth();
   const queryClient = useQueryClient();
   
+  const [location] = useLocation();
   const [zoomedCreative, setZoomedCreative] = useState<Creative | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -118,6 +120,17 @@ export default function Creatives() {
   const [pendingCreativeId, setPendingCreativeId] = useState<string | null>(null);
   const [viewingAudit, setViewingAudit] = useState<Audit | null>(null);
   const [showAuditDialog, setShowAuditDialog] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // Check for adSetId filter in URL params
+  useEffect(() => {
+    const params = new URLSearchParams(location.split('?')[1] || '');
+    const adSetId = params.get('adSetId');
+    if (adSetId) {
+      setAdSetFilter(adSetId);
+    }
+  }, [location]);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -413,10 +426,24 @@ export default function Creatives() {
     return matchesSearch && matchesStatus && matchesCampaign && matchesAdSet && matchesPlatform;
   });
 
+  const totalPages = Math.ceil(filteredCreatives.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedCreatives = filteredCreatives.slice(startIndex, startIndex + itemsPerPage);
+
   const metaCreatives = filteredCreatives.filter(c => c.platform === 'meta');
   const activeCreatives = filteredCreatives.filter(c => c.status.toLowerCase() === 'active');
   const totalImpressions = filteredCreatives.reduce((sum, c) => sum + (c.impressions || 0), 0);
   const totalClicks = filteredCreatives.reduce((sum, c) => sum + (c.clicks || 0), 0);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, campaignFilter, adSetFilter, platformFilter]);
+
+  const formatCTR = (ctr: number | null | undefined): string => {
+    if (ctr === null || ctr === undefined || isNaN(ctr)) return '0';
+    return ctr.toFixed(2);
+  };
 
   return (
     <div className="flex h-screen bg-background">
@@ -706,7 +733,7 @@ export default function Creatives() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {filteredCreatives.map((creative) => (
+                          {paginatedCreatives.map((creative) => (
                             <TableRow 
                               key={creative.id} 
                               className="hover:bg-gray-50 dark:hover:bg-gray-900/50" 
@@ -770,7 +797,7 @@ export default function Creatives() {
                                 {creative.clicks?.toLocaleString('pt-BR') || 0}
                               </TableCell>
                               <TableCell className="text-right text-sm text-gray-600 dark:text-gray-400">
-                                {creative.ctr || '0'}%
+                                {formatCTR(creative.ctr)}%
                               </TableCell>
                               <TableCell className="text-center">
                                 <CreativeAnalysisIndicator creativeId={creative.id} />
@@ -797,6 +824,14 @@ export default function Creatives() {
                           ))}
                         </TableBody>
                       </Table>
+                      <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        totalItems={filteredCreatives.length}
+                        itemsPerPage={itemsPerPage}
+                        onPageChange={setCurrentPage}
+                        itemName="anúncios"
+                      />
                     </div>
                   )}
                 </CardContent>
