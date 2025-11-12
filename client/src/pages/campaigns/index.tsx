@@ -117,7 +117,7 @@ export default function Campaigns() {
       
       const parts = [];
       if (totalCampaigns) parts.push(`${totalCampaigns} campanhas`);
-      if (totalAdSets) parts.push(`${totalAdSets} ad sets`);
+      if (totalAdSets) parts.push(`${totalAdSets} grupos de anúncios`);
       if (totalCreatives) parts.push(`${totalCreatives} anúncios`);
       
       toast({
@@ -147,6 +147,11 @@ export default function Campaigns() {
       return;
     }
   }, [error, toast]);
+
+  // Reset to page 1 when filters change - must be before early return
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, platformFilter]);
 
   if (isLoading) {
     return (
@@ -234,11 +239,6 @@ export default function Campaigns() {
   const metaCampaigns = filteredCampaigns.filter(c => c.platform === 'meta');
   const googleCampaigns = filteredCampaigns.filter(c => c.platform === 'google');
   const activeCampaigns = filteredCampaigns.filter(c => c.status === 'active');
-
-  // Reset to page 1 when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, statusFilter, platformFilter]);
 
   return (
     <div className="flex h-screen bg-background">
