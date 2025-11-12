@@ -212,3 +212,61 @@ The system is designed to handle enterprise-scale creative auditing with automat
 - Multi-tenant SaaS architecture with company-level isolation
 - Creative synchronization from ad platforms working
 - Campaign import from Meta and Google functional
+
+## Meta Webhooks Implementation (November 12, 2025)
+
+### Overview
+Implemented Meta Webhooks to enable real-time campaign and creative synchronization, eliminating rate limiting issues from polling-based sync.
+
+### Infrastructure
+- **Database Table**: `webhook_events` table tracks all webhook notifications
+  - Fields: id, integrationId, eventType, objectId, objectType, payload, processed, processedAt, receivedAt, error
+- **Routes**: 
+  - GET `/api/webhooks/meta` - Webhook verification endpoint for Meta setup
+  - POST `/api/webhooks/meta` - Receives webhook notifications from Meta
+- **Security**: SHA-256 signature verification using Meta App Secret
+- **Processing**: Automatic updates to campaigns, ad sets, and creatives based on webhook events
+
+### Webhook Configuration in Meta Business Manager
+
+To enable webhooks for your Meta integration:
+
+1. **Access Meta for Developers**: Go to https://developers.facebook.com/apps/
+2. **Select Your App**: Choose the app connected to Click Auditor
+3. **Navigate to Webhooks**: In left sidebar, click "Webhooks"
+4. **Configure Ad Account Webhooks**:
+   - Click "Edit" for Ad Account subscription
+   - Callback URL: `https://[YOUR-REPLIT-URL]/api/webhooks/meta`
+   - Verify Token: `click_auditor_meta_webhook_2025` (configured in webhook.routes.ts)
+   - Click "Verify and Save"
+
+5. **Subscribe to Fields**:
+   - Navigate to "Webhook Fields" for Ad Account
+   - Subscribe to these fields:
+     - `ads` - Notifies when ads (creatives) are created, updated, or deleted
+     - `adsets` - Notifies when ad sets change status or settings
+     - `campaigns` - Notifies when campaigns are modified
+     - `adaccount` - Notifies about account-level changes
+
+6. **Test Webhook**:
+   - Use "Test" button in Meta Webhooks console
+   - Check webhook_events table in database for received events
+   - Verify processedAt timestamp and processed=true status
+
+### Supported Webhook Events
+
+| Event Type | Object Type | Action |
+|-----------|-------------|--------|
+| UPDATE | campaign | Update campaign status, name, budget in database |
+| UPDATE | adset | Update ad set status, targeting, budget |
+| UPDATE | ad | Update creative status, text, images |
+| CREATE | ad | Sync new creative to database |
+| DELETE | ad | Mark creative as deleted |
+
+### Environment Variables Required
+- `META_APP_SECRET`: Your Meta App Secret for signature verification (auto-retrieved from integration tokens)
+
+### Monitoring
+- All webhook events are logged to `webhook_events` table
+- Failed events store error messages in `error` field
+- Use admin panel to view webhook history and retry failed events
