@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import PolicyModal from "@/components/Modals/PolicyModal";
+import PolicyModal from "../../policies/components/PolicyModal";
 import { Settings, Plus, CheckCircle, BarChart3 } from "lucide-react";
 import { useTranslation } from 'react-i18next';
 import type { Policy } from "@shared/schema";

@@ -19,7 +19,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Edit, Trash, Shield, TrendingUp, Palette, Globe, Target } from "lucide-react";
-import { ChipsInput } from "@/components/ChipsInput";
+import { ChipsInput } from "../settings/components/ChipsInput";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface Policy {

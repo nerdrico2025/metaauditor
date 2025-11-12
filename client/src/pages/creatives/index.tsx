@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import Sidebar from "@/components/Layout/Sidebar";
 import Header from "@/components/Layout/Header";
-import { CreativeImage } from "@/components/CreativeImage";
+import { CreativeImage } from "./components/CreativeImage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";

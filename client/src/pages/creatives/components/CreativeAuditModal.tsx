@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { X, Eye, CheckCircle, AlertTriangle, BarChart3, Image as ImageIcon } from "lucide-react";
-import { CreativeImage } from "@/components/CreativeImage";
+import { CreativeImage } from "./CreativeImage";
 import type { Creative, Audit } from "@shared/schema";
 
 // Interfaces for better typing of JSON fields

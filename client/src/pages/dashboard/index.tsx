@@ -1,11 +1,10 @@
-// Authentication removed - no imports needed
 import Sidebar from "@/components/Layout/Sidebar";
 import Header from "@/components/Layout/Header";
-import MetricsCards from "@/components/Dashboard/MetricsCards";
-import RecentAudits from "@/components/Dashboard/RecentAudits";
-import ProblemCreatives from "@/components/Dashboard/ProblemCreatives";
-import PolicyManagement from "@/components/Dashboard/PolicyManagement";
-import IntegrationStatus from "@/components/Dashboard/IntegrationStatus";
+import MetricsCards from "./components/MetricsCards";
+import RecentAudits from "./components/RecentAudits";
+import ProblemCreatives from "./components/ProblemCreatives";
+import PolicyManagement from "./components/PolicyManagement";
+import IntegrationStatus from "./components/IntegrationStatus";
 import { useTranslation } from 'react-i18next';
 
 export default function Dashboard() {
