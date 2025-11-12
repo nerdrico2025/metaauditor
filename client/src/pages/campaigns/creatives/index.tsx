@@ -440,9 +440,11 @@ export default function Creatives() {
   const totalImpressions = filteredCreatives.reduce((sum, c) => sum + (c.impressions || 0), 0);
   const totalClicks = filteredCreatives.reduce((sum, c) => sum + (c.clicks || 0), 0);
 
-  const formatCTR = (ctr: number | null | undefined): string => {
-    if (ctr === null || ctr === undefined || isNaN(ctr)) return '0';
-    return ctr.toFixed(2);
+  const formatCTR = (ctr: number | string | null | undefined): string => {
+    if (ctr === null || ctr === undefined) return '0';
+    const numCtr = typeof ctr === 'string' ? parseFloat(ctr) : ctr;
+    if (isNaN(numCtr)) return '0';
+    return numCtr.toFixed(2);
   };
 
   return (
