@@ -435,7 +435,7 @@ export default function Creatives() {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedCreatives = filteredCreatives.slice(startIndex, startIndex + itemsPerPage);
 
-  const metaCreatives = filteredCreatives.filter(c => c.platform === 'meta');
+  const metaCreatives = creatives.filter(c => c.platform === 'meta');
   const activeCreatives = filteredCreatives.filter(c => c.status.toLowerCase() === 'active');
   const totalImpressions = filteredCreatives.reduce((sum, c) => sum + (c.impressions || 0), 0);
   const totalClicks = filteredCreatives.reduce((sum, c) => sum + (c.clicks || 0), 0);
