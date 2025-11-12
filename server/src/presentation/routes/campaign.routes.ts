@@ -62,6 +62,13 @@ router.delete('/bulk/all', authenticateToken, async (req: Request, res: Response
   try {
     const userId = (req as any).user?.userId;
     await storage.deleteAllCampaignsByUser(userId);
+    
+    // Reset lastSync for all user integrations to force FULL sync next time
+    const integrations = await storage.getIntegrationsByUser(userId);
+    for (const integration of integrations) {
+      await storage.updateIntegration(integration.id, { lastSync: null });
+    }
+    
     res.json({ message: 'Todas as campanhas foram excluídas com sucesso' });
   } catch (error) {
     next(error);
