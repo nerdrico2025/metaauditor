@@ -6,6 +6,7 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import Sidebar from "@/components/Layout/Sidebar";
 import Header from "@/components/Layout/Header";
 import { Pagination } from "@/components/Pagination";
+import { SyncLoadingModal } from "@/components/SyncLoadingModal";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -53,6 +54,11 @@ export default function Campaigns() {
   const [platformFilter, setPlatformFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  
+  // Sync modal state
+  const [showSyncModal, setShowSyncModal] = useState(false);
+  const [syncSteps, setSyncSteps] = useState<Array<{name: string; status: 'pending' | 'loading' | 'success' | 'error'; count?: number; error?: string}>>([]);
+  const [currentSyncStep, setCurrentSyncStep] = useState(0);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -92,14 +98,56 @@ export default function Campaigns() {
 
   const syncAllMutation = useMutation({
     mutationFn: async () => {
-      const results = await Promise.allSettled(
-        integrations.map((integration) =>
-          fetch(`/api/integrations/${integration.id}/sync`, {
+      // Initialize sync steps - one for each integration
+      const initialSteps = integrations.map(integration => ({
+        name: `${integration.platform === 'meta' ? 'Meta Ads' : 'Google Ads'}: ${integration.accountName || integration.accountId}`,
+        status: 'pending' as const,
+        count: 0,
+      }));
+      
+      setSyncSteps(initialSteps);
+      setCurrentSyncStep(0);
+      setShowSyncModal(true);
+      
+      // Sync integrations one by one to track progress
+      const results: any[] = [];
+      for (let i = 0; i < integrations.length; i++) {
+        const integration = integrations[i];
+        
+        // Update step to loading
+        setSyncSteps(prev => prev.map((step, idx) => 
+          idx === i ? { ...step, status: 'loading' as const } : step
+        ));
+        setCurrentSyncStep(i);
+        
+        try {
+          const response = await fetch(`/api/integrations/${integration.id}/sync`, {
             method: 'POST',
             credentials: 'include',
-          }).then(res => res.json())
-        )
-      );
+          });
+          
+          const data = await response.json();
+          
+          if (response.ok) {
+            const totalItems = (data.campaigns || 0) + (data.adSets || 0) + (data.creatives || 0);
+            setSyncSteps(prev => prev.map((step, idx) => 
+              idx === i ? { ...step, status: 'success' as const, count: totalItems } : step
+            ));
+            results.push({ status: 'fulfilled', value: data });
+          } else {
+            setSyncSteps(prev => prev.map((step, idx) => 
+              idx === i ? { ...step, status: 'error' as const, error: data.error || 'Erro na sincronização' } : step
+            ));
+            results.push({ status: 'rejected', reason: new Error(data.error || 'Sync failed') });
+          }
+        } catch (error) {
+          setSyncSteps(prev => prev.map((step, idx) => 
+            idx === i ? { ...step, status: 'error' as const, error: 'Erro de conexão' } : step
+          ));
+          results.push({ status: 'rejected', reason: error });
+        }
+      }
+      
       return results;
     },
     onSuccess: (results) => {
@@ -124,6 +172,9 @@ export default function Campaigns() {
         title: "Sincronização concluída!",
         description: parts.length > 0 ? parts.join(', ') + ' sincronizados.' : 'Sincronização concluída.',
       });
+      
+      // Auto-close modal after 3 seconds
+      setTimeout(() => setShowSyncModal(false), 3000);
     },
     onError: () => {
       toast({
@@ -131,6 +182,7 @@ export default function Campaigns() {
         description: "Não foi possível sincronizar as integrações",
         variant: "destructive",
       });
+      setShowSyncModal(false);
     },
   });
 
@@ -243,6 +295,13 @@ export default function Campaigns() {
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />
+      
+      <SyncLoadingModal 
+        open={showSyncModal}
+        steps={syncSteps}
+        currentStep={currentSyncStep}
+        onOpenChange={setShowSyncModal}
+      />
       
       <div className="flex flex-col flex-1 overflow-hidden">
         <Header title="Campanhas" />
