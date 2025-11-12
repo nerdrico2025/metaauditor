@@ -136,14 +136,28 @@ export class MetaAdsService {
             const body = JSON.parse(result.body);
             results.push(body);
           } else {
-            console.warn(`⚠️  Sub-request failed with code ${result.code}:`, result.body);
+            // Check if it's a rate limit error
+            let isRateLimit = false;
+            try {
+              const errorBody = JSON.parse(result.body);
+              if (errorBody.error && (errorBody.error.code === 17 || errorBody.error.code === 4 || errorBody.error.code === 80004)) {
+                isRateLimit = true;
+                console.warn(`⏱️  Rate limit detected in batch request (code ${errorBody.error.code}). This is normal with large ad accounts. The system will continue with available data.`);
+              }
+            } catch (e) {
+              // Ignore parse errors
+            }
+            
+            if (!isRateLimit) {
+              console.warn(`⚠️  Sub-request failed with code ${result.code}:`, result.body);
+            }
             results.push(null as any);
           }
         }
 
-        // Small delay between batch requests
+        // Longer delay between batch requests to avoid rate limits
         if (i + BATCH_SIZE < requests.length) {
-          await this.sleep(1000);
+          await this.sleep(2000); // Increased from 1s to 2s
         }
       } catch (error) {
         console.error('Batch request error:', error);
