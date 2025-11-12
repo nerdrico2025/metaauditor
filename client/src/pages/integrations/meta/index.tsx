@@ -13,6 +13,7 @@ import { HowToConnectModal } from '../components/HowToConnectModal';
 import { DeleteConfirmationDialog } from '../components/DeleteConfirmationDialog';
 import { IntegrationCard } from '../components/IntegrationCard';
 import { DeleteAllDataDialog } from '../components/DeleteAllDataDialog';
+import { SyncLoadingModal } from '../components/SyncLoadingModal';
 
 interface Integration {
   id: string;
@@ -48,6 +49,13 @@ export default function MetaIntegrations() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [integrationToDelete, setIntegrationToDelete] = useState<Integration | null>(null);
   const [deleteAllDialogOpen, setDeleteAllDialogOpen] = useState(false);
+  
+  // Sync modal state
+  const [showSyncModal, setShowSyncModal] = useState(false);
+  const [syncSteps, setSyncSteps] = useState<Array<{name: string; status: 'pending' | 'loading' | 'success' | 'error'; count?: number; total?: number; error?: string}>>([]);
+  const [currentSyncStep, setCurrentSyncStep] = useState(0);
+  const [totalItems, setTotalItems] = useState(0);
+  const [syncedItems, setSyncedItems] = useState(0);
 
   const { data: integrations = [], isLoading } = useQuery<Integration[]>({
     queryKey: ['/api/integrations'],
@@ -77,20 +85,84 @@ export default function MetaIntegrations() {
 
   const syncMutation = useMutation({
     mutationFn: async (id: string) => {
-      await apiRequest(`/api/integrations/${id}/sync`, { method: 'POST' });
-      return { started: true };
+      const integration = integrations.find(i => i.id === id);
+      if (!integration) throw new Error('Integração não encontrada');
+      
+      // Initialize sync modal
+      const initialSteps = [{
+        name: `${integration.platform === 'meta' ? 'Meta Ads' : 'Google Ads'}: ${integration.accountName || integration.accountId}`,
+        status: 'pending' as const,
+        count: 0,
+        total: 0,
+      }];
+      
+      setSyncSteps(initialSteps);
+      setCurrentSyncStep(0);
+      setSyncedItems(0);
+      setTotalItems(0);
+      setShowSyncModal(true);
+      
+      // Update to loading
+      setSyncSteps([{ ...initialSteps[0], status: 'loading' as const }]);
+      
+      try {
+        const response = await fetch(`/api/integrations/${id}/sync`, {
+          method: 'POST',
+          credentials: 'include',
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          const itemCount = (data.campaigns || 0) + (data.adSets || 0) + (data.creatives || 0);
+          setSyncSteps([{ 
+            ...initialSteps[0], 
+            status: 'success' as const, 
+            count: itemCount,
+            total: itemCount 
+          }]);
+          setSyncedItems(itemCount);
+          setTotalItems(itemCount);
+          
+          return { success: true, data };
+        } else {
+          setSyncSteps([{ 
+            ...initialSteps[0], 
+            status: 'error' as const, 
+            error: data.error || 'Erro na sincronização' 
+          }]);
+          throw new Error(data.error || 'Sync failed');
+        }
+      } catch (error: any) {
+        setSyncSteps([{ 
+          ...initialSteps[0], 
+          status: 'error' as const, 
+          error: error.message || 'Erro de conexão' 
+        }]);
+        throw error;
+      }
     },
-    onSuccess: () => {
-      toast({ 
-        title: '🔄 Sincronização iniciada!',
-        description: 'O processo está rodando. Atualize a página em alguns minutos para ver os resultados.',
-      });
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
       queryClient.invalidateQueries({ queryKey: ['/api/integrations/sync-history'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/campaigns'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/adsets'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/creatives'] });
+      
+      const itemCount = (result.data?.campaigns || 0) + (result.data?.adSets || 0) + (result.data?.creatives || 0);
+      const parts = [];
+      if (result.data?.campaigns) parts.push(`${result.data.campaigns} campanhas`);
+      if (result.data?.adSets) parts.push(`${result.data.adSets} grupos de anúncios`);
+      if (result.data?.creatives) parts.push(`${result.data.creatives} anúncios`);
+      
+      toast({ 
+        title: '✅ Sincronização concluída!',
+        description: parts.length > 0 ? parts.join(', ') + ' sincronizados.' : 'Sincronização concluída.',
+      });
     },
     onError: (error: any) => {
       toast({ 
-        title: 'Erro ao iniciar sincronização',
+        title: 'Erro ao sincronizar',
         description: error.message,
         variant: 'destructive'
       });
@@ -249,6 +321,15 @@ export default function MetaIntegrations() {
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />
+      
+      <SyncLoadingModal 
+        open={showSyncModal}
+        steps={syncSteps}
+        currentStep={currentSyncStep}
+        totalItems={totalItems}
+        syncedItems={syncedItems}
+        onClose={() => setShowSyncModal(false)}
+      />
       
       <div className="flex flex-col flex-1 overflow-hidden">
         <Header title="Meta Ads - Integrações" />
