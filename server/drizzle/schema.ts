@@ -158,6 +158,22 @@ export const syncHistory = pgTable("sync_history", {
   metadata: jsonb("metadata"), // Additional sync metadata
 });
 
+// Webhook Events table (Store Meta webhook notifications for real-time updates)
+export const webhookEvents = pgTable("webhook_events", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  platform: varchar("platform").notNull(), // 'meta', 'google'
+  eventType: varchar("event_type").notNull(), // 'campaign_update', 'ad_update', etc
+  externalId: varchar("external_id"), // Campaign/Ad/AdSet ID from Meta
+  objectType: varchar("object_type"), // 'campaign', 'adset', 'ad'
+  action: varchar("action"), // 'create', 'update', 'delete', 'pause', etc
+  payload: jsonb("payload").notNull(), // Full webhook payload
+  processed: boolean("processed").default(false),
+  processedAt: timestamp("processed_at"),
+  errorMessage: text("error_message"),
+  receivedAt: timestamp("received_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Campaigns
 export const campaigns = pgTable("campaigns", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -606,6 +622,12 @@ export const insertPerformanceBenchmarksSchema = createInsertSchema(performanceB
   updatedAt: true,
 });
 
+export const insertWebhookEventSchema = createInsertSchema(webhookEvents).omit({
+  id: true,
+  createdAt: true,
+  receivedAt: true,
+});
+
 export const insertSubscriptionPlanSchema = createInsertSchema(subscriptionPlans).omit({
   id: true,
   createdAt: true,
@@ -757,8 +779,9 @@ export type InsertContentCriteria = z.infer<typeof insertContentCriteriaSchema>;
 export type ContentCriteria = typeof contentCriteria.$inferSelect;
 export type InsertPerformanceBenchmarks = z.infer<typeof insertPerformanceBenchmarksSchema>;
 export type PerformanceBenchmarks = typeof performanceBenchmarks.$inferSelect;
+export type InsertWebhookEvent = z.infer<typeof insertWebhookEventSchema>;
+export type WebhookEvent = typeof webhookEvents.$inferSelect;
 export type InsertSubscriptionPlan = z.infer<typeof insertSubscriptionPlanSchema>;
-export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
 export type SettingsDTO = z.infer<typeof settingsDTO>;
 export type BrandSettings = SettingsDTO['brand'];
 export type BrandPolicySettings = SettingsDTO['brandPolicies'];

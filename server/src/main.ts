@@ -88,6 +88,10 @@ export async function startServer() {
   app.use('/api/dashboard', dashboardRoutes);
   app.use('/api/audits', auditRoutes);
   app.use('/api/company', companyRoutes);
+  
+  // Webhook routes (no authentication - Meta verifies with signature)
+  const webhookRoutes = (await import('./presentation/routes/webhook.routes.js')).default;
+  app.use('/api/webhooks', webhookRoutes);
   app.use('/api', sheetsRoutes);
   app.use('/api/admin', adminRoutes);
   app.use('/api/image-migration', imageMigrationRoutes);

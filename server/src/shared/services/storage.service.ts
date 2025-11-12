@@ -6,6 +6,7 @@ import {
   users,
   integrations,
   syncHistory,
+  webhookEvents,
   campaigns,
   adSets,
   creatives,
@@ -48,6 +49,8 @@ import {
   type PlatformSettings,
   type InsertSubscriptionPlan,
   type SubscriptionPlan,
+  type InsertWebhookEvent,
+  type WebhookEvent,
 } from "../schema.js";
 
 export interface IStorage {
@@ -67,6 +70,10 @@ export interface IStorage {
   getSyncHistoryByUser(userId: string): Promise<any[]>;
   createSyncHistory(data: { integrationId: string; userId: string; status: string; type: string; metadata?: any }): Promise<any>;
   updateSyncHistory(id: string, data: { status?: string; completedAt?: Date; campaignsSynced?: number; adSetsSynced?: number; creativeSynced?: number; errorMessage?: string; metadata?: any }): Promise<any>;
+  createWebhookEvent(data: InsertWebhookEvent): Promise<WebhookEvent>;
+  updateWebhookEvent(id: string, data: Partial<InsertWebhookEvent>): Promise<WebhookEvent | undefined>;
+  getWebhookEvents(): Promise<WebhookEvent[]>;
+  getUnprocessedWebhookEvents(): Promise<WebhookEvent[]>;
   createCampaign(campaign: InsertCampaign): Promise<Campaign>;
   getCampaignsByUser(userId: string): Promise<Campaign[]>;
   getCampaignById(id: string): Promise<Campaign | undefined>;
@@ -272,6 +279,38 @@ export class DatabaseStorage implements IStorage {
       .where(eq(syncHistory.id, id))
       .returning();
     return updated;
+  }
+
+  async createWebhookEvent(data: InsertWebhookEvent): Promise<WebhookEvent> {
+    const [event] = await db
+      .insert(webhookEvents)
+      .values(data)
+      .returning();
+    return event;
+  }
+
+  async updateWebhookEvent(id: string, data: Partial<InsertWebhookEvent>): Promise<WebhookEvent | undefined> {
+    const [updated] = await db
+      .update(webhookEvents)
+      .set(data)
+      .where(eq(webhookEvents.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getWebhookEvents(): Promise<WebhookEvent[]> {
+    return await db
+      .select()
+      .from(webhookEvents)
+      .orderBy(desc(webhookEvents.receivedAt));
+  }
+
+  async getUnprocessedWebhookEvents(): Promise<WebhookEvent[]> {
+    return await db
+      .select()
+      .from(webhookEvents)
+      .where(eq(webhookEvents.processed, false))
+      .orderBy(webhookEvents.receivedAt);
   }
 
   async disableIntegration(integrationId: string, userId: string): Promise<Integration | undefined> {
