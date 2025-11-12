@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import Sidebar from "@/components/Layout/Sidebar";
 import Header from "@/components/Layout/Header";
 import { Pagination } from "@/components/Pagination";
-import { SyncLoadingModal } from "@/components/SyncLoadingModal";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,7 +32,6 @@ import {
   Calendar, 
   DollarSign, 
   Search, 
-  RefreshCw,
   AlertCircle,
   Layers,
   Image as ImageIcon,
@@ -47,20 +45,12 @@ import type { Campaign } from "@shared/schema";
 export default function Campaigns() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
-  const queryClient = useQueryClient();
   
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [platformFilter, setPlatformFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
-  
-  // Sync modal state
-  const [showSyncModal, setShowSyncModal] = useState(false);
-  const [syncSteps, setSyncSteps] = useState<Array<{name: string; status: 'pending' | 'loading' | 'success' | 'error'; count?: number; total?: number; error?: string}>>([]);
-  const [currentSyncStep, setCurrentSyncStep] = useState(0);
-  const [totalItems, setTotalItems] = useState(0);
-  const [syncedItems, setSyncedItems] = useState(0);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -81,11 +71,6 @@ export default function Campaigns() {
     enabled: isAuthenticated,
   });
 
-  const { data: integrations = [] } = useQuery<any[]>({
-    queryKey: ['/api/integrations'],
-    enabled: isAuthenticated,
-  });
-
   const { data: allAdSets = [] } = useQuery<any[]>({
     queryKey: ['/api/adsets'],
     enabled: isAuthenticated,
@@ -97,112 +82,6 @@ export default function Campaigns() {
   });
   
   const allCreatives = creativesData?.creatives || [];
-
-  const syncAllMutation = useMutation({
-    mutationFn: async () => {
-      // Initialize sync steps - one for each integration
-      const initialSteps = integrations.map(integration => ({
-        name: `${integration.platform === 'meta' ? 'Meta Ads' : 'Google Ads'}: ${integration.accountName || integration.accountId}`,
-        status: 'pending' as const,
-        count: 0,
-        total: 0,
-      }));
-      
-      setSyncSteps(initialSteps);
-      setCurrentSyncStep(0);
-      setSyncedItems(0);
-      setTotalItems(0);
-      setShowSyncModal(true);
-      
-      // Sync integrations one by one to track progress
-      const results: any[] = [];
-      let cumulativeSyncedItems = 0;
-      
-      for (let i = 0; i < integrations.length; i++) {
-        const integration = integrations[i];
-        
-        // Update step to loading
-        setSyncSteps(prev => prev.map((step, idx) => 
-          idx === i ? { ...step, status: 'loading' as const } : step
-        ));
-        setCurrentSyncStep(i);
-        
-        try {
-          const response = await fetch(`/api/integrations/${integration.id}/sync`, {
-            method: 'POST',
-            credentials: 'include',
-          });
-          
-          const data = await response.json();
-          
-          if (response.ok) {
-            const itemCount = (data.campaigns || 0) + (data.adSets || 0) + (data.creatives || 0);
-            cumulativeSyncedItems += itemCount;
-            
-            setSyncSteps(prev => prev.map((step, idx) => 
-              idx === i ? { ...step, status: 'success' as const, count: itemCount, total: itemCount } : step
-            ));
-            setSyncedItems(cumulativeSyncedItems);
-            
-            // Estimate total items (will update as we sync)
-            const estimatedTotal = cumulativeSyncedItems * (integrations.length / (i + 1));
-            setTotalItems(Math.round(estimatedTotal));
-            
-            results.push({ status: 'fulfilled', value: data });
-          } else {
-            setSyncSteps(prev => prev.map((step, idx) => 
-              idx === i ? { ...step, status: 'error' as const, error: data.error || 'Erro na sincronização' } : step
-            ));
-            results.push({ status: 'rejected', reason: new Error(data.error || 'Sync failed') });
-          }
-        } catch (error) {
-          setSyncSteps(prev => prev.map((step, idx) => 
-            idx === i ? { ...step, status: 'error' as const, error: 'Erro de conexão' } : step
-          ));
-          results.push({ status: 'rejected', reason: error });
-        }
-      }
-      
-      // Final update: set total to synced (now we know the exact total)
-      setTotalItems(cumulativeSyncedItems);
-      
-      return results;
-    },
-    onSuccess: (results) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
-      queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/adsets'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/creatives'] });
-      
-      const fulfilled = results.filter(r => r.status === 'fulfilled');
-      const successData = fulfilled.map(r => r.status === 'fulfilled' ? r.value : null).filter(Boolean);
-      
-      const totalCampaigns = successData.reduce((sum, data: any) => sum + (data.campaigns || 0), 0);
-      const totalAdSets = successData.reduce((sum, data: any) => sum + (data.adSets || 0), 0);
-      const totalCreatives = successData.reduce((sum, data: any) => sum + (data.creatives || 0), 0);
-      
-      const parts = [];
-      if (totalCampaigns) parts.push(`${totalCampaigns} campanhas`);
-      if (totalAdSets) parts.push(`${totalAdSets} grupos de anúncios`);
-      if (totalCreatives) parts.push(`${totalCreatives} anúncios`);
-      
-      toast({
-        title: "Sincronização concluída!",
-        description: parts.length > 0 ? parts.join(', ') + ' sincronizados.' : 'Sincronização concluída.',
-      });
-      
-      // Auto-close modal after 3 seconds
-      setTimeout(() => setShowSyncModal(false), 3000);
-    },
-    onError: () => {
-      toast({
-        title: "Erro",
-        description: "Não foi possível sincronizar as integrações",
-        variant: "destructive",
-      });
-      setShowSyncModal(false);
-    },
-  });
 
   useEffect(() => {
     if (error && isUnauthorizedError(error as Error)) {
@@ -272,14 +151,6 @@ export default function Campaigns() {
     });
   };
 
-  const getMostRecentSync = () => {
-    if (!integrations.length) return null;
-    const syncs = integrations
-      .map(i => i.lastSync)
-      .filter(Boolean)
-      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-    return syncs[0] || null;
-  };
 
   const getAdSetCount = (campaignId: string) => {
     if (!Array.isArray(allAdSets)) return 0;
@@ -314,15 +185,6 @@ export default function Campaigns() {
     <div className="flex h-screen bg-background">
       <Sidebar />
       
-      <SyncLoadingModal 
-        open={showSyncModal}
-        steps={syncSteps}
-        currentStep={currentSyncStep}
-        totalItems={totalItems}
-        syncedItems={syncedItems}
-        onClose={() => setShowSyncModal(false)}
-      />
-      
       <div className="flex flex-col flex-1 overflow-hidden">
         <Header title="Campanhas" />
         
@@ -330,39 +192,12 @@ export default function Campaigns() {
           <div className="py-8">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               
-              <div className="flex justify-between items-start mb-6">
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Campanhas</h1>
-                  <p className="text-gray-600 dark:text-gray-400 mt-2">
-                    Gerencie suas campanhas publicitárias do Meta Ads e Google Ads
-                  </p>
-                  {getMostRecentSync() && (
-                    <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
-                      Última sincronização: {formatDate(getMostRecentSync())}
-                    </p>
-                  )}
-                </div>
-                <Button
-                  onClick={() => syncAllMutation.mutate()}
-                  disabled={syncAllMutation.isPending || !integrations.length}
-                  className="bg-primary hover:bg-primary/90"
-                  data-testid="button-sync-all-campaigns"
-                >
-                  <RefreshCw className={`h-4 w-4 mr-2 ${syncAllMutation.isPending ? 'animate-spin' : ''}`} />
-                  {syncAllMutation.isPending ? 'Sincronizando...' : 'Sincronizar Tudo'}
-                </Button>
+              <div className="mb-6">
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Campanhas</h1>
+                <p className="text-gray-600 dark:text-gray-400 mt-2">
+                  Gerencie suas campanhas publicitárias do Meta Ads e Google Ads
+                </p>
               </div>
-
-              {integrations.length === 0 && (
-                <Alert className="mb-6 bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
-                  <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                  <AlertDescription className="text-blue-900 dark:text-blue-100">
-                    Você ainda não conectou nenhuma conta de anúncios. Vá para{' '}
-                    <Link href="/settings" className="font-semibold underline">Configurações</Link>
-                    {' '}para conectar suas contas Meta Ads ou Google Ads.
-                  </AlertDescription>
-                </Alert>
-              )}
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                 <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">

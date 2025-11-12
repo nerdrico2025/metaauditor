@@ -12,7 +12,7 @@ import { SiFacebook } from 'react-icons/si';
 import { HowToConnectModal } from '../components/HowToConnectModal';
 import { DeleteConfirmationDialog } from '../components/DeleteConfirmationDialog';
 import { IntegrationCard } from '../components/IntegrationCard';
-import { DeleteAllDataDialog } from '@/components/DeleteAllDataDialog';
+import { DeleteAllDataDialog } from '../components/DeleteAllDataDialog';
 
 interface Integration {
   id: string;

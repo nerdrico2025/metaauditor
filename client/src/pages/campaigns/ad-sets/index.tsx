@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import Sidebar from "@/components/Layout/Sidebar";
@@ -28,7 +28,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
   Search, 
-  RefreshCw, 
   Target, 
   DollarSign, 
   TrendingUp,
@@ -74,7 +73,6 @@ interface Campaign {
 export default function AdSets() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
-  const queryClient = useQueryClient();
   
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -108,61 +106,12 @@ export default function AdSets() {
     enabled: isAuthenticated,
   });
 
-  const { data: integrations = [] } = useQuery<any[]>({
-    queryKey: ['/api/integrations'],
-    enabled: isAuthenticated,
-  });
-
   const { data: creativesData } = useQuery<any>({
     queryKey: ['/api/creatives'],
     enabled: isAuthenticated,
   });
   
   const allCreatives = creativesData?.creatives || [];
-
-  const syncAllMutation = useMutation({
-    mutationFn: async () => {
-      const results = await Promise.allSettled(
-        integrations.map((integration) =>
-          fetch(`/api/integrations/${integration.id}/sync`, {
-            method: 'POST',
-            credentials: 'include',
-          }).then(res => res.json())
-        )
-      );
-      return results;
-    },
-    onSuccess: (results) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/adsets"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/integrations"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/creatives"] });
-      
-      const fulfilled = results.filter(r => r.status === 'fulfilled');
-      const successData = fulfilled.map(r => r.status === 'fulfilled' ? r.value : null).filter(Boolean);
-      
-      const totalCampaigns = successData.reduce((sum, data: any) => sum + (data.campaigns || 0), 0);
-      const totalAdSets = successData.reduce((sum, data: any) => sum + (data.adSets || 0), 0);
-      const totalCreatives = successData.reduce((sum, data: any) => sum + (data.creatives || 0), 0);
-      
-      const parts = [];
-      if (totalCampaigns) parts.push(`${totalCampaigns} campanhas`);
-      if (totalAdSets) parts.push(`${totalAdSets} grupos de anúncios`);
-      if (totalCreatives) parts.push(`${totalCreatives} anúncios`);
-      
-      toast({
-        title: "Sincronização concluída!",
-        description: parts.length > 0 ? parts.join(', ') + ' sincronizados.' : 'Sincronização concluída.',
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Erro",
-        description: "Erro ao sincronizar integrações",
-        variant: "destructive",
-      });
-    },
-  });
 
   // Reset to page 1 when filters change - must be before early return
   useEffect(() => {
@@ -229,26 +178,6 @@ export default function AdSets() {
     }
   };
 
-  const formatDate = (date: Date | null | string | undefined) => {
-    if (!date) return 'Nunca';
-    return new Date(date).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  const getMostRecentSync = () => {
-    if (!integrations.length) return null;
-    const syncs = integrations
-      .map(i => i.lastSync)
-      .filter(Boolean)
-      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-    return syncs[0] || null;
-  };
-
   const metaAdSets = filteredAdSets.filter(a => a.platform === 'meta');
   const activeAdSets = filteredAdSets.filter(a => a.status.toLowerCase() === 'active');
   const totalSpend = filteredAdSets.reduce((sum, adSet) => sum + (adSet.spend || 0), 0);
@@ -262,41 +191,14 @@ export default function AdSets() {
           <div className="py-8">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                    Grupos de Anúncios
-                  </h1>
-                  <p className="text-gray-600 dark:text-gray-400 mt-2">
-                    Gerencie os grupos de anúncios das suas campanhas Meta Ads e Google Ads
-                  </p>
-                  {getMostRecentSync() && (
-                    <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
-                      Última sincronização: {formatDate(getMostRecentSync())}
-                    </p>
-                  )}
-                </div>
-                <Button
-                  onClick={() => syncAllMutation.mutate()}
-                  disabled={syncAllMutation.isPending || !integrations.length}
-                  className="bg-primary hover:bg-primary/90"
-                  data-testid="button-sync-all"
-                >
-                  <RefreshCw className={`h-4 w-4 mr-2 ${syncAllMutation.isPending ? 'animate-spin' : ''}`} />
-                  {syncAllMutation.isPending ? 'Sincronizando...' : 'Sincronizar Tudo'}
-                </Button>
+              <div className="mb-6">
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                  Grupos de Anúncios
+                </h1>
+                <p className="text-gray-600 dark:text-gray-400 mt-2">
+                  Gerencie os grupos de anúncios das suas campanhas Meta Ads e Google Ads
+                </p>
               </div>
-
-              {integrations.length === 0 && (
-                <Alert className="mb-6 bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
-                  <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                  <AlertDescription className="text-blue-900 dark:text-blue-100">
-                    Você ainda não conectou nenhuma conta de anúncios. Vá para{' '}
-                    <Link href="/settings" className="font-semibold underline">Configurações</Link>
-                    {' '}para conectar suas contas Meta Ads ou Google Ads.
-                  </AlertDescription>
-                </Alert>
-              )}
 
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
                 <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
