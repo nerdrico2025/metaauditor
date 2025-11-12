@@ -261,6 +261,11 @@ export default function Creatives() {
     },
   });
 
+  // Reset to page 1 when filters change - must be before early return
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, campaignFilter, adSetFilter, platformFilter]);
+
   if (isLoading || !isAuthenticated) {
     return null;
   }
@@ -434,11 +439,6 @@ export default function Creatives() {
   const activeCreatives = filteredCreatives.filter(c => c.status.toLowerCase() === 'active');
   const totalImpressions = filteredCreatives.reduce((sum, c) => sum + (c.impressions || 0), 0);
   const totalClicks = filteredCreatives.reduce((sum, c) => sum + (c.clicks || 0), 0);
-
-  // Reset to page 1 when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, statusFilter, campaignFilter, adSetFilter, platformFilter]);
 
   const formatCTR = (ctr: number | null | undefined): string => {
     if (ctr === null || ctr === undefined || isNaN(ctr)) return '0';
