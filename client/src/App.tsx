@@ -4,22 +4,26 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, ProtectedRoute } from "@/contexts/AuthContext";
-import Landing from "@/pages/Landing";
-import Login from "@/pages/Login";
+// Auth Pages
+import Landing from "@/pages/auth/landing";
+import Login from "@/pages/auth/login";
+
+// Dashboard
 import Dashboard from "@/pages/dashboard";
-import Reports from "@/pages/Reports";
-import Policies from "@/pages/policies";
-import History from "@/pages/History";
 
-// Admin
-import SuperAdmin from "@/pages/admin";
-
-// Campaigns Module
+// Campaigns Module (with hierarchy: Campaigns → AdSets → Creatives)
 import Campaigns from "@/pages/campaigns";
 import AdSets from "@/pages/campaigns/ad-sets";
 import Creatives from "@/pages/campaigns/creatives";
 
-// Integrations
+// Reports & History
+import Reports from "@/pages/reports";
+import History from "@/pages/history";
+
+// Policies
+import Policies from "@/pages/policies";
+
+// Integrations (Meta & Google)
 import Integrations from "@/pages/integrations";
 import MetaIntegrations from "@/pages/integrations/meta";
 import GoogleIntegrations from "@/pages/integrations/google";
@@ -30,7 +34,11 @@ import BrandSettings from "@/pages/settings/brand";
 import ContentCriteria from "@/pages/settings/content-criteria";
 import Company from "@/pages/settings/company";
 
-import NotFound from "@/pages/not-found";
+// Admin
+import SuperAdmin from "@/pages/admin";
+
+// Error Pages
+import NotFound from "@/pages/errors/not-found";
 
 function Router() {
   return (
