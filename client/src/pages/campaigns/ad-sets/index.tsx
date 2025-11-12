@@ -147,7 +147,7 @@ export default function AdSets() {
       
       const parts = [];
       if (totalCampaigns) parts.push(`${totalCampaigns} campanhas`);
-      if (totalAdSets) parts.push(`${totalAdSets} ad sets`);
+      if (totalAdSets) parts.push(`${totalAdSets} grupos de anúncios`);
       if (totalCreatives) parts.push(`${totalCreatives} anúncios`);
       
       toast({
@@ -265,7 +265,7 @@ export default function AdSets() {
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                    Grupos de Anúncios (Ad Sets)
+                    Grupos de Anúncios
                   </h1>
                   <p className="text-gray-600 dark:text-gray-400 mt-2">
                     Gerencie os grupos de anúncios das suas campanhas Meta Ads e Google Ads
@@ -303,7 +303,7 @@ export default function AdSets() {
                   <CardContent className="pt-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total de Ad Sets</p>
+                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total de Grupos</p>
                         <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2" data-testid="stat-total-adsets">
                           {filteredAdSets.length}
                         </p>
@@ -317,7 +317,7 @@ export default function AdSets() {
                   <CardContent className="pt-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Ad Sets Meta Ads</p>
+                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Grupos Meta Ads</p>
                         <p className="text-3xl font-bold text-blue-600 dark:text-blue-400 mt-2" data-testid="stat-meta-adsets">
                           {metaAdSets.length}
                         </p>
@@ -331,7 +331,7 @@ export default function AdSets() {
                   <CardContent className="pt-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Ad Sets Ativos</p>
+                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Grupos Ativos</p>
                         <p className="text-3xl font-bold text-green-600 dark:text-green-400 mt-2" data-testid="stat-active-adsets">
                           {activeAdSets.length}
                         </p>
@@ -460,7 +460,7 @@ export default function AdSets() {
                         <TableHeader>
                           <TableRow className="bg-gray-50 dark:bg-gray-900">
                             <TableHead className="w-[50px]"></TableHead>
-                            <TableHead>Nome do Ad Set</TableHead>
+                            <TableHead>Nome do Grupo</TableHead>
                             <TableHead>Campanha</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead>Orçamento</TableHead>

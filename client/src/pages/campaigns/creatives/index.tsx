@@ -244,7 +244,7 @@ export default function Creatives() {
       
       const parts = [];
       if (totalCampaigns) parts.push(`${totalCampaigns} campanhas`);
-      if (totalAdSets) parts.push(`${totalAdSets} ad sets`);
+      if (totalAdSets) parts.push(`${totalAdSets} grupos de anúncios`);
       if (totalCreatives) parts.push(`${totalCreatives} anúncios`);
       
       toast({
@@ -277,9 +277,9 @@ export default function Creatives() {
   };
 
   const getAdSetName = (adSetId: string | null) => {
-    if (!adSetId) return 'Ad Set Desconhecido';
+    if (!adSetId) return 'Grupo Desconhecido';
     const adSet = adSets.find(a => a.id === adSetId);
-    return adSet?.name || 'Ad Set Desconhecido';
+    return adSet?.name || 'Grupo Desconhecido';
   };
 
   const getStatusBadgeVariant = (status: string) => {
