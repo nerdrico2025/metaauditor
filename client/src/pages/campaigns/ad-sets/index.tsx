@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import Sidebar from "@/components/Layout/Sidebar";
 import Header from "@/components/Layout/Header";
+import { Pagination } from "@/components/Pagination";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -39,7 +40,7 @@ import {
   Facebook
 } from "lucide-react";
 import { SiGoogle } from 'react-icons/si';
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 
 interface AdSet {
   id: string;
@@ -79,6 +80,9 @@ export default function AdSets() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [campaignFilter, setCampaignFilter] = useState<string>("all");
   const [platformFilter, setPlatformFilter] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  const [, setLocation] = useLocation();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -174,6 +178,10 @@ export default function AdSets() {
     return matchesSearch && matchesStatus && matchesCampaign && matchesPlatform;
   }) || [];
 
+  const totalPages = Math.ceil(filteredAdSets.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedAdSets = filteredAdSets.slice(startIndex, startIndex + itemsPerPage);
+
   const getCampaignName = (campaignId: string) => {
     const campaign = campaigns.find(c => c.id === campaignId);
     return campaign?.name || 'Campanha Desconhecida';
@@ -184,22 +192,27 @@ export default function AdSets() {
     return allCreatives.filter((creative: any) => creative.adSetId === adSetId).length;
   };
 
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, campaignFilter, platformFilter]);
+
   const getPlatformIcon = (platform: string) => {
     if (platform === 'meta') return <Facebook className="h-5 w-5 text-blue-600" />;
     if (platform === 'google') return <SiGoogle className="h-5 w-5 text-red-600" />;
     return <Target className="h-5 w-5 text-gray-600" />;
   };
 
-  const formatCurrency = (value: number | null) => {
-    if (value === null) return '-';
+  const formatCurrency = (value: number | null | undefined) => {
+    if (value === null || value === undefined || isNaN(value)) return '-';
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL',
     }).format(value);
   };
 
-  const formatNumber = (value: number | null) => {
-    if (value === null) return '-';
+  const formatNumber = (value: number | null | undefined) => {
+    if (value === null || value === undefined || isNaN(value)) return '-';
     return new Intl.NumberFormat('pt-BR').format(value);
   };
 
@@ -459,7 +472,7 @@ export default function AdSets() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {filteredAdSets.map((adSet) => {
+                          {paginatedAdSets.map((adSet) => {
                             const creativeCount = getCreativeCount(adSet.id);
                             
                             return (
@@ -505,26 +518,23 @@ export default function AdSets() {
                                   {formatCurrency(adSet.spend)}
                                 </TableCell>
                                 <TableCell className="text-center">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    asChild
-                                    className="font-semibold"
-                                    data-testid={`button-view-creatives-${adSet.id}`}
-                                  >
-                                    <Link href="/creatives">
-                                      <ImageIcon className="h-4 w-4 mr-1" />
-                                      {creativeCount}
-                                    </Link>
-                                  </Button>
+                                  <span className="font-semibold text-gray-600 dark:text-gray-400">
+                                    {creativeCount}
+                                  </span>
                                 </TableCell>
                                 <TableCell className="text-right">
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    data-testid={`button-details-${adSet.id}`}
+                                    onClick={() => {
+                                      const params = new URLSearchParams();
+                                      params.set('adSetId', adSet.id);
+                                      setLocation(`/creatives?${params.toString()}`);
+                                    }}
+                                    data-testid={`button-view-ads-${adSet.id}`}
                                   >
-                                    <ChevronRight className="h-4 w-4" />
+                                    Ver Anúncios
+                                    <ChevronRight className="h-4 w-4 ml-1" />
                                   </Button>
                                 </TableCell>
                               </TableRow>
@@ -532,6 +542,14 @@ export default function AdSets() {
                           })}
                         </TableBody>
                       </Table>
+                      <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        totalItems={filteredAdSets.length}
+                        itemsPerPage={itemsPerPage}
+                        onPageChange={setCurrentPage}
+                        itemName="ad sets"
+                      />
                     </div>
                   )}
                 </CardContent>
