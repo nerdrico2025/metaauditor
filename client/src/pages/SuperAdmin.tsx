@@ -19,7 +19,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ChipsInput } from '@/components/ChipsInput';
+import { ChipsInput } from './settings/components/ChipsInput';
 import { Building2, Plus, Edit, Trash2, Users, DollarSign, Settings as SettingsIcon, Eye, EyeOff, Facebook } from 'lucide-react';
 import SuperAdminSidebar from '@/components/Layout/SuperAdminSidebar';
 import Header from '@/components/Layout/Header';
