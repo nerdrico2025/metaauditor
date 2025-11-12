@@ -57,8 +57,10 @@ export default function Campaigns() {
   
   // Sync modal state
   const [showSyncModal, setShowSyncModal] = useState(false);
-  const [syncSteps, setSyncSteps] = useState<Array<{name: string; status: 'pending' | 'loading' | 'success' | 'error'; count?: number; error?: string}>>([]);
+  const [syncSteps, setSyncSteps] = useState<Array<{name: string; status: 'pending' | 'loading' | 'success' | 'error'; count?: number; total?: number; error?: string}>>([]);
   const [currentSyncStep, setCurrentSyncStep] = useState(0);
+  const [totalItems, setTotalItems] = useState(0);
+  const [syncedItems, setSyncedItems] = useState(0);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -103,14 +105,19 @@ export default function Campaigns() {
         name: `${integration.platform === 'meta' ? 'Meta Ads' : 'Google Ads'}: ${integration.accountName || integration.accountId}`,
         status: 'pending' as const,
         count: 0,
+        total: 0,
       }));
       
       setSyncSteps(initialSteps);
       setCurrentSyncStep(0);
+      setSyncedItems(0);
+      setTotalItems(0);
       setShowSyncModal(true);
       
       // Sync integrations one by one to track progress
       const results: any[] = [];
+      let cumulativeSyncedItems = 0;
+      
       for (let i = 0; i < integrations.length; i++) {
         const integration = integrations[i];
         
@@ -129,10 +136,18 @@ export default function Campaigns() {
           const data = await response.json();
           
           if (response.ok) {
-            const totalItems = (data.campaigns || 0) + (data.adSets || 0) + (data.creatives || 0);
+            const itemCount = (data.campaigns || 0) + (data.adSets || 0) + (data.creatives || 0);
+            cumulativeSyncedItems += itemCount;
+            
             setSyncSteps(prev => prev.map((step, idx) => 
-              idx === i ? { ...step, status: 'success' as const, count: totalItems } : step
+              idx === i ? { ...step, status: 'success' as const, count: itemCount, total: itemCount } : step
             ));
+            setSyncedItems(cumulativeSyncedItems);
+            
+            // Estimate total items (will update as we sync)
+            const estimatedTotal = cumulativeSyncedItems * (integrations.length / (i + 1));
+            setTotalItems(Math.round(estimatedTotal));
+            
             results.push({ status: 'fulfilled', value: data });
           } else {
             setSyncSteps(prev => prev.map((step, idx) => 
@@ -147,6 +162,9 @@ export default function Campaigns() {
           results.push({ status: 'rejected', reason: error });
         }
       }
+      
+      // Final update: set total to synced (now we know the exact total)
+      setTotalItems(cumulativeSyncedItems);
       
       return results;
     },
@@ -300,7 +318,9 @@ export default function Campaigns() {
         open={showSyncModal}
         steps={syncSteps}
         currentStep={currentSyncStep}
-        onOpenChange={setShowSyncModal}
+        totalItems={totalItems}
+        syncedItems={syncedItems}
+        onClose={() => setShowSyncModal(false)}
       />
       
       <div className="flex flex-col flex-1 overflow-hidden">
