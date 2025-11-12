@@ -543,10 +543,10 @@ export class MetaAdsService {
 
     console.log(`📊 Fetching insights for ${adSetIds.length} ad sets using batch requests...`);
 
-    // Create batch requests for all ad sets
+    // Create batch requests for all ad sets with date range
     const requests = adSetIds.map(adSetId => ({
       method: 'GET',
-      relative_url: `${adSetId}/insights?fields=impressions,clicks,spend`
+      relative_url: `${adSetId}/insights?fields=impressions,clicks,spend&date_preset=maximum`
     }));
 
     try {
@@ -585,10 +585,10 @@ export class MetaAdsService {
 
     console.log(`📊 Fetching insights for ${adIds.length} ads using batch requests...`);
 
-    // Create batch requests for all ads
+    // Create batch requests for all ads with date range
     const requests = adIds.map(adId => ({
       method: 'GET',
-      relative_url: `${adId}/insights?fields=impressions,clicks,spend,ctr,cpc,actions`
+      relative_url: `${adId}/insights?fields=impressions,clicks,spend,ctr,cpc,actions&date_preset=maximum`
     }));
 
     try {
@@ -623,7 +623,7 @@ export class MetaAdsService {
   ): Promise<MetaAdInsights> {
     try {
       const response = await fetch(
-        `${this.baseUrl}/${this.apiVersion}/${adId}/insights?fields=impressions,clicks,spend,ctr,cpc,actions&access_token=${accessToken}`
+        `${this.baseUrl}/${this.apiVersion}/${adId}/insights?fields=impressions,clicks,spend,ctr,cpc,actions&date_preset=maximum&access_token=${accessToken}`
       );
 
       if (!response.ok) {
