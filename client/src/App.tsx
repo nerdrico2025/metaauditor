@@ -6,8 +6,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, ProtectedRoute } from "@/contexts/AuthContext";
 import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
-import BrandSettings from "@/pages/BrandSettings";
-import ContentCriteria from "@/pages/ContentCriteria";
 import SuperAdmin from "@/pages/SuperAdmin";
 import Dashboard from "@/pages/Dashboard";
 import Campaigns from "@/pages/Campaigns";
@@ -16,10 +14,18 @@ import Creatives from "@/pages/Creatives";
 import Reports from "@/pages/Reports";
 import Policies from "@/pages/Policies";
 import History from "@/pages/History";
+
+// Integrations
 import Integrations from "@/pages/integrations";
 import MetaIntegrations from "@/pages/integrations/meta";
 import GoogleIntegrations from "@/pages/integrations/google";
-import Company from "@/pages/Company";
+
+// Settings
+import Settings from "@/pages/settings";
+import BrandSettings from "@/pages/settings/brand";
+import ContentCriteria from "@/pages/settings/content-criteria";
+import Company from "@/pages/settings/company";
+
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -76,7 +82,22 @@ function Router() {
           <GoogleIntegrations />
         </ProtectedRoute>
       </Route>
-      <Route path="/company">
+      <Route path="/settings">
+        <ProtectedRoute>
+          <Settings />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/settings/brand">
+        <ProtectedRoute>
+          <BrandSettings />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/settings/content-criteria">
+        <ProtectedRoute>
+          <ContentCriteria />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/settings/company">
         <ProtectedRoute>
           <Company />
         </ProtectedRoute>
