@@ -22,6 +22,17 @@ router.get('/', authenticateToken, async (req: Request, res: Response, next: Nex
   }
 });
 
+// Get sync history for user
+router.get('/sync-history', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = (req as any).user?.userId;
+    const history = await storage.getSyncHistoryByUser(userId);
+    res.json(history);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Create integration
 router.post('/', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {

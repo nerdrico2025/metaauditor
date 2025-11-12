@@ -5,6 +5,7 @@ import {
   companies,
   users,
   integrations,
+  syncHistory,
   campaigns,
   adSets,
   creatives,
@@ -63,6 +64,7 @@ export interface IStorage {
   getIntegrationById(id: string): Promise<Integration | undefined>;
   updateIntegration(id: string, data: Partial<InsertIntegration>): Promise<Integration | undefined>;
   deleteIntegration(integrationId: string, userId: string): Promise<void>;
+  getSyncHistoryByUser(userId: string): Promise<any[]>;
   createCampaign(campaign: InsertCampaign): Promise<Campaign>;
   getCampaignsByUser(userId: string): Promise<Campaign[]>;
   getCampaignById(id: string): Promise<Campaign | undefined>;
@@ -217,6 +219,16 @@ export class DatabaseStorage implements IStorage {
       .where(eq(integrations.id, id))
       .returning();
     return updated;
+  }
+
+  async getSyncHistoryByUser(userId: string): Promise<any[]> {
+    const history = await db
+      .select()
+      .from(syncHistory)
+      .where(eq(syncHistory.userId, userId))
+      .orderBy(desc(syncHistory.startedAt))
+      .limit(50);
+    return history;
   }
 
   async disableIntegration(integrationId: string, userId: string): Promise<Integration | undefined> {

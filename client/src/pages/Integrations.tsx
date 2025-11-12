@@ -1,40 +1,20 @@
-
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import Sidebar from '@/components/Layout/Sidebar';
 import Header from '@/components/Layout/Header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Trash2, RefreshCw, CheckCircle2, AlertCircle, Info, ExternalLink, Copy, Check } from 'lucide-react';
+import { Trash2, RefreshCw, CheckCircle2, AlertCircle, Info, ExternalLink, HelpCircle, Clock, Database } from 'lucide-react';
 import { SiFacebook, SiGoogle } from 'react-icons/si';
-import { Textarea } from '@/components/ui/textarea';
-
-const metaIntegrationSchema = z.object({
-  accessToken: z.string().min(1, 'Access token é obrigatório'),
-  refreshToken: z.string().optional(),
-  accountId: z.string().min(1, 'Account ID é obrigatório'),
-});
-
-const googleIntegrationSchema = z.object({
-  accessToken: z.string().min(1, 'Access token é obrigatório'),
-  refreshToken: z.string().optional(),
-  accountId: z.string().min(1, 'Customer ID é obrigatório'),
-});
-
-type MetaIntegrationData = z.infer<typeof metaIntegrationSchema>;
-type GoogleIntegrationData = z.infer<typeof googleIntegrationSchema>;
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 interface Integration {
   id: string;
@@ -44,85 +24,56 @@ interface Integration {
   accountStatus: string | null;
   status: string;
   lastSync: Date | null;
+  lastFullSync: Date | null;
   createdAt: Date;
+}
+
+interface SyncHistoryItem {
+  id: string;
+  integrationId: string;
+  status: string;
+  type: string;
+  startedAt: Date;
+  completedAt: Date | null;
+  campaignsSynced: number;
+  adSetsSynced: number;
+  creativeSynced: number;
+  errorMessage: string | null;
 }
 
 export default function Integrations() {
   const { user } = useAuth();
   const { toast } = useToast();
   
-  const [metaDialogOpen, setMetaDialogOpen] = useState(false);
-  const [googleDialogOpen, setGoogleDialogOpen] = useState(false);
-  const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [howToConnectOpen, setHowToConnectOpen] = useState(false);
+  const [selectedPlatform, setSelectedPlatform] = useState<'meta' | 'google'>('meta');
   const [isConnectingMeta, setIsConnectingMeta] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [integrationToDelete, setIntegrationToDelete] = useState<Integration | null>(null);
+  const [deleteAllData, setDeleteAllData] = useState(false);
 
   const { data: integrations = [], isLoading: integrationsLoading } = useQuery<Integration[]>({
     queryKey: ['/api/integrations'],
     enabled: !!user,
   });
 
-  const metaForm = useForm<MetaIntegrationData>({
-    resolver: zodResolver(metaIntegrationSchema),
-  });
-
-  const googleForm = useForm<GoogleIntegrationData>({
-    resolver: zodResolver(googleIntegrationSchema),
-  });
-
-  const createMetaIntegrationMutation = useMutation({
-    mutationFn: (data: MetaIntegrationData) => apiRequest('/api/integrations', {
-      method: 'POST',
-      body: JSON.stringify({ ...data, platform: 'meta' }),
-    }),
-    onSuccess: () => {
-      toast({ title: 'Integração Meta Ads criada com sucesso!' });
-      setMetaDialogOpen(false);
-      metaForm.reset();
-      queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
-    },
-    onError: (error: any) => {
-      toast({ 
-        title: 'Erro ao criar integração Meta Ads',
-        description: error.message,
-        variant: 'destructive'
-      });
-    },
-  });
-
-  const createGoogleIntegrationMutation = useMutation({
-    mutationFn: (data: GoogleIntegrationData) => apiRequest('/api/integrations', {
-      method: 'POST',
-      body: JSON.stringify({ ...data, platform: 'google' }),
-    }),
-    onSuccess: () => {
-      toast({ title: 'Integração Google Ads criada com sucesso!' });
-      setGoogleDialogOpen(false);
-      googleForm.reset();
-      queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
-    },
-    onError: (error: any) => {
-      toast({ 
-        title: 'Erro ao criar integração Google Ads',
-        description: error.message,
-        variant: 'destructive'
-      });
-    },
+  const { data: syncHistory = [] } = useQuery<SyncHistoryItem[]>({
+    queryKey: ['/api/integrations/sync-history'],
+    enabled: !!user,
   });
 
   const syncIntegrationMutation = useMutation({
     mutationFn: async (id: string) => {
-      // Just trigger sync, don't wait for completion
       await apiRequest(`/api/integrations/${id}/sync`, { method: 'POST' });
       return { started: true };
     },
     onSuccess: () => {
       toast({ 
         title: '🔄 Sincronização iniciada!',
-        description: 'O processo está rodando. Dependendo do volume de dados, pode levar alguns minutos. Atualize a página para ver o progresso.',
+        description: 'O processo está rodando. Atualize a página em alguns minutos para ver os resultados.',
       });
       queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/integrations/sync-history'] });
     },
     onError: (error: any) => {
       toast({ 
@@ -133,33 +84,25 @@ export default function Integrations() {
     },
   });
 
-  const disableIntegrationMutation = useMutation({
-    mutationFn: (id: string) => apiRequest(`/api/integrations/${id}/disable`, { method: 'POST' }),
-    onSuccess: () => {
-      toast({ title: '✓ Integração desconectada. Os dados foram mantidos.' });
-      queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
-      setDeleteDialogOpen(false);
-      setIntegrationToDelete(null);
-    },
-    onError: (error: any) => {
-      toast({ 
-        title: 'Erro ao desconectar integração',
-        description: error.message,
-        variant: 'destructive'
-      });
-    },
-  });
-
   const deleteIntegrationMutation = useMutation({
-    mutationFn: (id: string) => apiRequest(`/api/integrations/${id}?deleteData=true`, { method: 'DELETE' }),
+    mutationFn: (id: string) => {
+      const url = deleteAllData 
+        ? `/api/integrations/${id}?deleteData=true`
+        : `/api/integrations/${id}`;
+      return apiRequest(url, { method: 'DELETE' });
+    },
     onSuccess: () => {
-      toast({ title: '✓ Integração e todos os dados foram excluídos' });
+      const message = deleteAllData
+        ? '✓ Integração e todos os dados foram excluídos permanentemente'
+        : '✓ Integração removida. Os dados foram preservados.';
+      
+      toast({ title: message });
       queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
       queryClient.invalidateQueries({ queryKey: ['/api/campaigns'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/adsets'] });
       queryClient.invalidateQueries({ queryKey: ['/api/creatives'] });
       setDeleteDialogOpen(false);
       setIntegrationToDelete(null);
+      setDeleteAllData(false);
     },
     onError: (error: any) => {
       toast({ 
@@ -174,13 +117,11 @@ export default function Integrations() {
     try {
       setIsConnectingMeta(true);
       
-      // CRITICAL: Open popup IMMEDIATELY (synchronously) to avoid browser blocking
       const width = 600;
       const height = 700;
       const left = window.screen.width / 2 - width / 2;
       const top = window.screen.height / 2 - height / 2;
       
-      // Open blank popup window instantly
       const popup = window.open(
         'about:blank',
         'MetaOAuth',
@@ -197,7 +138,6 @@ export default function Integrations() {
         return;
       }
 
-      // Show loading message in popup while fetching auth URL
       popup.document.write(`
         <html>
           <head><title>Conectando...</title></head>
@@ -211,14 +151,11 @@ export default function Integrations() {
         </html>
       `);
 
-      // Now fetch the auth URL asynchronously and redirect popup
       const data = await apiRequest('/api/auth/meta/connect');
       
       if (data.authUrl) {
-        // Redirect popup to actual OAuth URL
         popup.location.href = data.authUrl;
 
-        // Listen for messages from popup
         const handleMessage = (event: MessageEvent) => {
           if (event.data.type === 'META_OAUTH_SUCCESS') {
             toast({
@@ -241,7 +178,6 @@ export default function Integrations() {
 
         window.addEventListener('message', handleMessage);
 
-        // Check if popup was closed manually
         const checkClosed = setInterval(() => {
           if (popup?.closed) {
             clearInterval(checkClosed);
@@ -268,12 +204,6 @@ export default function Integrations() {
     }
   };
 
-  const handleCopy = (text: string, field: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedField(field);
-    setTimeout(() => setCopiedField(null), 2000);
-  };
-
   const formatDate = (date: Date | null | string | undefined) => {
     if (!date) return 'Nunca';
     return new Date(date).toLocaleDateString('pt-BR', {
@@ -285,148 +215,270 @@ export default function Integrations() {
     });
   };
 
+  const formatRelativeTime = (date: Date | null | string | undefined) => {
+    if (!date) return 'Nunca';
+    const now = new Date();
+    const diff = now.getTime() - new Date(date).getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (minutes < 1) return 'Agora mesmo';
+    if (minutes < 60) return `${minutes} min atrás`;
+    if (hours < 24) return `${hours}h atrás`;
+    return `${days}d atrás`;
+  };
+
   const metaIntegrations = integrations.filter(i => i.platform === 'meta');
   const googleIntegrations = integrations.filter(i => i.platform === 'google');
 
-  const MetaSetupGuide = () => (
-    <div className="space-y-6">
-      <Alert className="bg-green-50 dark:bg-green-950 border-green-200">
-        <CheckCircle2 className="h-4 w-4 text-green-600" />
-        <AlertDescription className="text-green-900 dark:text-green-100">
-          <strong>✨ Conexão 100% Automática via OAuth</strong><br />
-          Clique em "Conectar", faça login no Facebook e pronto! O sistema faz tudo automaticamente.
-        </AlertDescription>
-      </Alert>
+  const HowToConnectModal = () => (
+    <Dialog open={howToConnectOpen} onOpenChange={setHowToConnectOpen}>
+      <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            {selectedPlatform === 'meta' ? (
+              <>
+                <SiFacebook className="w-5 h-5 text-blue-600" />
+                Como Conectar - Meta Ads
+              </>
+            ) : (
+              <>
+                <SiGoogle className="w-5 h-5 text-red-600" />
+                Como Conectar - Google Ads
+              </>
+            )}
+          </DialogTitle>
+          <DialogDescription>
+            Siga o passo-a-passo para conectar sua conta de anúncios
+          </DialogDescription>
+        </DialogHeader>
 
-      <Alert className="bg-blue-50 dark:bg-blue-950 border-blue-200">
-        <Info className="h-4 w-4 text-blue-600" />
-        <AlertDescription className="text-blue-900 dark:text-blue-100">
-          <strong>Como funciona:</strong><br />
-          1. Clique no botão "Conectar"<br />
-          2. Você será redirecionado para o Facebook<br />
-          3. Faça login e autorize o acesso<br />
-          4. Selecione suas contas de anúncios<br />
-          5. Pronto! Suas campanhas serão sincronizadas automaticamente
-        </AlertDescription>
-      </Alert>
+        <div className="space-y-6 mt-4">
+          {selectedPlatform === 'meta' ? (
+            <>
+              <Alert className="bg-green-50 dark:bg-green-950 border-green-200">
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                <AlertDescription className="text-green-900 dark:text-green-100">
+                  <strong>✨ Conexão 100% Automática via OAuth</strong><br />
+                  Clique em "Conectar", faça login no Facebook e pronto! O sistema faz tudo automaticamente.
+                </AlertDescription>
+              </Alert>
 
-      <Alert className="bg-purple-50 dark:bg-purple-950 border-purple-200">
-        <CheckCircle2 className="h-4 w-4 text-purple-600" />
-        <AlertDescription className="text-purple-900 dark:text-purple-100">
-          <strong>✅ Vantagens do OAuth:</strong>
-          <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
-            <li>Conexão segura sem expor tokens</li>
-            <li>Tokens renovados automaticamente (60 dias)</li>
-            <li>Selecione múltiplas contas de anúncios</li>
-            <li>Processo em menos de 1 minuto</li>
-          </ul>
-        </AlertDescription>
-      </Alert>
-    </div>
+              <div className="space-y-4">
+                <div className="flex gap-4">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold">1</div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Clique em "Conectar com Meta"</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Uma janela será aberta automaticamente para autenticação
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold">2</div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Faça login no Facebook</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Use suas credenciais do Facebook Business Manager
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold">3</div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Autorize o acesso</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Permita que o Click Auditor acesse suas contas de anúncios
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold">4</div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Selecione suas contas</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Escolha quais contas de anúncios você deseja conectar
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold">5</div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Pronto!</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Suas campanhas serão sincronizadas automaticamente
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <Alert className="bg-purple-50 dark:bg-purple-950 border-purple-200">
+                <CheckCircle2 className="h-4 w-4 text-purple-600" />
+                <AlertDescription className="text-purple-900 dark:text-purple-100">
+                  <strong>✅ Vantagens do OAuth:</strong>
+                  <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
+                    <li>Conexão segura sem expor tokens</li>
+                    <li>Tokens renovados automaticamente (60 dias)</li>
+                    <li>Selecione múltiplas contas de anúncios</li>
+                    <li>Processo em menos de 1 minuto</li>
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            </>
+          ) : (
+            <>
+              <Alert className="bg-amber-50 dark:bg-amber-950 border-amber-200">
+                <AlertCircle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-900 dark:text-amber-100">
+                  <strong>⚠️ Google Ads requer configuração manual</strong><br />
+                  O processo é mais técnico e pode levar alguns minutos.
+                </AlertDescription>
+              </Alert>
+
+              <div className="space-y-4">
+                <div className="flex gap-4">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-red-600 text-white flex items-center justify-center font-bold">1</div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Acesse o Google Cloud Console</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                      Crie ou selecione um projeto no Google Cloud
+                    </p>
+                    <Button variant="outline" size="sm" asChild>
+                      <a href="https://console.cloud.google.com" target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="w-4 h-4 mr-2" />
+                        Abrir Google Cloud Console
+                      </a>
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex gap-4">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-red-600 text-white flex items-center justify-center font-bold">2</div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Ative a Google Ads API</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      No menu lateral: <strong>APIs e Serviços → Biblioteca</strong><br />
+                      Pesquise por "Google Ads API" e ative
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-red-600 text-white flex items-center justify-center font-bold">3</div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Configure OAuth 2.0</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                      Navegue até: <strong>APIs e Serviços → Credenciais</strong><br />
+                      Crie credenciais do tipo "ID do cliente OAuth 2.0"
+                    </p>
+                    <Button variant="outline" size="sm" asChild>
+                      <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="w-4 h-4 mr-2" />
+                        Gerenciar Credenciais
+                      </a>
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex gap-4">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-red-600 text-white flex items-center justify-center font-bold">4</div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Obtenha o Customer ID</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                      Acesse sua conta Google Ads e copie o Customer ID<br />
+                      Formato: <code className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">123-456-7890</code>
+                    </p>
+                    <Button variant="outline" size="sm" asChild>
+                      <a href="https://ads.google.com" target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="w-4 h-4 mr-2" />
+                        Abrir Google Ads
+                      </a>
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setHowToConnectOpen(false)}>
+            Fechar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 
-  const GoogleSetupGuide = () => (
-    <div className="space-y-6">
-      <Alert className="bg-red-50 dark:bg-red-950 border-red-200">
-        <Info className="h-4 w-4 text-red-600" />
-        <AlertDescription className="text-red-900 dark:text-red-100">
-          Siga o passo-a-passo abaixo para conectar sua conta Google Ads
-        </AlertDescription>
-      </Alert>
+  const DeleteConfirmationDialog = () => (
+    <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Remover Integração</DialogTitle>
+          <DialogDescription>
+            Escolha como deseja remover esta integração
+          </DialogDescription>
+        </DialogHeader>
 
-      <div className="space-y-4">
-        <div className="flex gap-4">
-          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-red-600 text-white flex items-center justify-center font-bold">1</div>
-          <div className="flex-1">
-            <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Acesse o Google Cloud Console</h4>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-              Crie ou selecione um projeto no Google Cloud
-            </p>
-            <Button variant="outline" size="sm" asChild>
-              <a href="https://console.cloud.google.com" target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="w-4 h-4 mr-2" />
-                Abrir Google Cloud Console
-              </a>
-            </Button>
+        <div className="space-y-4 py-4">
+          <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950">
+            <Info className="h-4 w-4 text-blue-600" />
+            <AlertDescription className="text-blue-900 dark:text-blue-100">
+              <strong>Apenas desconectar:</strong><br />
+              Remove a conexão mas mantém todas as campanhas, ad sets e criativos já sincronizados.
+            </AlertDescription>
+          </Alert>
+
+          <Alert className="border-red-200 bg-red-50 dark:bg-red-950">
+            <AlertCircle className="h-4 w-4 text-red-600" />
+            <AlertDescription className="text-red-900 dark:text-red-100">
+              <strong>Excluir todos os dados:</strong><br />
+              Remove a conexão E exclui permanentemente todas as campanhas, ad sets, criativos, imagens e auditorias associadas.
+            </AlertDescription>
+          </Alert>
+
+          <div className="flex items-center space-x-2 p-4 border rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
+            onClick={() => setDeleteAllData(!deleteAllData)}>
+            <input
+              type="checkbox"
+              checked={deleteAllData}
+              onChange={(e) => setDeleteAllData(e.target.checked)}
+              className="w-4 h-4"
+              data-testid="checkbox-delete-all-data"
+            />
+            <Label className="cursor-pointer flex-1">
+              <div className="font-semibold">Excluir todos os dados</div>
+              <div className="text-sm text-gray-500">
+                Esta ação é irreversível e apagará tudo relacionado a esta conta
+              </div>
+            </Label>
           </div>
         </div>
 
-        <div className="flex gap-4">
-          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-red-600 text-white flex items-center justify-center font-bold">2</div>
-          <div className="flex-1">
-            <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Ative a Google Ads API</h4>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              No menu lateral: <strong>APIs e Serviços → Biblioteca</strong><br />
-              Pesquise por "Google Ads API" e ative
-            </p>
-          </div>
-        </div>
-
-        <div className="flex gap-4">
-          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-red-600 text-white flex items-center justify-center font-bold">3</div>
-          <div className="flex-1">
-            <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Configure OAuth 2.0</h4>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-              Navegue até: <strong>APIs e Serviços → Credenciais</strong><br />
-              Crie credenciais do tipo "ID do cliente OAuth 2.0"
-            </p>
-            <Button variant="outline" size="sm" asChild>
-              <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="w-4 h-4 mr-2" />
-                Gerenciar Credenciais
-              </a>
-            </Button>
-          </div>
-        </div>
-
-        <div className="flex gap-4">
-          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-red-600 text-white flex items-center justify-center font-bold">4</div>
-          <div className="flex-1">
-            <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Obtenha o Customer ID</h4>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-              Acesse sua conta Google Ads e copie o Customer ID<br />
-              Formato: <code className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">123-456-7890</code>
-            </p>
-            <Button variant="outline" size="sm" asChild>
-              <a href="https://ads.google.com" target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="w-4 h-4 mr-2" />
-                Abrir Google Ads
-              </a>
-            </Button>
-          </div>
-        </div>
-
-        <div className="flex gap-4">
-          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-red-600 text-white flex items-center justify-center font-bold">5</div>
-          <div className="flex-1">
-            <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Autorize e obtenha tokens</h4>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Use o OAuth Playground para autorizar o acesso e obter:<br />
-              • Access Token (obrigatório)<br />
-              • Refresh Token (recomendado para automação)
-            </p>
-            <Button variant="outline" size="sm" asChild className="mt-2">
-              <a href="https://developers.google.com/oauthplayground" target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="w-4 h-4 mr-2" />
-                OAuth 2.0 Playground
-              </a>
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      <Alert className="bg-amber-50 dark:bg-amber-950 border-amber-200">
-        <AlertCircle className="h-4 w-4 text-amber-600" />
-        <AlertDescription className="text-amber-900 dark:text-amber-100">
-          <strong>⚠️ Importante:</strong>
-          <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
-            <li>Configure corretamente o OAuth 2.0 antes de prosseguir</li>
-            <li>O Refresh Token é essencial para manter a integração ativa</li>
-            <li>Verifique se a Google Ads API está ativada no projeto</li>
-          </ul>
-        </AlertDescription>
-      </Alert>
-    </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => {
+            setDeleteDialogOpen(false);
+            setIntegrationToDelete(null);
+            setDeleteAllData(false);
+          }}>
+            Cancelar
+          </Button>
+          <Button
+            variant={deleteAllData ? "destructive" : "default"}
+            onClick={() => integrationToDelete && deleteIntegrationMutation.mutate(integrationToDelete.id)}
+            disabled={deleteIntegrationMutation.isPending}
+            data-testid="button-confirm-delete"
+          >
+            {deleteIntegrationMutation.isPending ? 'Removendo...' : deleteAllData ? 'Excluir Tudo' : 'Desconectar'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 
   return (
@@ -460,437 +512,224 @@ export default function Integrations() {
                 </TabsList>
 
                 <TabsContent value="meta" className="space-y-6">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    
-                    {/* Status da Integração Meta */}
-                    <Card>
-                      <CardHeader className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center">
-                              <SiFacebook className="h-6 w-6 text-white" />
-                            </div>
-                            <div>
-                              <CardTitle>Meta Ads</CardTitle>
-                              <CardDescription>Facebook & Instagram</CardDescription>
-                            </div>
+                  <Card>
+                    <CardHeader className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center">
+                            <SiFacebook className="h-6 w-6 text-white" />
                           </div>
-                          {metaIntegrations.length === 0 && (
-                            <Button 
-                              onClick={handleConnectMetaOAuth} 
-                              size="sm"
-                              disabled={isConnectingMeta}
-                              data-testid="button-connect-meta-oauth"
-                            >
-                              <SiFacebook className="w-4 h-4 mr-2" />
-                              {isConnectingMeta ? 'Conectando...' : 'Conectar'}
-                            </Button>
-                          )}
+                          <div>
+                            <CardTitle>Meta Ads</CardTitle>
+                            <CardDescription>Facebook & Instagram</CardDescription>
+                          </div>
                         </div>
-                      </CardHeader>
-                      <CardContent className="pt-6">
-                        {metaIntegrations.length === 0 ? (
-                          <div className="text-center py-8">
-                            <p className="text-gray-500 dark:text-gray-400 mb-4">
-                              Nenhuma conta conectada
-                            </p>
-                            <p className="text-sm text-gray-400 dark:text-gray-500">
-                              Conecte sua conta Meta Ads para começar a sincronizar campanhas
-                            </p>
+                        <div className="flex gap-2">
+                          <Button 
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedPlatform('meta');
+                              setHowToConnectOpen(true);
+                            }}
+                            data-testid="button-how-to-connect-meta"
+                          >
+                            <HelpCircle className="w-4 h-4 mr-2" />
+                            Como Conectar
+                          </Button>
+                          <Button 
+                            onClick={handleConnectMetaOAuth} 
+                            size="sm"
+                            disabled={isConnectingMeta}
+                            data-testid="button-connect-meta-oauth"
+                          >
+                            <SiFacebook className="w-4 h-4 mr-2" />
+                            {isConnectingMeta ? 'Conectando...' : 'Conectar Conta'}
+                          </Button>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                      {metaIntegrations.length === 0 ? (
+                        <div className="text-center py-12">
+                          <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
+                            <SiFacebook className="w-8 h-8 text-gray-400" />
                           </div>
-                        ) : (
-                          <div className="space-y-4">
-                            {metaIntegrations.map((integration) => (
-                              <div key={integration.id} className="border rounded-lg p-4 space-y-3">
-                                <div className="flex items-center justify-between">
-                                  <Badge variant={integration.status === 'active' ? 'default' : 'secondary'}>
-                                    {integration.status === 'active' ? (
-                                      <>
-                                        <CheckCircle2 className="w-3 h-3 mr-1" />
-                                        Conectada
-                                      </>
-                                    ) : (
-                                      <>
-                                        <AlertCircle className="w-3 h-3 mr-1" />
-                                        Inativa
-                                      </>
-                                    )}
-                                  </Badge>
-                                </div>
-                                
-                                <div className="space-y-1">
-                                  {integration.accountName && (
-                                    <div className="flex items-center justify-between text-sm">
-                                      <span className="text-gray-500">Conta:</span>
-                                      <span className="font-semibold text-gray-900 dark:text-white">
-                                        {integration.accountName}
-                                      </span>
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                            Nenhuma conta conectada
+                          </h3>
+                          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                            Conecte sua conta Meta Ads para começar a sincronizar campanhas
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {metaIntegrations.map((integration) => {
+                            const integrationHistory = syncHistory.filter(h => h.integrationId === integration.id).slice(0, 3);
+                            
+                            return (
+                              <div key={integration.id} className="border rounded-lg p-6 space-y-4">
+                                <div className="flex items-start justify-between">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-3 mb-3">
+                                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                        {integration.accountName || 'Conta Meta Ads'}
+                                      </h3>
+                                      <Badge variant={integration.status === 'active' ? 'default' : 'secondary'}>
+                                        {integration.status === 'active' ? (
+                                          <>
+                                            <CheckCircle2 className="w-3 h-3 mr-1" />
+                                            Ativa
+                                          </>
+                                        ) : (
+                                          <>
+                                            <AlertCircle className="w-3 h-3 mr-1" />
+                                            Inativa
+                                          </>
+                                        )}
+                                      </Badge>
                                     </div>
-                                  )}
-                                  <div className="flex items-center justify-between text-sm">
-                                    <span className="text-gray-500">Account ID:</span>
-                                    <span className="font-mono text-gray-900 dark:text-white">
-                                      {integration.accountId}
-                                    </span>
-                                  </div>
-                                  {integration.accountStatus && (
-                                    <div className="flex items-center justify-between text-sm">
-                                      <span className="text-gray-500">Status:</span>
-                                      <span className={`font-medium ${integration.accountStatus === 'ACTIVE' ? 'text-green-600' : 'text-red-600'}`}>
-                                        {integration.accountStatus === 'ACTIVE' ? '✓ Ativa' : '⚠ Desativada'}
-                                      </span>
+                                    
+                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                      <div>
+                                        <span className="text-gray-500">Account ID:</span>
+                                        <p className="font-mono text-gray-900 dark:text-white">{integration.accountId}</p>
+                                      </div>
+                                      <div>
+                                        <span className="text-gray-500">Última Sincronização:</span>
+                                        <p className="text-gray-900 dark:text-white">{formatRelativeTime(integration.lastSync)}</p>
+                                      </div>
+                                      {integration.lastFullSync && (
+                                        <div>
+                                          <span className="text-gray-500">Última Sinc. Completa:</span>
+                                          <p className="text-gray-900 dark:text-white">{formatRelativeTime(integration.lastFullSync)}</p>
+                                        </div>
+                                      )}
+                                      <div>
+                                        <span className="text-gray-500">Conectada em:</span>
+                                        <p className="text-gray-900 dark:text-white">{formatDate(integration.createdAt)}</p>
+                                      </div>
                                     </div>
-                                  )}
-                                  <div className="flex items-center justify-between text-sm">
-                                    <span className="text-gray-500">Última Sinc:</span>
-                                    <span className="text-gray-900 dark:text-white">
-                                      {formatDate(integration.lastSync)}
-                                    </span>
                                   </div>
-                                  <div className="flex items-center justify-between text-sm">
-                                    <span className="text-gray-500">Criada em:</span>
-                                    <span className="text-gray-900 dark:text-white">
-                                      {formatDate(integration.createdAt)}
-                                    </span>
+
+                                  <div className="flex gap-2">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => syncIntegrationMutation.mutate(integration.id)}
+                                      disabled={syncIntegrationMutation.isPending}
+                                      data-testid={`button-sync-${integration.id}`}
+                                    >
+                                      <RefreshCw className={`w-4 h-4 mr-2 ${syncIntegrationMutation.isPending ? 'animate-spin' : ''}`} />
+                                      Sincronizar
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        setIntegrationToDelete(integration);
+                                        setDeleteDialogOpen(true);
+                                      }}
+                                      data-testid={`button-delete-${integration.id}`}
+                                    >
+                                      <Trash2 className="w-4 h-4 mr-2" />
+                                      Remover
+                                    </Button>
                                   </div>
                                 </div>
 
-                                <div className="flex gap-2 pt-2">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => syncIntegrationMutation.mutate(integration.id)}
-                                    disabled={syncIntegrationMutation.isPending}
-                                    className="flex-1"
-                                  >
-                                    <RefreshCw className={`w-3 h-3 mr-1 ${syncIntegrationMutation.isPending ? 'animate-spin' : ''}`} />
-                                    Sincronizar
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="destructive"
-                                    onClick={() => {
-                                      setIntegrationToDelete(integration);
-                                      setDeleteDialogOpen(true);
-                                    }}
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </Button>
-                                </div>
+                                {integrationHistory.length > 0 && (
+                                  <div className="mt-4 pt-4 border-t">
+                                    <div className="flex items-center gap-2 mb-3">
+                                      <Clock className="w-4 h-4 text-gray-500" />
+                                      <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                                        Histórico Recente
+                                      </h4>
+                                    </div>
+                                    <div className="space-y-2">
+                                      {integrationHistory.map((item) => (
+                                        <div key={item.id} className="flex items-center justify-between text-sm bg-gray-50 dark:bg-gray-800 rounded p-3">
+                                          <div className="flex items-center gap-3">
+                                            <Badge variant={
+                                              item.status === 'completed' ? 'default' :
+                                              item.status === 'failed' ? 'destructive' :
+                                              item.status === 'running' ? 'secondary' : 'outline'
+                                            } className="text-xs">
+                                              {item.type === 'full' ? 'Completa' : 'Incremental'}
+                                            </Badge>
+                                            <span className="text-gray-600 dark:text-gray-400">
+                                              {formatDate(item.startedAt)}
+                                            </span>
+                                          </div>
+                                          <div className="flex items-center gap-4 text-xs text-gray-500">
+                                            <span>{item.campaignsSynced} campanhas</span>
+                                            <span>{item.adSetsSynced} ad sets</span>
+                                            <span>{item.creativeSynced} ads</span>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
                               </div>
-                            ))}
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-
-                    {/* Guia de Configuração Meta */}
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-lg">Como Conectar</CardTitle>
-                        <CardDescription>
-                          Siga o passo-a-passo para conectar sua conta Meta Ads
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <MetaSetupGuide />
-                      </CardContent>
-                    </Card>
-                  </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
                 </TabsContent>
 
                 <TabsContent value="google" className="space-y-6">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    
-                    {/* Status da Integração Google */}
-                    <Card>
-                      <CardHeader className="bg-gradient-to-br from-red-50 to-orange-100 dark:from-red-950 dark:to-orange-900">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 bg-red-600 rounded-xl flex items-center justify-center">
-                              <SiGoogle className="h-6 w-6 text-white" />
-                            </div>
-                            <div>
-                              <CardTitle>Google Ads</CardTitle>
-                              <CardDescription>Google Advertising</CardDescription>
-                            </div>
+                  <Card>
+                    <CardHeader className="bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950 dark:to-red-900">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 bg-red-600 rounded-xl flex items-center justify-center">
+                            <SiGoogle className="h-6 w-6 text-white" />
                           </div>
-                          {googleIntegrations.length === 0 && (
-                            <Button onClick={() => setGoogleDialogOpen(true)} size="sm">
-                              Conectar
-                            </Button>
-                          )}
+                          <div>
+                            <CardTitle>Google Ads</CardTitle>
+                            <CardDescription>Google Search & Display</CardDescription>
+                          </div>
                         </div>
-                      </CardHeader>
-                      <CardContent className="pt-6">
-                        {googleIntegrations.length === 0 ? (
-                          <div className="text-center py-8">
-                            <p className="text-gray-500 dark:text-gray-400 mb-4">
-                              Nenhuma conta conectada
-                            </p>
-                            <p className="text-sm text-gray-400 dark:text-gray-500">
-                              Conecte sua conta Google Ads para começar a sincronizar campanhas
-                            </p>
-                          </div>
-                        ) : (
-                          <div className="space-y-4">
-                            {googleIntegrations.map((integration) => (
-                              <div key={integration.id} className="border rounded-lg p-4 space-y-3">
-                                <div className="flex items-center justify-between">
-                                  <Badge variant={integration.status === 'active' ? 'default' : 'secondary'}>
-                                    {integration.status === 'active' ? (
-                                      <>
-                                        <CheckCircle2 className="w-3 h-3 mr-1" />
-                                        Conectada
-                                      </>
-                                    ) : (
-                                      <>
-                                        <AlertCircle className="w-3 h-3 mr-1" />
-                                        Inativa
-                                      </>
-                                    )}
-                                  </Badge>
-                                </div>
-                                
-                                <div className="space-y-1">
-                                  <div className="flex items-center justify-between text-sm">
-                                    <span className="text-gray-500">Customer ID:</span>
-                                    <span className="font-mono text-gray-900 dark:text-white">
-                                      {integration.accountId}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center justify-between text-sm">
-                                    <span className="text-gray-500">Última Sinc:</span>
-                                    <span className="text-gray-900 dark:text-white">
-                                      {formatDate(integration.lastSync)}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center justify-between text-sm">
-                                    <span className="text-gray-500">Criada em:</span>
-                                    <span className="text-gray-900 dark:text-white">
-                                      {formatDate(integration.createdAt)}
-                                    </span>
-                                  </div>
-                                </div>
-
-                                <div className="flex gap-2 pt-2">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => syncIntegrationMutation.mutate(integration.id)}
-                                    disabled={syncIntegrationMutation.isPending}
-                                    className="flex-1"
-                                  >
-                                    <RefreshCw className={`w-3 h-3 mr-1 ${syncIntegrationMutation.isPending ? 'animate-spin' : ''}`} />
-                                    Sincronizar
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="destructive"
-                                    onClick={() => {
-                                      setIntegrationToDelete(integration);
-                                      setDeleteDialogOpen(true);
-                                    }}
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </Button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-
-                    {/* Guia de Configuração Google */}
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-lg">Como Conectar</CardTitle>
-                        <CardDescription>
-                          Siga o passo-a-passo para conectar sua conta Google Ads
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <GoogleSetupGuide />
-                      </CardContent>
-                    </Card>
-                  </div>
+                        <Button 
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedPlatform('google');
+                            setHowToConnectOpen(true);
+                          }}
+                          data-testid="button-how-to-connect-google"
+                        >
+                          <HelpCircle className="w-4 h-4 mr-2" />
+                          Como Conectar
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                      <div className="text-center py-12">
+                        <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
+                          <SiGoogle className="w-8 h-8 text-gray-400" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                          Google Ads em desenvolvimento
+                        </h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                          A integração com Google Ads estará disponível em breve
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </TabsContent>
               </Tabs>
-
-              {/* Modal Meta */}
-              <Dialog open={metaDialogOpen} onOpenChange={setMetaDialogOpen}>
-                <DialogContent className="max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle>Conectar Meta Ads</DialogTitle>
-                    <DialogDescription>
-                      Preencha as credenciais da sua conta Meta Ads
-                    </DialogDescription>
-                  </DialogHeader>
-                  <form onSubmit={metaForm.handleSubmit((data) => createMetaIntegrationMutation.mutate(data))}>
-                    <div className="space-y-4 py-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="meta-access-token">Access Token *</Label>
-                        <Textarea
-                          id="meta-access-token"
-                          placeholder="Cole seu Access Token aqui..."
-                          className="font-mono text-sm min-h-[100px]"
-                          {...metaForm.register('accessToken')}
-                        />
-                        {metaForm.formState.errors.accessToken && (
-                          <p className="text-sm text-red-500">{metaForm.formState.errors.accessToken.message}</p>
-                        )}
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="meta-account-id">Ad Account ID *</Label>
-                        <Input
-                          id="meta-account-id"
-                          placeholder="act_123456789"
-                          {...metaForm.register('accountId')}
-                        />
-                        {metaForm.formState.errors.accountId && (
-                          <p className="text-sm text-red-500">{metaForm.formState.errors.accountId.message}</p>
-                        )}
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="meta-refresh-token">Refresh Token (Opcional)</Label>
-                        <Textarea
-                          id="meta-refresh-token"
-                          placeholder="Cole seu Refresh Token aqui..."
-                          className="font-mono text-sm min-h-[80px]"
-                          {...metaForm.register('refreshToken')}
-                        />
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button type="button" variant="outline" onClick={() => setMetaDialogOpen(false)}>
-                        Cancelar
-                      </Button>
-                      <Button type="submit" disabled={createMetaIntegrationMutation.isPending}>
-                        {createMetaIntegrationMutation.isPending ? 'Conectando...' : 'Conectar'}
-                      </Button>
-                    </DialogFooter>
-                  </form>
-                </DialogContent>
-              </Dialog>
-
-              {/* Modal Google */}
-              <Dialog open={googleDialogOpen} onOpenChange={setGoogleDialogOpen}>
-                <DialogContent className="max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle>Conectar Google Ads</DialogTitle>
-                    <DialogDescription>
-                      Preencha as credenciais da sua conta Google Ads
-                    </DialogDescription>
-                  </DialogHeader>
-                  <form onSubmit={googleForm.handleSubmit((data) => createGoogleIntegrationMutation.mutate(data))}>
-                    <div className="space-y-4 py-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="google-access-token">Access Token *</Label>
-                        <Textarea
-                          id="google-access-token"
-                          placeholder="Cole seu Access Token aqui..."
-                          className="font-mono text-sm min-h-[100px]"
-                          {...googleForm.register('accessToken')}
-                        />
-                        {googleForm.formState.errors.accessToken && (
-                          <p className="text-sm text-red-500">{googleForm.formState.errors.accessToken.message}</p>
-                        )}
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="google-account-id">Customer ID *</Label>
-                        <Input
-                          id="google-account-id"
-                          placeholder="123-456-7890"
-                          {...googleForm.register('accountId')}
-                        />
-                        {googleForm.formState.errors.accountId && (
-                          <p className="text-sm text-red-500">{googleForm.formState.errors.accountId.message}</p>
-                        )}
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="google-refresh-token">Refresh Token (Recomendado)</Label>
-                        <Textarea
-                          id="google-refresh-token"
-                          placeholder="Cole seu Refresh Token aqui..."
-                          className="font-mono text-sm min-h-[80px]"
-                          {...googleForm.register('refreshToken')}
-                        />
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button type="button" variant="outline" onClick={() => setGoogleDialogOpen(false)}>
-                        Cancelar
-                      </Button>
-                      <Button type="submit" disabled={createGoogleIntegrationMutation.isPending}>
-                        {createGoogleIntegrationMutation.isPending ? 'Conectando...' : 'Conectar'}
-                      </Button>
-                    </DialogFooter>
-                  </form>
-                </DialogContent>
-              </Dialog>
-
-              {/* Modal de Confirmação de Exclusão */}
-              <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-                <DialogContent className="max-w-md">
-                  <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                      <AlertCircle className="h-5 w-5 text-amber-600" />
-                      O que deseja fazer?
-                    </DialogTitle>
-                    <DialogDescription>
-                      Você está removendo a integração: <strong>{integrationToDelete?.accountName || 'Conta'}</strong>
-                    </DialogDescription>
-                  </DialogHeader>
-                  
-                  <div className="py-4 space-y-4">
-                    <Alert className="bg-blue-50 dark:bg-blue-950 border-blue-200">
-                      <Info className="h-4 w-4 text-blue-600" />
-                      <AlertDescription className="text-blue-900 dark:text-blue-100 text-sm">
-                        <strong>Desconectar:</strong> Mantém todas as campanhas, ad sets e anúncios já sincronizados. Você pode reconectar depois.
-                      </AlertDescription>
-                    </Alert>
-
-                    <Alert className="bg-red-50 dark:bg-red-950 border-red-200">
-                      <AlertCircle className="h-4 w-4 text-red-600" />
-                      <AlertDescription className="text-red-900 dark:text-red-100 text-sm">
-                        <strong>Excluir tudo:</strong> Remove a integração e TODOS os dados (campanhas, ad sets, anúncios). Ação permanente!
-                      </AlertDescription>
-                    </Alert>
-                  </div>
-
-                  <DialogFooter className="flex-col sm:flex-row gap-2">
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setDeleteDialogOpen(false)}
-                      className="w-full sm:w-auto"
-                    >
-                      Cancelar
-                    </Button>
-                    <Button 
-                      variant="secondary"
-                      onClick={() => integrationToDelete && disableIntegrationMutation.mutate(integrationToDelete.id)}
-                      disabled={disableIntegrationMutation.isPending || deleteIntegrationMutation.isPending}
-                      className="w-full sm:w-auto"
-                    >
-                      {disableIntegrationMutation.isPending ? 'Desconectando...' : 'Desconectar (manter dados)'}
-                    </Button>
-                    <Button 
-                      variant="destructive"
-                      onClick={() => integrationToDelete && deleteIntegrationMutation.mutate(integrationToDelete.id)}
-                      disabled={disableIntegrationMutation.isPending || deleteIntegrationMutation.isPending}
-                      className="w-full sm:w-auto"
-                    >
-                      {deleteIntegrationMutation.isPending ? 'Excluindo...' : 'Excluir tudo'}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-
             </div>
           </div>
         </main>
       </div>
+
+      <HowToConnectModal />
+      <DeleteConfirmationDialog />
     </div>
   );
 }
