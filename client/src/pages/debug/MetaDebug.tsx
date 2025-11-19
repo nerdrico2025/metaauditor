@@ -44,7 +44,6 @@ export default function MetaDebug() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [integrationId, setIntegrationId] = useState<string>('');
-  const [shouldFetch, setShouldFetch] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const { data: integrations = [] } = useQuery<Integration[]>({
@@ -56,13 +55,13 @@ export default function MetaDebug() {
 
   const { data, isLoading, error, refetch } = useQuery<DebugData>({
     queryKey: ['/api/integrations', integrationId, 'debug/count-ads'],
-    enabled: shouldFetch && !!integrationId,
+    enabled: false, // Disabled by default, will trigger manually
   });
 
-  const handleCheck = () => {
+  const handleCheck = async () => {
     if (integrationId) {
-      setShouldFetch(false); // Reset first
-      setTimeout(() => setShouldFetch(true), 10); // Then enable to trigger refetch
+      console.log('🔍 Fetching debug data for integration:', integrationId);
+      await refetch();
     }
   };
 
@@ -78,7 +77,6 @@ export default function MetaDebug() {
 
   const handleSelectIntegration = (id: string) => {
     setIntegrationId(id);
-    setShouldFetch(false); // Reset query state when selecting new integration
   };
 
   return (
