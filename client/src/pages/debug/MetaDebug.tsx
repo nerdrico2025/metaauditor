@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { RefreshCw, AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
+import { RefreshCw, AlertCircle, CheckCircle2, XCircle, Copy, Check } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useToast } from '@/hooks/use-toast';
 
 interface DebugData {
   integration: {
@@ -31,9 +33,26 @@ interface DebugData {
   note: string;
 }
 
+interface Integration {
+  id: string;
+  platform: string;
+  accountName: string | null;
+  status: string;
+}
+
 export default function MetaDebug() {
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [integrationId, setIntegrationId] = useState<string>('');
   const [shouldFetch, setShouldFetch] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const { data: integrations = [] } = useQuery<Integration[]>({
+    queryKey: ['/api/integrations'],
+    enabled: !!user,
+  });
+
+  const metaIntegrations = integrations.filter(i => i.platform === 'meta');
 
   const { data, isLoading, error, refetch } = useQuery<DebugData>({
     queryKey: ['/api/integrations', integrationId, 'debug/count-ads'],
@@ -44,6 +63,21 @@ export default function MetaDebug() {
     if (integrationId) {
       setShouldFetch(true);
     }
+  };
+
+  const handleCopyId = (id: string) => {
+    navigator.clipboard.writeText(id);
+    setCopiedId(id);
+    toast({
+      title: 'ID copiado!',
+      description: 'Cole no campo acima e clique em Verificar',
+    });
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleSelectIntegration = (id: string) => {
+    setIntegrationId(id);
+    setShouldFetch(false);
   };
 
   return (
@@ -64,16 +98,63 @@ export default function MetaDebug() {
           <CardHeader>
             <CardTitle>ID da Integração</CardTitle>
             <CardDescription>
-              Cole o ID da sua integração Meta Ads para verificar
+              Selecione uma integração abaixo ou cole o ID manualmente
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            {/* Available Integrations */}
+            {metaIntegrations.length > 0 && (
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Suas Integrações Meta:
+                </h3>
+                <div className="space-y-2">
+                  {metaIntegrations.map((integration) => (
+                    <div
+                      key={integration.id}
+                      className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-colors ${
+                        integrationId === integration.id
+                          ? 'border-orange-500 bg-orange-50 dark:bg-orange-950'
+                          : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
+                      }`}
+                      onClick={() => handleSelectIntegration(integration.id)}
+                    >
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-gray-100">
+                          {integration.accountName || 'Conta Meta'}
+                        </p>
+                        <p className="text-xs font-mono text-gray-500 dark:text-gray-400">
+                          {integration.id}
+                        </p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCopyId(integration.id);
+                        }}
+                        data-testid={`button-copy-${integration.id}`}
+                      >
+                        {copiedId === integration.id ? (
+                          <Check className="w-4 h-4 text-green-600" />
+                        ) : (
+                          <Copy className="w-4 h-4" />
+                        )}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Manual Input */}
             <div className="flex gap-3">
               <input
                 type="text"
                 value={integrationId}
                 onChange={(e) => setIntegrationId(e.target.value)}
-                placeholder="Ex: cm123456789..."
+                placeholder="Ou cole o ID manualmente..."
                 className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
                 data-testid="input-integration-id"
               />
@@ -122,7 +203,7 @@ export default function MetaDebug() {
         )}
 
         {/* Results */}
-        {data && (
+        {data && data.database && (
           <>
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
