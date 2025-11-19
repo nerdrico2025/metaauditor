@@ -356,7 +356,82 @@ export class MetaAdsService {
   }
 
   /**
+   * Sync ALL ad sets from the entire Meta Ad Account (RECOMMENDED METHOD)
+   * This is more reliable than fetching per-campaign because:
+   * - Captures all ad sets in one API call (faster, less rate limiting)
+   * - Doesn't miss ad sets from paused/archived campaigns
+   * - Returns 100% of ad sets regardless of campaign status
+   */
+  async syncAllAdSetsFromAccount(
+    integration: Integration,
+    userId: string,
+    companyId: string | null,
+    campaignMap: Map<string, string> // Map of externalCampaignId -> dbCampaignId
+  ): Promise<InsertAdSet[]> {
+    if (!integration.accessToken || !integration.accountId) {
+      throw new Error('Missing access token or account ID');
+    }
+
+    try {
+      console.log(`🎯 Fetching ALL ad sets from Meta account ${integration.accountId}...`);
+      
+      // Fetch ALL ad sets from the entire account in one call
+      const url = `${this.baseUrl}/${this.apiVersion}/${integration.accountId}/adsets?fields=id,name,status,campaign_id,daily_budget,lifetime_budget,bid_strategy,targeting,start_time,end_time&limit=100&access_token=${integration.accessToken}`;
+      const adSets = await this.fetchAllPages<MetaAdSet>(url);
+      
+      console.log(`✅ Found ${adSets.length} total ad sets from Meta API`);
+
+      // Fetch insights for all ad sets
+      const adSetIds = adSets.map(as => as.id);
+      const insightsMap = await this.getAdSetInsightsBatch(integration.accessToken!, adSetIds);
+
+      // Map ad sets to database format and link to campaigns
+      const insertAdSets: InsertAdSet[] = [];
+      let skippedCount = 0;
+
+      for (const adSet of adSets) {
+        // Find the database campaign ID from the map
+        const campaignId = campaignMap.get(adSet.campaign_id);
+        
+        if (!campaignId) {
+          console.warn(`⚠️  Ad set ${adSet.id} (${adSet.name}) belongs to campaign ${adSet.campaign_id} which is not in our database - skipping`);
+          skippedCount++;
+          continue;
+        }
+
+        const insights = insightsMap.get(adSet.id) || {};
+        
+        insertAdSets.push({
+          companyId,
+          userId,
+          campaignId,
+          externalId: adSet.id,
+          name: adSet.name,
+          platform: 'meta',
+          status: adSet.status.toLowerCase(),
+          dailyBudget: adSet.daily_budget ? (parseFloat(adSet.daily_budget) / 100).toString() : null,
+          lifetimeBudget: adSet.lifetime_budget ? (parseFloat(adSet.lifetime_budget) / 100).toString() : null,
+          bidStrategy: adSet.bid_strategy || null,
+          targeting: adSet.targeting || null,
+          startTime: adSet.start_time ? new Date(adSet.start_time) : null,
+          endTime: adSet.end_time ? new Date(adSet.end_time) : null,
+          impressions: parseInt(insights.impressions || '0'),
+          clicks: parseInt(insights.clicks || '0'),
+          spend: insights.spend || '0',
+        });
+      }
+
+      console.log(`✅ Mapped ${insertAdSets.length} ad sets to database format (skipped ${skippedCount} orphaned ad sets)`);
+      return insertAdSets;
+    } catch (error) {
+      console.error('Error syncing ad sets from account:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Sync ad sets for multiple campaigns using batch requests (OPTIMIZED)
+   * @deprecated Use syncAllAdSetsFromAccount for better performance and reliability
    * This replaces calling syncAdSets() in a loop
    */
   async syncAllAdSetsBatch(
@@ -486,7 +561,97 @@ export class MetaAdsService {
   }
 
   /**
+   * Sync ALL ads (creatives) from the entire Meta Ad Account (RECOMMENDED METHOD)
+   * This is more reliable than fetching per-ad-set because:
+   * - Captures all ads in one API call (faster, less rate limiting)
+   * - Doesn't miss ads from paused/archived ad sets
+   * - Returns 100% of ads regardless of ad set status
+   */
+  async syncAllAdsFromAccount(
+    integration: Integration,
+    userId: string,
+    companyId: string | null,
+    adSetMap: Map<string, { dbId: string; campaignId: string }> // Map of externalAdSetId -> { dbAdSetId, dbCampaignId }
+  ): Promise<InsertCreative[]> {
+    if (!integration.accessToken || !integration.accountId) {
+      throw new Error('Missing access token or account ID');
+    }
+
+    try {
+      console.log(`🎯 Fetching ALL ads from Meta account ${integration.accountId}...`);
+      
+      // Fetch ALL ads from the entire account in one call
+      const url = `${this.baseUrl}/${this.apiVersion}/${integration.accountId}/ads?fields=id,name,status,adset_id,creative{id,name,image_url,body,title,call_to_action_type}&limit=100&access_token=${integration.accessToken}`;
+      const ads = await this.fetchAllPages<MetaAd>(url);
+      
+      console.log(`✅ Found ${ads.length} total ads from Meta API`);
+
+      // Get insights for ALL ads in ONE batch request
+      const adIds = ads.map(ad => ad.id);
+      const insightsMap = await this.getAdInsightsBatch(integration.accessToken!, adIds);
+
+      // Download images and map insights
+      const insertCreatives: InsertCreative[] = [];
+      let skippedCount = 0;
+
+      for (const ad of ads) {
+        // Find the database ad set ID and campaign ID from the map
+        const adSetInfo = adSetMap.get(ad.adset_id);
+        
+        if (!adSetInfo) {
+          console.warn(`⚠️  Ad ${ad.id} (${ad.name}) belongs to ad set ${ad.adset_id} which is not in our database - skipping`);
+          skippedCount++;
+          continue;
+        }
+
+        const insights = insightsMap.get(ad.id) || {};
+        
+        // Download and save image locally
+        let imageUrl = ad.creative?.image_url || null;
+        if (imageUrl) {
+          console.log(`🖼️  Downloading image for ad ${ad.id}...`);
+          const localUrl = await imageStorageService.downloadAndSaveImage(imageUrl);
+          if (localUrl) {
+            imageUrl = localUrl;
+            console.log(`✅ Image saved locally: ${localUrl}`);
+          }
+        }
+        
+        insertCreatives.push({
+          companyId,
+          userId,
+          campaignId: adSetInfo.campaignId,
+          adSetId: adSetInfo.dbId,
+          externalId: ad.id,
+          name: ad.name,
+          platform: 'meta',
+          type: 'image',
+          imageUrl,
+          videoUrl: null,
+          text: ad.creative?.body || null,
+          headline: ad.creative?.title || null,
+          description: null,
+          callToAction: ad.creative?.call_to_action_type || null,
+          status: ad.status.toLowerCase(),
+          impressions: parseInt(insights.impressions || '0'),
+          clicks: parseInt(insights.clicks || '0'),
+          conversions: this.getConversions(insights),
+          ctr: insights.ctr || '0',
+          cpc: insights.cpc || '0',
+        });
+      }
+
+      console.log(`✅ Mapped ${insertCreatives.length} ads to database format (skipped ${skippedCount} orphaned ads)`);
+      return insertCreatives;
+    } catch (error) {
+      console.error('Error syncing ads from account:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Sync creatives (ads) from an Ad Set (with pagination)
+   * @deprecated Use syncAllAdsFromAccount for better performance and reliability
    */
   async syncCreatives(
     integration: Integration,
