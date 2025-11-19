@@ -61,7 +61,8 @@ export default function MetaDebug() {
 
   const handleCheck = () => {
     if (integrationId) {
-      setShouldFetch(true);
+      setShouldFetch(false); // Reset first
+      setTimeout(() => setShouldFetch(true), 10); // Then enable to trigger refetch
     }
   };
 
@@ -77,7 +78,7 @@ export default function MetaDebug() {
 
   const handleSelectIntegration = (id: string) => {
     setIntegrationId(id);
-    setShouldFetch(false);
+    setShouldFetch(false); // Reset query state when selecting new integration
   };
 
   return (
