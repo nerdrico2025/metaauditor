@@ -439,7 +439,7 @@ router.post('/:id/sync', authenticateToken, async (req: Request, res: Response, 
   }
 });
 
-// Debug endpoint: Count total ads in database
+// Debug endpoint: Count ads in database vs Meta API
 router.get('/:id/debug/count-ads', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user?.userId;
@@ -457,7 +457,7 @@ router.get('/:id/debug/count-ads', authenticateToken, async (req: Request, res: 
     const campaigns = await storage.getCampaignsByUser(userId);
     const metaCampaigns = campaigns.filter(c => c.platform === 'meta' && c.integrationId === integration.id);
 
-    let totalAds = 0;
+    let totalAdsInDB = 0;
     const campaignDetails = [];
 
     for (const campaign of metaCampaigns) {
@@ -473,13 +473,13 @@ router.get('/:id/debug/count-ads', authenticateToken, async (req: Request, res: 
         const adSetCreatives = creatives.filter(c => c.adSetId === adSet.id);
         
         campaignAdCount += adSetCreatives.length;
-        totalAds += adSetCreatives.length;
+        totalAdsInDB += adSetCreatives.length;
 
         adSetDetails.push({
           id: adSet.id,
           name: adSet.name,
           externalId: adSet.externalId,
-          adsCount: adSetCreatives.length,
+          adsInDB: adSetCreatives.length,
           status: adSet.status
         });
       }
@@ -489,10 +489,49 @@ router.get('/:id/debug/count-ads', authenticateToken, async (req: Request, res: 
         name: campaign.name,
         externalId: campaign.externalId,
         adSetsCount: adSets.length,
-        adsCount: campaignAdCount,
+        adsInDB: campaignAdCount,
         status: campaign.status,
         adSets: adSetDetails
       });
+    }
+
+    // Now fetch from Meta API to compare
+    let totalAdsFromAPI = 0;
+    const apiComparison = [];
+
+    if (integration.platform === 'meta' && integration.accessToken) {
+      for (const campaign of metaCampaigns.slice(0, 5)) { // Test with first 5 campaigns to avoid timeout
+        try {
+          const apiUrl = `https://graph.facebook.com/v21.0/${campaign.externalId}/adsets?fields=id,name&limit=100&access_token=${integration.accessToken}`;
+          const response = await fetch(apiUrl);
+          const data = await response.json() as any;
+          
+          const adSetsFromAPI = data.data || [];
+          let campaignAdsFromAPI = 0;
+
+          for (const apiAdSet of adSetsFromAPI) {
+            const adsUrl = `https://graph.facebook.com/v21.0/${apiAdSet.id}/ads?fields=id&limit=1000&access_token=${integration.accessToken}`;
+            const adsResponse = await fetch(adsUrl);
+            const adsData = await adsResponse.json() as any;
+            
+            const adsCount = adsData.data?.length || 0;
+            campaignAdsFromAPI += adsCount;
+            totalAdsFromAPI += adsCount;
+          }
+
+          const dbCampaign = campaignDetails.find(c => c.externalId === campaign.externalId);
+          
+          apiComparison.push({
+            campaignName: campaign.name,
+            externalId: campaign.externalId,
+            adsInDB: dbCampaign?.adsInDB || 0,
+            adsFromAPI: campaignAdsFromAPI,
+            difference: campaignAdsFromAPI - (dbCampaign?.adsInDB || 0)
+          });
+        } catch (error: any) {
+          console.error(`Error fetching API data for campaign ${campaign.name}:`, error);
+        }
+      }
     }
 
     return res.json({
@@ -501,10 +540,17 @@ router.get('/:id/debug/count-ads', authenticateToken, async (req: Request, res: 
         platform: integration.platform,
         accountName: integration.accountName
       },
-      totalCampaigns: metaCampaigns.length,
-      totalAdSets: campaignDetails.reduce((sum, c) => sum + c.adSetsCount, 0),
-      totalAds,
-      campaigns: campaignDetails
+      database: {
+        totalCampaigns: metaCampaigns.length,
+        totalAdSets: campaignDetails.reduce((sum, c) => sum + c.adSetsCount, 0),
+        totalAds: totalAdsInDB
+      },
+      apiSample: {
+        campaignsChecked: apiComparison.length,
+        totalAdsFound: totalAdsFromAPI,
+        campaigns: apiComparison
+      },
+      note: "API sample limited to first 5 campaigns to avoid timeout"
     });
   } catch (error: any) {
     next(error);
