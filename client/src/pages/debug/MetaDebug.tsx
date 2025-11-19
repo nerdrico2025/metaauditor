@@ -21,13 +21,16 @@ interface DebugData {
   };
   apiSample: {
     campaignsChecked: number;
+    totalAdSetsFound: number;
     totalAdsFound: number;
     campaigns: Array<{
       campaignName: string;
       externalId: string;
+      adSetsFromAPI: number;
       adsInDB: number;
       adsFromAPI: number;
       difference: number;
+      error?: string;
     }>;
   };
   note: string;
@@ -251,12 +254,18 @@ export default function MetaDebug() {
               <CardHeader>
                 <CardTitle>Comparação com API do Meta</CardTitle>
                 <CardDescription>
-                  {data.note} - Total encontrado: {data.apiSample.totalAdsFound} anúncios
+                  {data.note} - Total: {data.apiSample.totalAdSetsFound} ad sets, {data.apiSample.totalAdsFound} anúncios
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {data.apiSample.campaigns.map((campaign) => (
+                  {data.apiSample.campaigns.length === 0 ? (
+                    <p className="text-center text-gray-500 dark:text-gray-400 py-8">
+                      Nenhuma campanha com anúncios encontrada
+                    </p>
+                  ) : (
+                    data.apiSample.campaigns.map((campaign) => {
+                      return (
                     <div
                       key={campaign.externalId}
                       className="border border-gray-200 dark:border-gray-800 rounded-lg p-4"
@@ -277,15 +286,21 @@ export default function MetaDebug() {
                         )}
                       </div>
 
-                      <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div className="grid grid-cols-4 gap-4 text-sm">
                         <div>
-                          <p className="text-gray-500 dark:text-gray-400">No Banco</p>
+                          <p className="text-gray-500 dark:text-gray-400">Ad Sets (API)</p>
+                          <p className="text-lg font-semibold text-gray-900 dark:text-gray-50">
+                            {campaign.adSetsFromAPI}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500 dark:text-gray-400">Ads no Banco</p>
                           <p className="text-lg font-semibold text-gray-900 dark:text-gray-50">
                             {campaign.adsInDB}
                           </p>
                         </div>
                         <div>
-                          <p className="text-gray-500 dark:text-gray-400">Na API</p>
+                          <p className="text-gray-500 dark:text-gray-400">Ads na API</p>
                           <p className="text-lg font-semibold text-gray-900 dark:text-gray-50">
                             {campaign.adsFromAPI}
                           </p>
@@ -304,8 +319,13 @@ export default function MetaDebug() {
                           </p>
                         </div>
                       </div>
+                      {campaign.error && (
+                        <p className="text-xs text-red-600 mt-2">Erro: {campaign.error}</p>
+                      )}
                     </div>
-                  ))}
+                      );
+                    })
+                  )}
                 </div>
               </CardContent>
             </Card>
