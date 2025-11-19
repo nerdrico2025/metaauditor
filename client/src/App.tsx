@@ -37,6 +37,9 @@ import Company from "@/pages/settings/company";
 // Admin
 import SuperAdmin from "@/pages/admin";
 
+// Debug
+import MetaDebug from "@/pages/debug/MetaDebug";
+
 // Error Pages
 import NotFound from "@/pages/errors/not-found";
 
@@ -117,6 +120,11 @@ function Router() {
       <Route path="/super-admin">
         <ProtectedRoute requireSuperAdmin={true}>
           <SuperAdmin />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/debug/meta">
+        <ProtectedRoute>
+          <MetaDebug />
         </ProtectedRoute>
       </Route>
       <Route component={NotFound} />

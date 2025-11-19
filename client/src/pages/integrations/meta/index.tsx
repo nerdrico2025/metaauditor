@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
+import { Link } from 'wouter';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import Sidebar from '@/components/Layout/Sidebar';
@@ -7,7 +8,7 @@ import Header from '@/components/Layout/Header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { HelpCircle, Trash2 } from 'lucide-react';
+import { HelpCircle, Trash2, Bug } from 'lucide-react';
 import { SiFacebook } from 'react-icons/si';
 import { HowToConnectModal } from '../components/HowToConnectModal';
 import { DeleteConfirmationDialog } from '../components/DeleteConfirmationDialog';
@@ -339,6 +340,16 @@ export default function MetaIntegrations() {
                       </div>
                     </div>
                     <div className="flex gap-2">
+                      <Link href="/debug/meta">
+                        <Button 
+                          variant="outline"
+                          size="sm"
+                          data-testid="button-debug-meta"
+                        >
+                          <Bug className="w-4 h-4 mr-2" />
+                          Debug
+                        </Button>
+                      </Link>
                       <Button 
                         variant="outline"
                         size="sm"
