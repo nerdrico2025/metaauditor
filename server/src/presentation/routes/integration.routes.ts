@@ -249,125 +249,122 @@ router.post('/:id/sync', authenticateToken, async (req: Request, res: Response, 
 
     // Sync based on platform
     if (integration.platform === 'meta') {
-      // Check if we have any data - if not, force full sync
-      const hasCampaigns = (await storage.getCampaignsByUser(userId)).length > 0;
-      
-      // Determine if this is an incremental sync
-      const lastSync = integration.lastSync;
-      const isIncremental = hasCampaigns && lastSync && (Date.now() - lastSync.getTime() < 7 * 24 * 60 * 60 * 1000); // Within 7 days
-      const syncType = isIncremental ? 'incremental' : 'full';
-      
       // Create sync history record
       const syncHistoryRecord = await storage.createSyncHistory({
         integrationId: integration.id,
         userId,
         status: 'running',
-        type: syncType,
+        type: 'full',
         metadata: { platform: 'meta' }
       });
       
-      console.log(`🚀 Starting Meta Ads ${syncType} sync with BATCH REQUESTS (optimized for rate limits)...`);
-      if (isIncremental) {
-        console.log(`📅 Syncing changes since ${lastSync.toISOString()}`);
-      }
+      console.log(`🚀 Starting Meta Ads OPTIMIZED sync - fetching from ACCOUNT level...`);
       
       try {
-        // Step 1: Sync Meta Ads campaigns (incremental if possible)
-        const campaigns = await metaAdsService.syncCampaigns(
-          integration, 
-          userId, 
-          companyId,
-          isIncremental ? lastSync : undefined
-        );
-        console.log(`📊 Found ${campaigns.length} campaigns ${isIncremental ? '(updated)' : '(total)'}`);
+        // ===============================
+        // STEP 1: Sync ALL Campaigns
+        // ===============================
+        console.log(`\n📊 STEP 1: Syncing campaigns...`);
+        const campaigns = await metaAdsService.syncCampaigns(integration, userId, companyId);
+        console.log(`✅ Found ${campaigns.length} campaigns from Meta API`);
         
-        // Step 2: Save all campaigns to DB first
-        const dbCampaignsMap = new Map<string, string>(); // externalId -> dbId
+        // Save all campaigns to DB and build campaign map
+        const campaignMap = new Map<string, string>(); // externalId -> dbId
+        const existingCampaigns = await storage.getCampaignsByUser(userId);
+        
         for (const campaign of campaigns) {
-          const existingCampaigns = await storage.getCampaignsByUser(userId);
           let dbCampaign = existingCampaigns.find(c => c.externalId === campaign.externalId);
           
           if (dbCampaign) {
             await storage.updateCampaign(dbCampaign.id, campaign);
-            dbCampaignsMap.set(campaign.externalId, dbCampaign.id);
-            console.log(`🔄 Campaign updated: ${campaign.name}`);
+            campaignMap.set(campaign.externalId, dbCampaign.id);
           } else {
             dbCampaign = await storage.createCampaign(campaign);
-            dbCampaignsMap.set(campaign.externalId, dbCampaign!.id);
-            console.log(`✅ Campaign created: ${campaign.name}`);
+            campaignMap.set(campaign.externalId, dbCampaign!.id);
           }
           syncedCampaigns++;
         }
-
-        // Step 3: Sync ALL ad sets using BATCH REQUEST (huge performance improvement!)
-        const campaignParams = Array.from(dbCampaignsMap.entries()).map(([externalId, dbId]) => ({
-          externalId,
-          dbId
-        }));
         
-        console.log(`📦 Fetching ad sets for ALL ${campaignParams.length} campaigns in batch...`);
-        const adSetsByCampaign = await metaAdsService.syncAllAdSetsBatch(
+        // Clean up obsolete campaigns
+        const campaignExternalIds = campaigns.map(c => c.externalId);
+        const deletedCampaigns = await storage.deleteCampaignsNotInList(userId, campaignExternalIds);
+        if (deletedCampaigns > 0) {
+          console.log(`🗑️  Removed ${deletedCampaigns} obsolete campaigns from database`);
+        }
+
+        // ===============================
+        // STEP 2: Sync ALL Ad Sets (from account)
+        // ===============================
+        console.log(`\n📦 STEP 2: Syncing ALL ad sets from entire account...`);
+        const adSets = await metaAdsService.syncAllAdSetsFromAccount(
           integration,
-          campaignParams,
           userId,
-          companyId
+          companyId,
+          campaignMap
         );
-
-        // Step 4: Save ad sets and sync creatives
-        for (const [campaignDbId, adSets] of adSetsByCampaign.entries()) {
-          const campaign = campaigns.find(c => dbCampaignsMap.get(c.externalId) === campaignDbId);
-          console.log(`\n  📋 Processing ${adSets.length} ad sets for campaign: ${campaign?.name || campaignDbId}`);
-
-          for (const adSet of adSets) {
-            try {
-              // Save ad set
-              const existingAdSets = await storage.getAdSetsByUser(userId);
-              let dbAdSet = existingAdSets.find(a => a.externalId === adSet.externalId);
-              
-              if (dbAdSet) {
-                await storage.updateAdSet(dbAdSet.id, adSet);
-                console.log(`  🔄 Ad Set updated: ${adSet.name}`);
-              } else {
-                dbAdSet = await storage.createAdSet(adSet);
-                console.log(`  ✅ Ad Set created: ${adSet.name}`);
-              }
-              syncedAdSets++;
-              
-              if (!dbAdSet) continue;
-
-              // Sync creatives for this ad set (already optimized with batch insights!)
-              const creatives = await metaAdsService.syncCreatives(
-                integration,
-                adSet.externalId,
-                dbAdSet.id,
-                campaignDbId,
-                userId,
-                companyId
-              );
-              console.log(`    🎨 Found ${creatives.length} ads in ad set ${adSet.name}`);
-
-              // Save creatives
-              for (const creative of creatives) {
-                const existingCreatives = await storage.getCreativesByUser(userId);
-                const existingCreative = existingCreatives.find(c => c.externalId === creative.externalId);
-                
-                if (existingCreative) {
-                  await storage.updateCreative(existingCreative.id, creative);
-                  console.log(`    🔄 Creative updated: ${creative.name}`);
-                } else {
-                  await storage.createCreative(creative);
-                  console.log(`    ✅ Creative created: ${creative.name}`);
-                }
-                syncedCreatives++;
-              }
-            } catch (adSetError: any) {
-              console.error(`❌ Error processing ad set ${adSet.name}:`, adSetError.message);
-              continue;
-            }
+        console.log(`✅ Found ${adSets.length} ad sets from Meta API`);
+        
+        // Save all ad sets to DB and build ad set map
+        const adSetMap = new Map<string, { dbId: string; campaignId: string }>(); // externalId -> { dbId, campaignId }
+        const existingAdSets = await storage.getAdSetsByUser(userId);
+        
+        for (const adSet of adSets) {
+          let dbAdSet = existingAdSets.find(a => a.externalId === adSet.externalId);
+          
+          if (dbAdSet) {
+            await storage.updateAdSet(dbAdSet.id, adSet);
+            adSetMap.set(adSet.externalId, { dbId: dbAdSet.id, campaignId: adSet.campaignId });
+          } else {
+            dbAdSet = await storage.createAdSet(adSet);
+            adSetMap.set(adSet.externalId, { dbId: dbAdSet!.id, campaignId: adSet.campaignId });
           }
+          syncedAdSets++;
         }
         
-        console.log(`🎉 Meta sync completed with BATCH REQUESTS: ${syncedCampaigns} campaigns, ${syncedAdSets} ad sets, ${syncedCreatives} ads`);
+        // Clean up obsolete ad sets
+        const adSetExternalIds = adSets.map(a => a.externalId);
+        const deletedAdSets = await storage.deleteAdSetsNotInList(userId, adSetExternalIds);
+        if (deletedAdSets > 0) {
+          console.log(`🗑️  Removed ${deletedAdSets} obsolete ad sets from database`);
+        }
+
+        // ===============================
+        // STEP 3: Sync ALL Ads (from account)
+        // ===============================
+        console.log(`\n🎨 STEP 3: Syncing ALL ads from entire account...`);
+        const ads = await metaAdsService.syncAllAdsFromAccount(
+          integration,
+          userId,
+          companyId,
+          adSetMap
+        );
+        console.log(`✅ Found ${ads.length} ads from Meta API`);
+        
+        // Save all ads to DB
+        const existingCreatives = await storage.getCreativesByUser(userId);
+        
+        for (const creative of ads) {
+          const existingCreative = existingCreatives.find(c => c.externalId === creative.externalId);
+          
+          if (existingCreative) {
+            await storage.updateCreative(existingCreative.id, creative);
+          } else {
+            await storage.createCreative(creative);
+          }
+          syncedCreatives++;
+        }
+        
+        // Clean up obsolete creatives
+        const creativeExternalIds = ads.map(a => a.externalId);
+        const deletedCreatives = await storage.deleteCreativesNotInList(userId, creativeExternalIds);
+        if (deletedCreatives > 0) {
+          console.log(`🗑️  Removed ${deletedCreatives} obsolete ads from database`);
+        }
+        
+        console.log(`\n🎉 Meta sync completed successfully!`);
+        console.log(`   📊 Campaigns: ${syncedCampaigns} synced (${deletedCampaigns} deleted)`);
+        console.log(`   📦 Ad Sets: ${syncedAdSets} synced (${deletedAdSets} deleted)`);
+        console.log(`   🎨 Ads: ${syncedCreatives} synced (${deletedCreatives} deleted)`);
         
         // Update sync history with success
         await storage.updateSyncHistory(syncHistoryRecord.id, {
@@ -378,14 +375,12 @@ router.post('/:id/sync', authenticateToken, async (req: Request, res: Response, 
           creativeSynced: syncedCreatives
         });
         
-        // Update integration's lastFullSync if this was a full sync
-        if (syncType === 'full') {
-          await storage.updateIntegration(integration.id, {
-            lastFullSync: new Date()
-          });
-        }
+        // Update integration's lastFullSync
+        await storage.updateIntegration(integration.id, {
+          lastFullSync: new Date()
+        });
       } catch (error: any) {
-        console.error('❌ Error during sync, but returning partial results:', error.message);
+        console.error('❌ Error during sync:', error.message);
         
         // Update sync history with error/partial status
         await storage.updateSyncHistory(syncHistoryRecord.id, {
@@ -396,6 +391,8 @@ router.post('/:id/sync', authenticateToken, async (req: Request, res: Response, 
           creativeSynced: syncedCreatives,
           errorMessage: error.message
         });
+        
+        throw error; // Re-throw to be caught by outer catch
       }
     } else if (integration.platform === 'google') {
       // Sync Google Ads campaigns

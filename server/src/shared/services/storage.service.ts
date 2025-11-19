@@ -1,6 +1,6 @@
 
 import { db } from '../../infrastructure/database/connection';
-import { eq, desc, sql, and, count, inArray } from "drizzle-orm";
+import { eq, desc, sql, and, count, inArray, notInArray, not } from "drizzle-orm";
 import {
   companies,
   users,
@@ -914,6 +914,72 @@ export class DatabaseStorage implements IStorage {
 
   async deleteAllCreativesByUser(userId: string): Promise<void> {
     await db.delete(creatives).where(eq(creatives.userId, userId));
+  }
+
+  /**
+   * Delete ad sets that are NOT in the provided list of external IDs
+   * Used for cleanup after sync to remove obsolete ad sets
+   */
+  async deleteAdSetsNotInList(userId: string, externalIds: string[]): Promise<number> {
+    if (externalIds.length === 0) {
+      // If no external IDs, delete all ad sets for this user
+      const result = await db.delete(adSets).where(eq(adSets.userId, userId));
+      return result.rowCount ?? 0;
+    }
+    
+    const result = await db
+      .delete(adSets)
+      .where(
+        and(
+          eq(adSets.userId, userId),
+          notInArray(adSets.externalId, externalIds)
+        )
+      );
+    return result.rowCount ?? 0;
+  }
+
+  /**
+   * Delete creatives (ads) that are NOT in the provided list of external IDs
+   * Used for cleanup after sync to remove obsolete creatives
+   */
+  async deleteCreativesNotInList(userId: string, externalIds: string[]): Promise<number> {
+    if (externalIds.length === 0) {
+      // If no external IDs, delete all creatives for this user
+      const result = await db.delete(creatives).where(eq(creatives.userId, userId));
+      return result.rowCount ?? 0;
+    }
+    
+    const result = await db
+      .delete(creatives)
+      .where(
+        and(
+          eq(creatives.userId, userId),
+          notInArray(creatives.externalId, externalIds)
+        )
+      );
+    return result.rowCount ?? 0;
+  }
+
+  /**
+   * Delete campaigns that are NOT in the provided list of external IDs
+   * Used for cleanup after sync to remove obsolete campaigns
+   */
+  async deleteCampaignsNotInList(userId: string, externalIds: string[]): Promise<number> {
+    if (externalIds.length === 0) {
+      // If no external IDs, delete all campaigns for this user
+      const result = await db.delete(campaigns).where(eq(campaigns.userId, userId));
+      return result.rowCount ?? 0;
+    }
+    
+    const result = await db
+      .delete(campaigns)
+      .where(
+        and(
+          eq(campaigns.userId, userId),
+          notInArray(campaigns.externalId, externalIds)
+        )
+      );
+    return result.rowCount ?? 0;
   }
 }
 
