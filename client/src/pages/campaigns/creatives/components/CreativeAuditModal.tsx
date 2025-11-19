@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
-import { X, Eye, CheckCircle, AlertTriangle, BarChart3, Image as ImageIcon } from "lucide-react";
+import { X, Eye, CheckCircle, AlertTriangle, BarChart3, Image as ImageIcon, Palette, Sparkles, ChevronRight, Shield, TrendingUp, MousePointer } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { CreativeImage } from "./CreativeImage";
 import type { Creative, Audit } from "@shared/schema";
 
@@ -39,7 +40,26 @@ interface ExtendedAudit extends Omit<Audit, 'issues' | 'recommendations' | 'aiAn
   aiAnalysis?: {
     checks: AuditCheckItem[];
     summary: string;
+    compliance?: {
+      analysis?: {
+        logoCompliance?: boolean;
+        colorCompliance?: boolean;
+        textCompliance?: boolean;
+        brandGuidelines?: boolean;
+      };
+    };
+    performance?: {
+      metrics?: {
+        ctrAnalysis?: string;
+        conversionAnalysis?: string;
+        costEfficiency?: string;
+      };
+      performance?: 'high' | 'medium' | 'low';
+    };
   };
+  complianceScore?: number;
+  performanceScore?: number;
+  status?: 'conforme' | 'parcialmente_conforme' | 'não_conforme';
 }
 
 interface CreativeAuditModalProps {
@@ -52,10 +72,16 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
   const { toast } = useToast();
   const [selectedActions, setSelectedActions] = useState<string[]>([]);
   const [imageZoomed, setImageZoomed] = useState(false);
+  const [viewingAudit, setViewingAudit] = useState<ExtendedAudit | null>(null); // State to hold the latest audit
 
   // Fetch audit data for this creative
   const { data: audits, isLoading: auditsLoading } = useQuery<ExtendedAudit[]>({
     queryKey: [`/api/creatives/${creative.id}/audits`],
+    onSuccess: (data) => {
+      if (data && data.length > 0) {
+        setViewingAudit(data[0]); // Set the latest audit to viewingAudit state
+      }
+    },
   });
 
   // Fetch campaign name if campaignId exists
@@ -63,10 +89,6 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
     queryKey: [`/api/campaigns/${creative.campaignId}`],
     enabled: !!creative.campaignId,
   });
-
-  // Get the latest audit
-  const latestAudit = audits && audits.length > 0 ? audits[0] : null;
-
 
   // Create audit analysis mutation
   const analyzeMutation = useMutation({
@@ -81,6 +103,7 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
       });
       // Update the audit data immediately with the fresh analysis result
       queryClient.setQueryData([`/api/creatives/${creative.id}/audits`], [newAudit]);
+      setViewingAudit(newAudit); // Update viewingAudit state
       queryClient.invalidateQueries({ queryKey: [`/api/creatives/${creative.id}/audits`] });
     },
     onError: (error) => {
@@ -95,9 +118,9 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
         }, 500);
         return;
       }
-      
+
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
-      
+
       if (errorMessage.includes('404') || errorMessage.includes('not found')) {
         toast({
           title: "Criativo não encontrado",
@@ -117,15 +140,15 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
   // Execute actions mutation
   const executeActionsMutation = useMutation({
     mutationFn: async () => {
-      if (!latestAudit) throw new Error("No audit found");
-      
+      if (!viewingAudit) throw new Error("No audit found");
+
       const promises = selectedActions.map(action => 
         apiRequest("POST", "/api/audit-actions", {
-          auditId: latestAudit.id,
+          auditId: viewingAudit.id,
           action,
         })
       );
-      
+
       await Promise.all(promises);
     },
     onSuccess: () => {
@@ -160,14 +183,15 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
   // Delete audit mutation for reanalysis
   const deleteAuditMutation = useMutation({
     mutationFn: async () => {
-      if (!latestAudit) throw new Error("No audit found");
-      
-      const response = await apiRequest("DELETE", `/api/audits/${latestAudit.id}`);
+      if (!viewingAudit) throw new Error("No audit found");
+
+      const response = await apiRequest("DELETE", `/api/audits/${viewingAudit.id}`);
       return await response.json();
     },
     onSuccess: () => {
       // Invalidate audits query to refresh the data
       queryClient.invalidateQueries({ queryKey: ["/api/creatives", creative.id, "audits"] });
+      setViewingAudit(null); // Clear viewingAudit state after deletion
     },
     onError: (error) => {
       console.error("Error deleting audit:", error);
@@ -184,15 +208,15 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
   };
 
   const handleReanalyze = async () => {
-    if (!latestAudit) return;
-    
+    if (!viewingAudit) return;
+
     try {
       // First delete the existing audit
       await deleteAuditMutation.mutateAsync();
-      
+
       // Then create a new analysis
       analyzeMutation.mutate();
-      
+
       toast({
         title: "Reprocessando Análise",
         description: "Análise anterior removida. Iniciando nova análise...",
@@ -209,10 +233,10 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
 
   // Auto-analyze when modal opens if autoAnalyze is true
   useEffect(() => {
-    if (autoAnalyze && !latestAudit && !analyzeMutation.isPending) {
+    if (autoAnalyze && !viewingAudit && !analyzeMutation.isPending && !auditsLoading) {
       analyzeMutation.mutate();
     }
-  }, [autoAnalyze, latestAudit, analyzeMutation]);
+  }, [autoAnalyze, viewingAudit, analyzeMutation, auditsLoading]);
 
   const handleExecuteActions = () => {
     if (selectedActions.length === 0) {
@@ -325,7 +349,7 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="text-sm font-medium text-slate-900">Resultados da Auditoria</h4>
                   <div className="flex gap-2">
-                    {latestAudit && (
+                    {viewingAudit && (
                       <Button 
                         size="sm"
                         variant="outline"
@@ -343,7 +367,7 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
                     <Button 
                       size="sm" 
                       onClick={handleAnalyze}
-                      disabled={analyzeMutation.isPending || !!latestAudit}
+                      disabled={analyzeMutation.isPending || !!viewingAudit}
                     >
                       {analyzeMutation.isPending ? 'Analisando...' : 'Analisar'}
                     </Button>
@@ -355,128 +379,170 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
                     <Skeleton className="h-16 w-full" />
                     <Skeleton className="h-16 w-full" />
                   </div>
-                ) : latestAudit ? (
-                  <div className="space-y-4">
-                    {/* Real Audit Scores */}
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                      <div className="bg-slate-50 p-3 rounded-lg">
-                        <p className="text-xs text-slate-500">Score de Conformidade</p>
-                        <p className="text-lg font-semibold text-slate-900">
-                          {latestAudit.complianceScore ? Number(latestAudit.complianceScore).toFixed(1) : '0.0'}/100
-                        </p>
-                      </div>
-                      <div className="bg-slate-50 p-3 rounded-lg">
-                        <p className="text-xs text-slate-500">Score de Performance</p>
-                        <p className="text-lg font-semibold text-slate-900">
-                          {latestAudit.performanceScore ? Number(latestAudit.performanceScore).toFixed(1) : '0.0'}/100
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Audit Status */}
-                    <div className={`border rounded-lg p-3 ${getStatusColor(latestAudit.status)}`}>
-                      <div className="flex items-start">
-                        {getStatusIcon(latestAudit.status)}
-                        <div className="ml-2">
-                          <p className="text-sm font-medium text-slate-800">
-                            {latestAudit.status === 'compliant' ? 'Criativo Conforme' : 
-                             latestAudit.status === 'non_compliant' ? 'Não Conforme' : 
-                             latestAudit.status === 'low_performance' ? 'Performance Baixa' : 'Status Desconhecido'}
-                          </p>
-                          <p className="text-xs text-slate-600 mt-1">
-                            {latestAudit.aiAnalysis?.summary || 
-                             (latestAudit.issues && Array.isArray(latestAudit.issues) && latestAudit.issues.length > 0 ? 
-                              `${latestAudit.issues.length} problema(s) identificado(s)` : 
-                              'Nenhum problema identificado na auditoria')}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Audit Issues */}
-                    {latestAudit.issues && Array.isArray(latestAudit.issues) && latestAudit.issues.length > 0 && (
-                      <div className="space-y-3">
-                        <h5 className="text-sm font-medium text-slate-900">Problemas Identificados</h5>
-                        {latestAudit.issues.map((issue, index) => (
-                          <div key={index} className={`border rounded-lg p-3 ${getStatusColor(issue.severity || 'medium')}`}>
-                            <div className="flex items-start">
-                              <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 mr-2" />
-                              <div>
-                                <p className="text-sm font-medium text-slate-800">
-                                  {issue.type || 'Problema Identificado'}
-                                </p>
-                                <p className="text-xs text-slate-600 mt-1">
-                                  {issue.description || 'Descrição não disponível'}
-                                </p>
-                              </div>
-                            </div>
+                ) : viewingAudit ? (
+                  <div className="space-y-6">
+                    {/* KPIs Principais - Destaque */}
+                    <div className="grid grid-cols-3 gap-4">
+                      <Card className="border-2 border-primary/20">
+                        <CardContent className="pt-6">
+                          <div className="text-center">
+                            <Shield className="h-10 w-10 text-primary mx-auto mb-3" />
+                            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Conformidade de Marca</p>
+                            <p className="text-5xl font-bold text-primary mb-2">{viewingAudit.complianceScore}%</p>
+                            <Badge className="mt-1" variant={viewingAudit.complianceScore >= 80 ? 'default' : 'destructive'}>
+                              {viewingAudit.complianceScore >= 80 ? 'Aprovado' : 'Reprovado'}
+                            </Badge>
                           </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Audit Checklist */}
-                    <div>
-                      <h5 className="text-sm font-medium text-slate-900 mb-2">Verificações Realizadas</h5>
-                      <div className="space-y-2">
-                        {latestAudit.aiAnalysis && latestAudit.aiAnalysis.checks ? (
-                          latestAudit.aiAnalysis.checks.map((check, index) => (
-                            <div key={index} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
-                              <div className="flex items-center">
-                                {check.status === 'passed' ? (
-                                  <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
-                                ) : check.status === 'warning' ? (
-                                  <AlertTriangle className="h-4 w-4 text-amber-500 mr-2" />
-                                ) : (
-                                  <X className="h-4 w-4 text-red-500 mr-2" />
-                                )}
-                                <div>
-                                  <p className="text-xs font-medium text-slate-700">{check.category}</p>
-                                  <p className="text-xs text-slate-500">{check.description}</p>
-                                </div>
-                              </div>
-                              <Badge variant={check.status === 'passed' ? 'default' : check.status === 'warning' ? 'secondary' : 'destructive'}>
-                                {check.status === 'passed' ? 'OK' : check.status === 'warning' ? 'Atenção' : 'Erro'}
+                        </CardContent>
+                      </Card>
+                      <Card className="border-2 border-primary/20">
+                        <CardContent className="pt-6">
+                          <div className="text-center">
+                            <TrendingUp className="h-10 w-10 text-primary mx-auto mb-3" />
+                            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Performance de Métricas</p>
+                            <p className="text-5xl font-bold text-primary mb-2">{viewingAudit.performanceScore}%</p>
+                            <Badge className="mt-1" variant={viewingAudit.performanceScore >= 60 ? 'default' : 'destructive'}>
+                              {viewingAudit.performanceScore >= 80 ? 'Alta' : viewingAudit.performanceScore >= 60 ? 'Média' : 'Baixa'}
+                            </Badge>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card className="border-2 border-primary/20">
+                        <CardContent className="pt-6">
+                          <div className="text-center">
+                            <CheckCircle className="h-10 w-10 text-primary mx-auto mb-3" />
+                            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Status Geral</p>
+                            <div className="mt-6">
+                              <Badge className="text-base px-4 py-2" variant={viewingAudit.status === 'conforme' ? 'default' : 'destructive'}>
+                                {viewingAudit.status === 'conforme' ? 'Conforme' :
+                                 viewingAudit.status === 'parcialmente_conforme' ? 'Parcial' :
+                                 'Não Conforme'}
                               </Badge>
                             </div>
-                          ))
-                        ) : (
-                          // Default checklist if aiAnalysis doesn't have checks
-                          <>
-                            <div className="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
-                              <div className="flex items-center">
-                                <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
-                                <div>
-                                  <p className="text-xs font-medium text-slate-700">Conformidade da marca</p>
-                                  <p className="text-xs text-slate-500">Verificação de logo e cores da marca</p>
-                                </div>
-                              </div>
-                              <Badge variant="default">OK</Badge>
-                            </div>
-                            <div className="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
-                              <div className="flex items-center">
-                                <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
-                                <div>
-                                  <p className="text-xs font-medium text-slate-700">Conteúdo textual</p>
-                                  <p className="text-xs text-slate-500">Análise do texto e call-to-action</p>
-                                </div>
-                              </div>
-                              <Badge variant="default">OK</Badge>
-                            </div>
-                            <div className="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
-                              <div className="flex items-center">
-                                <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
-                                <div>
-                                  <p className="text-xs font-medium text-slate-700">Performance</p>
-                                  <p className="text-xs text-slate-500">Métricas de CTR e conversão</p>
-                                </div>
-                              </div>
-                              <Badge variant="default">OK</Badge>
-                            </div>
-                          </>
-                        )}
-                      </div>
+                          </div>
+                        </CardContent>
+                      </Card>
                     </div>
+
+                    {/* Detalhamento da IA - Accordion Expansível */}
+                    {(viewingAudit.aiAnalysis?.compliance || viewingAudit.aiAnalysis?.performance) && (
+                      <Card>
+                        <CardContent className="pt-6">
+                          <details className="group">
+                            <summary className="flex items-center justify-between cursor-pointer list-none">
+                              <h3 className="font-bold text-lg flex items-center gap-2">
+                                <Sparkles className="h-5 w-5 text-primary" />
+                                Detalhamento da Análise IA
+                              </h3>
+                              <ChevronRight className="h-5 w-5 text-gray-500 transition-transform group-open:rotate-90" />
+                            </summary>
+
+                            <div className="mt-6 space-y-6">
+                              {/* Compliance Details */}
+                              {viewingAudit.aiAnalysis?.compliance && (
+                                <div>
+                                  <h4 className="font-semibold text-md mb-3 flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                                    <Palette className="h-4 w-4" />
+                                    Conformidade de Marca
+                                  </h4>
+                                  <div className="grid grid-cols-2 gap-3">
+                                    <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                                      {viewingAudit.aiAnalysis.compliance.analysis?.logoCompliance ? (
+                                        <CheckCircle className="h-4 w-4 text-green-500" />
+                                      ) : (
+                                        <XCircle className="h-4 w-4 text-red-500" />
+                                      )}
+                                      <span className="text-sm">Logo da Marca</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                                      {viewingAudit.aiAnalysis.compliance.analysis?.colorCompliance ? (
+                                        <CheckCircle className="h-4 w-4 text-green-500" />
+                                      ) : (
+                                        <XCircle className="h-4 w-4 text-red-500" />
+                                      )}
+                                      <span className="text-sm">Cores da Marca</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                                      {viewingAudit.aiAnalysis.compliance.analysis?.textCompliance ? (
+                                        <CheckCircle className="h-4 w-4 text-green-500" />
+                                      ) : (
+                                        <XCircle className="h-4 w-4 text-red-500" />
+                                      )}
+                                      <span className="text-sm">Texto e Palavras-chave</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                                      {viewingAudit.aiAnalysis.compliance.analysis?.brandGuidelines ? (
+                                        <CheckCircle className="h-4 w-4 text-green-500" />
+                                      ) : (
+                                        <XCircle className="h-4 w-4 text-red-500" />
+                                      )}
+                                      <span className="text-sm">Diretrizes da Marca</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Performance Metrics */}
+                              {viewingAudit.aiAnalysis?.performance && (
+                                <div>
+                                  <h4 className="font-semibold text-md mb-3 flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                                    <BarChart3 className="h-4 w-4" />
+                                    Métricas de Performance
+                                  </h4>
+                                  <div className="space-y-3">
+                                    {viewingAudit.aiAnalysis.performance.metrics?.ctrAnalysis && (
+                                      <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                                        <p className="font-semibold text-sm mb-1 flex items-center gap-2">
+                                          <MousePointer className="h-4 w-4" />
+                                          CTR (Click-Through Rate)
+                                        </p>
+                                        <p className="text-xs text-gray-700 dark:text-gray-300">
+                                          {viewingAudit.aiAnalysis.performance.metrics.ctrAnalysis}
+                                        </p>
+                                      </div>
+                                    )}
+                                    {viewingAudit.aiAnalysis.performance.metrics?.conversionAnalysis && (
+                                      <div className="p-3 bg-green-50 dark:bg-green-950 rounded-lg">
+                                        <p className="font-semibold text-sm mb-1 flex items-center gap-2">
+                                          <TrendingUp className="h-4 w-4" />
+                                          Conversões
+                                        </p>
+                                        <p className="text-xs text-gray-700 dark:text-gray-300">
+                                          {viewingAudit.aiAnalysis.performance.metrics.conversionAnalysis}
+                                        </p>
+                                      </div>
+                                    )}
+                                    {viewingAudit.aiAnalysis.performance.metrics?.costEfficiency && (
+                                      <div className="p-3 bg-purple-50 dark:bg-purple-950 rounded-lg">
+                                        <p className="font-semibold text-sm mb-1 flex items-center gap-2">
+                                          <BarChart3 className="h-4 w-4" />
+                                          Custo e Eficiência
+                                        </p>
+                                        <p className="text-xs text-gray-700 dark:text-gray-300">
+                                          {viewingAudit.aiAnalysis.performance.metrics.costEfficiency}
+                                        </p>
+                                      </div>
+                                    )}
+                                    <div className="p-3 bg-orange-50 dark:bg-orange-950 rounded-lg">
+                                      <p className="font-semibold text-sm mb-1">Classificação de Performance</p>
+                                      <Badge variant={
+                                        viewingAudit.aiAnalysis.performance.performance === 'high' ? 'default' :
+                                        viewingAudit.aiAnalysis.performance.performance === 'medium' ? 'secondary' :
+                                        'destructive'
+                                      }>
+                                        {viewingAudit.aiAnalysis.performance.performance === 'high' ? 'Alta Performance' :
+                                         viewingAudit.aiAnalysis.performance.performance === 'medium' ? 'Performance Média' :
+                                         'Baixa Performance'}
+                                      </Badge>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </details>
+                        </CardContent>
+                      </Card>
+                    )}
                   </div>
                 ) : (
                   <div className="text-center py-6 border border-slate-200 rounded-lg">
@@ -488,7 +554,7 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
               </div>
 
               {/* Recommended Actions */}
-              {latestAudit && latestAudit.recommendations && Array.isArray(latestAudit.recommendations) && latestAudit.recommendations.length > 0 && (
+              {viewingAudit && viewingAudit.recommendations && Array.isArray(viewingAudit.recommendations) && viewingAudit.recommendations.length > 0 && (
                 <div>
                   <h4 className="text-sm font-medium text-slate-900 mb-3">Ações Recomendadas</h4>
                   <div className="space-y-2">
@@ -528,7 +594,7 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
             >
               {executeActionsMutation.isPending ? 'Executando...' : 'Executar Ações'}
             </Button>
-            {latestAudit && (
+            {viewingAudit && (
               <Button 
                 onClick={handleReanalyze}
                 disabled={analyzeMutation.isPending}
