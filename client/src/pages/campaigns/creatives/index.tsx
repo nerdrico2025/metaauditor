@@ -120,6 +120,7 @@ export default function Creatives() {
   const [viewingAudit, setViewingAudit] = useState<Audit | null>(null);
   const [showAuditDialog, setShowAuditDialog] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [analyzingCreativeId, setAnalyzingCreativeId] = useState<string | null>(null);
   const itemsPerPage = 10;
 
   // Check for adSetId filter in URL params
@@ -168,16 +169,21 @@ export default function Creatives() {
   });
 
   const analyzeCreativeMutation = useMutation({
-    mutationFn: (creativeId: string) => 
-      apiRequest(`/api/creatives/${creativeId}/analyze`, { method: 'POST' }),
-    onSuccess: () => {
+    mutationFn: (creativeId: string) => {
+      setAnalyzingCreativeId(creativeId);
+      return apiRequest(`/api/creatives/${creativeId}/analyze`, { method: 'POST' });
+    },
+    onSuccess: (data, creativeId) => {
       queryClient.invalidateQueries({ queryKey: ['/api/creatives'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/creatives/${creativeId}/audits`] });
+      setAnalyzingCreativeId(null);
       toast({ 
         title: '✅ Análise concluída!',
         description: 'O criativo foi analisado com sucesso.',
       });
     },
     onError: (error: Error) => {
+      setAnalyzingCreativeId(null);
       toast({
         title: 'Erro na análise',
         description: error.message,
@@ -728,7 +734,7 @@ export default function Creatives() {
                                     title="Analisar este anúncio"
                                     data-testid={`button-analyze-${creative.id}`}
                                   >
-                                    <Sparkles className={`h-4 w-4 ${analyzeCreativeMutation.isPending ? 'animate-spin' : ''}`} />
+                                    <Sparkles className={`h-4 w-4 ${analyzingCreativeId === creative.id ? 'animate-spin' : ''}`} />
                                   </Button>
                                   <CreativeAuditButton creativeId={creative.id} onViewAudit={(audit) => {
                                     setViewingAudit(audit);

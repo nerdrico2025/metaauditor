@@ -104,7 +104,9 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
       // Update the audit data immediately with the fresh analysis result
       queryClient.setQueryData([`/api/creatives/${creative.id}/audits`], [newAudit]);
       setViewingAudit(newAudit); // Update viewingAudit state
+      // Invalidate all related queries to update the UI
       queryClient.invalidateQueries({ queryKey: [`/api/creatives/${creative.id}/audits`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/creatives'] });
     },
     onError: (error) => {
       if (isUnauthorizedError(error as Error)) {
@@ -381,47 +383,60 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
                   </div>
                 ) : viewingAudit ? (
                   <div className="space-y-6">
-                    {/* KPIs Principais - Destaque */}
-                    <div className="grid grid-cols-3 gap-4">
-                      <Card className="border-2 border-primary/20">
-                        <CardContent className="pt-6">
-                          <div className="text-center">
-                            <Shield className="h-10 w-10 text-primary mx-auto mb-3" />
-                            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Conformidade de Marca</p>
-                            <p className="text-5xl font-bold text-primary mb-2">{viewingAudit.complianceScore}%</p>
-                            <Badge className="mt-1" variant={viewingAudit.complianceScore >= 80 ? 'default' : 'destructive'}>
-                              {viewingAudit.complianceScore >= 80 ? 'Aprovado' : 'Reprovado'}
+                    {/* KPIs Principais - Destaque Máximo */}
+                    <div className="bg-gradient-to-br from-primary/5 to-primary/10 dark:from-primary/10 dark:to-primary/20 rounded-xl p-6 border-2 border-primary/20">
+                      <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6 text-center">
+                        📊 Principais Indicadores de Performance
+                      </h3>
+                      <div className="grid grid-cols-3 gap-6">
+                        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 text-center shadow-lg border-2 border-primary/30 hover:border-primary/60 transition-colors">
+                          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 dark:bg-primary/20 mb-4">
+                            <Shield className="h-8 w-8 text-primary" />
+                          </div>
+                          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+                            Conformidade de Marca
+                          </p>
+                          <p className="text-6xl font-extrabold text-primary mb-3 leading-none">
+                            {viewingAudit.complianceScore}
+                            <span className="text-3xl">%</span>
+                          </p>
+                          <Badge className="text-sm px-4 py-1.5 font-semibold" variant={viewingAudit.complianceScore >= 80 ? 'default' : 'destructive'}>
+                            {viewingAudit.complianceScore >= 80 ? '✓ Aprovado' : '✗ Reprovado'}
+                          </Badge>
+                        </div>
+
+                        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 text-center shadow-lg border-2 border-primary/30 hover:border-primary/60 transition-colors">
+                          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 dark:bg-primary/20 mb-4">
+                            <TrendingUp className="h-8 w-8 text-primary" />
+                          </div>
+                          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+                            Performance
+                          </p>
+                          <p className="text-6xl font-extrabold text-primary mb-3 leading-none">
+                            {viewingAudit.performanceScore}
+                            <span className="text-3xl">%</span>
+                          </p>
+                          <Badge className="text-sm px-4 py-1.5 font-semibold" variant={viewingAudit.performanceScore >= 60 ? 'default' : 'destructive'}>
+                            {viewingAudit.performanceScore >= 80 ? '🔥 Alta' : viewingAudit.performanceScore >= 60 ? '📈 Média' : '📉 Baixa'}
+                          </Badge>
+                        </div>
+
+                        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 text-center shadow-lg border-2 border-primary/30 hover:border-primary/60 transition-colors">
+                          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 dark:bg-primary/20 mb-4">
+                            <CheckCircle className="h-8 w-8 text-primary" />
+                          </div>
+                          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+                            Status Geral
+                          </p>
+                          <div className="h-24 flex items-center justify-center">
+                            <Badge className="text-lg px-6 py-3 font-bold" variant={viewingAudit.status === 'conforme' ? 'default' : 'destructive'}>
+                              {viewingAudit.status === 'conforme' ? '✓ Conforme' :
+                               viewingAudit.status === 'parcialmente_conforme' ? '⚠ Parcial' :
+                               '✗ Não Conforme'}
                             </Badge>
                           </div>
-                        </CardContent>
-                      </Card>
-                      <Card className="border-2 border-primary/20">
-                        <CardContent className="pt-6">
-                          <div className="text-center">
-                            <TrendingUp className="h-10 w-10 text-primary mx-auto mb-3" />
-                            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Performance de Métricas</p>
-                            <p className="text-5xl font-bold text-primary mb-2">{viewingAudit.performanceScore}%</p>
-                            <Badge className="mt-1" variant={viewingAudit.performanceScore >= 60 ? 'default' : 'destructive'}>
-                              {viewingAudit.performanceScore >= 80 ? 'Alta' : viewingAudit.performanceScore >= 60 ? 'Média' : 'Baixa'}
-                            </Badge>
-                          </div>
-                        </CardContent>
-                      </Card>
-                      <Card className="border-2 border-primary/20">
-                        <CardContent className="pt-6">
-                          <div className="text-center">
-                            <CheckCircle className="h-10 w-10 text-primary mx-auto mb-3" />
-                            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Status Geral</p>
-                            <div className="mt-6">
-                              <Badge className="text-base px-4 py-2" variant={viewingAudit.status === 'conforme' ? 'default' : 'destructive'}>
-                                {viewingAudit.status === 'conforme' ? 'Conforme' :
-                                 viewingAudit.status === 'parcialmente_conforme' ? 'Parcial' :
-                                 'Não Conforme'}
-                              </Badge>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
+                        </div>
+                      </div>
                     </div>
 
                     {/* Detalhamento da IA - Accordion Expansível */}
