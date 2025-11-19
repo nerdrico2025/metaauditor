@@ -439,6 +439,78 @@ router.post('/:id/sync', authenticateToken, async (req: Request, res: Response, 
   }
 });
 
+// Debug endpoint: Count total ads in database
+router.get('/:id/debug/count-ads', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = (req as any).user?.userId;
+    const integration = await storage.getIntegrationById(req.params.id);
+    
+    if (!integration) {
+      return res.status(404).json({ message: 'Integração não encontrada' });
+    }
+
+    if (integration.userId !== userId) {
+      return res.status(403).json({ message: 'Sem permissão para acessar esta integração' });
+    }
+
+    // Get all campaigns from this integration
+    const campaigns = await storage.getCampaignsByUser(userId);
+    const metaCampaigns = campaigns.filter(c => c.platform === 'meta' && c.integrationId === integration.id);
+
+    let totalAds = 0;
+    const campaignDetails = [];
+
+    for (const campaign of metaCampaigns) {
+      // Get ad sets for this campaign
+      const adSets = await storage.getAdSetsByCampaign(campaign.id);
+      
+      let campaignAdCount = 0;
+      const adSetDetails = [];
+
+      for (const adSet of adSets) {
+        // Count creatives for this ad set
+        const creatives = await storage.getCreativesByUser(userId);
+        const adSetCreatives = creatives.filter(c => c.adSetId === adSet.id);
+        
+        campaignAdCount += adSetCreatives.length;
+        totalAds += adSetCreatives.length;
+
+        adSetDetails.push({
+          id: adSet.id,
+          name: adSet.name,
+          externalId: adSet.externalId,
+          adsCount: adSetCreatives.length,
+          status: adSet.status
+        });
+      }
+
+      campaignDetails.push({
+        id: campaign.id,
+        name: campaign.name,
+        externalId: campaign.externalId,
+        adSetsCount: adSets.length,
+        adsCount: campaignAdCount,
+        status: campaign.status,
+        adSets: adSetDetails
+      });
+    }
+
+    return res.json({
+      integration: {
+        id: integration.id,
+        platform: integration.platform,
+        accountName: integration.accountName
+      },
+      totalCampaigns: metaCampaigns.length,
+      totalAdSets: campaignDetails.reduce((sum, c) => sum + c.adSetsCount, 0),
+      totalAds,
+      campaigns: campaignDetails
+    });
+  } catch (error: any) {
+    next(error);
+  }
+});
+
 // Validate integration token
 router.post('/:id/validate', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
