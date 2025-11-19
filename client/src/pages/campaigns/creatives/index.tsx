@@ -813,150 +813,178 @@ export default function Creatives() {
           </DialogHeader>
           {viewingAudit && (
             <div className="space-y-6">
-              {/* Scores Section */}
-              <div className="grid grid-cols-3 gap-4">
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="text-center">
-                      <Shield className="h-8 w-8 text-primary mx-auto mb-2" />
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Conformidade de Marca</p>
-                      <p className="text-4xl font-bold text-primary">{viewingAudit.complianceScore}%</p>
-                      <Badge className="mt-2" variant={viewingAudit.complianceScore >= 80 ? 'default' : 'destructive'}>
-                        {viewingAudit.complianceScore >= 80 ? 'Aprovado' : 'Reprovado'}
+              {/* KPIs Principais - Destaque Máximo */}
+              <div className="bg-gradient-to-br from-primary/5 to-primary/10 dark:from-primary/10 dark:to-primary/20 rounded-xl p-6 border-2 border-primary/20">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6 text-center">
+                  📊 Principais Indicadores de Performance
+                </h3>
+                <div className="grid grid-cols-3 gap-6">
+                  <div className="bg-white dark:bg-gray-800 rounded-lg p-6 text-center shadow-lg border-2 border-primary/30 hover:border-primary/60 transition-colors">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 dark:bg-primary/20 mb-4">
+                      <Shield className="h-8 w-8 text-primary" />
+                    </div>
+                    <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+                      Conformidade de Marca
+                    </p>
+                    <p className="text-6xl font-extrabold text-primary mb-3 leading-none">
+                      {viewingAudit.complianceScore}
+                      <span className="text-3xl">%</span>
+                    </p>
+                    <Badge className="text-sm px-4 py-1.5 font-semibold" variant={viewingAudit.complianceScore >= 80 ? 'default' : 'destructive'}>
+                      {viewingAudit.complianceScore >= 80 ? '✓ Aprovado' : '✗ Reprovado'}
+                    </Badge>
+                  </div>
+
+                  <div className="bg-white dark:bg-gray-800 rounded-lg p-6 text-center shadow-lg border-2 border-primary/30 hover:border-primary/60 transition-colors">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 dark:bg-primary/20 mb-4">
+                      <TrendingUp className="h-8 w-8 text-primary" />
+                    </div>
+                    <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+                      Performance
+                    </p>
+                    <p className="text-6xl font-extrabold text-primary mb-3 leading-none">
+                      {viewingAudit.performanceScore}
+                      <span className="text-3xl">%</span>
+                    </p>
+                    <Badge className="text-sm px-4 py-1.5 font-semibold" variant={viewingAudit.performanceScore >= 60 ? 'default' : 'destructive'}>
+                      {viewingAudit.performanceScore >= 80 ? '🔥 Alta' : viewingAudit.performanceScore >= 60 ? '📈 Média' : '📉 Baixa'}
+                    </Badge>
+                  </div>
+
+                  <div className="bg-white dark:bg-gray-800 rounded-lg p-6 text-center shadow-lg border-2 border-primary/30 hover:border-primary/60 transition-colors">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 dark:bg-primary/20 mb-4">
+                      <CheckCircle className="h-8 w-8 text-primary" />
+                    </div>
+                    <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+                      Status Geral
+                    </p>
+                    <div className="h-24 flex items-center justify-center">
+                      <Badge className="text-lg px-6 py-3 font-bold" variant={viewingAudit.status === 'conforme' ? 'default' : 'destructive'}>
+                        {viewingAudit.status === 'conforme' ? '✓ Conforme' :
+                         viewingAudit.status === 'parcialmente_conforme' ? '⚠ Parcial' :
+                         '✗ Não Conforme'}
                       </Badge>
                     </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="text-center">
-                      <TrendingUp className="h-8 w-8 text-primary mx-auto mb-2" />
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Performance de Métricas</p>
-                      <p className="text-4xl font-bold text-primary">{viewingAudit.performanceScore}%</p>
-                      <Badge className="mt-2" variant={viewingAudit.performanceScore >= 60 ? 'default' : 'destructive'}>
-                        {viewingAudit.performanceScore >= 80 ? 'Alta' : viewingAudit.performanceScore >= 60 ? 'Média' : 'Baixa'}
-                      </Badge>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="text-center">
-                      <CheckCircle className="h-8 w-8 text-primary mx-auto mb-2" />
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Status Geral</p>
-                      <div className="mt-3">
-                        <Badge variant={viewingAudit.status === 'conforme' ? 'default' : 'destructive'}>
-                          {viewingAudit.status === 'conforme' ? 'Conforme' :
-                           viewingAudit.status === 'parcialmente_conforme' ? 'Parcial' :
-                           'Não Conforme'}
-                        </Badge>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               </div>
 
-              {/* Compliance Details */}
-              {viewingAudit.aiAnalysis?.compliance && (
+              {/* Detalhamento da IA - Seção Expansível */}
+              {(viewingAudit.aiAnalysis?.compliance || viewingAudit.aiAnalysis?.performance) && (
                 <Card>
                   <CardContent className="pt-6">
-                    <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
-                      <Palette className="h-5 w-5" />
-                      Análise de Conformidade de Marca
-                    </h3>
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                      <div className="flex items-center gap-2">
-                        {viewingAudit.aiAnalysis.compliance.analysis?.logoCompliance ? (
-                          <CheckCircle className="h-5 w-5 text-green-500" />
-                        ) : (
-                          <XCircle className="h-5 w-5 text-red-500" />
-                        )}
-                        <span className="text-sm">Logo da Marca</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {viewingAudit.aiAnalysis.compliance.analysis?.colorCompliance ? (
-                          <CheckCircle className="h-5 w-5 text-green-500" />
-                        ) : (
-                          <XCircle className="h-5 w-5 text-red-500" />
-                        )}
-                        <span className="text-sm">Cores da Marca</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {viewingAudit.aiAnalysis.compliance.analysis?.textCompliance ? (
-                          <CheckCircle className="h-5 w-5 text-green-500" />
-                        ) : (
-                          <XCircle className="h-5 w-5 text-red-500" />
-                        )}
-                        <span className="text-sm">Texto e Palavras-chave</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {viewingAudit.aiAnalysis.compliance.analysis?.brandGuidelines ? (
-                          <CheckCircle className="h-5 w-5 text-green-500" />
-                        ) : (
-                          <XCircle className="h-5 w-5 text-red-500" />
-                        )}
-                        <span className="text-sm">Diretrizes da Marca</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+                    <details className="group">
+                      <summary className="flex items-center justify-between cursor-pointer list-none hover:bg-gray-50 dark:hover:bg-gray-800 p-3 rounded-lg transition-colors">
+                        <h3 className="font-bold text-lg flex items-center gap-2">
+                          <Sparkles className="h-5 w-5 text-primary" />
+                          Detalhamento da Análise IA
+                        </h3>
+                        <ChevronRight className="h-5 w-5 text-gray-500 transition-transform group-open:rotate-90" />
+                      </summary>
 
-              {/* Performance Metrics */}
-              {viewingAudit.aiAnalysis?.performance && (
-                <Card>
-                  <CardContent className="pt-6">
-                    <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
-                      <BarChart3 className="h-5 w-5" />
-                      Análise de Métricas de Performance
-                    </h3>
-                    <div className="space-y-4">
-                      {viewingAudit.aiAnalysis.performance.metrics?.ctrAnalysis && (
-                        <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
-                          <p className="font-semibold text-sm mb-1 flex items-center gap-2">
-                            <MousePointer className="h-4 w-4" />
-                            CTR (Click-Through Rate)
-                          </p>
-                          <p className="text-sm text-gray-700 dark:text-gray-300">
-                            {viewingAudit.aiAnalysis.performance.metrics.ctrAnalysis}
-                          </p>
-                        </div>
-                      )}
-                      {viewingAudit.aiAnalysis.performance.metrics?.conversionAnalysis && (
-                        <div className="p-3 bg-green-50 dark:bg-green-950 rounded-lg">
-                          <p className="font-semibold text-sm mb-1 flex items-center gap-2">
-                            <TrendingUp className="h-4 w-4" />
-                            Conversões
-                          </p>
-                          <p className="text-sm text-gray-700 dark:text-gray-300">
-                            {viewingAudit.aiAnalysis.performance.metrics.conversionAnalysis}
-                          </p>
-                        </div>
-                      )}
-                      {viewingAudit.aiAnalysis.performance.metrics?.costEfficiency && (
-                        <div className="p-3 bg-purple-50 dark:bg-purple-950 rounded-lg">
-                          <p className="font-semibold text-sm mb-1 flex items-center gap-2">
-                            <BarChart3 className="h-4 w-4" />
-                            Custo e Eficiência
-                          </p>
-                          <p className="text-sm text-gray-700 dark:text-gray-300">
-                            {viewingAudit.aiAnalysis.performance.metrics.costEfficiency}
-                          </p>
-                        </div>
-                      )}
-                      <div className="p-3 bg-orange-50 dark:bg-orange-950 rounded-lg">
-                        <p className="font-semibold text-sm mb-1">Classificação de Performance</p>
-                        <Badge variant={
-                          viewingAudit.aiAnalysis.performance.performance === 'high' ? 'default' :
-                          viewingAudit.aiAnalysis.performance.performance === 'medium' ? 'secondary' :
-                          'destructive'
-                        }>
-                          {viewingAudit.aiAnalysis.performance.performance === 'high' ? 'Alta Performance' :
-                           viewingAudit.aiAnalysis.performance.performance === 'medium' ? 'Performance Média' :
-                           'Baixa Performance'}
-                        </Badge>
+                      <div className="mt-6 space-y-6">
+                        {/* Compliance Details */}
+                        {viewingAudit.aiAnalysis?.compliance && (
+                          <div>
+                            <h4 className="font-semibold text-md mb-3 flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                              <Palette className="h-4 w-4" />
+                              Conformidade de Marca
+                            </h4>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                                {viewingAudit.aiAnalysis.compliance.analysis?.logoCompliance ? (
+                                  <CheckCircle className="h-4 w-4 text-green-500" />
+                                ) : (
+                                  <XCircle className="h-4 w-4 text-red-500" />
+                                )}
+                                <span className="text-sm">Logo da Marca</span>
+                              </div>
+                              <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                                {viewingAudit.aiAnalysis.compliance.analysis?.colorCompliance ? (
+                                  <CheckCircle className="h-4 w-4 text-green-500" />
+                                ) : (
+                                  <XCircle className="h-4 w-4 text-red-500" />
+                                )}
+                                <span className="text-sm">Cores da Marca</span>
+                              </div>
+                              <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                                {viewingAudit.aiAnalysis.compliance.analysis?.textCompliance ? (
+                                  <CheckCircle className="h-4 w-4 text-green-500" />
+                                ) : (
+                                  <XCircle className="h-4 w-4 text-red-500" />
+                                )}
+                                <span className="text-sm">Texto e Palavras-chave</span>
+                              </div>
+                              <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                                {viewingAudit.aiAnalysis.compliance.analysis?.brandGuidelines ? (
+                                  <CheckCircle className="h-4 w-4 text-green-500" />
+                                ) : (
+                                  <XCircle className="h-4 w-4 text-red-500" />
+                                )}
+                                <span className="text-sm">Diretrizes da Marca</span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Performance Metrics */}
+                        {viewingAudit.aiAnalysis?.performance && (
+                          <div>
+                            <h4 className="font-semibold text-md mb-3 flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                              <BarChart3 className="h-4 w-4" />
+                              Métricas de Performance
+                            </h4>
+                            <div className="space-y-3">
+                              {viewingAudit.aiAnalysis.performance.metrics?.ctrAnalysis && (
+                                <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                                  <p className="font-semibold text-sm mb-1 flex items-center gap-2">
+                                    <MousePointer className="h-4 w-4" />
+                                    CTR (Click-Through Rate)
+                                  </p>
+                                  <p className="text-xs text-gray-700 dark:text-gray-300">
+                                    {viewingAudit.aiAnalysis.performance.metrics.ctrAnalysis}
+                                  </p>
+                                </div>
+                              )}
+                              {viewingAudit.aiAnalysis.performance.metrics?.conversionAnalysis && (
+                                <div className="p-3 bg-green-50 dark:bg-green-950 rounded-lg">
+                                  <p className="font-semibold text-sm mb-1 flex items-center gap-2">
+                                    <TrendingUp className="h-4 w-4" />
+                                    Conversões
+                                  </p>
+                                  <p className="text-xs text-gray-700 dark:text-gray-300">
+                                    {viewingAudit.aiAnalysis.performance.metrics.conversionAnalysis}
+                                  </p>
+                                </div>
+                              )}
+                              {viewingAudit.aiAnalysis.performance.metrics?.costEfficiency && (
+                                <div className="p-3 bg-purple-50 dark:bg-purple-950 rounded-lg">
+                                  <p className="font-semibold text-sm mb-1 flex items-center gap-2">
+                                    <BarChart3 className="h-4 w-4" />
+                                    Custo e Eficiência
+                                  </p>
+                                  <p className="text-xs text-gray-700 dark:text-gray-300">
+                                    {viewingAudit.aiAnalysis.performance.metrics.costEfficiency}
+                                  </p>
+                                </div>
+                              )}
+                              <div className="p-3 bg-orange-50 dark:bg-orange-950 rounded-lg">
+                                <p className="font-semibold text-sm mb-1">Classificação de Performance</p>
+                                <Badge variant={
+                                  viewingAudit.aiAnalysis.performance.performance === 'high' ? 'default' :
+                                  viewingAudit.aiAnalysis.performance.performance === 'medium' ? 'secondary' :
+                                  'destructive'
+                                }>
+                                  {viewingAudit.aiAnalysis.performance.performance === 'high' ? 'Alta Performance' :
+                                   viewingAudit.aiAnalysis.performance.performance === 'medium' ? 'Performance Média' :
+                                   'Baixa Performance'}
+                                </Badge>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </div>
+                    </details>
                   </CardContent>
                 </Card>
               )}
