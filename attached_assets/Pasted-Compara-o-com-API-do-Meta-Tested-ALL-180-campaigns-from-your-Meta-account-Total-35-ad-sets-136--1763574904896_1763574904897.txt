@@ -1,0 +1,1293 @@
+Comparação com API do Meta
+Tested ALL 180 campaigns from your Meta account - Total: 35 ad sets, 136 anúncios
+[OUT - CONTA 2 - NIO] 29.10 — Cópia
+120237154070420152
+
+Ad Sets (API)
+
+1
+
+Ads no Banco
+
+4
+
+Ads na API
+
+4
+
+Diferença
+
+0
+
+[OUT - CONTA 2 - NIO] 29.10 — Cópia
+120237154069670152
+
+Ad Sets (API)
+
+1
+
+Ads no Banco
+
+4
+
+Ads na API
+
+4
+
+Diferença
+
+0
+
+[OUT - CONTA 2 - NIO] 29.10 — Cópia
+120237154068030152
+
+Ad Sets (API)
+
+1
+
+Ads no Banco
+
+4
+
+Ads na API
+
+4
+
+Diferença
+
+0
+
+[OUT - CONTA 2 - NIO] 29.10 — Cópia
+120237154065680152
+
+Ad Sets (API)
+
+1
+
+Ads no Banco
+
+4
+
+Ads na API
+
+4
+
+Diferença
+
+0
+
+[OUT - CONTA 2 - NIO] 29.10 — Cópia
+120237154063960152
+
+Ad Sets (API)
+
+1
+
+Ads no Banco
+
+4
+
+Ads na API
+
+4
+
+Diferença
+
+0
+
+[OUT - CONTA 2 - NIO] 29.10 — Cópia
+120237154062750152
+
+Ad Sets (API)
+
+1
+
+Ads no Banco
+
+4
+
+Ads na API
+
+4
+
+Diferença
+
+0
+
+[OUT - CONTA 2 - NIO] 29.10 — Cópia
+120237154061290152
+
+Ad Sets (API)
+
+1
+
+Ads no Banco
+
+4
+
+Ads na API
+
+4
+
+Diferença
+
+0
+
+[OUT - CONTA 2 - NIO] 29.10 — Cópia
+120237154059020152
+
+Ad Sets (API)
+
+1
+
+Ads no Banco
+
+4
+
+Ads na API
+
+4
+
+Diferença
+
+0
+
+[OUT - CONTA 2 - NIO] 29.10 — Cópia
+120237154057140152
+
+Ad Sets (API)
+
+1
+
+Ads no Banco
+
+4
+
+Ads na API
+
+4
+
+Diferença
+
+0
+
+[OUT - CONTA 2 - NIO] 29.10 — Cópia
+120237154056320152
+
+Ad Sets (API)
+
+1
+
+Ads no Banco
+
+4
+
+Ads na API
+
+4
+
+Diferença
+
+0
+
+[OUT - CONTA 2 - NIO] 29.10 — Cópia
+120237154054900152
+
+Ad Sets (API)
+
+1
+
+Ads no Banco
+
+4
+
+Ads na API
+
+4
+
+Diferença
+
+0
+
+[OUT - CONTA 2 - NIO] 29.10 — Cópia
+120237154053740152
+
+Ad Sets (API)
+
+1
+
+Ads no Banco
+
+4
+
+Ads na API
+
+4
+
+Diferença
+
+0
+
+[OUT - CONTA 2 - NIO] 29.10
+120237153775850152
+
+Ad Sets (API)
+
+1
+
+Ads no Banco
+
+4
+
+Ads na API
+
+4
+
+Diferença
+
+0
+
+[OUT - CONTA 2 - NIO] 12.11 — Cópia
+120237955527860152
+
+Ad Sets (API)
+
+1
+
+Ads no Banco
+
+4
+
+Ads na API
+
+4
+
+Diferença
+
+0
+
+[OUT - CONTA 2 - NIO] 12.11 — Cópia
+120237955526570152
+
+Ad Sets (API)
+
+1
+
+Ads no Banco
+
+4
+
+Ads na API
+
+4
+
+Diferença
+
+0
+
+[OUT - CONTA 2 - NIO] 12.11 — Cópia
+120237955525740152
+
+Ad Sets (API)
+
+1
+
+Ads no Banco
+
+4
+
+Ads na API
+
+4
+
+Diferença
+
+0
+
+[OUT - CONTA 2 - NIO] 12.11 — Cópia
+120237955525340152
+
+Ad Sets (API)
+
+1
+
+Ads no Banco
+
+4
+
+Ads na API
+
+4
+
+Diferença
+
+0
+
+[OUT - CONTA 2 - NIO] 12.11 — Cópia
+120237955524510152
+
+Ad Sets (API)
+
+1
+
+Ads no Banco
+
+4
+
+Ads na API
+
+4
+
+Diferença
+
+0
+
+[OUT - CONTA 2 - NIO] 12.11 — Cópia
+120237955524150152
+
+Ad Sets (API)
+
+1
+
+Ads no Banco
+
+4
+
+Ads na API
+
+4
+
+Diferença
+
+0
+
+[OUT - CONTA 2 - NIO] 12.11 — Cópia
+120237955518960152
+
+Ad Sets (API)
+
+1
+
+Ads no Banco
+
+4
+
+Ads na API
+
+4
+
+Diferença
+
+0
+
+[OUT - CONTA 2 - NIO] 12.11 — Cópia
+120237955518550152
+
+Ad Sets (API)
+
+1
+
+Ads no Banco
+
+4
+
+Ads na API
+
+4
+
+Diferença
+
+0
+
+[OUT - CONTA 2 - NIO] 12.11 — Cópia
+120237955517890152
+
+Ad Sets (API)
+
+1
+
+Ads no Banco
+
+4
+
+Ads na API
+
+4
+
+Diferença
+
+0
+
+[OUT - CONTA 2 - NIO] 12.11 — Cópia
+120237955516450152
+
+Ad Sets (API)
+
+1
+
+Ads no Banco
+
+4
+
+Ads na API
+
+4
+
+Diferença
+
+0
+
+[OUT - CONTA 2 - NIO] 12.11 — Cópia
+120237955516050152
+
+Ad Sets (API)
+
+1
+
+Ads no Banco
+
+4
+
+Ads na API
+
+4
+
+Diferença
+
+0
+
+[OUT - CONTA 2 - NIO] 12.11 — Cópia
+120237955515530152
+
+Ad Sets (API)
+
+1
+
+Ads no Banco
+
+4
+
+Ads na API
+
+4
+
+Diferença
+
+0
+
+[OUT - CONTA 2 - NIO] 12.11 — Cópia
+120237955514890152
+
+Ad Sets (API)
+
+1
+
+Ads no Banco
+
+4
+
+Ads na API
+
+4
+
+Diferença
+
+0
+
+[OUT - CONTA 2 - NIO] 12.11 — Cópia
+120237955514640152
+
+Ad Sets (API)
+
+1
+
+Ads no Banco
+
+4
+
+Ads na API
+
+4
+
+Diferença
+
+0
+
+[OUT - CONTA 2 - NIO] 12.11 — Cópia
+120237955514190152
+
+Ad Sets (API)
+
+1
+
+Ads no Banco
+
+4
+
+Ads na API
+
+4
+
+Diferença
+
+0
+
+[OUT - CONTA 2 - NIO] 12.11 — Cópia
+120237955273870152
+
+Ad Sets (API)
+
+1
+
+Ads no Banco
+
+4
+
+Ads na API
+
+4
+
+Diferença
+
+0
+
+[OUT - CONTA 2 - NIO] 12.11
+120237954935720152
+
+Ad Sets (API)
+
+1
+
+Ads no Banco
+
+4
+
+Ads na API
+
+4
+
+Diferença
+
+0
+
+[SET - CONTA 2] 16.09 — Cópia
+120233896160860152
+
+Ad Sets (API)
+
+1
+
+Ads no Banco
+
+4
+
+Ads na API
+
+4
+
+Diferença
+
+0
+
+[SET - CONTA 2] 16.09 — Cópia
+120233896160140152
+
+Ad Sets (API)
+
+1
+
+Ads no Banco
+
+4
+
+Ads na API
+
+4
+
+Diferença
+
+0
+
+[SET - CONTA 2] 16.09 — Cópia
+120233896159860152
+
+Ad Sets (API)
+
+1
+
+Ads no Banco
+
+4
+
+Ads na API
+
+4
+
+Diferença
+
+0
+
+[SET - CONTA 2] 16.09 — Cópia
+120233896159550152
+
+Ad Sets (API)
+
+1
+
+Ads no Banco
+
+4
+
+Ads na API
+
+4
+
+Diferença
+
+0
+
+[SET - CONTA 2] 16.09 — Cópia
+120233896158280152
+
+Ad Sets (API)
+
+1
+
+Ads no Banco
+
+4
+
+Ads na API
+
+0
+
+Diferença
+
+-4
+
+[SET - CONTA 2] 16.09 — Cópia
+120233896158200152
+
+Ad Sets (API)
+
+0
+
+Ads no Banco
+
+4
+
+Ads na API
+
+0
+
+Diferença
+
+-4
+
+[SET - CONTA 2] 16.09
+120233896153030152
+
+Ad Sets (API)
+
+0
+
+Ads no Banco
+
+4
+
+Ads na API
+
+0
+
+Diferença
+
+-4
+
+[SET - CONTA 2] 14.09 — Cópia — Cópia
+120233850343110152
+
+Ad Sets (API)
+
+0
+
+Ads no Banco
+
+4
+
+Ads na API
+
+0
+
+Diferença
+
+-4
+
+[SET - CONTA 2] 14.09 — Cópia — Cópia
+120233850342580152
+
+Ad Sets (API)
+
+0
+
+Ads no Banco
+
+4
+
+Ads na API
+
+0
+
+Diferença
+
+-4
+
+[SET - CONTA 2] 14.09 — Cópia — Cópia
+120233850341850152
+
+Ad Sets (API)
+
+0
+
+Ads no Banco
+
+4
+
+Ads na API
+
+0
+
+Diferença
+
+-4
+
+[SET - CONTA 2] 14.09 — Cópia — Cópia
+120233850340770152
+
+Ad Sets (API)
+
+0
+
+Ads no Banco
+
+4
+
+Ads na API
+
+0
+
+Diferença
+
+-4
+
+[SET - CONTA 2] 14.09 — Cópia — Cópia
+120233850338320152
+
+Ad Sets (API)
+
+0
+
+Ads no Banco
+
+4
+
+Ads na API
+
+0
+
+Diferença
+
+-4
+
+[SET - CONTA 2] 14.09 — Cópia — Cópia
+120233850337360152
+
+Ad Sets (API)
+
+0
+
+Ads no Banco
+
+4
+
+Ads na API
+
+0
+
+Diferença
+
+-4
+
+[SET - CONTA 2] 14.09 — Cópia — Cópia
+120233850335650152
+
+Ad Sets (API)
+
+0
+
+Ads no Banco
+
+4
+
+Ads na API
+
+0
+
+Diferença
+
+-4
+
+[SET - CONTA 2] 14.09 — Cópia — Cópia
+120233850335500152
+
+Ad Sets (API)
+
+0
+
+Ads no Banco
+
+4
+
+Ads na API
+
+0
+
+Diferença
+
+-4
+
+[SET - CONTA 2] 14.09 — Cópia — Cópia
+120233850335290152
+
+Ad Sets (API)
+
+0
+
+Ads no Banco
+
+4
+
+Ads na API
+
+0
+
+Diferença
+
+-4
+
+[SET - CONTA 2] 14.09 — Cópia
+120233850335150152
+
+Ad Sets (API)
+
+0
+
+Ads no Banco
+
+4
+
+Ads na API
+
+0
+
+Diferença
+
+-4
+
+[SET - CONTA 2] 14.09
+120233850291720152
+
+Ad Sets (API)
+
+0
+
+Ads no Banco
+
+4
+
+Ads na API
+
+0
+
+Diferença
+
+-4
+
+18.08 - VENDAS MANYCHAT — Cópia
+120232366510920152
+
+Ad Sets (API)
+
+0
+
+Ads no Banco
+
+4
+
+Ads na API
+
+0
+
+Diferença
+
+-4
+
+18.08 - VENDAS MANYCHAT — Cópia
+120232366507470152
+
+Ad Sets (API)
+
+0
+
+Ads no Banco
+
+4
+
+Ads na API
+
+0
+
+Diferença
+
+-4
+
+18.08 - VENDAS MANYCHAT — Cópia
+120232366504490152
+
+Ad Sets (API)
+
+0
+
+Ads no Banco
+
+4
+
+Ads na API
+
+0
+
+Diferença
+
+-4
+
+18.08 - VENDAS MANYCHAT — Cópia
+120232366501440152
+
+Ad Sets (API)
+
+0
+
+Ads no Banco
+
+4
+
+Ads na API
+
+0
+
+Diferença
+
+-4
+
+18.08 - VENDAS MANYCHAT — Cópia
+120232366499490152
+
+Ad Sets (API)
+
+0
+
+Ads no Banco
+
+4
+
+Ads na API
+
+0
+
+Diferença
+
+-4
+
+18.08 - VENDAS MANYCHAT — Cópia
+120232366496680152
+
+Ad Sets (API)
+
+0
+
+Ads no Banco
+
+4
+
+Ads na API
+
+0
+
+Diferença
+
+-4
+
+18.08 - VENDAS MANYCHAT — Cópia
+120232366494850152
+
+Ad Sets (API)
+
+0
+
+Ads no Banco
+
+4
+
+Ads na API
+
+0
+
+Diferença
+
+-4
+
+18.08 - VENDAS MANYCHAT — Cópia
+120232366492290152
+
+Ad Sets (API)
+
+0
+
+Ads no Banco
+
+4
+
+Ads na API
+
+0
+
+Diferença
+
+-4
+
+18.08 - VENDAS MANYCHAT — Cópia
+120232366490150152
+
+Ad Sets (API)
+
+0
+
+Ads no Banco
+
+4
+
+Ads na API
+
+0
+
+Diferença
+
+-4
+
+18.08 - VENDAS MANYCHAT
+120232366382130152
+
+Ad Sets (API)
+
+0
+
+Ads no Banco
+
+4
+
+Ads na API
+
+0
+
+Diferença
+
+-4
+
+CONTA 8 - BCV — Cópia — Cópia
+120232117029610152
+
+Ad Sets (API)
+
+0
+
+Ads no Banco
+
+3
+
+Ads na API
+
+0
+
+Diferença
+
+-3
+
+CONTA 8 - BCV — Cópia — Cópia
+120232117028480152
+
+Ad Sets (API)
+
+0
+
+Ads no Banco
+
+3
+
+Ads na API
+
+0
+
+Diferença
+
+-3
+
+CONTA 8 - BCV — Cópia
+120232117011390152
+
+Ad Sets (API)
+
+0
+
+Ads no Banco
+
+3
+
+Ads na API
+
+0
+
+Diferença
+
+-3
+
+CONTA 8 - BCV
+120232094341450152
+
+Ad Sets (API)
+
+0
+
+Ads no Banco
+
+3
+
+Ads na API
+
+0
+
+Diferença
+
+-3
+
+XXXXX
+120232094131380152
+
+Ad Sets (API)
+
+0
+
+Ads no Banco
+
+3
+
+Ads na API
+
+0
+
+Diferença
+
+-3
+
+[AGOOOSTO] DUPL — Cópia — Cópia — Cópia
+120231956721770152
+
+Ad Sets (API)
+
+0
+
+Ads no Banco
+
+2
+
+Ads na API
+
+0
+
+Diferença
+
+-2
+
+[AGOOOSTO] DUPL — Cópia — Cópia — Cópia
+120231956721590152
+
+Ad Sets (API)
+
+0
+
+Ads no Banco
+
+4
+
+Ads na API
+
+0
+
+Diferença
+
+-4
+
+[AGOOOSTO] DUPL — Cópia — Cópia — Cópia
+120231956721510152
+
+Ad Sets (API)
+
+0
+
+Ads no Banco
+
+4
+
+Ads na API
+
+0
+
+Diferença
+
+-4
+
+[AGOOOSTO] DUPL — Cópia — Cópia — Cópia
+120231956721290152
+
+Ad Sets (API)
+
+0
+
+Ads no Banco
+
+4
+
+Ads na API
+
+0
+
+Diferença
+
+-4
+
+[OUT - CONTA 2 - NIO] 12.11 — Cópia
+120237955528520152
+
+Ad Sets (API)
+
+0
+
+Ads no Banco
+
+4
+
+Ads na API
+
+0
+
+Diferença
+
+-4
