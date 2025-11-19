@@ -54,7 +54,7 @@ export default function MetaDebug() {
   const metaIntegrations = integrations.filter(i => i.platform === 'meta');
 
   const { data, isLoading, error, refetch } = useQuery<DebugData>({
-    queryKey: ['/api/integrations', integrationId, 'debug/count-ads'],
+    queryKey: integrationId ? [`/api/integrations/${integrationId}/debug/count-ads`] : ['disabled'],
     enabled: false, // Disabled by default, will trigger manually
   });
 
