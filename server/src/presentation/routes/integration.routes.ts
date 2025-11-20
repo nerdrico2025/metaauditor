@@ -45,6 +45,29 @@ router.delete('/sync-history/bulk/all', authenticateToken, async (req: Request, 
   }
 });
 
+// Reset sync status for all user integrations (used when deleting all data)
+router.post('/reset-sync', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = (req as any).user?.userId;
+    
+    // Delete all sync history
+    await storage.deleteAllSyncHistoryByUser(userId);
+    
+    // Reset lastSync and lastFullSync for all user integrations
+    const integrations = await storage.getIntegrationsByUser(userId);
+    for (const integration of integrations) {
+      await storage.updateIntegration(integration.id, { 
+        lastSync: null,
+        lastFullSync: null 
+      });
+    }
+    
+    res.json({ message: 'Sincronização resetada com sucesso' });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Create integration
 router.post('/', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
