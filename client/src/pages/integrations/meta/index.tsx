@@ -57,6 +57,8 @@ export default function MetaIntegrations() {
   const [currentSyncStep, setCurrentSyncStep] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
   const [syncedItems, setSyncedItems] = useState(0);
+  const [syncStartTime, setSyncStartTime] = useState<number | undefined>(undefined);
+  const [syncEndTime, setSyncEndTime] = useState<number | undefined>(undefined);
 
   const { data: integrations = [], isLoading } = useQuery<Integration[]>({
     queryKey: ['/api/integrations'],
@@ -100,6 +102,8 @@ export default function MetaIntegrations() {
       setCurrentSyncStep(0);
       setSyncedItems(0);
       setTotalItems(0);
+      setSyncStartTime(Date.now());
+      setSyncEndTime(undefined);
       setShowSyncModal(true);
       
       return new Promise(async (resolve, reject) => {
@@ -197,6 +201,7 @@ export default function MetaIntegrations() {
           const data = JSON.parse(e.data);
           console.log('✅ Sync completed:', data);
           
+          setSyncEndTime(Date.now());
           finalResult = data;
           eventSource.close();
           resolve({ success: true, data });
@@ -455,6 +460,8 @@ export default function MetaIntegrations() {
         currentStep={currentSyncStep}
         totalItems={totalItems}
         syncedItems={syncedItems}
+        startTime={syncStartTime}
+        endTime={syncEndTime}
         onClose={() => setShowSyncModal(false)}
       />
       

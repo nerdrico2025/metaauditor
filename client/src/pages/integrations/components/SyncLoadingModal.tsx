@@ -1,7 +1,8 @@
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Loader2, AlertCircle, AlertTriangle } from "lucide-react";
+import { CheckCircle, Loader2, AlertCircle, AlertTriangle, Clock } from "lucide-react";
 
 interface SyncStep {
   name: string;
@@ -17,7 +18,20 @@ interface SyncLoadingModalProps {
   currentStep: number;
   totalItems?: number;
   syncedItems?: number;
+  startTime?: number;
+  endTime?: number;
   onClose?: () => void;
+}
+
+function formatTime(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  
+  if (hours > 0) {
+    return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }
+  return `${minutes}:${secs.toString().padStart(2, '0')}`;
 }
 
 export function SyncLoadingModal({ 
@@ -26,13 +40,37 @@ export function SyncLoadingModal({
   currentStep, 
   totalItems = 0,
   syncedItems = 0,
+  startTime,
+  endTime,
   onClose 
 }: SyncLoadingModalProps) {
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  
   const totalSteps = steps.length;
   const completedSteps = steps.filter(s => s.status === 'success').length;
   const hasErrors = steps.some(s => s.status === 'error');
   const isCompleted = completedSteps === totalSteps || hasErrors;
   const isRunning = !isCompleted && completedSteps > 0;
+  
+  // Update elapsed time every second
+  useEffect(() => {
+    if (!startTime || isCompleted) {
+      return;
+    }
+    
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const elapsed = Math.floor((now - startTime) / 1000);
+      setElapsedSeconds(elapsed);
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, [startTime, isCompleted]);
+  
+  // Calculate final time when completed
+  const finalTime = endTime && startTime 
+    ? Math.floor((endTime - startTime) / 1000) 
+    : elapsedSeconds;
   
   // Calculate overall progress
   const stepProgress = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
@@ -83,6 +121,21 @@ export function SyncLoadingModal({
               : `Progresso: ${completedSteps}/${totalSteps} etapas concluídas`}
           </DialogDescription>
         </DialogHeader>
+
+        {/* Timer Display */}
+        {startTime && (
+          <div className="flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950 dark:to-blue-950 rounded-lg border border-purple-200 dark:border-purple-800">
+            <Clock className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+            <div className="flex flex-col items-center">
+              <span className="text-xs text-purple-600 dark:text-purple-400 font-medium">
+                {isCompleted ? 'Tempo Total' : 'Tempo Decorrido'}
+              </span>
+              <span className="text-2xl font-bold text-purple-700 dark:text-purple-300 tabular-nums">
+                {formatTime(finalTime)}
+              </span>
+            </div>
+          </div>
+        )}
 
         {!isCompleted && (
           <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 font-medium px-6 py-3 bg-amber-50 dark:bg-amber-950 rounded-lg">
