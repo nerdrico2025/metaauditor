@@ -26,6 +26,7 @@ interface MetaAdSet {
   id: string;
   name: string;
   status: string;
+  effective_status?: string;
   campaign_id: string;
   daily_budget?: string;
   lifetime_budget?: string;
@@ -49,6 +50,7 @@ interface MetaAd {
     call_to_action_type?: string;
   };
   status: string;
+  effective_status?: string;
 }
 
 interface MetaAdInsights {
@@ -78,6 +80,29 @@ export class MetaAdsService {
 
   setProgressCallback(callback: SyncProgressCallback) {
     this.progressCallback = callback;
+  }
+
+  /**
+   * Translate Meta API status to Portuguese delivery status (veiculação)
+   * Uses effective_status which shows real delivery state considering campaign hierarchy
+   */
+  private translateMetaStatus(effectiveStatus: string): string {
+    const statusMap: Record<string, string> = {
+      'ACTIVE': 'Ativo',
+      'PAUSED': 'Não está em veiculação',
+      'CAMPAIGN_PAUSED': 'Campanha Desativada',
+      'ADSET_PAUSED': 'Grupo Desativado',
+      'ARCHIVED': 'Arquivado',
+      'DELETED': 'Excluído',
+      'PENDING_REVIEW': 'Em revisão',
+      'DISAPPROVED': 'Reprovado',
+      'PREAPPROVED': 'Pré-aprovado',
+      'PENDING_BILLING_INFO': 'Pendente informações de cobrança',
+      'WITH_ISSUES': 'Com problemas',
+    };
+    
+    const upperStatus = effectiveStatus?.toUpperCase();
+    return statusMap[upperStatus] || effectiveStatus || 'Desconhecido';
   }
 
   /**
@@ -341,8 +366,8 @@ export class MetaAdsService {
           budget = (parseFloat(campaign.lifetime_budget) / 100).toString();
         }
         
-        // Use effective_status instead of status for more accurate campaign state
-        const status = campaign.effective_status?.toLowerCase() || campaign.status.toLowerCase();
+        // Use effective_status for accurate delivery status (veiculação)
+        const status = this.translateMetaStatus(campaign.effective_status || campaign.status);
         
         return {
           companyId,
@@ -385,7 +410,7 @@ export class MetaAdsService {
       
       // Fetch ALL ad sets from the entire account in one call
       // CRITICAL: Keep fields minimal to avoid "too much data" error from Meta API
-      const url = `${this.baseUrl}/${this.apiVersion}/${integration.accountId}/adsets?fields=id,name,status,campaign_id&limit=100&access_token=${integration.accessToken}`;
+      const url = `${this.baseUrl}/${this.apiVersion}/${integration.accountId}/adsets?fields=id,name,status,effective_status,campaign_id,daily_budget,lifetime_budget,bid_strategy,targeting,start_time,end_time&limit=100&access_token=${integration.accessToken}`;
       const adSets = await this.fetchAllPages<MetaAdSet>(url);
       
       console.log(`✅ Found ${adSets.length} total ad sets from Meta API`);
@@ -417,13 +442,13 @@ export class MetaAdsService {
           externalId: adSet.id,
           name: adSet.name,
           platform: 'meta',
-          status: adSet.status.toLowerCase(),
-          dailyBudget: null, // Not fetched to reduce API payload
-          lifetimeBudget: null,
-          bidStrategy: null,
-          targeting: null,
-          startTime: null,
-          endTime: null,
+          status: this.translateMetaStatus(adSet.effective_status || adSet.status),
+          dailyBudget: adSet.daily_budget ? (parseFloat(adSet.daily_budget) / 100).toString() : null,
+          lifetimeBudget: adSet.lifetime_budget ? (parseFloat(adSet.lifetime_budget) / 100).toString() : null,
+          bidStrategy: adSet.bid_strategy || null,
+          targeting: adSet.targeting || null,
+          startTime: adSet.start_time ? new Date(adSet.start_time) : null,
+          endTime: adSet.end_time ? new Date(adSet.end_time) : null,
           impressions: parseInt(insights.impressions || '0'),
           clicks: parseInt(insights.clicks || '0'),
           spend: insights.spend || '0',
@@ -458,7 +483,7 @@ export class MetaAdsService {
     // Create batch requests for all campaigns
     const requests = campaigns.map(campaign => ({
       method: 'GET',
-      relative_url: `${campaign.externalId}/adsets?fields=id,name,status,daily_budget,lifetime_budget,bid_strategy,targeting,start_time,end_time&limit=100`
+      relative_url: `${campaign.externalId}/adsets?fields=id,name,status,effective_status,daily_budget,lifetime_budget,bid_strategy,targeting,start_time,end_time&limit=100`
     }));
 
     try {
@@ -494,7 +519,7 @@ export class MetaAdsService {
           externalId: adSet.id,
           name: adSet.name,
           platform: 'meta',
-          status: adSet.status.toLowerCase(),
+          status: this.translateMetaStatus(adSet.effective_status || adSet.status),
           dailyBudget: adSet.daily_budget ? (parseFloat(adSet.daily_budget) / 100).toString() : null,
           lifetimeBudget: adSet.lifetime_budget ? (parseFloat(adSet.lifetime_budget) / 100).toString() : null,
           bidStrategy: adSet.bid_strategy || null,
@@ -592,7 +617,7 @@ export class MetaAdsService {
       
       // Fetch ALL ads from the entire account in one call
       // CRITICAL: Keep fields minimal to avoid "too much data" error from Meta API
-      const url = `${this.baseUrl}/${this.apiVersion}/${integration.accountId}/ads?fields=id,name,status,adset_id,creative{image_url,body,title}&limit=100&access_token=${integration.accessToken}`;
+      const url = `${this.baseUrl}/${this.apiVersion}/${integration.accountId}/ads?fields=id,name,status,effective_status,adset_id,creative{image_url,body,title}&limit=100&access_token=${integration.accessToken}`;
       const ads = await this.fetchAllPages<MetaAd>(url, progressCallback);
       
       console.log(`✅ Found ${ads.length} total ads from Meta API`);
@@ -643,7 +668,7 @@ export class MetaAdsService {
           headline: ad.creative?.title || null,
           description: null,
           callToAction: ad.creative?.call_to_action_type || null,
-          status: ad.status.toLowerCase(),
+          status: this.translateMetaStatus(ad.effective_status || ad.status),
           impressions: parseInt(insights.impressions || '0'),
           clicks: parseInt(insights.clicks || '0'),
           conversions: this.getConversions(insights),
