@@ -89,13 +89,12 @@ export default function MetaIntegrations() {
       const integration = integrations.find(i => i.id === id);
       if (!integration) throw new Error('Integração não encontrada');
       
-      // Initialize sync modal
-      const initialSteps = [{
-        name: `${integration.platform === 'meta' ? 'Meta Ads' : 'Google Ads'}: ${integration.accountName || integration.accountId}`,
-        status: 'pending' as const,
-        count: 0,
-        total: 0,
-      }];
+      // Initialize sync modal with 3 steps
+      const initialSteps = [
+        { name: 'Campanhas', status: 'pending' as const, count: 0, total: 0 },
+        { name: 'Grupos de Anúncios', status: 'pending' as const, count: 0, total: 0 },
+        { name: 'Anúncios', status: 'pending' as const, count: 0, total: 0 },
+      ];
       
       setSyncSteps(initialSteps);
       setCurrentSyncStep(0);
@@ -103,33 +102,127 @@ export default function MetaIntegrations() {
       setTotalItems(0);
       setShowSyncModal(true);
       
-      // Update to loading
-      setSyncSteps([{ ...initialSteps[0], status: 'loading' as const }]);
-      
-      try {
-        const data = await apiRequest(`/api/integrations/${id}/sync`, { 
-          method: 'POST'
+      return new Promise((resolve, reject) => {
+        // Connect to SSE endpoint for real-time progress
+        const eventSource = new EventSource(`/api/integrations/${id}/sync/stream`);
+        
+        let finalResult: any = null;
+        let hasError = false;
+
+        eventSource.addEventListener('start', (e: MessageEvent) => {
+          const data = JSON.parse(e.data);
+          console.log('🚀 Sync started:', data.message);
+          
+          // Show initial note about first sync
+          if (data.note) {
+            toast({
+              title: '📌 Primeira sincronização',
+              description: data.note,
+              duration: 8000,
+            });
+          }
         });
-        
-        const itemCount = (data.campaigns || 0) + (data.adSets || 0) + (data.creatives || 0);
-        setSyncSteps([{ 
-          ...initialSteps[0], 
-          status: 'success' as const, 
-          count: itemCount,
-          total: itemCount 
-        }]);
-        setSyncedItems(itemCount);
-        setTotalItems(itemCount);
-        
-        return { success: true, data };
-      } catch (error: any) {
-        setSyncSteps([{ 
-          ...initialSteps[0], 
-          status: 'error' as const, 
-          error: error.message || 'Erro de conexão' 
-        }]);
-        throw error;
-      }
+
+        eventSource.addEventListener('step', (e: MessageEvent) => {
+          const data = JSON.parse(e.data);
+          const stepIndex = data.step - 1;
+          
+          // Update step status and description
+          setSyncSteps(prev => prev.map((step, idx) => {
+            if (idx === stepIndex) {
+              return {
+                ...step,
+                name: data.name,
+                status: 'loading' as const,
+                total: data.total || step.total
+              };
+            }
+            return step;
+          }));
+          
+          setCurrentSyncStep(stepIndex);
+        });
+
+        eventSource.addEventListener('progress', (e: MessageEvent) => {
+          const data = JSON.parse(e.data);
+          const stepIndex = data.step - 1;
+          
+          // Update progress for specific step
+          setSyncSteps(prev => prev.map((step, idx) => {
+            if (idx === stepIndex) {
+              return {
+                ...step,
+                count: data.current,
+                total: data.total,
+                status: 'loading' as const
+              };
+            }
+            return step;
+          }));
+          
+          // Update total synced items
+          setSyncedItems(prev => prev + 1);
+        });
+
+        eventSource.addEventListener('step-complete', (e: MessageEvent) => {
+          const data = JSON.parse(e.data);
+          const stepIndex = data.step - 1;
+          
+          // Mark step as complete
+          setSyncSteps(prev => prev.map((step, idx) => {
+            if (idx === stepIndex) {
+              return {
+                ...step,
+                name: data.name,
+                status: 'success' as const,
+                count: data.count
+              };
+            }
+            return step;
+          }));
+          
+          setTotalItems(prev => prev + data.count);
+        });
+
+        eventSource.addEventListener('complete', (e: MessageEvent) => {
+          const data = JSON.parse(e.data);
+          console.log('✅ Sync completed:', data);
+          
+          finalResult = data;
+          eventSource.close();
+          resolve({ success: true, data });
+        });
+
+        eventSource.addEventListener('error', (e: MessageEvent) => {
+          const data = JSON.parse(e.data);
+          console.error('❌ Sync error:', data.message);
+          
+          hasError = true;
+          
+          // Mark current step as error
+          setSyncSteps(prev => prev.map((step, idx) => {
+            if (idx === currentSyncStep) {
+              return {
+                ...step,
+                status: 'error' as const,
+                error: data.message
+              };
+            }
+            return step;
+          }));
+          
+          eventSource.close();
+          reject(new Error(data.message));
+        });
+
+        eventSource.onerror = (error) => {
+          console.error('❌ EventSource error:', error);
+          if (!hasError && !finalResult) {
+            eventSource.close();
+            reject(new Error('Conexão perdida com o servidor'));
+          }
+        };
+      });
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
@@ -138,7 +231,6 @@ export default function MetaIntegrations() {
       queryClient.invalidateQueries({ queryKey: ['/api/adsets'] });
       queryClient.invalidateQueries({ queryKey: ['/api/creatives'] });
       
-      const itemCount = (result.data?.campaigns || 0) + (result.data?.adSets || 0) + (result.data?.creatives || 0);
       const parts = [];
       if (result.data?.campaigns) parts.push(`${result.data.campaigns} campanhas`);
       if (result.data?.adSets) parts.push(`${result.data.adSets} grupos de anúncios`);
