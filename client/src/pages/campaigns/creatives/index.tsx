@@ -239,12 +239,15 @@ export default function Creatives() {
   };
 
   const getStatusBadgeVariant = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'active':
+    switch (status) {
+      case 'Ativo':
         return 'default';
-      case 'paused':
+      case 'Não está em veiculação':
+      case 'Campanha Desativada':
+      case 'Grupo Desativado':
         return 'secondary';
-      case 'archived':
+      case 'Arquivado':
+      case 'Excluído':
         return 'destructive';
       default:
         return 'outline';
@@ -252,16 +255,8 @@ export default function Creatives() {
   };
 
   const getStatusLabel = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'active':
-        return 'Ativo';
-      case 'paused':
-        return 'Pausado';
-      case 'archived':
-        return 'Arquivado';
-      default:
-        return status;
-    }
+    // Status já vem traduzido do backend
+    return status;
   };
 
   const getPlatformIcon = (platform: string) => {
@@ -370,7 +365,7 @@ export default function Creatives() {
   const filteredCreatives = creatives.filter((creative) => {
     const matchesSearch = creative.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          creative.externalId?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || creative.status.toLowerCase() === statusFilter;
+    const matchesStatus = statusFilter === "all" || creative.status === statusFilter;
     const matchesCampaign = campaignFilter === "all" || creative.campaignId === campaignFilter;
     const matchesAdSet = adSetFilter === "all" || creative.adSetId === adSetFilter;
     const matchesPlatform = platformFilter === "all" || creative.platform === platformFilter;
@@ -383,7 +378,7 @@ export default function Creatives() {
   const paginatedCreatives = filteredCreatives.slice(startIndex, startIndex + itemsPerPage);
 
   const metaCreatives = creatives.filter(c => c.platform === 'meta');
-  const activeCreatives = filteredCreatives.filter(c => c.status.toLowerCase() === 'active');
+  const activeCreatives = filteredCreatives.filter(c => c.status === 'Ativo');
   const totalImpressions = filteredCreatives.reduce((sum, c) => sum + (c.impressions || 0), 0);
   const totalClicks = filteredCreatives.reduce((sum, c) => sum + (c.clicks || 0), 0);
 
@@ -568,14 +563,16 @@ export default function Creatives() {
                     </Select>
 
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
-                      <SelectTrigger className="w-full lg:w-[150px] bg-white dark:bg-gray-800" data-testid="select-status-filter">
-                        <SelectValue placeholder="Status" />
+                      <SelectTrigger className="w-full lg:w-[180px] bg-white dark:bg-gray-800" data-testid="select-status-filter">
+                        <SelectValue placeholder="Veiculação" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">Todos Status</SelectItem>
-                        <SelectItem value="active">Ativo</SelectItem>
-                        <SelectItem value="paused">Pausado</SelectItem>
-                        <SelectItem value="archived">Arquivado</SelectItem>
+                        <SelectItem value="all">Todas Veiculações</SelectItem>
+                        <SelectItem value="Ativo">Ativo</SelectItem>
+                        <SelectItem value="Não está em veiculação">Não está em veiculação</SelectItem>
+                        <SelectItem value="Campanha Desativada">Campanha Desativada</SelectItem>
+                        <SelectItem value="Grupo Desativado">Grupo Desativado</SelectItem>
+                        <SelectItem value="Arquivado">Arquivado</SelectItem>
                       </SelectContent>
                     </Select>
 
@@ -646,7 +643,7 @@ export default function Creatives() {
                             <TableHead>Nome do Anúncio</TableHead>
                             <TableHead>Campanha</TableHead>
                             <TableHead>Ad Set</TableHead>
-                            <TableHead>Status</TableHead>
+                            <TableHead>Veiculação</TableHead>
                             <TableHead className="text-right">Impressões</TableHead>
                             <TableHead className="text-right">Cliques</TableHead>
                             <TableHead className="text-right">CTR</TableHead>
