@@ -102,12 +102,22 @@ export default function MetaIntegrations() {
       setTotalItems(0);
       setShowSyncModal(true);
       
-      return new Promise((resolve, reject) => {
-        // Connect to SSE endpoint for real-time progress
-        const eventSource = new EventSource(`/api/integrations/${id}/sync-stream`);
-        
-        let finalResult: any = null;
-        let hasError = false;
+      return new Promise(async (resolve, reject) => {
+        try {
+          // Get temporary SSE token
+          const tokenResponse = await apiRequest(`/api/integrations/${id}/sync-token`, { 
+            method: 'POST' 
+          });
+          
+          if (!tokenResponse.token) {
+            throw new Error('Não foi possível obter token de sincronização');
+          }
+          
+          // Connect to SSE endpoint with token
+          const eventSource = new EventSource(`/api/integrations/${id}/sync-stream?token=${tokenResponse.token}`);
+          
+          let finalResult: any = null;
+          let hasError = false;
 
         eventSource.addEventListener('start', (e: MessageEvent) => {
           const data = JSON.parse(e.data);
@@ -225,25 +235,40 @@ export default function MetaIntegrations() {
           }
         });
 
-        eventSource.onerror = (error) => {
-          console.error('❌ EventSource connection error:', error);
-          if (!hasError && !finalResult) {
-            // Mark current step as error
-            setSyncSteps(prev => prev.map((step, idx) => {
-              if (idx === currentSyncStep) {
-                return {
-                  ...step,
-                  status: 'error' as const,
-                  error: 'Conexão perdida com o servidor. Tente novamente.'
-                };
-              }
-              return step;
-            }));
-            
-            eventSource.close();
-            reject(new Error('Conexão perdida com o servidor. Verifique sua internet e tente novamente.'));
-          }
-        };
+          eventSource.onerror = (error) => {
+            console.error('❌ EventSource connection error:', error);
+            if (!hasError && !finalResult) {
+              // Mark current step as error
+              setSyncSteps(prev => prev.map((step, idx) => {
+                if (idx === currentSyncStep) {
+                  return {
+                    ...step,
+                    status: 'error' as const,
+                    error: 'Conexão perdida com o servidor. Tente novamente.'
+                  };
+                }
+                return step;
+              }));
+              
+              eventSource.close();
+              reject(new Error('Conexão perdida com o servidor. Verifique sua internet e tente novamente.'));
+            }
+          };
+        } catch (error: any) {
+          // Error getting token or setting up EventSource
+          console.error('❌ Error setting up sync:', error);
+          setSyncSteps(prev => prev.map((step, idx) => {
+            if (idx === 0) {
+              return {
+                ...step,
+                status: 'error' as const,
+                error: error.message || 'Erro ao iniciar sincronização'
+              };
+            }
+            return step;
+          }));
+          reject(error);
+        }
       });
     },
     onSuccess: (result: any) => {

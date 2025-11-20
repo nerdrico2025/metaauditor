@@ -89,23 +89,61 @@ router.delete('/:id', authenticateToken, async (req: Request, res: Response, nex
   }
 });
 
+// Create temporary token for SSE connection
+router.post('/:id/sync-token', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = (req as any).user?.userId;
+    const integration = await storage.getIntegrationById(req.params.id);
+    
+    if (!integration || integration.userId !== userId) {
+      return res.status(404).json({ message: 'Integração não encontrada' });
+    }
+    
+    // Create temporary token valid for 10 minutes
+    const jwt = require('jsonwebtoken');
+    const token = jwt.sign(
+      { userId, integrationId: req.params.id, purpose: 'sse' },
+      process.env.JWT_SECRET || 'fallback-secret',
+      { expiresIn: '10m' }
+    );
+    
+    res.json({ token });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // SSE endpoint for real-time sync progress
 router.get('/:id/sync-stream', async (req: Request, res: Response) => {
-  // For SSE, we need to authenticate using Replit Auth headers
-  // EventSource cannot send custom Authorization headers
-  const replitUserId = req.headers['x-replit-user-id'] as string;
+  // Validate SSE token from query parameter
+  const token = req.query.token as string;
   
-  if (!replitUserId) {
-    return res.status(401).json({ message: 'Não autenticado' });
+  if (!token) {
+    return res.status(401).json({ message: 'Token não fornecido' });
   }
   
-  const integration = await storage.getIntegrationById(req.params.id);
+  let userId: string;
+  let integrationId: string;
   
-  if (!integration || integration.userId !== replitUserId) {
+  try {
+    const jwt = require('jsonwebtoken');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as any;
+    
+    if (decoded.purpose !== 'sse' || decoded.integrationId !== req.params.id) {
+      return res.status(401).json({ message: 'Token inválido' });
+    }
+    
+    userId = decoded.userId;
+    integrationId = decoded.integrationId;
+  } catch (error) {
+    return res.status(401).json({ message: 'Token expirado ou inválido' });
+  }
+  
+  const integration = await storage.getIntegrationById(integrationId);
+  
+  if (!integration || integration.userId !== userId) {
     return res.status(404).json({ message: 'Integração não encontrada' });
   }
-  
-  const userId = replitUserId;
 
   // Setup SSE
   res.setHeader('Content-Type', 'text/event-stream');
