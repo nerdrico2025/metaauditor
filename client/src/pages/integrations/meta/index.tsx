@@ -169,9 +169,6 @@ export default function MetaIntegrations() {
             }
             return step;
           }));
-          
-          // Update total synced items
-          setSyncedItems(prev => prev + 1);
         });
 
         eventSource.addEventListener('step-complete', (e: MessageEvent) => {
@@ -191,7 +188,9 @@ export default function MetaIntegrations() {
             return step;
           }));
           
+          // Update both total and synced items when step completes
           setTotalItems(prev => prev + data.count);
+          setSyncedItems(prev => prev + data.count);
         });
 
         eventSource.addEventListener('complete', (e: MessageEvent) => {
