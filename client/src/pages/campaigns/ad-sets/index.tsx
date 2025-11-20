@@ -166,12 +166,15 @@ export default function AdSets() {
   };
 
   const getStatusBadgeVariant = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'active':
+    switch (status) {
+      case 'Ativo':
         return 'default';
-      case 'paused':
+      case 'Não está em veiculação':
+      case 'Campanha Desativada':
+      case 'Grupo Desativado':
         return 'secondary';
-      case 'archived':
+      case 'Arquivado':
+      case 'Excluído':
         return 'destructive';
       default:
         return 'outline';
@@ -305,14 +308,15 @@ export default function AdSets() {
                     </Select>
 
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
-                      <SelectTrigger className="w-full lg:w-[150px] bg-white dark:bg-gray-800" data-testid="select-status-filter">
-                        <SelectValue placeholder="Status" />
+                      <SelectTrigger className="w-full lg:w-[180px] bg-white dark:bg-gray-800" data-testid="select-status-filter">
+                        <SelectValue placeholder="Veiculação" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">Todos Status</SelectItem>
-                        <SelectItem value="active">Ativo</SelectItem>
-                        <SelectItem value="paused">Pausado</SelectItem>
-                        <SelectItem value="archived">Arquivado</SelectItem>
+                        <SelectItem value="all">Todas Veiculações</SelectItem>
+                        <SelectItem value="Ativo">Ativo</SelectItem>
+                        <SelectItem value="Não está em veiculação">Não está em veiculação</SelectItem>
+                        <SelectItem value="Campanha Desativada">Campanha Desativada</SelectItem>
+                        <SelectItem value="Arquivado">Arquivado</SelectItem>
                       </SelectContent>
                     </Select>
 
@@ -367,7 +371,7 @@ export default function AdSets() {
                             <TableHead className="w-[50px]"></TableHead>
                             <TableHead>Nome do Grupo</TableHead>
                             <TableHead>Campanha</TableHead>
-                            <TableHead>Status</TableHead>
+                            <TableHead>Veiculação</TableHead>
                             <TableHead>Orçamento</TableHead>
                             <TableHead>Impressões</TableHead>
                             <TableHead>Cliques</TableHead>
