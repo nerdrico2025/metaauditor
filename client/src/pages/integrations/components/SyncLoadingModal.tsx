@@ -78,19 +78,18 @@ export function SyncLoadingModal({
             )}
           </DialogTitle>
           <DialogDescription>
-            {!isCompleted && (
-              <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 font-medium mb-2">
-                <AlertTriangle className="h-4 w-4" />
-                <span>Não recarregue a página até a finalização</span>
-              </div>
-            )}
-            <div>
-              {isCompleted 
-                ? 'Todos os dados foram sincronizados.' 
-                : `Progresso: ${completedSteps}/${totalSteps} etapas concluídas`}
-            </div>
+            {isCompleted 
+              ? 'Todos os dados foram sincronizados.' 
+              : `Progresso: ${completedSteps}/${totalSteps} etapas concluídas`}
           </DialogDescription>
         </DialogHeader>
+
+        {!isCompleted && (
+          <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 font-medium px-6 py-3 bg-amber-50 dark:bg-amber-950 rounded-lg">
+            <AlertTriangle className="h-4 w-4" />
+            <span>Não recarregue a página até a finalização</span>
+          </div>
+        )}
 
         <div className="space-y-4 py-4">
           {/* Overall Progress */}

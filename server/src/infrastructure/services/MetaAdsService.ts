@@ -376,12 +376,13 @@ export class MetaAdsService {
       console.log(`🎯 Fetching ALL ad sets from Meta account ${integration.accountId}...`);
       
       // Fetch ALL ad sets from the entire account in one call
-      const url = `${this.baseUrl}/${this.apiVersion}/${integration.accountId}/adsets?fields=id,name,status,campaign_id,daily_budget,lifetime_budget,bid_strategy,targeting,start_time,end_time&limit=100&access_token=${integration.accessToken}`;
+      // CRITICAL: Keep fields minimal to avoid "too much data" error from Meta API
+      const url = `${this.baseUrl}/${this.apiVersion}/${integration.accountId}/adsets?fields=id,name,status,campaign_id&limit=100&access_token=${integration.accessToken}`;
       const adSets = await this.fetchAllPages<MetaAdSet>(url);
       
       console.log(`✅ Found ${adSets.length} total ad sets from Meta API`);
 
-      // Fetch insights for all ad sets
+      // Fetch insights for all ad sets (includes spend, impressions, clicks)
       const adSetIds = adSets.map(as => as.id);
       const insightsMap = await this.getAdSetInsightsBatch(integration.accessToken!, adSetIds);
 
@@ -409,12 +410,12 @@ export class MetaAdsService {
           name: adSet.name,
           platform: 'meta',
           status: adSet.status.toLowerCase(),
-          dailyBudget: adSet.daily_budget ? (parseFloat(adSet.daily_budget) / 100).toString() : null,
-          lifetimeBudget: adSet.lifetime_budget ? (parseFloat(adSet.lifetime_budget) / 100).toString() : null,
-          bidStrategy: adSet.bid_strategy || null,
-          targeting: adSet.targeting || null,
-          startTime: adSet.start_time ? new Date(adSet.start_time) : null,
-          endTime: adSet.end_time ? new Date(adSet.end_time) : null,
+          dailyBudget: null, // Not fetched to reduce API payload
+          lifetimeBudget: null,
+          bidStrategy: null,
+          targeting: null,
+          startTime: null,
+          endTime: null,
           impressions: parseInt(insights.impressions || '0'),
           clicks: parseInt(insights.clicks || '0'),
           spend: insights.spend || '0',
@@ -581,7 +582,8 @@ export class MetaAdsService {
       console.log(`🎯 Fetching ALL ads from Meta account ${integration.accountId}...`);
       
       // Fetch ALL ads from the entire account in one call
-      const url = `${this.baseUrl}/${this.apiVersion}/${integration.accountId}/ads?fields=id,name,status,adset_id,creative{id,name,image_url,body,title,call_to_action_type}&limit=100&access_token=${integration.accessToken}`;
+      // CRITICAL: Keep fields minimal to avoid "too much data" error from Meta API
+      const url = `${this.baseUrl}/${this.apiVersion}/${integration.accountId}/ads?fields=id,name,status,adset_id,creative{image_url,body,title}&limit=100&access_token=${integration.accessToken}`;
       const ads = await this.fetchAllPages<MetaAd>(url);
       
       console.log(`✅ Found ${ads.length} total ads from Meta API`);
