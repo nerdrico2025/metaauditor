@@ -90,20 +90,11 @@ router.delete('/:id', authenticateToken, async (req: Request, res: Response, nex
 });
 
 // SSE endpoint for real-time sync progress
-router.get('/:id/sync-stream', async (req: Request, res: Response) => {
-  // For SSE, accept token from query parameter since EventSource can't send headers
-  const token = req.query.token as string;
+router.get('/:id/sync-stream', authenticateToken, async (req: Request, res: Response) => {
+  const userId = (req as any).user?.userId;
   
-  if (!token) {
-    return res.status(401).json({ message: 'Token não fornecido' });
-  }
-  
-  let userId: string;
-  try {
-    const decoded = require('jsonwebtoken').verify(token, process.env.JWT_SECRET || 'fallback-secret') as any;
-    userId = decoded.userId;
-  } catch (error) {
-    return res.status(401).json({ message: 'Token inválido' });
+  if (!userId) {
+    return res.status(401).json({ message: 'Não autenticado' });
   }
   
   const integration = await storage.getIntegrationById(req.params.id);

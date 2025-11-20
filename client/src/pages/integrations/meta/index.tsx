@@ -104,7 +104,7 @@ export default function MetaIntegrations() {
       
       return new Promise((resolve, reject) => {
         // Connect to SSE endpoint for real-time progress
-        const eventSource = new EventSource(`/api/integrations/${id}/sync/stream`);
+        const eventSource = new EventSource(`/api/integrations/${id}/sync-stream`);
         
         let finalResult: any = null;
         let hasError = false;
@@ -194,32 +194,54 @@ export default function MetaIntegrations() {
         });
 
         eventSource.addEventListener('error', (e: MessageEvent) => {
-          const data = JSON.parse(e.data);
-          console.error('❌ Sync error:', data.message);
-          
-          hasError = true;
-          
-          // Mark current step as error
-          setSyncSteps(prev => prev.map((step, idx) => {
-            if (idx === currentSyncStep) {
-              return {
-                ...step,
-                status: 'error' as const,
-                error: data.message
-              };
+          // Check if there's data to parse (custom SSE error event)
+          if (e.data) {
+            try {
+              const data = JSON.parse(e.data);
+              console.error('❌ Sync error:', data.message);
+              
+              hasError = true;
+              
+              // Mark current step as error
+              setSyncSteps(prev => prev.map((step, idx) => {
+                if (idx === currentSyncStep) {
+                  return {
+                    ...step,
+                    status: 'error' as const,
+                    error: data.message
+                  };
+                }
+                return step;
+              }));
+              
+              eventSource.close();
+              reject(new Error(data.message));
+            } catch (parseError) {
+              console.error('❌ Error parsing SSE error data:', parseError);
+              hasError = true;
+              eventSource.close();
+              reject(new Error('Erro ao processar resposta do servidor'));
             }
-            return step;
-          }));
-          
-          eventSource.close();
-          reject(new Error(data.message));
+          }
         });
 
         eventSource.onerror = (error) => {
-          console.error('❌ EventSource error:', error);
+          console.error('❌ EventSource connection error:', error);
           if (!hasError && !finalResult) {
+            // Mark current step as error
+            setSyncSteps(prev => prev.map((step, idx) => {
+              if (idx === currentSyncStep) {
+                return {
+                  ...step,
+                  status: 'error' as const,
+                  error: 'Conexão perdida com o servidor. Tente novamente.'
+                };
+              }
+              return step;
+            }));
+            
             eventSource.close();
-            reject(new Error('Conexão perdida com o servidor'));
+            reject(new Error('Conexão perdida com o servidor. Verifique sua internet e tente novamente.'));
           }
         };
       });
