@@ -112,12 +112,14 @@ export default function Campaigns() {
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
-      case 'active':
+      case 'Ativo':
         return 'default';
-      case 'paused':
+      case 'Não está em veiculação':
+      case 'Campanha Desativada':
         return 'secondary';
-      case 'inactive':
-        return 'outline';
+      case 'Arquivado':
+      case 'Excluído':
+        return 'destructive';
       default:
         return 'outline';
     }
@@ -179,7 +181,7 @@ export default function Campaigns() {
 
   const metaCampaigns = filteredCampaigns.filter(c => c.platform === 'meta');
   const googleCampaigns = filteredCampaigns.filter(c => c.platform === 'google');
-  const activeCampaigns = filteredCampaigns.filter(c => c.status === 'active');
+  const activeCampaigns = filteredCampaigns.filter(c => c.status === 'Ativo');
 
   return (
     <div className="flex h-screen bg-background">
@@ -273,14 +275,15 @@ export default function Campaigns() {
                     </Select>
 
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
-                      <SelectTrigger className="w-full sm:w-[150px] bg-white dark:bg-gray-800" data-testid="select-status-filter">
-                        <SelectValue placeholder="Status" />
+                      <SelectTrigger className="w-full sm:w-[180px] bg-white dark:bg-gray-800" data-testid="select-status-filter">
+                        <SelectValue placeholder="Veiculação" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">Todos Status</SelectItem>
-                        <SelectItem value="active">Ativa</SelectItem>
-                        <SelectItem value="paused">Pausada</SelectItem>
-                        <SelectItem value="inactive">Inativa</SelectItem>
+                        <SelectItem value="all">Todas Veiculações</SelectItem>
+                        <SelectItem value="Ativo">Ativo</SelectItem>
+                        <SelectItem value="Não está em veiculação">Não está em veiculação</SelectItem>
+                        <SelectItem value="Campanha Desativada">Campanha Desativada</SelectItem>
+                        <SelectItem value="Arquivado">Arquivado</SelectItem>
                       </SelectContent>
                     </Select>
 
@@ -334,7 +337,7 @@ export default function Campaigns() {
                             <TableHead className="w-[50px]"></TableHead>
                             <TableHead>Nome da Campanha</TableHead>
                             <TableHead>Plataforma</TableHead>
-                            <TableHead>Status</TableHead>
+                            <TableHead>Veiculação</TableHead>
                             <TableHead>Orçamento</TableHead>
                             <TableHead className="text-center">Ad Sets</TableHead>
                             <TableHead className="text-center">Anúncios</TableHead>
@@ -365,8 +368,7 @@ export default function Campaigns() {
                                 </TableCell>
                                 <TableCell>
                                   <Badge variant={getStatusBadgeVariant(campaign.status)}>
-                                    {campaign.status === 'active' ? 'Ativa' : 
-                                     campaign.status === 'paused' ? 'Pausada' : 'Inativa'}
+                                    {campaign.status}
                                   </Badge>
                                 </TableCell>
                                 <TableCell>
