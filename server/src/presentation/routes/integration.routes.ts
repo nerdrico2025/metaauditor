@@ -132,91 +132,238 @@ router.get('/:id/sync-stream', async (req: Request, res: Response) => {
     let syncedCreatives = 0;
 
     if (integration.platform === 'meta') {
-      sendEvent('progress', { message: 'Buscando campanhas...' });
+      // Create sync history record
+      const syncHistoryRecord = await storage.createSyncHistory({
+        integrationId: integration.id,
+        userId,
+        status: 'running',
+        type: 'full',
+        metadata: { platform: 'meta' }
+      });
       
-      const campaigns = await metaAdsService.syncCampaigns(integration, userId, companyId);
-      sendEvent('progress', { message: `Encontradas ${campaigns.length} campanhas`, totalCampaigns: campaigns.length });
-      
-      for (let i = 0; i < campaigns.length; i++) {
-        const campaign = campaigns[i];
-        sendEvent('progress', {
-          message: `Processando campanha ${i + 1}/${campaigns.length}: ${campaign.name}`,
-          currentCampaign: i + 1,
-          totalCampaigns: campaigns.length,
-          campaignName: campaign.name
+      sendEvent('start', { 
+        message: 'Iniciando sincronização...',
+        note: 'A primeira sincronização pode levar alguns minutos dependendo da quantidade de anúncios na sua conta.'
+      });
+
+      try {
+        // ===============================
+        // STEP 1: Sync Campaigns
+        // ===============================
+        sendEvent('step', { 
+          step: 1, 
+          totalSteps: 3,
+          name: 'Buscando campanhas...',
+          description: 'Carregando todas as campanhas da sua conta Meta Ads'
         });
         
-        try {
-          const existingCampaigns = await storage.getCampaignsByUser(userId);
+        const campaigns = await metaAdsService.syncCampaigns(integration, userId, companyId);
+        
+        sendEvent('step', { 
+          step: 1, 
+          totalSteps: 3,
+          name: 'Salvando campanhas',
+          description: `Encontramos ${campaigns.length} campanhas. Salvando no banco de dados...`
+        });
+        
+        // Save campaigns and build map
+        const campaignMap = new Map<string, string>();
+        const existingCampaigns = await storage.getCampaignsByUser(userId);
+        
+        for (let i = 0; i < campaigns.length; i++) {
+          const campaign = campaigns[i];
           let dbCampaign = existingCampaigns.find(c => c.externalId === campaign.externalId);
           
           if (dbCampaign) {
             await storage.updateCampaign(dbCampaign.id, campaign);
+            campaignMap.set(campaign.externalId, dbCampaign.id);
           } else {
             dbCampaign = await storage.createCampaign(campaign);
+            campaignMap.set(campaign.externalId, dbCampaign!.id);
           }
           syncedCampaigns++;
           
-          if (!dbCampaign) continue;
-
-          // Delay between campaigns (8 seconds)
-          if (i < campaigns.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 8000));
+          // Send progress update every 10 campaigns
+          if ((i + 1) % 10 === 0 || i === campaigns.length - 1) {
+            sendEvent('progress', {
+              step: 1,
+              current: i + 1,
+              total: campaigns.length,
+              message: `Salvando campanhas: ${i + 1} de ${campaigns.length}`
+            });
           }
-
-          const adSets = await metaAdsService.syncAdSets(integration, campaign.externalId, dbCampaign.id, userId);
-          sendEvent('progress', { message: `  ↳ ${adSets.length} ad sets na campanha ${campaign.name}` });
-
-          for (let j = 0; j < adSets.length; j++) {
-            const adSet = adSets[j];
-            
-            try {
-              const existingAdSets = await storage.getAdSetsByUser(userId);
-              let dbAdSet = existingAdSets.find(a => a.externalId === adSet.externalId);
-              
-              if (dbAdSet) {
-                await storage.updateAdSet(dbAdSet.id, adSet);
-              } else {
-                dbAdSet = await storage.createAdSet(adSet);
-              }
-              syncedAdSets++;
-              
-              if (!dbAdSet || !dbCampaign) continue;
-
-              // Delay between ad sets (5 seconds)
-              if (j < adSets.length - 1) {
-                await new Promise(resolve => setTimeout(resolve, 5000));
-              }
-
-              const creatives = await metaAdsService.syncCreatives(integration, adSet.externalId, dbAdSet.id, dbCampaign.id, userId);
-
-              for (const creative of creatives) {
-                const existingCreatives = await storage.getCreativesByUser(userId);
-                const existingCreative = existingCreatives.find(c => c.externalId === creative.externalId);
-                
-                if (existingCreative) {
-                  await storage.updateCreative(existingCreative.id, creative);
-                } else {
-                  await storage.createCreative(creative);
-                }
-                syncedCreatives++;
-              }
-            } catch (error: any) {
-              sendEvent('error', { message: `Erro no ad set ${adSet.name}: ${error.message}`, partial: true });
-            }
-          }
-        } catch (error: any) {
-          sendEvent('error', { message: `Erro na campanha ${campaign.name}: ${error.message}`, partial: true });
         }
+        
+        // Clean up obsolete campaigns
+        const campaignExternalIds = campaigns.map(c => c.externalId);
+        const deletedCampaigns = await storage.deleteCampaignsNotInList(userId, campaignExternalIds);
+        
+        sendEvent('step-complete', { 
+          step: 1,
+          name: 'Campanhas sincronizadas',
+          count: syncedCampaigns,
+          deleted: deletedCampaigns
+        });
+
+        // ===============================
+        // STEP 2: Sync Ad Sets
+        // ===============================
+        sendEvent('step', { 
+          step: 2, 
+          totalSteps: 3,
+          name: 'Buscando grupos de anúncios...',
+          description: 'Carregando todos os grupos de anúncios (ad sets) da sua conta'
+        });
+        
+        const adSets = await metaAdsService.syncAllAdSetsFromAccount(
+          integration,
+          userId,
+          companyId,
+          campaignMap
+        );
+        
+        sendEvent('step', { 
+          step: 2, 
+          totalSteps: 3,
+          name: 'Salvando grupos de anúncios',
+          description: `Encontramos ${adSets.length} grupos de anúncios. Salvando no banco de dados...`
+        });
+        
+        // Save ad sets and build map
+        const adSetMap = new Map<string, { dbId: string; campaignId: string }>();
+        const existingAdSets = await storage.getAdSetsByUser(userId);
+        
+        for (let i = 0; i < adSets.length; i++) {
+          const adSet = adSets[i];
+          let dbAdSet = existingAdSets.find(a => a.externalId === adSet.externalId);
+          
+          if (dbAdSet) {
+            await storage.updateAdSet(dbAdSet.id, adSet);
+            adSetMap.set(adSet.externalId, { dbId: dbAdSet.id, campaignId: adSet.campaignId });
+          } else {
+            dbAdSet = await storage.createAdSet(adSet);
+            adSetMap.set(adSet.externalId, { dbId: dbAdSet!.id, campaignId: adSet.campaignId });
+          }
+          syncedAdSets++;
+          
+          // Send progress update every 10 ad sets
+          if ((i + 1) % 10 === 0 || i === adSets.length - 1) {
+            sendEvent('progress', {
+              step: 2,
+              current: i + 1,
+              total: adSets.length,
+              message: `Salvando grupos de anúncios: ${i + 1} de ${adSets.length}`
+            });
+          }
+        }
+        
+        // Clean up obsolete ad sets
+        const adSetExternalIds = adSets.map(a => a.externalId);
+        const deletedAdSets = await storage.deleteAdSetsNotInList(userId, adSetExternalIds);
+        
+        sendEvent('step-complete', { 
+          step: 2,
+          name: 'Grupos de anúncios sincronizados',
+          count: syncedAdSets,
+          deleted: deletedAdSets
+        });
+
+        // ===============================
+        // STEP 3: Sync Ads (Creatives)
+        // ===============================
+        sendEvent('step', { 
+          step: 3, 
+          totalSteps: 3,
+          name: 'Buscando anúncios...',
+          description: 'Carregando todos os anúncios e suas imagens da sua conta'
+        });
+        
+        const ads = await metaAdsService.syncAllAdsFromAccount(
+          integration,
+          userId,
+          companyId,
+          adSetMap
+        );
+        
+        sendEvent('step', { 
+          step: 3, 
+          totalSteps: 3,
+          name: 'Salvando anúncios',
+          description: `Encontramos ${ads.length} anúncios. Baixando imagens e salvando...`
+        });
+        
+        // Save creatives
+        const existingCreatives = await storage.getCreativesByUser(userId);
+        
+        for (let i = 0; i < ads.length; i++) {
+          const creative = ads[i];
+          const existingCreative = existingCreatives.find(c => c.externalId === creative.externalId);
+          
+          if (existingCreative) {
+            await storage.updateCreative(existingCreative.id, creative);
+          } else {
+            await storage.createCreative(creative);
+          }
+          syncedCreatives++;
+          
+          // Send progress update every 50 ads (ads can be many!)
+          if ((i + 1) % 50 === 0 || i === ads.length - 1) {
+            sendEvent('progress', {
+              step: 3,
+              current: i + 1,
+              total: ads.length,
+              message: `Salvando anúncios: ${i + 1} de ${ads.length}`
+            });
+          }
+        }
+        
+        // Clean up obsolete creatives
+        const creativeExternalIds = ads.map(a => a.externalId);
+        const deletedCreatives = await storage.deleteCreativesNotInList(userId, creativeExternalIds);
+        
+        sendEvent('step-complete', { 
+          step: 3,
+          name: 'Anúncios sincronizados',
+          count: syncedCreatives,
+          deleted: deletedCreatives
+        });
+
+        // Update sync history with success
+        await storage.updateSyncHistory(syncHistoryRecord.id, {
+          status: 'completed',
+          completedAt: new Date(),
+          campaignsSynced: syncedCampaigns,
+          adSetsSynced: syncedAdSets,
+          creativeSynced: syncedCreatives
+        });
+        
+        // Update integration's lastFullSync
+        await storage.updateIntegration(integration.id, {
+          lastFullSync: new Date()
+        });
+
+        sendEvent('complete', {
+          message: 'Sincronização concluída com sucesso!',
+          campaigns: syncedCampaigns,
+          adSets: syncedAdSets,
+          creatives: syncedCreatives
+        });
+      } catch (error: any) {
+        console.error('❌ Error during sync:', error.message);
+        
+        // Update sync history with error
+        await storage.updateSyncHistory(syncHistoryRecord.id, {
+          status: syncedCampaigns > 0 ? 'partial' : 'failed',
+          completedAt: new Date(),
+          campaignsSynced: syncedCampaigns,
+          adSetsSynced: syncedAdSets,
+          creativeSynced: syncedCreatives,
+          errorMessage: error.message
+        });
+        
+        sendEvent('error', { message: error.message });
       }
     }
-
-    sendEvent('complete', {
-      message: 'Sincronização concluída!',
-      campaigns: syncedCampaigns,
-      adSets: syncedAdSets,
-      creatives: syncedCreatives
-    });
     
     res.end();
   } catch (error: any) {
