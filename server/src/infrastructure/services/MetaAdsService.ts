@@ -252,7 +252,10 @@ export class MetaAdsService {
   /**
    * Helper method to fetch all pages from Meta API with throttling and retry
    */
-  private async fetchAllPages<T>(url: string): Promise<T[]> {
+  private async fetchAllPages<T>(
+    url: string, 
+    progressCallback?: (current: number, message?: string) => void
+  ): Promise<T[]> {
     const allData: T[] = [];
     let nextUrl: string | null = url;
     let pageCount = 0;
@@ -274,6 +277,11 @@ export class MetaAdsService {
         hasPrevious: !!data.paging?.previous,
         cursors: data.paging?.cursors
       });
+      
+      // Call progress callback if provided
+      if (progressCallback) {
+        progressCallback(allData.length, `Carregando anúncios da API: ${allData.length} encontrados (página ${pageCount})...`);
+      }
       
       // Check if there's a next page
       nextUrl = data.paging?.next || null;
@@ -572,7 +580,8 @@ export class MetaAdsService {
     integration: Integration,
     userId: string,
     companyId: string | null,
-    adSetMap: Map<string, { dbId: string; campaignId: string }> // Map of externalAdSetId -> { dbAdSetId, dbCampaignId }
+    adSetMap: Map<string, { dbId: string; campaignId: string }>, // Map of externalAdSetId -> { dbAdSetId, dbCampaignId }
+    progressCallback?: (current: number, message?: string) => void
   ): Promise<InsertCreative[]> {
     if (!integration.accessToken || !integration.accountId) {
       throw new Error('Missing access token or account ID');
@@ -584,7 +593,7 @@ export class MetaAdsService {
       // Fetch ALL ads from the entire account in one call
       // CRITICAL: Keep fields minimal to avoid "too much data" error from Meta API
       const url = `${this.baseUrl}/${this.apiVersion}/${integration.accountId}/ads?fields=id,name,status,adset_id,creative{image_url,body,title}&limit=100&access_token=${integration.accessToken}`;
-      const ads = await this.fetchAllPages<MetaAd>(url);
+      const ads = await this.fetchAllPages<MetaAd>(url, progressCallback);
       
       console.log(`✅ Found ${ads.length} total ads from Meta API`);
 

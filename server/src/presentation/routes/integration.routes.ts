@@ -344,11 +344,21 @@ router.get('/:id/sync-stream', async (req: Request, res: Response) => {
           description: 'Carregando todos os anúncios e suas imagens da sua conta'
         });
         
+        // Sync ads with real-time progress updates during API pagination
         const ads = await metaAdsService.syncAllAdsFromAccount(
           integration,
           userId,
           companyId,
-          adSetMap
+          adSetMap,
+          (current, message) => {
+            // Send progress during API fetch (before total count is known)
+            sendEvent('progress', {
+              step: 3,
+              current,
+              total: current, // Total unknown during fetch, so show current as total
+              message: message || `Carregando anúncios da API: ${current} encontrados...`
+            });
+          }
         );
         
         sendEvent('step', { 
