@@ -90,18 +90,22 @@ router.delete('/:id', authenticateToken, async (req: Request, res: Response, nex
 });
 
 // SSE endpoint for real-time sync progress
-router.get('/:id/sync-stream', authenticateToken, async (req: Request, res: Response) => {
-  const userId = (req as any).user?.userId;
+router.get('/:id/sync-stream', async (req: Request, res: Response) => {
+  // For SSE, we need to authenticate using Replit Auth headers
+  // EventSource cannot send custom Authorization headers
+  const replitUserId = req.headers['x-replit-user-id'] as string;
   
-  if (!userId) {
+  if (!replitUserId) {
     return res.status(401).json({ message: 'Não autenticado' });
   }
   
   const integration = await storage.getIntegrationById(req.params.id);
   
-  if (!integration || integration.userId !== userId) {
+  if (!integration || integration.userId !== replitUserId) {
     return res.status(404).json({ message: 'Integração não encontrada' });
   }
+  
+  const userId = replitUserId;
 
   // Setup SSE
   res.setHeader('Content-Type', 'text/event-stream');

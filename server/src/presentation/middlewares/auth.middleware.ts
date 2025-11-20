@@ -21,6 +21,37 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
   }
 };
 
+// Special authentication for SSE endpoints that can't send custom headers
+// Uses cookie-based authentication instead of Authorization header
+export const authenticateSSE = (req: Request, res: Response, next: NextFunction) => {
+  // Check if user is already authenticated via Replit Auth session
+  const replitUserId = req.headers['x-replit-user-id'] as string;
+  
+  if (replitUserId) {
+    // User authenticated via Replit Auth
+    (req as any).user = { userId: replitUserId };
+    next();
+    return;
+  }
+
+  // Fallback: check for token in Authorization header (for development)
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
+      (req as any).user = decoded;
+      next();
+      return;
+    } catch (error) {
+      // Token invalid, continue to error
+    }
+  }
+
+  throw new UnauthorizedException('Não autenticado');
+};
+
 export const requireSuperAdmin = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user?.userId;
