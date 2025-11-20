@@ -70,6 +70,7 @@ export interface IStorage {
   getSyncHistoryByUser(userId: string): Promise<any[]>;
   createSyncHistory(data: { integrationId: string; userId: string; status: string; type: string; metadata?: any }): Promise<any>;
   updateSyncHistory(id: string, data: { status?: string; completedAt?: Date; campaignsSynced?: number; adSetsSynced?: number; creativeSynced?: number; errorMessage?: string; metadata?: any }): Promise<any>;
+  deleteAllSyncHistoryByUser(userId: string): Promise<void>;
   createWebhookEvent(data: InsertWebhookEvent): Promise<WebhookEvent>;
   updateWebhookEvent(id: string, data: Partial<InsertWebhookEvent>): Promise<WebhookEvent | undefined>;
   getWebhookEvents(): Promise<WebhookEvent[]>;
@@ -279,6 +280,12 @@ export class DatabaseStorage implements IStorage {
       .where(eq(syncHistory.id, id))
       .returning();
     return updated;
+  }
+
+  async deleteAllSyncHistoryByUser(userId: string): Promise<void> {
+    await db
+      .delete(syncHistory)
+      .where(eq(syncHistory.userId, userId));
   }
 
   async createWebhookEvent(data: InsertWebhookEvent): Promise<WebhookEvent> {

@@ -34,6 +34,17 @@ router.get('/sync-history', authenticateToken, async (req: Request, res: Respons
   }
 });
 
+// Delete all sync history for user
+router.delete('/sync-history/bulk/all', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = (req as any).user?.userId;
+    await storage.deleteAllSyncHistoryByUser(userId);
+    res.json({ message: 'Todo o histórico de sincronização foi excluído com sucesso' });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Create integration
 router.post('/', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {

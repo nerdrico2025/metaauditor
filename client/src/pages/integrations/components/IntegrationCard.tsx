@@ -99,14 +99,8 @@ export function IntegrationCard({
             </div>
             <div>
               <span className="text-gray-500">Última Sincronização:</span>
-              <p className="text-gray-900 dark:text-white">{formatRelativeTime(integration.lastSync)}</p>
+              <p className="text-gray-900 dark:text-white">{formatRelativeTime(integration.lastFullSync || integration.lastSync)}</p>
             </div>
-            {integration.lastFullSync && (
-              <div>
-                <span className="text-gray-500">Última Sinc. Completa:</span>
-                <p className="text-gray-900 dark:text-white">{formatRelativeTime(integration.lastFullSync)}</p>
-              </div>
-            )}
             <div>
               <span className="text-gray-500">Conectada em:</span>
               <p className="text-gray-900 dark:text-white">{formatDate(integration.createdAt)}</p>

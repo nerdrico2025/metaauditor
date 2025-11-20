@@ -336,6 +336,7 @@ export default function MetaIntegrations() {
         apiRequest('/api/campaigns/bulk/all', { method: 'DELETE' }),
         apiRequest('/api/adsets/bulk/all', { method: 'DELETE' }),
         apiRequest('/api/creatives/bulk/all', { method: 'DELETE' }),
+        apiRequest('/api/sync-history/bulk/all', { method: 'DELETE' }),
       ]);
     },
     onSuccess: () => {
@@ -346,6 +347,7 @@ export default function MetaIntegrations() {
       queryClient.invalidateQueries({ queryKey: ['/api/campaigns'] });
       queryClient.invalidateQueries({ queryKey: ['/api/adsets'] });
       queryClient.invalidateQueries({ queryKey: ['/api/creatives'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/integrations/sync-history'] });
       setDeleteAllDialogOpen(false);
     },
     onError: (error: any) => {
