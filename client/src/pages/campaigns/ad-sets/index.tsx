@@ -179,8 +179,11 @@ export default function AdSets() {
   };
 
   const metaAdSets = filteredAdSets.filter(a => a.platform === 'meta');
-  const activeAdSets = filteredAdSets.filter(a => a.status.toLowerCase() === 'active');
-  const totalSpend = filteredAdSets.reduce((sum, adSet) => sum + (adSet.spend || 0), 0);
+  const activeAdSets = filteredAdSets.filter(a => a.status === 'Ativo');
+  const totalSpend = filteredAdSets.reduce((sum, adSet) => {
+    const spend = typeof adSet.spend === 'string' ? parseFloat(adSet.spend) : (adSet.spend || 0);
+    return sum + spend;
+  }, 0);
 
   return (
     <div className="flex h-screen bg-background">
