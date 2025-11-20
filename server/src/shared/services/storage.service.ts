@@ -324,50 +324,93 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteIntegration(integrationId: string, userId: string, deleteData: boolean = true): Promise<void> {
-    if (deleteData) {
-      // Get all campaigns from this integration first
-      const integrationCampaigns = await db
-        .select()
-        .from(campaigns)
-        .where(eq(campaigns.integrationId, integrationId));
-      
-      const campaignIds = integrationCampaigns.map(c => c.id);
-      
-      if (campaignIds.length > 0) {
-        // Get all creatives to delete their images
-        const creativesToDelete = await db
+    // Use a database transaction to prevent deadlocks and ensure atomicity
+    await db.transaction(async (tx) => {
+      if (deleteData) {
+        // Get all campaigns from this integration first
+        const integrationCampaigns = await tx
           .select()
-          .from(creatives)
-          .where(inArray(creatives.campaignId, campaignIds));
+          .from(campaigns)
+          .where(eq(campaigns.integrationId, integrationId));
         
-        // Delete image files from filesystem
-        for (const creative of creativesToDelete) {
-          if (creative.imageUrl && creative.imageUrl.startsWith('/uploads/')) {
-            await this.deleteImageFile(creative.imageUrl);
+        const campaignIds = integrationCampaigns.map(c => c.id);
+        
+        if (campaignIds.length > 0) {
+          // Get all creatives to delete their images
+          const creativesToDelete = await tx
+            .select()
+            .from(creatives)
+            .where(inArray(creatives.campaignId, campaignIds));
+          
+          // Delete image files from filesystem (outside transaction, but safe)
+          for (const creative of creativesToDelete) {
+            if (creative.imageUrl && creative.imageUrl.startsWith('/uploads/')) {
+              await this.deleteImageFile(creative.imageUrl);
+            }
           }
+          
+          // Delete in reverse order of dependencies to avoid foreign key conflicts
+          // 1. Delete all audits and audit actions for these creatives
+          const creativeIds = creativesToDelete.map(c => c.id);
+          if (creativeIds.length > 0) {
+            // Get all audit IDs for these creatives
+            const auditsToDelete = await tx
+              .select({ id: audits.id })
+              .from(audits)
+              .where(inArray(audits.creativeId, creativeIds));
+            
+            const auditIds = auditsToDelete.map(a => a.id);
+            
+            // Delete audit actions first (if any)
+            if (auditIds.length > 0) {
+              await tx
+                .delete(auditActions)
+                .where(inArray(auditActions.auditId, auditIds));
+            }
+            
+            // Delete audits
+            await tx
+              .delete(audits)
+              .where(inArray(audits.creativeId, creativeIds));
+          }
+          
+          // 2. Delete all creatives from these campaigns
+          await tx
+            .delete(creatives)
+            .where(inArray(creatives.campaignId, campaignIds));
+          
+          // 3. Delete all ad sets from these campaigns
+          await tx
+            .delete(adSets)
+            .where(inArray(adSets.campaignId, campaignIds));
+          
+          // 4. Delete all campaigns from this integration
+          await tx
+            .delete(campaigns)
+            .where(eq(campaigns.integrationId, integrationId));
         }
         
-        // Delete all creatives from these campaigns
-        await db
-          .delete(creatives)
-          .where(inArray(creatives.campaignId, campaignIds));
+        // 5. Delete sync history for this integration
+        await tx
+          .delete(syncHistory)
+          .where(eq(syncHistory.integrationId, integrationId));
         
-        // Delete all ad sets from these campaigns
-        await db
-          .delete(adSets)
-          .where(inArray(adSets.campaignId, campaignIds));
-        
-        // Delete all campaigns from this integration
-        await db
-          .delete(campaigns)
-          .where(eq(campaigns.integrationId, integrationId));
+        // 6. Delete webhook events related to campaigns from this integration
+        if (campaignIds.length > 0) {
+          const campaignExternalIds = integrationCampaigns.map(c => c.externalId);
+          if (campaignExternalIds.length > 0) {
+            await tx
+              .delete(webhookEvents)
+              .where(inArray(webhookEvents.externalId, campaignExternalIds));
+          }
+        }
       }
-    }
-    
-    // Finally, delete the integration
-    await db
-      .delete(integrations)
-      .where(and(eq(integrations.id, integrationId), eq(integrations.userId, userId)));
+      
+      // Finally, delete the integration itself
+      await tx
+        .delete(integrations)
+        .where(and(eq(integrations.id, integrationId), eq(integrations.userId, userId)));
+    });
   }
 
   private async deleteImageFile(imageUrl: string): Promise<void> {
