@@ -168,29 +168,34 @@ export function SyncLoadingModal({
                   {/* Step-level progress */}
                   {step.total !== undefined && step.total > 0 && step.status === 'loading' && (
                     <div className="mt-2">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                          Sincronizando {step.count || 0} de {step.total}
+                        </p>
+                        <span className="text-xs text-blue-500 dark:text-blue-400 font-semibold">
+                          {Math.round(((step.count || 0) / step.total) * 100)}%
+                        </span>
+                      </div>
                       <Progress 
                         value={(step.count || 0) / step.total * 100} 
-                        className="h-1.5"
+                        className="h-2"
                       />
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        {step.count || 0} / {step.total} itens
-                      </p>
                     </div>
                   )}
                   
                   {step.status === 'loading' && !step.total && (
-                    <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
-                      Processando...
+                    <p className="text-xs text-blue-600 dark:text-blue-400 font-medium mt-1">
+                      Carregando dados do Meta Ads...
                     </p>
                   )}
                   {step.status === 'success' && (
-                    <p className="text-xs text-green-600 dark:text-green-400 font-medium">
-                      {step.count ? `${step.count} ${step.count === 1 ? 'item sincronizado' : 'itens sincronizados'}` : 'Concluído'}
+                    <p className="text-xs text-green-600 dark:text-green-400 font-medium mt-1">
+                      ✓ {step.count ? `${step.count} ${step.count === 1 ? 'item sincronizado' : 'itens sincronizados'}` : 'Concluído'}
                     </p>
                   )}
                   {step.status === 'error' && step.error && (
-                    <p className="text-xs text-red-600 dark:text-red-400 font-medium">
-                      {step.error}
+                    <p className="text-xs text-red-600 dark:text-red-400 font-medium mt-1">
+                      ✗ {step.error}
                     </p>
                   )}
                 </div>

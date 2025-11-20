@@ -224,7 +224,7 @@ export default function MetaIntegrations() {
         };
       });
     },
-    onSuccess: (result) => {
+    onSuccess: (result: any) => {
       queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
       queryClient.invalidateQueries({ queryKey: ['/api/integrations/sync-history'] });
       queryClient.invalidateQueries({ queryKey: ['/api/campaigns'] });
@@ -232,9 +232,9 @@ export default function MetaIntegrations() {
       queryClient.invalidateQueries({ queryKey: ['/api/creatives'] });
       
       const parts = [];
-      if (result.data?.campaigns) parts.push(`${result.data.campaigns} campanhas`);
-      if (result.data?.adSets) parts.push(`${result.data.adSets} grupos de anúncios`);
-      if (result.data?.creatives) parts.push(`${result.data.creatives} anúncios`);
+      if (result?.data?.campaigns) parts.push(`${result.data.campaigns} campanhas`);
+      if (result?.data?.adSets) parts.push(`${result.data.adSets} grupos de anúncios`);
+      if (result?.data?.creatives) parts.push(`${result.data.creatives} anúncios`);
       
       toast({ 
         title: '✅ Sincronização concluída!',
