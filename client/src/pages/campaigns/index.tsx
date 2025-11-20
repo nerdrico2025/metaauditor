@@ -77,7 +77,7 @@ export default function Campaigns() {
   });
 
   const { data: creativesData } = useQuery<any>({
-    queryKey: ['/api/creatives'],
+    queryKey: ['/api/creatives?limit=10000'],
     enabled: isAuthenticated,
   });
   

@@ -79,7 +79,7 @@ export default function MetaIntegrations() {
   });
 
   const { data: creativesData } = useQuery<{ creatives: any[] }>({
-    queryKey: ['/api/creatives'],
+    queryKey: ['/api/creatives?limit=10000'],
     enabled: !!user,
   });
   const creatives = creativesData?.creatives || [];

@@ -147,7 +147,7 @@ export default function Creatives() {
   }, [isAuthenticated, isLoading, toast]);
 
   const { data: creativesResponse, isLoading: creativesLoading } = useQuery<{ creatives: Creative[], pagination: any }>({
-    queryKey: ["/api/creatives"],
+    queryKey: ["/api/creatives?limit=10000"],
     enabled: isAuthenticated,
   });
 
