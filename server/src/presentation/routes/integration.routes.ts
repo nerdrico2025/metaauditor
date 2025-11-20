@@ -2,6 +2,7 @@
 import { Router } from 'express';
 import { authenticateToken } from '../middlewares/auth.middleware';
 import type { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
 import { storage } from '../../shared/services/storage.service.js';
 import { MetaAdsService } from '../../infrastructure/services/MetaAdsService.js';
 import { GoogleAdsService } from '../../infrastructure/services/GoogleAdsService.js';
@@ -100,7 +101,6 @@ router.post('/:id/sync-token', authenticateToken, async (req: Request, res: Resp
     }
     
     // Create temporary token valid for 10 minutes
-    const jwt = require('jsonwebtoken');
     const token = jwt.sign(
       { userId, integrationId: req.params.id, purpose: 'sse' },
       process.env.JWT_SECRET || 'fallback-secret',
@@ -126,7 +126,6 @@ router.get('/:id/sync-stream', async (req: Request, res: Response) => {
   let integrationId: string;
   
   try {
-    const jwt = require('jsonwebtoken');
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as any;
     
     if (decoded.purpose !== 'sse' || decoded.integrationId !== req.params.id) {

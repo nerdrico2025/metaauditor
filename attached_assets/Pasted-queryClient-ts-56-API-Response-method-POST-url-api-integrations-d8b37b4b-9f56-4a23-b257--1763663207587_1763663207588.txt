@@ -1,0 +1,58 @@
+queryClient.ts:56 📡 API Response: {method: 'POST', url: '/api/integrations/d8b37b4b-9f56-4a23-b257-d8950ac7283c/sync-token', status: 500, statusText: 'Internal Server Error', ok: false, …}
+queryClient.ts:72 ❌ API Request failed: {method: 'POST', url: '/api/integrations/d8b37b4b-9f56-4a23-b257-d8950ac7283c/sync-token', status: 500, statusText: 'Internal Server Error', errorMessage: '{"status":"error","message":"require is not defined","statusCode":500}'}
+apiRequest @ queryClient.ts:72
+await in apiRequest
+(anonymous) @ index.tsx:108
+mutationFn @ index.tsx:105
+fn @ @tanstack_react-query.js?v=cde2e441:1189
+run @ @tanstack_react-query.js?v=cde2e441:494
+start @ @tanstack_react-query.js?v=cde2e441:536
+execute @ @tanstack_react-query.js?v=cde2e441:1225
+await in execute
+mutate @ @tanstack_react-query.js?v=cde2e441:2630
+(anonymous) @ @tanstack_react-query.js?v=cde2e441:3295
+onSync @ index.tsx:537
+callCallback2 @ chunk-WERSD76P.js?v=cde2e441:3674
+invokeGuardedCallbackDev @ chunk-WERSD76P.js?v=cde2e441:3699
+invokeGuardedCallback @ chunk-WERSD76P.js?v=cde2e441:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-WERSD76P.js?v=cde2e441:3736
+executeDispatch @ chunk-WERSD76P.js?v=cde2e441:7014
+processDispatchQueueItemsInOrder @ chunk-WERSD76P.js?v=cde2e441:7034
+processDispatchQueue @ chunk-WERSD76P.js?v=cde2e441:7043
+dispatchEventsForPlugins @ chunk-WERSD76P.js?v=cde2e441:7051
+(anonymous) @ chunk-WERSD76P.js?v=cde2e441:7174
+batchedUpdates$1 @ chunk-WERSD76P.js?v=cde2e441:18913
+batchedUpdates @ chunk-WERSD76P.js?v=cde2e441:3579
+dispatchEventForPluginEventSystem @ chunk-WERSD76P.js?v=cde2e441:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-WERSD76P.js?v=cde2e441:5478
+dispatchEvent @ chunk-WERSD76P.js?v=cde2e441:5472
+dispatchDiscreteEvent @ chunk-WERSD76P.js?v=cde2e441:5449Understand this error
+index.tsx:259 ❌ Error setting up sync: Error: {"status":"error","message":"require is not defined","statusCode":500}
+    at apiRequest (queryClient.ts:79:19)
+    at async index.tsx:108:33
+(anonymous) @ index.tsx:259
+await in (anonymous)
+mutationFn @ index.tsx:105
+fn @ @tanstack_react-query.js?v=cde2e441:1189
+run @ @tanstack_react-query.js?v=cde2e441:494
+start @ @tanstack_react-query.js?v=cde2e441:536
+execute @ @tanstack_react-query.js?v=cde2e441:1225
+await in execute
+mutate @ @tanstack_react-query.js?v=cde2e441:2630
+(anonymous) @ @tanstack_react-query.js?v=cde2e441:3295
+onSync @ index.tsx:537
+callCallback2 @ chunk-WERSD76P.js?v=cde2e441:3674
+invokeGuardedCallbackDev @ chunk-WERSD76P.js?v=cde2e441:3699
+invokeGuardedCallback @ chunk-WERSD76P.js?v=cde2e441:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-WERSD76P.js?v=cde2e441:3736
+executeDispatch @ chunk-WERSD76P.js?v=cde2e441:7014
+processDispatchQueueItemsInOrder @ chunk-WERSD76P.js?v=cde2e441:7034
+processDispatchQueue @ chunk-WERSD76P.js?v=cde2e441:7043
+dispatchEventsForPlugins @ chunk-WERSD76P.js?v=cde2e441:7051
+(anonymous) @ chunk-WERSD76P.js?v=cde2e441:7174
+batchedUpdates$1 @ chunk-WERSD76P.js?v=cde2e441:18913
+batchedUpdates @ chunk-WERSD76P.js?v=cde2e441:3579
+dispatchEventForPluginEventSystem @ chunk-WERSD76P.js?v=cde2e441:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-WERSD76P.js?v=cde2e441:5478
+dispatchEvent @ chunk-WERSD76P.js?v=cde2e441:5472
+dispatchDiscreteEvent @ chunk-WERSD76P.js?v=cde2e441:5449Understand this error
