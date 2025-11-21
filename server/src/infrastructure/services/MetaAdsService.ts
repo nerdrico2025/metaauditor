@@ -72,10 +72,11 @@ export interface SyncProgressCallback {
 export class MetaAdsService {
   private readonly apiVersion = 'v21.0';
   private readonly baseUrl = 'https://graph.facebook.com';
-  private readonly requestDelay = 2000; // 2s delay between page requests
+  private readonly requestDelay = 3000; // 3s delay between page requests (increased from 2s)
   private readonly campaignDelay = 8000; // 8s delay between campaigns
   private readonly adSetDelay = 5000; // 5s delay between ad sets
   private readonly maxRetries = 5; // More retries with longer waits
+  private readonly batchDelay = 5000; // 5s delay between batch requests
   private progressCallback?: SyncProgressCallback;
 
   setProgressCallback(callback: SyncProgressCallback) {
@@ -182,8 +183,8 @@ export class MetaAdsService {
 
         // Longer delay between batch requests to avoid rate limits
         if (i + BATCH_SIZE < requests.length) {
-          console.log(`⏸️  Waiting 3 seconds before next batch to avoid rate limits...`);
-          await this.sleep(3000); // Increased to 3s to avoid rate limits
+          console.log(`⏸️  Waiting ${this.batchDelay/1000} seconds before next batch to avoid rate limits...`);
+          await this.sleep(this.batchDelay);
         }
       } catch (error) {
         console.error('Batch request error:', error);
@@ -210,7 +211,7 @@ export class MetaAdsService {
         
         // Rate limit errors: code 17, 4, 80004
         if ((errorCode === 17 || errorCode === 4 || errorCode === 80004) && retryCount < this.maxRetries) {
-          const waitTime = Math.pow(2, retryCount) * 3000; // Exponential backoff: 3s, 6s, 12s, 24s, 48s
+          const waitTime = Math.pow(2, retryCount) * 5000; // Exponential backoff: 5s, 10s, 20s, 40s, 80s
           console.log(`⏱️ Rate limit hit, waiting ${waitTime/1000}s before retry ${retryCount + 1}/${this.maxRetries}...`);
           await this.sleep(waitTime);
           return this.fetchWithRetry(url, retryCount + 1);
