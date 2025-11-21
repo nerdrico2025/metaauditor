@@ -56,8 +56,11 @@ export const subscriptionPlans = pgTable("subscription_plans", {
   name: varchar("name", { length: 100 }).notNull().unique(),
   slug: varchar("slug", { length: 100 }).notNull().unique(),
   description: text("description"),
+  monthlyPricing: decimal("monthly_pricing", { precision: 10, scale: 2 }),
+  annualPricing: decimal("annual_pricing", { precision: 10, scale: 2 }),
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
   billingCycle: varchar("billing_cycle").notNull().default('monthly'), // 'monthly', 'yearly'
+  enableTrial: boolean("enable_trial").default(true),
   isActive: boolean("is_active").default(true),
   displayOrder: integer("display_order").default(0),
   isPopular: boolean("is_popular").default(false),
