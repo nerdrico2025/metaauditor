@@ -2,24 +2,10 @@ import Head from 'next/head'
 import Link from 'next/link'
 import type { ReactElement } from 'react'
 import { CheckCircle2, Zap, BarChart3, Shield, Target, TrendingUp, Award, Sparkles } from 'lucide-react'
-import { useEffect, useState } from 'react'
 
 const PLATFORM_URL = 'https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev'
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev'
 
-interface Plan {
-  id: string
-  name: string
-  slug: string
-  price: string
-  billingCycle: string
-  isPopular: boolean
-  investmentRange: string
-  maxUsers: number
-  features: string[]
-}
-
-const fallbackPlans = [
+const plans = [
   {
     name: 'Bronze',
     price: 'R$ 149',
@@ -89,36 +75,6 @@ const fallbackPlans = [
 ]
 
 export default function Home(): ReactElement {
-  const [plans, setPlans] = useState(fallbackPlans)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    const fetchPlans = async () => {
-      try {
-        const response = await fetch(`${API_URL}/api/plans`)
-        if (response.ok) {
-          const data = await response.json()
-          const formattedPlans = data.map((plan: Plan) => ({
-            name: plan.name,
-            price: `R$ ${parseInt(plan.price).toLocaleString('pt-BR')}`,
-            period: '/mês',
-            investment: plan.investmentRange || 'Personalizado',
-            accounts: plan.maxUsers === 1 ? '1 conta' : plan.maxUsers <= 3 ? `Até ${plan.maxUsers} contas` : `${plan.maxUsers - 1} a ${plan.maxUsers} contas`,
-            features: plan.features,
-            highlight: plan.isPopular,
-            trial: true
-          }))
-          setPlans(formattedPlans)
-        }
-      } catch (error) {
-        console.error('Error fetching plans:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchPlans()
-  }, [])
   return (
     <>
       <Head>
@@ -309,7 +265,7 @@ export default function Home(): ReactElement {
                     Investimento Meta: {plan.investment}
                   </div>
                   <div className="flex items-baseline gap-2 mb-2">
-                    <span className={`text-5xl font-bold ${plan.highlight ? 'text-white' : 'text-gray-900'}`}>
+                    <span className={`text-4xl font-bold ${plan.highlight ? 'text-white' : 'text-gray-900'}`}>
                       {plan.price}
                     </span>
                     <span className={plan.highlight ? 'text-orange-100' : 'text-gray-500'}>
@@ -347,14 +303,14 @@ export default function Home(): ReactElement {
 
           {/* Plano Customizado CTA */}
           <div className="max-w-3xl mx-auto">
-            <div className="rounded-2xl p-12 bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200 text-center">
+            <div className="rounded-2xl p-12 bg-gradient-to-br from-orange-50 to-orange-100 border-2 border-orange-200 text-center">
               <h3 className="text-3xl font-bold mb-4 text-gray-900">Plano Customizado</h3>
               <p className="text-xl text-gray-600 mb-6">
                 Precisa de uma solução personalizada? Nossa equipe pode criar um plano sob medida com módulos adicionais, integrações customizadas e suporte white-glove.
               </p>
               <a
                 href="mailto:contato@clickauditor.com?subject=Interesse em Plano Customizado"
-                className="inline-block px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-bold hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg hover:shadow-xl"
+                className="inline-block px-8 py-4 bg-gradient-to-r from-orange-600 to-orange-500 text-white rounded-xl font-bold hover:from-orange-700 hover:to-orange-600 transition-all shadow-lg hover:shadow-xl"
                 data-testid="button-contact-custom"
               >
                 Falar com Vendas
