@@ -5,7 +5,9 @@ import { CheckCircle2, Zap, BarChart3, Shield, Target, TrendingUp, Award, Sparkl
 import { useEffect, useState } from 'react'
 
 const PLATFORM_URL = 'https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev'
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev'
+const API_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+  ? 'http://localhost:5000'
+  : (process.env.NEXT_PUBLIC_API_URL || 'https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev')
 
 interface Plan {
   id: string
