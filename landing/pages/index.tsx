@@ -3,6 +3,8 @@ import Link from 'next/link'
 import type { ReactElement } from 'react'
 import { CheckCircle2, Zap, BarChart3, Shield, Target, TrendingUp, Award, Sparkles } from 'lucide-react'
 
+const PLATFORM_URL = 'https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev'
+
 const plans = [
   {
     name: 'Bronze',
@@ -110,13 +112,13 @@ export default function Home(): ReactElement {
               Click Auditor
             </div>
           </div>
-          <Link 
-            href="/login" 
+          <a 
+            href={PLATFORM_URL}
             className="px-6 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all shadow-md hover:shadow-lg font-medium"
             data-testid="button-login-nav"
           >
             Acessar Plataforma
-          </Link>
+          </a>
         </div>
       </nav>
 
@@ -140,7 +142,7 @@ export default function Home(): ReactElement {
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link 
-                href="/login" 
+                href="/register" 
                 className="px-8 py-4 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-semibold hover:from-orange-600 hover:to-orange-700 transition-all shadow-lg hover:shadow-xl text-lg"
                 data-testid="button-trial-hero"
               >
@@ -303,7 +305,7 @@ export default function Home(): ReactElement {
                 </ul>
 
                 <Link
-                  href="/login"
+                  href={`/register?plan=${plan.name.toLowerCase()}`}
                   className={`block w-full py-4 rounded-xl font-bold text-center transition-all ${
                     plan.highlight
                       ? 'bg-white text-orange-600 hover:bg-orange-50 shadow-lg'
@@ -346,7 +348,7 @@ export default function Home(): ReactElement {
                 </ul>
 
                 <Link
-                  href="/login"
+                  href={`/register?plan=${plan.name.toLowerCase()}`}
                   className="block w-full py-4 rounded-xl font-bold text-center bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700 shadow-md hover:shadow-lg transition-all"
                   data-testid={`button-start-${plan.name.toLowerCase()}`}
                 >
@@ -369,7 +371,7 @@ export default function Home(): ReactElement {
             Comece seu trial gratuito de 3 dias agora mesmo. Sem cartão de crédito.
           </p>
           <Link 
-            href="/login" 
+            href="/register" 
             className="inline-block px-10 py-5 bg-white text-orange-600 rounded-xl font-bold text-lg hover:bg-orange-50 transition-all shadow-2xl hover:shadow-3xl hover:scale-105"
             data-testid="button-trial-cta"
           >
