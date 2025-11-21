@@ -45,6 +45,7 @@ import NotFound from "@/pages/errors/not-found";
 function Router() {
   return (
     <Switch>
+      <Route path="/" component={Login} />
       <Route path="/login" component={Login} />
       <Route path="/dashboard">
         <ProtectedRoute>
