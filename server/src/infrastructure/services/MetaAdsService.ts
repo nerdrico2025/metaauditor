@@ -410,7 +410,8 @@ export class MetaAdsService {
       
       // Fetch ALL ad sets from the entire account in one call
       // CRITICAL: Keep fields minimal to avoid "too much data" error from Meta API
-      const url = `${this.baseUrl}/${this.apiVersion}/${integration.accountId}/adsets?fields=id,name,status,effective_status,campaign_id,daily_budget,lifetime_budget,bid_strategy,targeting,start_time,end_time&limit=100&access_token=${integration.accessToken}`;
+      // Removed: targeting (very large object), bid_strategy (not essential)
+      const url = `${this.baseUrl}/${this.apiVersion}/${integration.accountId}/adsets?fields=id,name,status,effective_status,campaign_id,daily_budget,lifetime_budget,start_time,end_time&limit=100&access_token=${integration.accessToken}`;
       const adSets = await this.fetchAllPages<MetaAdSet>(url);
       
       console.log(`✅ Found ${adSets.length} total ad sets from Meta API`);
@@ -445,8 +446,8 @@ export class MetaAdsService {
           status: this.translateMetaStatus(adSet.effective_status || adSet.status),
           dailyBudget: adSet.daily_budget ? (parseFloat(adSet.daily_budget) / 100).toString() : null,
           lifetimeBudget: adSet.lifetime_budget ? (parseFloat(adSet.lifetime_budget) / 100).toString() : null,
-          bidStrategy: adSet.bid_strategy || null,
-          targeting: adSet.targeting || null,
+          bidStrategy: null, // Not fetched to reduce API payload
+          targeting: null, // Not fetched to reduce API payload (targeting is very large)
           startTime: adSet.start_time ? new Date(adSet.start_time) : null,
           endTime: adSet.end_time ? new Date(adSet.end_time) : null,
           impressions: parseInt(insights.impressions || '0'),

@@ -6,20 +6,8 @@ import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 export default defineConfig({
   plugins: [
     react(),
-    runtimeErrorOverlay(),
-    ...(process.env.NODE_ENV !== "production" &&
-    process.env.REPL_ID !== undefined
-      ? [
-          await import("@replit/vite-plugin-cartographer").then((m) =>
-            m.cartographer()
-          ),
-        ]
-      : []),
+    runtimeErrorOverlay()
   ],
-
-  // 🔥 root NÃO deve ser alterado
-  // Senão o Vite se perde no monorepo
-  // root: path.resolve(import.meta.dirname),  ❌ REMOVIDO
 
   resolve: {
     alias: {
@@ -29,16 +17,22 @@ export default defineConfig({
     },
   },
 
-  build: {
-    // ✔️ client deve buildar em SUA PRÓPRIA pasta
-    outDir: "dist",
-    emptyOutDir: true,
+  server: {
+    host: true,
+    strictPort: true,
+    port: 5173,
+    allowedHosts: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
 
-  server: {
-    // Nada especial aqui
-    fs: {
-      strict: false, // ← evita problemas em monorepo
-    },
+  build: {
+    outDir: "dist",
+    emptyOutDir: true,
   },
 });
