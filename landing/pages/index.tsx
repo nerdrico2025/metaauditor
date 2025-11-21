@@ -2,10 +2,27 @@ import Head from 'next/head'
 import Link from 'next/link'
 import type { ReactElement } from 'react'
 import { CheckCircle2, Zap, BarChart3, Shield, Target, TrendingUp, Award, Sparkles } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 const PLATFORM_URL = 'https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev'
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev'
 
-const plans = [
+interface Plan {
+  id: string
+  name: string
+  slug: string
+  price: string
+  monthlyPricing: string
+  annualPricing: string
+  billingCycle: string
+  enableTrial: boolean
+  isPopular: boolean
+  investmentRange: string
+  maxUsers: number
+  features: string[]
+}
+
+const fallbackPlans = [
   {
     name: 'Bronze',
     price: 'R$ 149',
@@ -75,6 +92,75 @@ const plans = [
 ]
 
 export default function Home(): ReactElement {
+  const [plans, setPlans] = useState(fallbackPlans)
+  const [loading, setLoading] = useState(true)
+  const [isAnnual, setIsAnnual] = useState(false)
+  const [apiPlans, setApiPlans] = useState<Plan[]>([])
+
+  useEffect(() => {
+    const fetchPlans = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/plans`)
+        if (response.ok) {
+          const data = await response.json()
+          setApiPlans(data)
+          formatPlans(data, false)
+        } else {
+          setLoading(false)
+        }
+      } catch (error) {
+        console.error('Error fetching plans:', error)
+        setLoading(false)
+      }
+    }
+
+    const formatPlans = (data: Plan[], annual: boolean) => {
+      const formattedPlans = data.map((plan: Plan) => {
+        const priceToUse = annual && plan.annualPricing ? plan.annualPricing : plan.monthlyPricing || plan.price
+        const priceNum = parseInt(priceToUse)
+        const savings = annual && plan.annualPricing ? Math.round((1 - (parseInt(plan.annualPricing) / (parseInt(plan.monthlyPricing) * 12))) * 100) : 0
+        return {
+          name: plan.name,
+          price: `R$ ${priceNum.toLocaleString('pt-BR')}`,
+          period: annual ? '/ano' : '/mês',
+          investment: plan.investmentRange || 'Personalizado',
+          accounts: plan.maxUsers === 1 ? '1 conta' : plan.maxUsers <= 3 ? `Até ${plan.maxUsers} contas` : `${plan.maxUsers - 1} a ${plan.maxUsers} contas`,
+          features: plan.features,
+          highlight: plan.isPopular,
+          trial: plan.enableTrial ?? true,
+          savings: savings
+        }
+      })
+      setPlans(formattedPlans)
+      setLoading(false)
+    }
+
+    fetchPlans()
+  }, [])
+
+  const handleToggleAnnual = (annual: boolean) => {
+    setIsAnnual(annual)
+    if (apiPlans.length > 0) {
+      const formattedPlans = apiPlans.map((plan: Plan) => {
+        const priceToUse = annual && plan.annualPricing ? plan.annualPricing : plan.monthlyPricing || plan.price
+        const priceNum = parseInt(priceToUse)
+        const savings = annual && plan.annualPricing ? Math.round((1 - (parseInt(plan.annualPricing) / (parseInt(plan.monthlyPricing) * 12))) * 100) : 0
+        return {
+          name: plan.name,
+          price: `R$ ${priceNum.toLocaleString('pt-BR')}`,
+          period: annual ? '/ano' : '/mês',
+          investment: plan.investmentRange || 'Personalizado',
+          accounts: plan.maxUsers === 1 ? '1 conta' : plan.maxUsers <= 3 ? `Até ${plan.maxUsers} contas` : `${plan.maxUsers - 1} a ${plan.maxUsers} contas`,
+          features: plan.features,
+          highlight: plan.isPopular,
+          trial: plan.enableTrial ?? true,
+          savings: savings
+        }
+      })
+      setPlans(formattedPlans)
+    }
+  }
+
   return (
     <>
       <Head>
@@ -164,38 +250,28 @@ export default function Home(): ReactElement {
               Tudo que você precisa para garantir qualidade e performance nas suas campanhas
             </p>
           </div>
-          
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+
+          <div className="grid md:grid-cols-3 gap-8">
             {[
               {
-                icon: <Target className="w-8 h-8" />,
-                title: 'Análise de Performance',
-                description: 'Monitore CTR, CPC, conversões e identifique criativos de baixo desempenho automaticamente'
-              },
-              {
-                icon: <Award className="w-8 h-8" />,
-                title: 'Conformidade de Marca',
-                description: 'Valide uso correto da marca, cores, fontes e mensagens conforme suas diretrizes'
-              },
-              {
                 icon: <BarChart3 className="w-8 h-8" />,
-                title: 'Dashboard em Tempo Real',
-                description: 'Visualize métricas atualizadas, relatórios e recomendações da IA instantaneamente'
-              },
-              {
-                icon: <Zap className="w-8 h-8" />,
-                title: 'Automação Inteligente',
-                description: 'Pause automaticamente anúncios não conformes ou com baixa performance'
+                title: 'Análise Completa de Performance',
+                description: 'Métricas detalhadas e em tempo real de todas as suas campanhas Meta Ads'
               },
               {
                 icon: <Shield className="w-8 h-8" />,
-                title: 'Análise com GPT-4o',
-                description: 'IA avançada analisa cada criativo identificando problemas e oportunidades'
+                title: 'Conformidade Garantida',
+                description: 'Validação automática contra normas e guidelines da Meta, Google e sua marca'
+              },
+              {
+                icon: <Target className="w-8 h-8" />,
+                title: 'Otimização Inteligente',
+                description: 'Recomendações baseadas em IA para melhorar ROI e reduzir custos'
               },
               {
                 icon: <TrendingUp className="w-8 h-8" />,
-                title: 'Relatórios Customizados',
-                description: 'Gere relatórios detalhados personalizados para cada cliente ou campanha'
+                title: 'Relatórios Avançados',
+                description: 'Visualizações poderosas e exportação de dados em múltiplos formatos'
               },
               {
                 icon: <CheckCircle2 className="w-8 h-8" />,
@@ -234,6 +310,35 @@ export default function Home(): ReactElement {
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
               Escolha o plano ideal baseado no seu investimento em Meta Ads
             </p>
+            
+            {/* Billing Toggle */}
+            <div className="mt-8 flex justify-center">
+              <div className="inline-flex items-center bg-gray-200 rounded-full p-1">
+                <button
+                  onClick={() => handleToggleAnnual(false)}
+                  className={`px-6 py-2 rounded-full font-semibold transition-all ${
+                    !isAnnual
+                      ? 'bg-orange-500 text-white shadow-lg'
+                      : 'bg-transparent text-gray-700 hover:text-gray-900'
+                  }`}
+                  data-testid="toggle-monthly"
+                >
+                  Mensal
+                </button>
+                <button
+                  onClick={() => handleToggleAnnual(true)}
+                  className={`px-6 py-2 rounded-full font-semibold transition-all ${
+                    isAnnual
+                      ? 'bg-orange-500 text-white shadow-lg'
+                      : 'bg-transparent text-gray-700 hover:text-gray-900'
+                  }`}
+                  data-testid="toggle-annual"
+                >
+                  Anual
+                </button>
+              </div>
+            </div>
+
             <div className="mt-6 inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-full text-sm font-medium">
               <CheckCircle2 className="w-4 h-4" />
               <span>3 dias de trial grátis - sem cartão de crédito</span>
@@ -272,6 +377,13 @@ export default function Home(): ReactElement {
                       {plan.period}
                     </span>
                   </div>
+                  {plan.savings > 0 && (
+                    <div className={`text-xs font-semibold px-2 py-1 rounded inline-block ${
+                      plan.highlight ? 'bg-yellow-400 text-yellow-900' : 'bg-green-100 text-green-700'
+                    }`}>
+                      Economize {plan.savings}%
+                    </div>
+                  )}
                   <div className={`text-sm font-medium ${plan.highlight ? 'text-orange-100' : 'text-gray-600'}`}>
                     {plan.accounts}
                   </div>
@@ -376,20 +488,11 @@ export default function Home(): ReactElement {
             </div>
           </div>
           
-          <div className="border-t border-gray-800 pt-8 text-center text-gray-400">
+          <div className="border-t border-gray-700 pt-8 text-center text-gray-400">
             <p>&copy; 2024 Click Auditor. Todos os direitos reservados.</p>
           </div>
         </div>
       </footer>
-
-      <style jsx>{`
-        .bg-grid-pattern {
-          background-image: 
-            linear-gradient(to right, rgba(0, 0, 0, 0.05) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
-          background-size: 40px 40px;
-        }
-      `}</style>
     </>
   )
 }
