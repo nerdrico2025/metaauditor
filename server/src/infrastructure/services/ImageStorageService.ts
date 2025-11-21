@@ -6,7 +6,7 @@ import { nanoid } from 'nanoid';
 import fetch from 'node-fetch';
 
 export class ImageStorageService {
-  private uploadDir = join(process.cwd(), 'server', 'public', 'uploads', 'creatives');
+  private uploadDir = join(process.cwd(), 'public', 'uploads', 'creatives');
 
   async ensureUploadDir() {
     try {
