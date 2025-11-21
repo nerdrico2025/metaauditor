@@ -83,8 +83,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     localStorage.removeItem('auth_token');
     setToken(null);
     setUser(null);
-    // Redirect to landing page
-    window.location.href = '/';
+    // Redirect to login page
+    window.location.href = '/login';
   };
 
   const isAuthenticated = !!user && !!token;
@@ -134,7 +134,7 @@ export function ProtectedRoute({
   }
 
   if (!isAuthenticated) {
-    window.location.href = '/';
+    window.location.href = '/login';
     return null;
   }
 
