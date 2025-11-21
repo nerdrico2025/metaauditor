@@ -1,9 +1,27 @@
 import { Request, Response, NextFunction } from 'express';
 import { LoginUseCase } from '../../application/use-cases/auth/LoginUseCase.js';
+import { RegisterUseCase } from '../../application/use-cases/auth/RegisterUseCase.js';
 import { UserRepository } from '../../infrastructure/database/repositories/UserRepository.js';
-import { loginSchema } from '../../shared/schema.js';
+import { CompanyRepository } from '../../infrastructure/database/repositories/CompanyRepository.js';
+import { loginSchema, publicRegisterSchema } from '../../shared/schema.js';
 
 export class AuthController {
+  async register(req: Request, res: Response, next: NextFunction) {
+    try {
+      const validatedData = publicRegisterSchema.parse(req.body);
+
+      const userRepository = new UserRepository();
+      const companyRepository = new CompanyRepository();
+      const registerUseCase = new RegisterUseCase(userRepository, companyRepository);
+
+      const result = await registerUseCase.execute(validatedData);
+
+      res.status(201).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async login(req: Request, res: Response, next: NextFunction) {
     try {
       const validatedData = loginSchema.parse(req.body);

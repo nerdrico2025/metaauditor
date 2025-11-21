@@ -670,6 +670,15 @@ export const registerSchema = z.object({
   companyId: z.string().uuid().optional(),
 });
 
+export const publicRegisterSchema = z.object({
+  fullName: z.string().min(3, "Nome completo é obrigatório"),
+  email: z.string().email("Email inválido"),
+  password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
+  company: z.string().min(2, "Nome da empresa é obrigatório"),
+  phone: z.string().min(10, "Telefone é obrigatório"),
+  plan: z.string().default('bronze'),
+});
+
 export const loginSchema = z.object({
   email: z.string().email("Email inválido"),
   password: z.string().min(1, "Senha é obrigatória"),
