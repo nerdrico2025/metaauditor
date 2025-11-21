@@ -5,7 +5,11 @@ import { cn } from "@/lib/utils";
 import { Building2, Users, CreditCard, Settings, BarChart3, LogOut, Shield } from "lucide-react";
 
 const navigation = [
-  { name: 'Painel de Administração', href: '/super-admin', icon: Shield },
+  { name: 'Dashboard', href: '/admin/dashboard', icon: BarChart3 },
+  { name: 'Empresas', href: '/admin/empresas', icon: Building2 },
+  { name: 'Planos', href: '/admin/planos', icon: CreditCard },
+  { name: 'Usuários Admin', href: '/admin/usuarios', icon: Users },
+  { name: 'Configurações', href: '/admin/configuracoes', icon: Settings },
 ];
 
 export default function SuperAdminSidebar() {

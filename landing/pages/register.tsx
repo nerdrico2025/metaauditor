@@ -17,22 +17,40 @@ export default function Register(): ReactElement {
     password: '',
     company: '',
     phone: '',
-    plan: plan || 'bronze'
+    plan: (plan as string) || 'bronze'
   })
   
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setError('')
     
     try {
-      // Aqui você pode enviar os dados para a API de registro
-      // Por enquanto, vamos redirecionar para a plataforma
-      window.location.href = `${PLATFORM_URL}/login`
-    } catch (error) {
+      const response = await fetch(`${PLATFORM_URL}/api/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Erro ao criar conta')
+      }
+
+      const data = await response.json()
+      
+      localStorage.setItem('token', data.token)
+      
+      window.location.href = `${PLATFORM_URL}/dashboard`
+    } catch (error: any) {
       console.error('Erro ao registrar:', error)
+      setError(error.message || 'Erro ao criar conta. Tente novamente.')
       setIsLoading(false)
     }
   }
@@ -93,6 +111,11 @@ export default function Register(): ReactElement {
 
           {/* Form Card */}
           <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 md:p-12">
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+                {error}
+              </div>
+            )}
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Nome Completo */}
               <div>
