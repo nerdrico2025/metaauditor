@@ -1,9 +1,11 @@
           import express from "express";
           import cors from "cors";
+          import { createServer } from "http";
           import { cronOrchestratorService } from "./infrastructure/services/CronOrchestratorService.js";
           import { checkIfDatabaseEmpty, seedDatabase } from "../scripts/seedData.js";
           import { errorHandler } from "./shared/errors/AppException.js";
           import { storage } from "./shared/services/storage.service.js";
+          import { setupVite, serveStatic } from "../vite.js";
           import path from "path";
           import fs from "fs";
 
@@ -114,31 +116,36 @@
             // Global error handler
             app.use(errorHandler);
 
-            // If production: serve the client build
-            if (process.env.NODE_ENV === "production") {
-              const clientDist = path.resolve(
-                import.meta.dirname,
-                "../../client/dist"
-              );
-
-              if (fs.existsSync(clientDist)) {
-                app.use(express.static(clientDist));
-                app.get("*", (req, res) => {
-                  res.sendFile(path.join(clientDist, "index.html"));
-                });
-              } else {
-                console.warn(
-                  "⚠️ Client build not found at:",
-                  clientDist,
-                  "\nRun: npm run build:client"
-                );
-              }
-            }
-
             const PORT = parseInt(process.env.PORT || "5000", 10);
 
             return new Promise<void>((resolve) => {
-              app.listen(PORT, "0.0.0.0", async () => {
+              const server = createServer(app);
+
+              // In development: integrate Vite middleware
+              if (process.env.NODE_ENV === "development") {
+                setupVite(app, server).catch((error) => {
+                  console.error("❌ Vite setup failed:", error);
+                  process.exit(1);
+                });
+              } else {
+                // In production: serve the client build
+                const clientDist = path.resolve(
+                  import.meta.dirname,
+                  "../../client/dist"
+                );
+
+                if (fs.existsSync(clientDist)) {
+                  serveStatic(app);
+                } else {
+                  console.warn(
+                    "⚠️ Client build not found at:",
+                    clientDist,
+                    "\nRun: npm run build:client"
+                  );
+                }
+              }
+
+              server.listen(PORT, "0.0.0.0", async () => {
                 console.log(`🚀 Server running on port ${PORT}`);
 
                 const isPreview =
