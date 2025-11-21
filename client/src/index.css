@@ -3,57 +3,56 @@
 @tailwind utilities;
 
 :root {
-  --background: hsl(228, 10%, 93%); /* White: #ecedef */
-  --foreground: hsl(96, 12%, 3%); /* Black: #0c0d0a */
-  --muted: hsl(218, 8%, 90%); /* White 2: #e6e7e9 */
-  --muted-foreground: hsl(0, 0%, 16%); /* Dark Gray: #2a2a2a */
-  --popover: hsl(228, 10%, 93%); /* White: #ecedef */
-  --popover-foreground: hsl(96, 12%, 3%); /* Black: #0c0d0a */
-  --card: hsl(0, 100%, 100%); /* White: #ecedef */
-  --card-foreground: hsl(96, 12%, 3%); /* Black: #0c0d0a */
-  --border: hsl(218, 8%, 90%); /* White 2: #e6e7e9 */
-  --input: hsl(218, 8%, 90%); /* White 2: #e6e7e9 */
-  --primary: hsl(32, 96%, 41%); /* Orange: #cf6f03 */
-  --primary-foreground: hsl(228, 10%, 93%); /* White text on orange */
-  --primary-50: hsl(32, 96%, 95%); /* Very light orange for subtle backgrounds */
-  --secondary: hsl(218, 8%, 90%); /* White 2: #e6e7e9 */
-  --secondary-foreground: hsl(96, 12%, 3%); /* Black: #0c0d0a */
-  --accent: hsl(32, 96%, 41%); /* Orange: #cf6f03 */
-  --accent-foreground: hsl(228, 10%, 93%); /* White text on orange */
-  --destructive: hsl(0, 84.2%, 60.2%); /* Keep red for errors */
-  --destructive-foreground: hsl(228, 10%, 93%); /* White text on red */
-  --ring: hsl(96, 12%, 3%); /* Black: #0c0d0a */
+  --background: 228 10% 93%;
+  --foreground: 96 12% 3%;
+  --muted: 218 8% 90%;
+  --muted-foreground: 0 0% 16%;
+  --popover: 228 10% 93%;
+  --popover-foreground: 96 12% 3%;
+  --card: 0 0% 100%;
+  --card-foreground: 96 12% 3%;
+  --border: 218 8% 90%;
+  --input: 218 8% 90%;
+  --primary: 32 96% 41%;
+  --primary-foreground: 228 10% 93%;
+  --primary-50: 32 96% 95%;
+  --secondary: 218 8% 90%;
+  --secondary-foreground: 96 12% 3%;
+  --accent: 32 96% 41%;
+  --accent-foreground: 228 10% 93%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 228 10% 93%;
+  --ring: 96 12% 3%;
   --radius: 0.5rem;
 }
 
 .dark {
-  --background: hsl(0, 0%, 16%); /* Dark Gray: #2a2a2a */
-  --foreground: hsl(228, 10%, 93%); /* White: #ecedef */
-  --muted: hsl(0, 0%, 16%); /* Dark Gray: #2a2a2a */
-  --muted-foreground: hsl(218, 8%, 90%); /* White 2: #e6e7e9 */
-  --popover: hsl(0, 0%, 16%); /* Dark Gray: #2a2a2a */
-  --popover-foreground: hsl(228, 10%, 93%); /* White: #ecedef */
-  --card: hsl(0, 0%, 16%); /* Dark Gray: #2a2a2a */
-  --card-foreground: hsl(228, 10%, 93%); /* White: #ecedef */
-  --border: hsl(96, 12%, 3%); /* Black: #0c0d0a */
-  --input: hsl(96, 12%, 3%); /* Black: #0c0d0a */
-  --primary: hsl(32, 96%, 41%); /* Orange: #cf6f03 */
-  --primary-foreground: hsl(228, 10%, 93%); /* White text on orange */
-  --primary-50: hsl(32, 96%, 15%); /* Dark orange for subtle backgrounds */
-  --secondary: hsl(96, 12%, 3%); /* Black: #0c0d0a */
-  --secondary-foreground: hsl(228, 10%, 93%); /* White: #ecedef */
-  --accent: hsl(32, 96%, 41%); /* Orange: #cf6f03 */
-  --accent-foreground: hsl(228, 10%, 93%); /* White text on orange */
-  --destructive: hsl(0, 62.8%, 30.6%); /* Keep red for errors */
-  --destructive-foreground: hsl(228, 10%, 93%); /* White text on red */
-  --ring: hsl(32, 96%, 41%); /* Orange ring */
-  --radius: 0.5rem;
+  --background: 0 0% 16%;
+  --foreground: 228 10% 93%;
+  --muted: 0 0% 16%;
+  --muted-foreground: 218 8% 90%;
+  --popover: 0 0% 16%;
+  --popover-foreground: 228 10% 93%;
+  --card: 0 0% 16%;
+  --card-foreground: 228 10% 93%;
+  --border: 96 12% 3%;
+  --input: 96 12% 3%;
+  --primary: 32 96% 41%;
+  --primary-foreground: 228 10% 93%;
+  --primary-50: 32 96% 15%;
+  --secondary: 96 12% 3%;
+  --secondary-foreground: 228 10% 93%;
+  --accent: 32 96% 41%;
+  --accent-foreground: 228 10% 93%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 228 10% 93%;
+  --ring: 32 96% 41%;
 }
 
 @layer base {
-  * {
+  /* * {
     border-color: var(--border);
-  }
+  } */
 
   body {
     @apply font-sans antialiased bg-background text-foreground;

@@ -1,152 +1,433 @@
 import Head from 'next/head'
 import Link from 'next/link'
 import type { ReactElement } from 'react'
-import { CheckCircle2, Zap, BarChart3, Shield } from 'lucide-react'
+import { CheckCircle2, Zap, BarChart3, Shield, Target, TrendingUp, Award, Sparkles } from 'lucide-react'
+
+const plans = [
+  {
+    name: 'Bronze',
+    price: 'R$ 149',
+    period: '/mês',
+    investment: 'Até R$ 20k',
+    accounts: '1 conta',
+    features: [
+      'Análise de métricas e indicadores',
+      'Análise de performance',
+      'Dashboard em tempo real',
+      'Suporte via email'
+    ],
+    highlight: false,
+    trial: true
+  },
+  {
+    name: 'Prata',
+    price: 'R$ 499',
+    period: '/mês',
+    investment: 'R$ 21k a R$ 100k',
+    accounts: 'Até 3 contas',
+    features: [
+      'Análise de métricas e indicadores',
+      'Análise de branding e uso da marca',
+      'Análise de performance',
+      'Dashboard avançado',
+      'Suporte prioritário'
+    ],
+    highlight: false,
+    trial: true
+  },
+  {
+    name: 'Ouro',
+    price: 'R$ 999',
+    period: '/mês',
+    investment: 'R$ 21k a R$ 100k',
+    accounts: '4 a 5 contas',
+    features: [
+      'Análise de métricas e indicadores',
+      'Análise de branding e uso da marca',
+      'Análise de performance',
+      'Automação de ajustes',
+      'Relatórios customizados',
+      'Suporte prioritário'
+    ],
+    highlight: true,
+    trial: true
+  },
+  {
+    name: 'Diamante',
+    price: 'R$ 1.990',
+    period: '/mês',
+    investment: 'Acima de R$ 100k',
+    accounts: '6 a 10 contas',
+    features: [
+      'Análise de métricas e indicadores',
+      'Análise de branding e uso da marca',
+      'Análise de performance',
+      'Automação de ajustes',
+      'API de integração',
+      'Gerente de contas dedicado',
+      'Suporte 24/7'
+    ],
+    highlight: false,
+    trial: true
+  },
+  {
+    name: 'Customizado',
+    price: 'Sob consulta',
+    period: '',
+    investment: 'Personalizado',
+    accounts: 'Ilimitado',
+    features: [
+      'Todos os recursos incluídos',
+      'Módulos personalizados',
+      'Integrações customizadas',
+      'SLA garantido',
+      'Treinamento da equipe',
+      'Consultoria estratégica',
+      'Suporte white-glove'
+    ],
+    highlight: false,
+    trial: false
+  }
+]
 
 export default function Home(): ReactElement {
   return (
     <>
       <Head>
-        <title>Click Auditor - Auditoria de Campanhas com IA</title>
-        <meta name="description" content="Automatize a auditoria de criativos em Meta e Google Ads com inteligência artificial avançada" />
+        <title>Click Auditor - Auditoria Inteligente de Campanhas Meta Ads</title>
+        <meta name="description" content="Automatize a auditoria de criativos em Meta Ads com IA. Análise de performance, branding e conformidade em tempo real." />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
       {/* Navigation */}
-      <nav className="fixed w-full bg-white dark:bg-click-dark-gray shadow-sm z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="text-2xl font-bold text-click-orange">Click Auditor</div>
-          <Link href="/login" className="px-6 py-2 bg-click-orange text-white rounded-lg hover:bg-orange-700 transition">
-            Acessar
+      <nav className="fixed w-full bg-white/95 backdrop-blur-sm shadow-sm z-50 border-b border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
+              <Sparkles className="w-6 h-6 text-white" />
+            </div>
+            <div className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-orange-500 bg-clip-text text-transparent">
+              Click Auditor
+            </div>
+          </div>
+          <Link 
+            href="/login" 
+            className="px-6 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all shadow-md hover:shadow-lg font-medium"
+            data-testid="button-login-nav"
+          >
+            Acessar Plataforma
           </Link>
         </div>
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-4 bg-gradient-to-b from-click-white-2 to-white dark:from-click-dark-gray dark:to-click-black">
-        <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-5xl md:text-6xl font-bold mb-6 text-click-black dark:text-white">
-            Auditoria Inteligente de Campanhas
-          </h1>
-          <p className="text-xl text-click-dark-gray dark:text-click-white-2 mb-8">
-            Automatize a análise de conformidade e performance de seus anúncios em Meta e Google Ads usando inteligência artificial avançada
-          </p>
-          <div className="flex gap-4 justify-center">
-            <Link href="/login" className="px-8 py-3 bg-click-orange text-white rounded-lg font-semibold hover:bg-orange-700 transition">
-              Começar Gratuitamente
-            </Link>
-            <button className="px-8 py-3 border-2 border-click-orange text-click-orange rounded-lg font-semibold hover:bg-orange-50 dark:hover:bg-opacity-10 transition">
-              Ver Demo
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* Features */}
-      <section className="py-20 px-4">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-4xl font-bold text-center mb-16 text-click-black dark:text-white">
-            Recursos Poderosos
-          </h2>
-          
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="p-8 bg-click-white-2 dark:bg-gray-800 rounded-lg">
-              <Zap className="w-12 h-12 text-click-orange mb-4" />
-              <h3 className="text-2xl font-bold mb-3 text-click-black dark:text-white">Análise com IA</h3>
-              <p className="text-click-dark-gray dark:text-click-white-2">
-                GPT-4o analisa automaticamente conformidade de marca e performance de cada criativo
-              </p>
+      <section className="pt-32 pb-24 px-4 bg-gradient-to-b from-orange-50 via-white to-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
+        <div className="max-w-6xl mx-auto relative">
+          <div className="text-center max-w-4xl mx-auto">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-orange-100 text-orange-700 rounded-full text-sm font-medium mb-8">
+              <Sparkles className="w-4 h-4" />
+              <span>Trial de 3 dias grátis em todos os planos</span>
             </div>
-
-            <div className="p-8 bg-click-white-2 dark:bg-gray-800 rounded-lg">
-              <BarChart3 className="w-12 h-12 text-click-orange mb-4" />
-              <h3 className="text-2xl font-bold mb-3 text-click-black dark:text-white">Dashboard em Tempo Real</h3>
-              <p className="text-click-dark-gray dark:text-click-white-2">
-                Visualize métricas, relatórios e recomendações atualizadas em tempo real
-              </p>
-            </div>
-
-            <div className="p-8 bg-click-white-2 dark:bg-gray-800 rounded-lg">
-              <Shield className="w-12 h-12 text-click-orange mb-4" />
-              <h3 className="text-2xl font-bold mb-3 text-click-black dark:text-white">Conformidade Garantida</h3>
-              <p className="text-click-dark-gray dark:text-click-white-2">
-                Valide políticas de marca e identifique violações antes que afetem suas campanhas
-              </p>
-            </div>
-
-            <div className="p-8 bg-click-white-2 dark:bg-gray-800 rounded-lg">
-              <CheckCircle2 className="w-12 h-12 text-click-orange mb-4" />
-              <h3 className="text-2xl font-bold mb-3 text-click-black dark:text-white">Automação Inteligente</h3>
-              <p className="text-click-dark-gray dark:text-click-white-2">
-                Pause automaticamente criativos com baixo desempenho ou não conformes
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing */}
-      <section className="py-20 px-4 bg-click-white-2 dark:bg-gray-900">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-4xl font-bold text-center mb-16 text-click-black dark:text-white">
-            Planos Simples e Transparentes
-          </h2>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              { name: 'Starter', price: 'R$ 99', desc: 'Para pequenas agências', features: ['1 conta de anúncios', 'Até 100 criativos/mês', 'Análise básica', 'Suporte por email'] },
-              { name: 'Professional', price: 'R$ 299', desc: 'Para agências em crescimento', features: ['Até 5 contas', 'Criativos ilimitados', 'Análise avançada + IA', 'Relatórios customizados', 'Suporte prioritário'], highlight: true },
-              { name: 'Enterprise', price: 'Customizado', desc: 'Para grandes operações', features: ['Contas ilimitadas', 'SLA garantido', 'Integração API', 'Conta dedicada', 'Suporte 24/7'] },
-            ].map((plan) => (
-              <div
-                key={plan.name}
-                className={`p-8 rounded-lg transition ${
-                  plan.highlight
-                    ? 'bg-click-orange text-white shadow-lg scale-105'
-                    : 'bg-white dark:bg-gray-800 text-click-black dark:text-white border-2 border-gray-200 dark:border-gray-700'
-                }`}
+            
+            <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent leading-tight">
+              Auditoria Inteligente de Campanhas Meta Ads
+            </h1>
+            
+            <p className="text-xl md:text-2xl text-gray-600 mb-10 leading-relaxed">
+              Automatize a análise de conformidade, branding e performance dos seus anúncios com <span className="text-orange-600 font-semibold">inteligência artificial GPT-4o</span>
+            </p>
+            
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link 
+                href="/login" 
+                className="px-8 py-4 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-semibold hover:from-orange-600 hover:to-orange-700 transition-all shadow-lg hover:shadow-xl text-lg"
+                data-testid="button-trial-hero"
               >
-                <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
-                <p className={plan.highlight ? 'text-orange-100 mb-4' : 'text-click-dark-gray dark:text-click-white-2 mb-4'}>{plan.desc}</p>
-                <div className="text-3xl font-bold mb-6">{plan.price}</div>
-                <ul className="space-y-3 mb-8">
-                  {plan.features.map((feature) => (
-                    <li key={feature} className="flex items-center gap-2">
-                      <CheckCircle2 className="w-5 h-5" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-                <button className={`w-full py-3 rounded-lg font-semibold transition ${
-                  plan.highlight
-                    ? 'bg-white text-click-orange hover:bg-orange-50'
-                    : 'bg-click-orange text-white hover:bg-orange-700'
-                }`}>
-                  Começar Agora
-                </button>
+                Começar Trial de 3 Dias
+              </Link>
+              <a 
+                href="#pricing" 
+                className="px-8 py-4 border-2 border-orange-500 text-orange-600 rounded-xl font-semibold hover:bg-orange-50 transition-all text-lg"
+                data-testid="link-see-plans"
+              >
+                Ver Planos
+              </a>
+            </div>
+
+            <div className="mt-12 flex items-center justify-center gap-8 text-sm text-gray-500">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-green-500" />
+                <span>Sem cartão de crédito</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-green-500" />
+                <span>Cancele quando quiser</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="py-24 px-4 bg-white">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold mb-4 text-gray-900">
+              Recursos que Fazem a Diferença
+            </h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Tudo que você precisa para garantir qualidade e performance nas suas campanhas
+            </p>
+          </div>
+          
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {[
+              {
+                icon: <Target className="w-8 h-8" />,
+                title: 'Análise de Performance',
+                description: 'Monitore CTR, CPC, conversões e identifique criativos de baixo desempenho automaticamente'
+              },
+              {
+                icon: <Award className="w-8 h-8" />,
+                title: 'Conformidade de Marca',
+                description: 'Valide uso correto da marca, cores, fontes e mensagens conforme suas diretrizes'
+              },
+              {
+                icon: <BarChart3 className="w-8 h-8" />,
+                title: 'Dashboard em Tempo Real',
+                description: 'Visualize métricas atualizadas, relatórios e recomendações da IA instantaneamente'
+              },
+              {
+                icon: <Zap className="w-8 h-8" />,
+                title: 'Automação Inteligente',
+                description: 'Pause automaticamente anúncios não conformes ou com baixa performance'
+              },
+              {
+                icon: <Shield className="w-8 h-8" />,
+                title: 'Análise com GPT-4o',
+                description: 'IA avançada analisa cada criativo identificando problemas e oportunidades'
+              },
+              {
+                icon: <TrendingUp className="w-8 h-8" />,
+                title: 'Relatórios Customizados',
+                description: 'Gere relatórios detalhados personalizados para cada cliente ou campanha'
+              },
+              {
+                icon: <CheckCircle2 className="w-8 h-8" />,
+                title: 'Multi-Conta',
+                description: 'Gerencie múltiplas contas de anúncios em uma única plataforma centralizada'
+              },
+              {
+                icon: <Sparkles className="w-8 h-8" />,
+                title: 'Suporte Dedicado',
+                description: 'Equipe especializada pronta para ajudar você a extrair o máximo da plataforma'
+              }
+            ].map((feature, index) => (
+              <div 
+                key={index}
+                className="p-6 rounded-2xl bg-gradient-to-br from-gray-50 to-white border border-gray-100 hover:border-orange-200 hover:shadow-lg transition-all duration-300 group"
+                data-testid={`feature-card-${index}`}
+              >
+                <div className="w-14 h-14 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform">
+                  {feature.icon}
+                </div>
+                <h3 className="text-xl font-bold mb-2 text-gray-900">{feature.title}</h3>
+                <p className="text-gray-600 leading-relaxed">{feature.description}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="py-20 px-4">
-        <div className="max-w-4xl mx-auto bg-gradient-to-r from-click-orange to-orange-600 rounded-lg p-12 text-center text-white">
-          <h2 className="text-4xl font-bold mb-6">Pronto para Começar?</h2>
-          <p className="text-xl mb-8 text-orange-100">Automatize sua auditoria de campanhas hoje mesmo</p>
-          <Link href="/login" className="inline-block px-8 py-4 bg-white text-click-orange rounded-lg font-bold text-lg hover:bg-orange-50 transition">
-            Acessar Click Auditor
+      {/* Pricing Section */}
+      <section id="pricing" className="py-24 px-4 bg-gradient-to-b from-gray-50 to-white">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold mb-4 text-gray-900">
+              Planos para Cada Necessidade
+            </h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Escolha o plano ideal baseado no seu investimento em Meta Ads
+            </p>
+            <div className="mt-6 inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+              <CheckCircle2 className="w-4 h-4" />
+              <span>3 dias de trial grátis - sem cartão de crédito</span>
+            </div>
+          </div>
+
+          <div className="grid lg:grid-cols-3 gap-8 mb-8">
+            {plans.slice(0, 3).map((plan, index) => (
+              <div
+                key={plan.name}
+                className={`relative rounded-2xl p-8 transition-all duration-300 ${
+                  plan.highlight
+                    ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-2xl scale-105 border-4 border-orange-400'
+                    : 'bg-white border-2 border-gray-200 hover:border-orange-300 hover:shadow-xl'
+                }`}
+                data-testid={`plan-card-${plan.name.toLowerCase()}`}
+              >
+                {plan.highlight && (
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-yellow-400 text-yellow-900 rounded-full text-sm font-bold">
+                    MAIS POPULAR
+                  </div>
+                )}
+                
+                <div className="mb-6">
+                  <h3 className={`text-2xl font-bold mb-2 ${plan.highlight ? 'text-white' : 'text-gray-900'}`}>
+                    {plan.name}
+                  </h3>
+                  <div className={`text-sm font-medium mb-4 ${plan.highlight ? 'text-orange-100' : 'text-gray-500'}`}>
+                    Investimento Meta: {plan.investment}
+                  </div>
+                  <div className="flex items-baseline gap-2 mb-2">
+                    <span className={`text-5xl font-bold ${plan.highlight ? 'text-white' : 'text-gray-900'}`}>
+                      {plan.price}
+                    </span>
+                    <span className={plan.highlight ? 'text-orange-100' : 'text-gray-500'}>
+                      {plan.period}
+                    </span>
+                  </div>
+                  <div className={`text-sm font-medium ${plan.highlight ? 'text-orange-100' : 'text-gray-600'}`}>
+                    {plan.accounts}
+                  </div>
+                </div>
+
+                <ul className="space-y-4 mb-8">
+                  {plan.features.map((feature, fIndex) => (
+                    <li key={fIndex} className="flex items-start gap-3">
+                      <CheckCircle2 className={`w-5 h-5 flex-shrink-0 mt-0.5 ${plan.highlight ? 'text-white' : 'text-orange-500'}`} />
+                      <span className={plan.highlight ? 'text-orange-50' : 'text-gray-700'}>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <Link
+                  href="/login"
+                  className={`block w-full py-4 rounded-xl font-bold text-center transition-all ${
+                    plan.highlight
+                      ? 'bg-white text-orange-600 hover:bg-orange-50 shadow-lg'
+                      : 'bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700 shadow-md hover:shadow-lg'
+                  }`}
+                  data-testid={`button-start-${plan.name.toLowerCase()}`}
+                >
+                  Iniciar Trial de 3 Dias
+                </Link>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-8 max-w-5xl mx-auto">
+            {plans.slice(3).map((plan) => (
+              <div
+                key={plan.name}
+                className="relative rounded-2xl p-8 bg-white border-2 border-gray-200 hover:border-orange-300 hover:shadow-xl transition-all duration-300"
+                data-testid={`plan-card-${plan.name.toLowerCase()}`}
+              >
+                <div className="mb-6">
+                  <h3 className="text-2xl font-bold mb-2 text-gray-900">{plan.name}</h3>
+                  <div className="text-sm font-medium mb-4 text-gray-500">
+                    Investimento Meta: {plan.investment}
+                  </div>
+                  <div className="flex items-baseline gap-2 mb-2">
+                    <span className="text-5xl font-bold text-gray-900">{plan.price}</span>
+                    <span className="text-gray-500">{plan.period}</span>
+                  </div>
+                  <div className="text-sm font-medium text-gray-600">{plan.accounts}</div>
+                </div>
+
+                <ul className="space-y-4 mb-8">
+                  {plan.features.map((feature, fIndex) => (
+                    <li key={fIndex} className="flex items-start gap-3">
+                      <CheckCircle2 className="w-5 h-5 flex-shrink-0 mt-0.5 text-orange-500" />
+                      <span className="text-gray-700">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <Link
+                  href="/login"
+                  className="block w-full py-4 rounded-xl font-bold text-center bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700 shadow-md hover:shadow-lg transition-all"
+                  data-testid={`button-start-${plan.name.toLowerCase()}`}
+                >
+                  {plan.trial ? 'Iniciar Trial de 3 Dias' : 'Falar com Vendas'}
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-24 px-4 bg-gradient-to-br from-orange-500 via-orange-600 to-orange-700 relative overflow-hidden">
+        <div className="absolute inset-0 bg-grid-pattern opacity-10"></div>
+        <div className="max-w-4xl mx-auto text-center relative">
+          <h2 className="text-4xl md:text-5xl font-bold mb-6 text-white">
+            Pronto para Revolucionar suas Campanhas?
+          </h2>
+          <p className="text-xl md:text-2xl mb-10 text-orange-100">
+            Comece seu trial gratuito de 3 dias agora mesmo. Sem cartão de crédito.
+          </p>
+          <Link 
+            href="/login" 
+            className="inline-block px-10 py-5 bg-white text-orange-600 rounded-xl font-bold text-lg hover:bg-orange-50 transition-all shadow-2xl hover:shadow-3xl hover:scale-105"
+            data-testid="button-trial-cta"
+          >
+            Iniciar Trial Gratuito
           </Link>
+          <p className="mt-6 text-orange-100">
+            Junte-se a centenas de agências que já automatizaram suas auditorias
+          </p>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="bg-click-dark-gray text-white py-12 px-4">
-        <div className="max-w-6xl mx-auto text-center">
-          <p className="text-click-white-2">&copy; 2024 Click Auditor. Todos os direitos reservados.</p>
+      <footer className="bg-gray-900 text-white py-16 px-4">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid md:grid-cols-4 gap-12 mb-12">
+            <div className="md:col-span-2">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
+                  <Sparkles className="w-6 h-6 text-white" />
+                </div>
+                <div className="text-2xl font-bold">Click Auditor</div>
+              </div>
+              <p className="text-gray-400 mb-6 max-w-md">
+                A plataforma de auditoria inteligente que ajuda agências e anunciantes a garantir qualidade e performance em campanhas Meta Ads.
+              </p>
+            </div>
+            
+            <div>
+              <h4 className="font-bold mb-4">Produto</h4>
+              <ul className="space-y-3 text-gray-400">
+                <li><a href="#pricing" className="hover:text-white transition">Preços</a></li>
+                <li><a href="/login" className="hover:text-white transition">Login</a></li>
+              </ul>
+            </div>
+            
+            <div>
+              <h4 className="font-bold mb-4">Contato</h4>
+              <ul className="space-y-3 text-gray-400">
+                <li>contato@clickauditor.com</li>
+                <li>Suporte 24/7</li>
+              </ul>
+            </div>
+          </div>
+          
+          <div className="border-t border-gray-800 pt-8 text-center text-gray-400">
+            <p>&copy; 2024 Click Auditor. Todos os direitos reservados.</p>
+          </div>
         </div>
       </footer>
+
+      <style jsx>{`
+        .bg-grid-pattern {
+          background-image: 
+            linear-gradient(to right, rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+          background-size: 40px 40px;
+        }
+      `}</style>
     </>
   )
 }
