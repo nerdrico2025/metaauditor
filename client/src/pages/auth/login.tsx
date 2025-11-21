@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from "react";
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -20,15 +20,20 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function Login() {
   const [location, setLocation] = useLocation();
-  const { login, isAuthenticated, isLoading } = useAuth();
+  const { login, isAuthenticated, isLoading, user } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
 
-  if (isAuthenticated && !isLoading) {
-    setLocation('/dashboard');
-    return null;
-  }
+  useEffect(() => {
+    if (isAuthenticated && !isLoading && user) {
+      if (user.role === 'super_admin') {
+        setLocation('/super-admin');
+      } else {
+        setLocation('/dashboard');
+      }
+    }
+  }, [isAuthenticated, isLoading, user, setLocation]);
 
   const {
     register,
@@ -49,10 +54,21 @@ export default function Login() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
+      <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto"></div>
           <p className="mt-2 text-gray-600 dark:text-gray-300">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto"></div>
+          <p className="mt-2 text-gray-600 dark:text-gray-300">Redirecionando...</p>
         </div>
       </div>
     );
@@ -203,13 +219,13 @@ export default function Login() {
 
         {/* Content */}
         <div className="relative z-10 text-center">
-          <div className="mb-8 inline-flex items-center justify-center w-16 h-16 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 mb-6">
+          <div className="mb-8 inline-flex items-center justify-center w-16 h-16 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20">
             <CheckCircle2 className="w-8 h-8 text-orange-500" />
           </div>
           
           <h2 className="text-4xl font-bold text-white mb-3">Click Auditor</h2>
           <p className="text-blue-100 text-lg font-light">
-            Sistema Auditor de Campanhas
+            Sistema de Auditoria de Campanhas
           </p>
           
           <div className="mt-12 space-y-4">

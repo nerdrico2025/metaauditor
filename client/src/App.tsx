@@ -5,7 +5,6 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, ProtectedRoute } from "@/contexts/AuthContext";
 // Auth Pages
-import Landing from "@/pages/auth/landing";
 import Login from "@/pages/auth/login";
 
 // Dashboard
@@ -46,7 +45,7 @@ import NotFound from "@/pages/errors/not-found";
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Landing} />
+      <Route path="/login" component={Login} />
       <Route path="/dashboard">
         <ProtectedRoute>
           <Dashboard />
