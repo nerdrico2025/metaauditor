@@ -11,30 +11,34 @@ export default defineConfig({
     process.env.REPL_ID !== undefined
       ? [
           await import("@replit/vite-plugin-cartographer").then((m) =>
-            m.cartographer(),
+            m.cartographer()
           ),
         ]
       : []),
   ],
-  css: {
-    postcss: path.resolve(import.meta.dirname),
-  },
+
+  // 🔥 root NÃO deve ser alterado
+  // Senão o Vite se perde no monorepo
+  // root: path.resolve(import.meta.dirname),  ❌ REMOVIDO
+
   resolve: {
     alias: {
-      "@": path.resolve(import.meta.dirname, "src"),
-      "@shared": path.resolve(import.meta.dirname, "../shared"),
-      "@assets": path.resolve(import.meta.dirname, "../attached_assets"),
+      "@": path.resolve(__dirname, "src"),
+      "@shared": path.resolve(__dirname, "../shared"),
+      "@assets": path.resolve(__dirname, "../attached_assets"),
     },
   },
-  root: path.resolve(import.meta.dirname),
+
   build: {
-    outDir: path.resolve(import.meta.dirname, "../dist/public"),
+    // ✔️ client deve buildar em SUA PRÓPRIA pasta
+    outDir: "dist",
     emptyOutDir: true,
   },
+
   server: {
+    // Nada especial aqui
     fs: {
-      strict: true,
-      deny: ["**/.*"],
+      strict: false, // ← evita problemas em monorepo
     },
   },
 });

@@ -1,179 +1,182 @@
-import express from "express";
-import cors from "cors";
-import { setupVite, serveStatic, log } from "../vite.js";
-import { cronOrchestratorService } from "./infrastructure/services/CronOrchestratorService.js";
-import { checkIfDatabaseEmpty, seedDatabase } from "../scripts/seedData.js";
-import { errorHandler } from "./shared/errors/AppException.js";
-import { storage } from "./shared/services/storage.service.js";
+          import express from "express";
+          import cors from "cors";
+          import { cronOrchestratorService } from "./infrastructure/services/CronOrchestratorService.js";
+          import { checkIfDatabaseEmpty, seedDatabase } from "../scripts/seedData.js";
+          import { errorHandler } from "./shared/errors/AppException.js";
+          import { storage } from "./shared/services/storage.service.js";
+          import path from "path";
+          import fs from "fs";
 
-// Import DDD routes
-import authRoutes from "./presentation/routes/auth.routes.js";
-import userRoutes from "./presentation/routes/user.routes.js";
-import campaignRoutes from "./presentation/routes/campaign.routes.js";
-import adSetRoutes from "./presentation/routes/adset.routes.js";
-import creativeRoutes from "./presentation/routes/creative.routes.js";
-import policyRoutes from "./presentation/routes/policy.routes.js";
-import integrationRoutes from "./presentation/routes/integration.routes.js";
-import dashboardRoutes from "./presentation/routes/dashboard.routes.js";
-import auditRoutes from "./presentation/routes/audit.routes.js";
-import companyRoutes from "./presentation/routes/company.routes.js";
-import sheetsRoutes from "./presentation/routes/sheets.routes.js";
-import imageMigrationRoutes from "./presentation/routes/image-migration.routes.js";
-import platformSettingsRoutes from "./presentation/routes/platform-settings.routes.js";
-import metaOAuthRoutes from "./presentation/routes/meta-oauth.routes.js";
-import adminRoutes from "./presentation/routes/admin.routes.js";
+          // Import DDD routes
+          import authRoutes from "./presentation/routes/auth.routes.js";
+          import userRoutes from "./presentation/routes/user.routes.js";
+          import campaignRoutes from "./presentation/routes/campaign.routes.js";
+          import adSetRoutes from "./presentation/routes/adset.routes.js";
+          import creativeRoutes from "./presentation/routes/creative.routes.js";
+          import policyRoutes from "./presentation/routes/policy.routes.js";
+          import integrationRoutes from "./presentation/routes/integration.routes.js";
+          import dashboardRoutes from "./presentation/routes/dashboard.routes.js";
+          import auditRoutes from "./presentation/routes/audit.routes.js";
+          import companyRoutes from "./presentation/routes/company.routes.js";
+          import sheetsRoutes from "./presentation/routes/sheets.routes.js";
+          import imageMigrationRoutes from "./presentation/routes/image-migration.routes.js";
+          import platformSettingsRoutes from "./presentation/routes/platform-settings.routes.js";
+          import metaOAuthRoutes from "./presentation/routes/meta-oauth.routes.js";
+          import adminRoutes from "./presentation/routes/admin.routes.js";
 
-export async function startServer() {
-  const app = express();
+          export async function startServer() {
+            const app = express();
 
-  // Setup storage in app locals for middleware access
-  app.locals.storage = storage;
+            // Setup storage in app locals for middleware access
+            app.locals.storage = storage;
 
-  // CORS configuration
-  app.use(cors({
-    origin: process.env.NODE_ENV === 'development'
-      ? ['http://localhost:5000', 'http://0.0.0.0:5000']
-      : true,
-    credentials: true,
-  }));
+            // CORS configuration
+            app.use(
+              cors({
+                origin:
+                  process.env.NODE_ENV === "development"
+                    ? ["http://localhost:5173", "http://localhost:5000"]
+                    : true,
+                credentials: true,
+              })
+            );
 
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: false }));
-  
-  // Serve uploaded images
-  app.use('/uploads', express.static('server/public/uploads'));
+            app.use(express.json());
+            app.use(express.urlencoded({ extended: false }));
 
-  // Request logging middleware
-  app.use((req, res, next) => {
-    const start = Date.now();
-    const path = req.path;
-    let capturedJsonResponse: Record<string, any> | undefined = undefined;
+            // Static uploads
+            app.use("/uploads", express.static("server/public/uploads"));
 
-    const originalResJson = res.json;
-    res.json = function (bodyJson, ...args) {
-      capturedJsonResponse = bodyJson;
-      return originalResJson.apply(res, [bodyJson, ...args]);
-    };
+            // Request logging middleware
+            app.use((req, res, next) => {
+              const start = Date.now();
+              const path = req.path;
+              let capturedJsonResponse: Record<string, any> | undefined = undefined;
 
-    res.on("finish", () => {
-      const duration = Date.now() - start;
-      if (path.startsWith("/api")) {
-        let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-        if (capturedJsonResponse) {
-          logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-        }
+              const originalResJson = res.json;
+              res.json = function (bodyJson, ...args) {
+                capturedJsonResponse = bodyJson;
+                return originalResJson.apply(res, [bodyJson, ...args]);
+              };
 
-        if (logLine.length > 80) {
-          logLine = logLine.slice(0, 79) + "…";
-        }
+              res.on("finish", () => {
+                const duration = Date.now() - start;
+                if (path.startsWith("/api")) {
+                  let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+                  if (capturedJsonResponse) {
+                    logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+                  }
 
-        log(logLine);
-      }
-    });
+                  if (logLine.length > 80) {
+                    logLine = logLine.slice(0, 79) + "…";
+                  }
 
-    next();
-  });
+                  console.log(logLine);
+                }
+              });
 
-  const { createServer } = await import('http');
-  const server = createServer(app);
+              next();
+            });
 
-  // Register DDD routes
-  app.use('/api/auth', authRoutes);
-  app.use('/api/users', userRoutes);
-  app.use('/api/campaigns', campaignRoutes);
-  app.use('/api/adsets', adSetRoutes);
-  app.use('/api/creatives', creativeRoutes);
-  app.use('/api/policies', policyRoutes);
-  app.use('/api/integrations', integrationRoutes);
-  app.use('/api/dashboard', dashboardRoutes);
-  app.use('/api/audits', auditRoutes);
-  app.use('/api/company', companyRoutes);
-  
-  // Webhook routes (no authentication - Meta verifies with signature)
-  const webhookRoutes = (await import('./presentation/routes/webhook.routes.js')).default;
-  app.use('/api/webhooks', webhookRoutes);
-  app.use('/api', sheetsRoutes);
-  app.use('/api/admin', adminRoutes);
-  app.use('/api/image-migration', imageMigrationRoutes);
-  app.use('/api/platform-settings', platformSettingsRoutes);
-  app.use('/api/auth/meta', metaOAuthRoutes);
+            // Register DDD routes
+            app.use("/api/auth", authRoutes);
+            app.use("/api/users", userRoutes);
+            app.use("/api/campaigns", campaignRoutes);
+            app.use("/api/adsets", adSetRoutes);
+            app.use("/api/creatives", creativeRoutes);
+            app.use("/api/policies", policyRoutes);
+            app.use("/api/integrations", integrationRoutes);
+            app.use("/api/dashboard", dashboardRoutes);
+            app.use("/api/audits", auditRoutes);
+            app.use("/api/company", companyRoutes);
 
-  // Health check endpoints
-  app.get('/healthz', (req, res) => {
-    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
-  });
+            // Webhook routes (no authentication)
+            const webhookRoutes = (
+              await import("./presentation/routes/webhook.routes.js")
+            ).default;
+            app.use("/api/webhooks", webhookRoutes);
+            app.use("/api", sheetsRoutes);
+            app.use("/api/admin", adminRoutes);
+            app.use("/api/image-migration", imageMigrationRoutes);
+            app.use("/api/platform-settings", platformSettingsRoutes);
+            app.use("/api/auth/meta", metaOAuthRoutes);
 
-  app.head('/healthz', (req, res) => {
-    res.status(200).end();
-  });
+            // Health check endpoints
+            app.get("/healthz", (req, res) => {
+              res
+                .status(200)
+                .json({ status: "ok", timestamp: new Date().toISOString() });
+            });
 
-  app.head('/api', (req, res) => {
-    res.status(200).end();
-  });
+            app.head("/healthz", (req, res) => res.status(200).end());
+            app.head("/api", (req, res) => res.status(200).end());
 
-  // Global error handler
-  app.use(errorHandler);
+            // Global error handler
+            app.use(errorHandler);
 
-  // Vite setup
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
-  }
+            // If production: serve the client build
+            if (process.env.NODE_ENV === "production") {
+              const clientDist = path.resolve(
+                import.meta.dirname,
+                "../../client/dist"
+              );
 
-  const PORT = parseInt(process.env.PORT || '5000', 10);
-  const isPreview = process.env.REPLIT_PREVIEW === 'true' || process.env.REPLIT_DEPLOYMENT === 'preview';
+              if (fs.existsSync(clientDist)) {
+                app.use(express.static(clientDist));
+                app.get("*", (req, res) => {
+                  res.sendFile(path.join(clientDist, "index.html"));
+                });
+              } else {
+                console.warn(
+                  "⚠️ Client build not found at:",
+                  clientDist,
+                  "\nRun: npm run build:client"
+                );
+              }
+            }
 
-  return new Promise<void>((resolve) => {
-    server.listen({
-      port: PORT,
-      host: "0.0.0.0",
-      reusePort: true,
-    }, async () => {
-      log(`🚀 Server running on port ${PORT}`);
-      log(`📐 Architecture: Domain-Driven Design (DDD)`);
-      log(`🔧 Environment: ${process.env.NODE_ENV || 'development'}`);
+            const PORT = parseInt(process.env.PORT || "5000", 10);
 
-      if (isPreview) {
-        log(`🔍 PREVIEW mode - skipping heavy operations`);
-        resolve();
-        return;
-      }
+            return new Promise<void>((resolve) => {
+              app.listen(PORT, "0.0.0.0", async () => {
+                console.log(`🚀 Server running on port ${PORT}`);
 
-      setTimeout(async () => {
-        try {
-          const isEmpty = await checkIfDatabaseEmpty();
-          if (isEmpty) {
-            log(`🌱 Seeding database...`);
-            await seedDatabase();
-            log(`✅ Database seeded successfully`);
+                const isPreview =
+                  process.env.REPLIT_PREVIEW === "true" ||
+                  process.env.REPLIT_DEPLOYMENT === "preview";
+
+                if (!isPreview) {
+                  // Seed database if empty
+                  try {
+                    const isEmpty = await checkIfDatabaseEmpty();
+                    if (isEmpty) {
+                      console.log("🌱 Seeding database...");
+                      await seedDatabase();
+                      console.log("✅ Database seeded successfully");
+                    }
+                  } catch (error) {
+                    console.error("⚠️ Database seeding failed:", error);
+                  }
+
+                  // Start cron jobs (only in dev)
+                  if (process.env.NODE_ENV !== "production") {
+                    try {
+                      cronOrchestratorService.setupCronJobs();
+                      cronOrchestratorService.startAll();
+                      console.log("🕐 Cron jobs started");
+                    } catch (error) {
+                      console.error("❌ Failed to start cron jobs:", error);
+                    }
+                  }
+                }
+
+                resolve();
+              });
+            });
           }
-        } catch (error) {
-          console.error(`⚠️ Database seeding failed:`, error);
-        }
 
-        if (process.env.NODE_ENV !== 'production') {
-          try {
-            // Setup cron jobs
-            cronOrchestratorService.setupCronJobs();
-            log("✅ Cron jobs configured");
-            cronOrchestratorService.startAll();
-            log(`🕐 Cron jobs started`);
-          } catch (error) {
-            console.error(`❌ Failed to start cron jobs:`, error);
-          }
-        } else {
-          log(`🚀 Production mode - cron jobs disabled`);
-        }
-
-        resolve();
-      }, isPreview ? 0 : 3000);
-    });
-  });
-}
-
-// Start the server when this module is executed directly
-startServer().catch((error) => {
-  console.error('❌ Failed to start server:', error);
-  process.exit(1);
-});
+          // Start the server when executed directly
+          startServer().catch((error) => {
+            console.error("❌ Failed to start server:", error);
+            process.exit(1);
+          });

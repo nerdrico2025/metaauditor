@@ -9,10 +9,18 @@
     "landing"
   ],
   "scripts": {
-    "dev": "npm-run-all --parallel dev:*",
+    "dev": "npm-run-all --parallel dev:server dev:client dev:landing",
+
     "dev:client": "npm run dev --workspace=client",
     "dev:server": "npm run dev --workspace=server",
     "dev:landing": "npm run dev --workspace=landing",
+
+    "build": "npm-run-all build:client build:server",
+    "build:client": "npm run build --workspace=client",
+    "build:server": "npm run build --workspace=server",
+
+    "copy:client": "rm -rf server/public && mkdir -p server/public && cp -r client/dist/* server/public/",
+
     "db:generate": "npm run db:generate --workspace=server",
     "db:push": "npm run db:push --workspace=server",
     "db:seed": "npm run db:seed --workspace=server"
@@ -21,14 +29,6 @@
     "npm-run-all": "^4.1.5"
   },
   "dependencies": {
-    "@radix-ui/react-progress": "^1.1.8",
-    "@radix-ui/react-separator": "^1.1.8",
-    "@radix-ui/react-switch": "^1.2.6",
-    "@radix-ui/react-tooltip": "^1.2.8",
-    "drizzle-zod": "^0.8.3",
-    "http-proxy-middleware": "^3.0.5",
-    "i18next": "^25.6.3",
-    "react-i18next": "^16.3.5",
-    "tailwindcss-animate": "^1.0.7"
+    "http-proxy-middleware": "^3.0.5"
   }
 }
