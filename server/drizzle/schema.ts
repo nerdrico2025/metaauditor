@@ -59,6 +59,9 @@ export const subscriptionPlans = pgTable("subscription_plans", {
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
   billingCycle: varchar("billing_cycle").notNull().default('monthly'), // 'monthly', 'yearly'
   isActive: boolean("is_active").default(true),
+  displayOrder: integer("display_order").default(0),
+  isPopular: boolean("is_popular").default(false),
+  investmentRange: varchar("investment_range", { length: 100 }),
   
   // Limites do plano
   maxUsers: integer("max_users").notNull(),

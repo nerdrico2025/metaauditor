@@ -2,10 +2,24 @@ import Head from 'next/head'
 import Link from 'next/link'
 import type { ReactElement } from 'react'
 import { CheckCircle2, Zap, BarChart3, Shield, Target, TrendingUp, Award, Sparkles } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 const PLATFORM_URL = 'https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev'
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev'
 
-const plans = [
+interface Plan {
+  id: string
+  name: string
+  slug: string
+  price: string
+  billingCycle: string
+  isPopular: boolean
+  investmentRange: string
+  maxUsers: number
+  features: string[]
+}
+
+const fallbackPlans = [
   {
     name: 'Bronze',
     price: 'R$ 149',
@@ -75,6 +89,36 @@ const plans = [
 ]
 
 export default function Home(): ReactElement {
+  const [plans, setPlans] = useState(fallbackPlans)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchPlans = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/plans`)
+        if (response.ok) {
+          const data = await response.json()
+          const formattedPlans = data.map((plan: Plan) => ({
+            name: plan.name,
+            price: `R$ ${parseInt(plan.price).toLocaleString('pt-BR')}`,
+            period: '/mês',
+            investment: plan.investmentRange || 'Personalizado',
+            accounts: plan.maxUsers === 1 ? '1 conta' : plan.maxUsers <= 3 ? `Até ${plan.maxUsers} contas` : `${plan.maxUsers - 1} a ${plan.maxUsers} contas`,
+            features: plan.features,
+            highlight: plan.isPopular,
+            trial: true
+          }))
+          setPlans(formattedPlans)
+        }
+      } catch (error) {
+        console.error('Error fetching plans:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchPlans()
+  }, [])
   return (
     <>
       <Head>

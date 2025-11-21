@@ -23,6 +23,7 @@
           import platformSettingsRoutes from "./presentation/routes/platform-settings.routes.js";
           import metaOAuthRoutes from "./presentation/routes/meta-oauth.routes.js";
           import adminRoutes from "./presentation/routes/admin.routes.js";
+          import plansRoutes from "./presentation/routes/plans.routes.js";
 
           export async function startServer() {
             const app = express();
@@ -89,6 +90,7 @@
             app.use("/api/dashboard", dashboardRoutes);
             app.use("/api/audits", auditRoutes);
             app.use("/api/company", companyRoutes);
+            app.use("/api/plans", plansRoutes);
 
             // Webhook routes (no authentication)
             const webhookRoutes = (
