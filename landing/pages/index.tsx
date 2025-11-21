@@ -71,24 +71,6 @@ const plans = [
     ],
     highlight: false,
     trial: true
-  },
-  {
-    name: 'Customizado',
-    price: 'Sob consulta',
-    period: '',
-    investment: 'Personalizado',
-    accounts: 'Ilimitado',
-    features: [
-      'Todos os recursos incluídos',
-      'Módulos personalizados',
-      'Integrações customizadas',
-      'SLA garantido',
-      'Treinamento da equipe',
-      'Consultoria estratégica',
-      'Suporte white-glove'
-    ],
-    highlight: false,
-    trial: false
   }
 ]
 
@@ -258,8 +240,8 @@ export default function Home(): ReactElement {
             </div>
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-8 mb-8">
-            {plans.slice(0, 3).map((plan, index) => (
+          <div className="grid lg:grid-cols-4 gap-8 mb-12">
+            {plans.map((plan, index) => (
               <div
                 key={plan.name}
                 className={`relative rounded-2xl p-8 transition-all duration-300 ${
@@ -319,43 +301,21 @@ export default function Home(): ReactElement {
             ))}
           </div>
 
-          <div className="grid lg:grid-cols-2 gap-8 max-w-5xl mx-auto">
-            {plans.slice(3).map((plan) => (
-              <div
-                key={plan.name}
-                className="relative rounded-2xl p-8 bg-white border-2 border-gray-200 hover:border-orange-300 hover:shadow-xl transition-all duration-300"
-                data-testid={`plan-card-${plan.name.toLowerCase()}`}
+          {/* Plano Customizado CTA */}
+          <div className="max-w-3xl mx-auto">
+            <div className="rounded-2xl p-12 bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200 text-center">
+              <h3 className="text-3xl font-bold mb-4 text-gray-900">Plano Customizado</h3>
+              <p className="text-xl text-gray-600 mb-6">
+                Precisa de uma solução personalizada? Nossa equipe pode criar um plano sob medida com módulos adicionais, integrações customizadas e suporte white-glove.
+              </p>
+              <a
+                href="mailto:contato@clickauditor.com?subject=Interesse em Plano Customizado"
+                className="inline-block px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-bold hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg hover:shadow-xl"
+                data-testid="button-contact-custom"
               >
-                <div className="mb-6">
-                  <h3 className="text-2xl font-bold mb-2 text-gray-900">{plan.name}</h3>
-                  <div className="text-sm font-medium mb-4 text-gray-500">
-                    Investimento Meta: {plan.investment}
-                  </div>
-                  <div className="flex items-baseline gap-2 mb-2">
-                    <span className="text-5xl font-bold text-gray-900">{plan.price}</span>
-                    <span className="text-gray-500">{plan.period}</span>
-                  </div>
-                  <div className="text-sm font-medium text-gray-600">{plan.accounts}</div>
-                </div>
-
-                <ul className="space-y-4 mb-8">
-                  {plan.features.map((feature, fIndex) => (
-                    <li key={fIndex} className="flex items-start gap-3">
-                      <CheckCircle2 className="w-5 h-5 flex-shrink-0 mt-0.5 text-orange-500" />
-                      <span className="text-gray-700">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-
-                <Link
-                  href={`/register?plan=${plan.name.toLowerCase()}`}
-                  className="block w-full py-4 rounded-xl font-bold text-center bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700 shadow-md hover:shadow-lg transition-all"
-                  data-testid={`button-start-${plan.name.toLowerCase()}`}
-                >
-                  {plan.trial ? 'Iniciar Trial de 3 Dias' : 'Falar com Vendas'}
-                </Link>
-              </div>
-            ))}
+                Falar com Vendas
+              </a>
+            </div>
           </div>
         </div>
       </section>
