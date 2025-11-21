@@ -5,9 +5,16 @@ import { CheckCircle2, Zap, BarChart3, Shield, Target, TrendingUp, Award, Sparkl
 import { useEffect, useState } from 'react'
 
 const PLATFORM_URL = 'https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev'
-const API_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-  ? 'http://localhost:5000'
-  : (process.env.NEXT_PUBLIC_API_URL || 'https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev')
+
+const getApiUrl = () => {
+  if (typeof window === 'undefined') {
+    return process.env.NEXT_PUBLIC_API_URL || 'https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev'
+  }
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return 'http://localhost:5000'
+  }
+  return process.env.NEXT_PUBLIC_API_URL || 'https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev'
+}
 
 interface Plan {
   id: string
@@ -102,7 +109,8 @@ export default function Home(): ReactElement {
   useEffect(() => {
     const fetchPlans = async () => {
       try {
-        const response = await fetch(`${API_URL}/api/plans`)
+        const apiUrl = getApiUrl()
+        const response = await fetch(`${apiUrl}/api/plans`)
         if (response.ok) {
           const data = await response.json()
           setApiPlans(data)
