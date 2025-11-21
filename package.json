@@ -9,12 +9,24 @@
     "landing"
   ],
   "scripts": {
-    "dev": "npm run dev --workspaces --if-present",
-    "build": "npm run build --workspaces --if-present",
-    "start": "npm start --workspace=server",
-    "check": "npm run check --workspaces --if-present",
+    "dev": "npm-run-all --parallel dev:*",
+    "dev:client": "npm run dev --workspace=client",
+    "dev:server": "npm run dev --workspace=server",
+    "dev:landing": "npm run dev --workspace=landing",
     "db:generate": "npm run db:generate --workspace=server",
     "db:push": "npm run db:push --workspace=server",
     "db:seed": "npm run db:seed --workspace=server"
+  },
+  "devDependencies": {
+    "npm-run-all": "^4.1.5"
+  },
+  "dependencies": {
+    "@radix-ui/react-progress": "^1.1.8",
+    "@radix-ui/react-separator": "^1.1.8",
+    "@radix-ui/react-switch": "^1.2.6",
+    "@radix-ui/react-tooltip": "^1.2.8",
+    "http-proxy-middleware": "^3.0.5",
+    "i18next": "^25.6.3",
+    "react-i18next": "^16.3.5"
   }
 }
