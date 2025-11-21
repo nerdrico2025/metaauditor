@@ -1,8 +1,9 @@
 import Head from 'next/head'
 import Link from 'next/link'
+import type { ReactElement } from 'react'
 import { CheckCircle2, Zap, BarChart3, Shield } from 'lucide-react'
 
-export default function Home() {
+export default function Home(): ReactElement {
   return (
     <>
       <Head>

@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
+import type { ReactElement } from 'react'
 
-export default function Login() {
+export default function Login(): ReactElement {
   useEffect(() => {
     // Redireciona para o app de login
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
