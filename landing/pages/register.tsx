@@ -235,7 +235,6 @@ export default function Register(): ReactElement {
                   <option value="prata">Prata - R$ 499/mês</option>
                   <option value="ouro">Ouro - R$ 999/mês</option>
                   <option value="diamante">Diamante - R$ 1.990/mês</option>
-                  <option value="customizado">Customizado - Sob consulta</option>
                 </select>
               </div>
 
