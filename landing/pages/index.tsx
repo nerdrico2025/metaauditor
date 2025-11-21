@@ -45,7 +45,8 @@ const fallbackPlans = [
       'Suporte via email'
     ],
     highlight: false,
-    trial: true
+    trial: true,
+    savings: 0
   },
   {
     name: 'Prata',
@@ -61,7 +62,8 @@ const fallbackPlans = [
       'Suporte prioritário'
     ],
     highlight: false,
-    trial: true
+    trial: true,
+    savings: 0
   },
   {
     name: 'Ouro',
@@ -78,7 +80,8 @@ const fallbackPlans = [
       'Suporte prioritário'
     ],
     highlight: true,
-    trial: true
+    trial: true,
+    savings: 0
   },
   {
     name: 'Diamante',
@@ -96,7 +99,8 @@ const fallbackPlans = [
       'Suporte 24/7'
     ],
     highlight: false,
-    trial: true
+    trial: true,
+    savings: 0
   }
 ]
 
@@ -107,23 +111,6 @@ export default function Home(): ReactElement {
   const [apiPlans, setApiPlans] = useState<Plan[]>([])
 
   useEffect(() => {
-    const fetchPlans = async () => {
-      try {
-        const apiUrl = getApiUrl()
-        const response = await fetch(`${apiUrl}/api/plans`)
-        if (response.ok) {
-          const data = await response.json()
-          setApiPlans(data)
-          formatPlans(data, false)
-        } else {
-          setLoading(false)
-        }
-      } catch (error) {
-        console.error('Error fetching plans:', error)
-        setLoading(false)
-      }
-    }
-
     const formatPlans = (data: Plan[], annual: boolean) => {
       const formattedPlans = data.map((plan: Plan) => {
         const priceToUse = annual && plan.annualPricing ? plan.annualPricing : plan.monthlyPricing || plan.price
@@ -143,6 +130,34 @@ export default function Home(): ReactElement {
       })
       setPlans(formattedPlans)
       setLoading(false)
+    }
+
+    const fetchPlans = async () => {
+      if (typeof window === 'undefined') {
+        setLoading(false)
+        return
+      }
+      
+      try {
+        const apiUrl = getApiUrl()
+        const response = await fetch(`${apiUrl}/api/plans`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        })
+        if (response.ok) {
+          const data = await response.json()
+          setApiPlans(data)
+          formatPlans(data, false)
+        } else {
+          console.warn('API returned non-OK status:', response.status)
+          setLoading(false)
+        }
+      } catch (error) {
+        console.error('Error fetching plans:', error)
+        setLoading(false)
+      }
     }
 
     fetchPlans()
