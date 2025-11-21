@@ -1,5 +1,5 @@
-import { db } from '../../db.js';
-import { subscriptionPlans } from '../../../drizzle/schema.js';
+import { db } from '../index.js';
+import { subscriptionPlans } from '../schema.js';
 import { eq } from 'drizzle-orm';
 
 export class PlanRepository {
