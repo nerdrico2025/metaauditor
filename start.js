@@ -1,22 +1,14 @@
 #!/usr/bin/env node
 
 import { execSync } from 'child_process';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 try {
-  console.log('🔨 Building client...');
-  execSync('npm run build:client', { stdio: 'inherit', cwd: __dirname });
-
-  console.log('🔨 Building server...');
-  execSync('npm run build:server', { stdio: 'inherit', cwd: __dirname });
+  console.log('🔨 Building client and server...');
+  execSync('npm run build:client && npm run build:server', { stdio: 'inherit' });
 
   console.log('🚀 Starting server...');
-  execSync('npm run start --workspace=server', { stdio: 'inherit', cwd: __dirname });
+  execSync('NODE_ENV=production node ./dist/main.js', { stdio: 'inherit' });
 } catch (error) {
-  console.error('❌ Error during startup:', error.message);
+  console.error('❌ Error:', error.message);
   process.exit(1);
 }
