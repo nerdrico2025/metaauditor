@@ -1,14 +1,24 @@
 #!/usr/bin/env node
 
-import { execSync } from 'child_process';
+import { execSync, spawn } from 'child_process';
 
-try {
-  console.log('🔨 Building client and server...');
-  execSync('npm run build:client && npm run build:server', { stdio: 'inherit' });
+console.log('🔨 Building client...');
+execSync('npm run build:client', { stdio: 'inherit' });
 
-  console.log('🚀 Starting server...');
-  execSync('NODE_ENV=production node ./dist/main.js', { stdio: 'inherit' });
-} catch (error) {
-  console.error('❌ Error:', error.message);
+console.log('🔨 Building server...');
+execSync('npm run build:server', { stdio: 'inherit' });
+
+console.log('🚀 Starting production server...');
+const server = spawn('node', ['./dist/main.js'], {
+  stdio: 'inherit',
+  env: { ...process.env, NODE_ENV: 'production' }
+});
+
+server.on('error', (err) => {
+  console.error('❌ Server error:', err);
   process.exit(1);
-}
+});
+
+server.on('exit', (code) => {
+  process.exit(code || 0);
+});

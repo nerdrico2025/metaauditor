@@ -27,14 +27,11 @@ export async function seedDatabase(): Promise<void> {
         role: 'super_admin',
         isActive: true,
       },
-    ]);
+    ]).onConflictDoNothing();
 
-    console.log('✅ Database seeded successfully!');
-    console.log('📧 Email: admin@clickhero.com');
-    console.log('🔑 Password: admin123');
+    console.log('✅ Database seeded (or already exists)');
   } catch (error) {
-    console.error('Error seeding database:', error);
-    throw error;
+    console.warn('⚠️ Seed skipped (data may already exist):', (error as Error).message);
   }
 }
 

@@ -118,20 +118,25 @@
 
             // If production: serve the client build
             if (process.env.NODE_ENV === "production") {
-              const clientDist = path.resolve(
-                import.meta.dirname,
-                "../../client/dist"
-              );
+              const possiblePaths = [
+                path.resolve(import.meta.dirname, "../client/dist"),
+                path.resolve(import.meta.dirname, "../../client/dist"),
+                path.resolve(process.cwd(), "client/dist"),
+                path.resolve(process.cwd(), "dist/public"),
+              ];
+              
+              const clientDist = possiblePaths.find(p => fs.existsSync(p));
 
-              if (fs.existsSync(clientDist)) {
+              if (clientDist) {
+                console.log("✅ Serving client from:", clientDist);
                 app.use(express.static(clientDist));
                 app.get("*", (req, res) => {
                   res.sendFile(path.join(clientDist, "index.html"));
                 });
               } else {
                 console.warn(
-                  "⚠️ Client build not found at:",
-                  clientDist,
+                  "⚠️ Client build not found. Searched:",
+                  possiblePaths.join(", "),
                   "\nRun: npm run build:client"
                 );
               }
