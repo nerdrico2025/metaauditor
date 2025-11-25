@@ -2,6 +2,9 @@
 
 import { execSync, spawn } from 'child_process';
 
+console.log('📦 Installing dependencies...');
+execSync('npm install', { stdio: 'inherit' });
+
 console.log('🔨 Building client...');
 execSync('npm run build:client', { stdio: 'inherit' });
 

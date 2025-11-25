@@ -7,7 +7,7 @@ channel = "stable-25_05"
 
 [deployment]
 deploymentTarget = "autoscale"
-run = ["bash", "-c", "npm run build:client && npm run build:server && npm run start -w server"]
+run = ["node", "start.js"]
 build = ["npm", "run", "build"]
 
 [[ports]]
@@ -53,10 +53,6 @@ externalPort = 3002
 [[ports]]
 localPort = 41593
 externalPort = 8000
-
-[[ports]]
-localPort = 42851
-externalPort = 8008
 
 [[ports]]
 localPort = 43997
