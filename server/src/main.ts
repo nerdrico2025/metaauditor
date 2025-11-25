@@ -119,10 +119,9 @@
             // If production: serve the client build
             if (process.env.NODE_ENV === "production") {
               const possiblePaths = [
-                path.resolve(import.meta.dirname, "../client/dist"),
-                path.resolve(import.meta.dirname, "../../client/dist"),
                 path.resolve(process.cwd(), "client/dist"),
                 path.resolve(process.cwd(), "dist/public"),
+                path.resolve(process.cwd(), "../client/dist"),
               ];
               
               const clientDist = possiblePaths.find(p => fs.existsSync(p));

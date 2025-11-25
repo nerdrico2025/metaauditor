@@ -11,10 +11,10 @@ execSync('npm run build:client', { stdio: 'inherit' });
 console.log('🔨 Building server...');
 execSync('npm run build:server', { stdio: 'inherit' });
 
-console.log('🚀 Starting production server...');
-const server = spawn('node', ['./dist/main.js'], {
+console.log('🚀 Starting production server on port 5000...');
+const server = spawn('node', ['./dist/main.cjs'], {
   stdio: 'inherit',
-  env: { ...process.env, NODE_ENV: 'production' }
+  env: { ...process.env, NODE_ENV: 'production', PORT: '5000' }
 });
 
 server.on('error', (err) => {
