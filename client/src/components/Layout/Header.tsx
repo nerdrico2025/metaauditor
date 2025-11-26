@@ -36,12 +36,12 @@ export default function Header({ title }: HeaderProps) {
 
         <div className="ml-4 flex items-center md:ml-6 space-x-4">
           {/* Notifications */}
-          <button className="bg-white p-1 rounded-full text-slate-600 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+          {/* <button className="bg-white p-1 rounded-full text-slate-600 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
             <Bell className="h-5 w-5" />
-          </button>
+          </button> */}
 
           {/* Profile dropdown */}
-          <DropdownMenu>
+          {/* <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                 <Avatar className="h-8 w-8">
@@ -62,7 +62,7 @@ export default function Header({ title }: HeaderProps) {
                 {t('navigation.logout')}
               </DropdownMenuItem>
             </DropdownMenuContent>
-          </DropdownMenu>
+          </DropdownMenu> */}
         </div>
       </div>
     </div>
