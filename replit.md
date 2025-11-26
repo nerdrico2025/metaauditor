@@ -66,5 +66,24 @@ These are minimal integration points. All actual configuration lives within each
 - **Backend minimal**: Focused on data persistence and external API calls
 - **Type-safe**: TypeScript across all projects
 - **Database**: PostgreSQL with Drizzle ORM
-- **Authentication**: JWT-based with role-based access control (admin/operator)
+- **Authentication**: JWT-based with role-based access control (super_admin/company_admin/operador)
 - **External integrations**: Meta Marketing API, Google Ads API, Google Cloud Storage
+
+## Multi-Tenant Architecture
+
+All core tables have `company_id` for tenant isolation:
+- users, campaigns, ad_sets, creatives, audits, audit_actions
+- integrations, sync_history, policies, google_sheets_config
+- brand_configurations, content_criteria, campaign_metrics, performance_benchmarks
+
+**Role-based data access:**
+- `super_admin`: Access to all data across all companies
+- `company_admin`: Access to all data within their company
+- `operador`: Access only to their own data
+
+## Recent Changes (Nov 26, 2025)
+
+- Added `company_id` to integrations, sync_history, audit_actions, campaign_metrics, performance_benchmarks tables
+- Updated batch creative analysis to include companyId and multi-tenant access checks
+- Dashboard simplified: Removed IntegrationStatus and PolicyManagement components
+- Fixed active campaigns counter to use "Ativo" status
