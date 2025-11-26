@@ -62,7 +62,7 @@ async function generateMigration() {
   }
   output.push('');
 
-  // Creatives
+  // Creatives (depois de campaigns e ad_sets)
   console.log('Exportando creatives...');
   const creatives = await db.execute(sql`SELECT * FROM creatives`);
   output.push(`-- CREATIVES (${creatives.rows.length} registros)`);
