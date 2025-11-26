@@ -133,6 +133,7 @@ export const users = pgTable("users", {
 // Platform integrations
 export const integrations = pgTable("integrations", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: uuid("company_id").references(() => companies.id, { onDelete: 'cascade' }),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   platform: varchar("platform").notNull(), // 'meta', 'google', 'google_sheets'
   accessToken: text("access_token"),
@@ -151,6 +152,7 @@ export const integrations = pgTable("integrations", {
 // Sync history table to track all synchronizations
 export const syncHistory = pgTable("sync_history", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: uuid("company_id").references(() => companies.id, { onDelete: 'cascade' }),
   integrationId: uuid("integration_id").notNull().references(() => integrations.id, { onDelete: 'cascade' }),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   status: varchar("status").notNull(), // 'running', 'completed', 'failed', 'partial'
@@ -310,6 +312,7 @@ export const audits = pgTable("audits", {
 // Audit Actions
 export const auditActions = pgTable("audit_actions", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: uuid("company_id").references(() => companies.id, { onDelete: 'cascade' }),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   auditId: uuid("audit_id").notNull().references(() => audits.id, { onDelete: 'cascade' }),
   action: varchar("action").notNull(),
@@ -372,6 +375,7 @@ export const googleSheetsConfig = pgTable("google_sheets_config", {
 // Campaign Metrics
 export const campaignMetrics = pgTable("campaign_metrics", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: uuid("company_id").references(() => companies.id, { onDelete: 'cascade' }),
   userId: varchar("user_id").references(() => users.id, { onDelete: 'cascade' }),
   data: timestamp("data").notNull(),
   nomeAconta: text("nome_conta").notNull(),
@@ -400,6 +404,7 @@ export const campaignMetrics = pgTable("campaign_metrics", {
 // Performance Benchmarks
 export const performanceBenchmarks = pgTable('performance_benchmarks', {
   id: serial('id').primaryKey(),
+  companyId: uuid('company_id').references(() => companies.id, { onDelete: 'cascade' }),
   userId: varchar('user_id').notNull().references(() => users.id),
   ctrMin: decimal('ctr_min', { precision: 5, scale: 3 }),
   ctrTarget: decimal('ctr_target', { precision: 5, scale: 3 }),
