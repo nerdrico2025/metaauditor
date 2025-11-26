@@ -3,14 +3,10 @@ import Header from "@/components/Layout/Header";
 import MetricsCards from "./components/MetricsCards";
 import RecentAudits from "./components/RecentAudits";
 import ProblemCreatives from "./components/ProblemCreatives";
-import PolicyManagement from "./components/PolicyManagement";
-import IntegrationStatus from "./components/IntegrationStatus";
 import { useTranslation } from 'react-i18next';
 
 export default function Dashboard() {
   const { t } = useTranslation();
-
-  // Authentication removed - direct access to dashboard
 
   return (
     <div className="flex h-screen bg-background">
@@ -32,16 +28,6 @@ export default function Dashboard() {
                 <RecentAudits />
                 <ProblemCreatives />
               </div>
-            </div>
-
-            {/* Policy Management */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
-              <PolicyManagement />
-            </div>
-
-            {/* Integration Status */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
-              <IntegrationStatus />
             </div>
           </div>
         </main>

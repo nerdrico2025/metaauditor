@@ -21,7 +21,7 @@ router.get('/metrics', authenticateToken, async (req: Request, res: Response, ne
     
     res.json({
       totalCampaigns: campaigns.length,
-      activeCampaigns: campaigns.filter(c => c.status === 'active' || c.status === 'Em veiculação').length,
+      activeCampaigns: campaigns.filter(c => c.status === 'Ativo' || c.status === 'active' || c.status === 'Em veiculação').length,
       creativesAnalyzed: creatives.length,
       totalAudits: audits.length,
       nonCompliant: nonCompliantAudits,
