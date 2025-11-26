@@ -111,6 +111,7 @@ router.put('/:id', authenticateToken, async (req: Request, res: Response, next: 
 router.post('/:id/analyze', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user?.userId;
+    const userCompanyId = (req as any).user?.companyId;
     const creative = await storage.getCreativeById(req.params.id);
     
     if (!creative) {
@@ -164,10 +165,11 @@ router.post('/:id/analyze', authenticateToken, async (req: Request, res: Respons
                             complianceAnalysis.score >= 60 ? 'parcialmente_conforme' : 
                             'nao_conforme';
 
-    // Create audit record with policy reference
+    // Create audit record with policy reference and company_id
     const audit = await storage.createAudit({
       creativeId: creative.id,
       userId,
+      companyId: creative.companyId || userCompanyId,
       policyId: applicablePolicy?.id,
       status: complianceStatus,
       complianceScore: complianceAnalysis.score,
@@ -202,6 +204,8 @@ router.get('/:id/audits', authenticateToken, async (req: Request, res: Response,
 router.post('/analyze-batch', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user?.userId;
+    const userRole = (req as any).user?.role;
+    const userCompanyId = (req as any).user?.companyId;
     const { creativeIds } = req.body;
     
     if (!creativeIds || !Array.isArray(creativeIds) || creativeIds.length === 0) {
@@ -226,7 +230,14 @@ router.post('/analyze-batch', authenticateToken, async (req: Request, res: Respo
       try {
         const creative = await storage.getCreativeById(creativeId);
         
-        if (!creative || creative.userId !== userId) {
+        // Multi-tenant access check
+        const hasAccess = creative && (
+          userRole === 'super_admin' ||
+          creative.userId === userId ||
+          (userCompanyId && creative.companyId === userCompanyId)
+        );
+        
+        if (!creative || !hasAccess) {
           results.failed.push({ id: creativeId, error: 'Criativo não encontrado' });
           continue;
         }
@@ -273,10 +284,11 @@ router.post('/analyze-batch', authenticateToken, async (req: Request, res: Respo
                                 complianceAnalysis.score >= 60 ? 'parcialmente_conforme' : 
                                 'nao_conforme';
 
-        // Create audit record with policy reference
+        // Create audit record with policy reference and company_id
         const audit = await storage.createAudit({
           creativeId: creative.id,
           userId,
+          companyId: creative.companyId || userCompanyId,
           policyId: applicablePolicy?.id,
           status: complianceStatus,
           complianceScore: complianceAnalysis.score,
