@@ -218,6 +218,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getIntegrationsByUser(userId: string): Promise<Integration[]> {
+    const user = await this.getUserById(userId);
+    if (!user) return [];
+    
+    // Super admin without company sees everything
+    if (user.role === 'super_admin' && !user.companyId) {
+      return await db.select().from(integrations);
+    }
+    
+    // Users with company see integrations from all users in their company
+    if (user.companyId) {
+      const companyUsers = await db.select({ id: users.id }).from(users).where(eq(users.companyId, user.companyId));
+      const companyUserIds = companyUsers.map(u => u.id);
+      if (companyUserIds.length === 0) return [];
+      return await db.select().from(integrations).where(inArray(integrations.userId, companyUserIds));
+    }
+    
+    // Fallback for users without company (backward compatibility)
     return await db.select().from(integrations).where(eq(integrations.userId, userId));
   }
 
@@ -236,6 +253,32 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getSyncHistoryByUser(userId: string): Promise<any[]> {
+    const user = await this.getUserById(userId);
+    if (!user) return [];
+    
+    // Super admin without company sees everything
+    if (user.role === 'super_admin' && !user.companyId) {
+      return await db
+        .select()
+        .from(syncHistory)
+        .orderBy(desc(syncHistory.startedAt))
+        .limit(50);
+    }
+    
+    // Users with company see sync history from all users in their company
+    if (user.companyId) {
+      const companyUsers = await db.select({ id: users.id }).from(users).where(eq(users.companyId, user.companyId));
+      const companyUserIds = companyUsers.map(u => u.id);
+      if (companyUserIds.length === 0) return [];
+      return await db
+        .select()
+        .from(syncHistory)
+        .where(inArray(syncHistory.userId, companyUserIds))
+        .orderBy(desc(syncHistory.startedAt))
+        .limit(50);
+    }
+    
+    // Fallback for users without company
     const history = await db
       .select()
       .from(syncHistory)
@@ -684,21 +727,22 @@ export class DatabaseStorage implements IStorage {
     const user = await this.getUserById(userId);
     if (!user) return [];
     
+    // Super admin without company sees everything
     if (user.role === 'super_admin' && !user.companyId) {
       return await db.select().from(auditActions).orderBy(desc(auditActions.createdAt));
     }
     
+    // Users with company see audit actions from all users in their company
     if (user.companyId) {
-      const isAdmin = user.role === 'company_admin' || user.role === 'super_admin';
-      if (isAdmin) {
-        return await db.select().from(auditActions).where(eq(auditActions.companyId, user.companyId)).orderBy(desc(auditActions.createdAt));
-      } else {
-        return await db.select().from(auditActions).where(
-          and(eq(auditActions.userId, userId), eq(auditActions.companyId, user.companyId))
-        ).orderBy(desc(auditActions.createdAt));
-      }
+      const companyUsers = await db.select({ id: users.id }).from(users).where(eq(users.companyId, user.companyId));
+      const companyUserIds = companyUsers.map(u => u.id);
+      if (companyUserIds.length === 0) return [];
+      return await db.select().from(auditActions)
+        .where(inArray(auditActions.userId, companyUserIds))
+        .orderBy(desc(auditActions.createdAt));
     }
     
+    // Fallback for users without company
     return await db.select().from(auditActions).where(eq(auditActions.userId, userId)).orderBy(desc(auditActions.createdAt));
   }
 
