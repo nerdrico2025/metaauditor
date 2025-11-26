@@ -440,21 +440,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getCampaignsByUser(userId: string): Promise<Campaign[]> {
-    // Get user's companyId for additional security
     const user = await this.getUserById(userId);
     if (!user) return [];
     
-    // Filter by both userId and companyId for multi-tenant isolation
+    // Admins see all company campaigns, operators see only their own
     if (user.companyId) {
-      return await db.select().from(campaigns).where(
-        and(
-          eq(campaigns.userId, userId),
-          eq(campaigns.companyId, user.companyId)
-        )
-      );
+      const isAdmin = user.role === 'company_admin' || user.role === 'super_admin';
+      if (isAdmin) {
+        return await db.select().from(campaigns).where(eq(campaigns.companyId, user.companyId));
+      } else {
+        return await db.select().from(campaigns).where(
+          and(eq(campaigns.userId, userId), eq(campaigns.companyId, user.companyId))
+        );
+      }
     }
     
-    // Fallback for users without company (backward compatibility)
     return await db.select().from(campaigns).where(eq(campaigns.userId, userId));
   }
 
@@ -491,6 +491,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAdSetsByUser(userId: string): Promise<AdSet[]> {
+    const user = await this.getUserById(userId);
+    if (!user) return [];
+    
+    if (user.companyId) {
+      const isAdmin = user.role === 'company_admin' || user.role === 'super_admin';
+      if (isAdmin) {
+        return await db.select().from(adSets).where(eq(adSets.companyId, user.companyId));
+      } else {
+        return await db.select().from(adSets).where(
+          and(eq(adSets.userId, userId), eq(adSets.companyId, user.companyId))
+        );
+      }
+    }
+    
     return await db.select().from(adSets).where(eq(adSets.userId, userId));
   }
 
@@ -518,6 +532,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getCreativesByUser(userId: string): Promise<Creative[]> {
+    const user = await this.getUserById(userId);
+    if (!user) return [];
+    
+    if (user.companyId) {
+      const isAdmin = user.role === 'company_admin' || user.role === 'super_admin';
+      if (isAdmin) {
+        return await db.select().from(creatives).where(eq(creatives.companyId, user.companyId));
+      } else {
+        return await db.select().from(creatives).where(
+          and(eq(creatives.userId, userId), eq(creatives.companyId, user.companyId))
+        );
+      }
+    }
+    
     return await db.select().from(creatives).where(eq(creatives.userId, userId));
   }
 
@@ -545,6 +573,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPoliciesByUser(userId: string): Promise<Policy[]> {
+    const user = await this.getUserById(userId);
+    if (!user) return [];
+    
+    if (user.companyId) {
+      const isAdmin = user.role === 'company_admin' || user.role === 'super_admin';
+      if (isAdmin) {
+        return await db.select().from(policies).where(eq(policies.companyId, user.companyId));
+      } else {
+        return await db.select().from(policies).where(
+          and(eq(policies.userId, userId), eq(policies.companyId, user.companyId))
+        );
+      }
+    }
+    
     return await db.select().from(policies).where(eq(policies.userId, userId));
   }
 
@@ -578,6 +620,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAuditsByUser(userId: string): Promise<Audit[]> {
+    const user = await this.getUserById(userId);
+    if (!user) return [];
+    
+    if (user.companyId) {
+      const isAdmin = user.role === 'company_admin' || user.role === 'super_admin';
+      if (isAdmin) {
+        return await db.select().from(audits).where(eq(audits.companyId, user.companyId)).orderBy(desc(audits.createdAt));
+      } else {
+        return await db.select().from(audits).where(
+          and(eq(audits.userId, userId), eq(audits.companyId, user.companyId))
+        ).orderBy(desc(audits.createdAt));
+      }
+    }
+    
     return await db.select().from(audits).where(eq(audits.userId, userId)).orderBy(desc(audits.createdAt));
   }
 
@@ -603,6 +659,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAuditActionsByUser(userId: string): Promise<AuditAction[]> {
+    const user = await this.getUserById(userId);
+    if (!user) return [];
+    
+    if (user.companyId) {
+      const isAdmin = user.role === 'company_admin' || user.role === 'super_admin';
+      if (isAdmin) {
+        return await db.select().from(auditActions).where(eq(auditActions.companyId, user.companyId)).orderBy(desc(auditActions.createdAt));
+      } else {
+        return await db.select().from(auditActions).where(
+          and(eq(auditActions.userId, userId), eq(auditActions.companyId, user.companyId))
+        ).orderBy(desc(auditActions.createdAt));
+      }
+    }
+    
     return await db.select().from(auditActions).where(eq(auditActions.userId, userId)).orderBy(desc(auditActions.createdAt));
   }
 
@@ -707,8 +777,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getBrandConfigurationsByUser(userId: string): Promise<BrandConfiguration[]> {
-    return db.select().from(brandConfigurations)
-      .where(eq(brandConfigurations.userId, userId))
+    const user = await this.getUserById(userId);
+    if (!user) return [];
+    
+    if (user.companyId) {
+      const isAdmin = user.role === 'company_admin' || user.role === 'super_admin';
+      if (isAdmin) {
+        return db.select().from(brandConfigurations).where(eq(brandConfigurations.companyId, user.companyId))
+          .orderBy(desc(brandConfigurations.createdAt));
+      } else {
+        return db.select().from(brandConfigurations).where(
+          and(eq(brandConfigurations.userId, userId), eq(brandConfigurations.companyId, user.companyId))
+        ).orderBy(desc(brandConfigurations.createdAt));
+      }
+    }
+    
+    return db.select().from(brandConfigurations).where(eq(brandConfigurations.userId, userId))
       .orderBy(desc(brandConfigurations.createdAt));
   }
 
@@ -737,8 +821,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getContentCriteriaByUser(userId: string): Promise<ContentCriteria[]> {
-    return db.select().from(contentCriteria)
-      .where(eq(contentCriteria.userId, userId))
+    const user = await this.getUserById(userId);
+    if (!user) return [];
+    
+    if (user.companyId) {
+      const isAdmin = user.role === 'company_admin' || user.role === 'super_admin';
+      if (isAdmin) {
+        return db.select().from(contentCriteria).where(eq(contentCriteria.companyId, user.companyId))
+          .orderBy(desc(contentCriteria.createdAt));
+      } else {
+        return db.select().from(contentCriteria).where(
+          and(eq(contentCriteria.userId, userId), eq(contentCriteria.companyId, user.companyId))
+        ).orderBy(desc(contentCriteria.createdAt));
+      }
+    }
+    
+    return db.select().from(contentCriteria).where(eq(contentCriteria.userId, userId))
       .orderBy(desc(contentCriteria.createdAt));
   }
 
