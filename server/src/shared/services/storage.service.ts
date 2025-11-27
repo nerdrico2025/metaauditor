@@ -689,17 +689,10 @@ export class DatabaseStorage implements IStorage {
     }
     
     if (user.companyId) {
-      const isAdmin = user.role === 'company_admin' || user.role === 'super_admin';
-      if (isAdmin) {
-        return await db.select().from(audits).where(eq(audits.companyId, user.companyId)).orderBy(desc(audits.createdAt));
-      } else {
-        return await db.select().from(audits).where(
-          and(eq(audits.userId, userId), eq(audits.companyId, user.companyId))
-        ).orderBy(desc(audits.createdAt));
-      }
+      return await db.select().from(audits).where(eq(audits.companyId, user.companyId)).orderBy(desc(audits.createdAt));
     }
     
-    return await db.select().from(audits).where(eq(audits.userId, userId)).orderBy(desc(audits.createdAt));
+    return [];
   }
 
   async getAuditsByCreative(creativeId: string): Promise<Audit[]> {
@@ -707,8 +700,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getRecentAudits(userId: string, limit = 10): Promise<Audit[]> {
+    const user = await this.getUserById(userId);
+    if (!user?.companyId) return [];
+    
     return await db.select().from(audits)
-      .where(eq(audits.userId, userId))
+      .where(eq(audits.companyId, user.companyId))
       .orderBy(desc(audits.createdAt))
       .limit(limit);
   }
