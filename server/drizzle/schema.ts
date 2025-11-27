@@ -134,7 +134,6 @@ export const users = pgTable("users", {
 export const integrations = pgTable("integrations", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: uuid("company_id").references(() => companies.id, { onDelete: 'cascade' }),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   platform: varchar("platform").notNull(), // 'meta', 'google', 'google_sheets'
   accessToken: text("access_token"),
   refreshToken: text("refresh_token"),
@@ -154,7 +153,6 @@ export const syncHistory = pgTable("sync_history", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: uuid("company_id").references(() => companies.id, { onDelete: 'cascade' }),
   integrationId: uuid("integration_id").notNull().references(() => integrations.id, { onDelete: 'cascade' }),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   status: varchar("status").notNull(), // 'running', 'completed', 'failed', 'partial'
   type: varchar("type").notNull(), // 'full', 'incremental'
   startedAt: timestamp("started_at").notNull().defaultNow(),
@@ -186,7 +184,6 @@ export const webhookEvents = pgTable("webhook_events", {
 export const campaigns = pgTable("campaigns", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: uuid("company_id").references(() => companies.id, { onDelete: 'cascade' }),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   integrationId: uuid("integration_id").notNull().references(() => integrations.id, { onDelete: 'cascade' }),
   externalId: varchar("external_id").notNull(),
   name: text("name").notNull(),
@@ -203,7 +200,6 @@ export const campaigns = pgTable("campaigns", {
 export const adSets = pgTable("ad_sets", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: uuid("company_id").references(() => companies.id, { onDelete: 'cascade' }),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   campaignId: uuid("campaign_id").notNull().references(() => campaigns.id, { onDelete: 'cascade' }),
   externalId: varchar("external_id").notNull(),
   name: text("name").notNull(),
@@ -226,7 +222,6 @@ export const adSets = pgTable("ad_sets", {
 export const creatives = pgTable("creatives", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: uuid("company_id").references(() => companies.id, { onDelete: 'cascade' }),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   campaignId: uuid("campaign_id").notNull().references(() => campaigns.id, { onDelete: 'cascade' }),
   adSetId: uuid("ad_set_id").references(() => adSets.id, { onDelete: 'cascade' }),
   externalId: varchar("external_id").notNull(),
@@ -253,7 +248,6 @@ export const creatives = pgTable("creatives", {
 export const policies = pgTable("policies", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: uuid("company_id").references(() => companies.id, { onDelete: 'cascade' }),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   name: text("name").notNull(),
   description: text("description"),
   
@@ -297,7 +291,6 @@ export const policies = pgTable("policies", {
 export const audits = pgTable("audits", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: uuid("company_id").references(() => companies.id, { onDelete: 'cascade' }),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   creativeId: uuid("creative_id").notNull().references(() => creatives.id, { onDelete: 'cascade' }),
   policyId: uuid("policy_id").references(() => policies.id),
   status: varchar("status").notNull(),
@@ -325,7 +318,6 @@ export const auditActions = pgTable("audit_actions", {
 export const brandConfigurations = pgTable("brand_configurations", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: uuid("company_id").references(() => companies.id, { onDelete: 'cascade' }),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   logoUrl: text("logo_url"),
   brandName: text("brand_name").notNull(),
   primaryColor: varchar("primary_color", { length: 7 }),
@@ -342,7 +334,6 @@ export const brandConfigurations = pgTable("brand_configurations", {
 export const contentCriteria = pgTable("content_criteria", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: uuid("company_id").references(() => companies.id, { onDelete: 'cascade' }),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   name: text("name").notNull(),
   description: text("description"),
   requiredKeywords: jsonb("required_keywords"),
@@ -361,7 +352,6 @@ export const contentCriteria = pgTable("content_criteria", {
 // Google Sheets Configuration
 export const googleSheetsConfig = pgTable("google_sheets_config", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   companyId: uuid("company_id").references(() => companies.id, { onDelete: 'cascade' }),
   sheetId: text("sheet_id").notNull(),
   tabGid: text("tab_gid").default('0'),
@@ -376,7 +366,6 @@ export const googleSheetsConfig = pgTable("google_sheets_config", {
 export const campaignMetrics = pgTable("campaign_metrics", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: uuid("company_id").references(() => companies.id, { onDelete: 'cascade' }),
-  userId: varchar("user_id").references(() => users.id, { onDelete: 'cascade' }),
   data: timestamp("data").notNull(),
   nomeAconta: text("nome_conta").notNull(),
   adUrl: text("ad_url"),
@@ -405,7 +394,6 @@ export const campaignMetrics = pgTable("campaign_metrics", {
 export const performanceBenchmarks = pgTable('performance_benchmarks', {
   id: serial('id').primaryKey(),
   companyId: uuid('company_id').references(() => companies.id, { onDelete: 'cascade' }),
-  userId: varchar('user_id').notNull().references(() => users.id),
   ctrMin: decimal('ctr_min', { precision: 5, scale: 3 }),
   ctrTarget: decimal('ctr_target', { precision: 5, scale: 3 }),
   cpcMax: decimal('cpc_max', { precision: 10, scale: 2 }),
@@ -547,15 +535,29 @@ export const campaignMetricsRelations = relations(campaignMetrics, ({ one }) => 
 
 export const brandConfigurationsRelations = relations(brandConfigurations, ({ one }) => ({
   company: one(companies, {
-    fields: [brandConfigurations.userId],
-    references: [users.id],
+    fields: [brandConfigurations.companyId],
+    references: [companies.id],
   }),
 }));
 
 export const contentCriteriaRelations = relations(contentCriteria, ({ one }) => ({
-  user: one(users, {
-    fields: [contentCriteria.userId],
-    references: [users.id],
+  company: one(companies, {
+    fields: [contentCriteria.companyId],
+    references: [companies.id],
+  }),
+}));
+
+export const googleSheetsConfigRelations = relations(googleSheetsConfig, ({ one }) => ({
+  company: one(companies, {
+    fields: [googleSheetsConfig.companyId],
+    references: [companies.id],
+  }),
+}));
+
+export const performanceBenchmarksRelations = relations(performanceBenchmarks, ({ one }) => ({
+  company: one(companies, {
+    fields: [performanceBenchmarks.companyId],
+    references: [companies.id],
   }),
 }));
 
