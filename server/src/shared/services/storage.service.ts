@@ -226,16 +226,12 @@ export class DatabaseStorage implements IStorage {
       return await db.select().from(integrations);
     }
     
-    // Users with company see integrations from all users in their company
+    // Users with company see integrations from their company
     if (user.companyId) {
-      const companyUsers = await db.select({ id: users.id }).from(users).where(eq(users.companyId, user.companyId));
-      const companyUserIds = companyUsers.map(u => u.id);
-      if (companyUserIds.length === 0) return [];
-      return await db.select().from(integrations).where(inArray(integrations.userId, companyUserIds));
+      return await db.select().from(integrations).where(eq(integrations.companyId, user.companyId));
     }
     
-    // Fallback for users without company (backward compatibility)
-    return await db.select().from(integrations).where(eq(integrations.userId, userId));
+    return [];
   }
 
   async getIntegrationById(id: string): Promise<Integration | undefined> {
@@ -265,27 +261,17 @@ export class DatabaseStorage implements IStorage {
         .limit(50);
     }
     
-    // Users with company see sync history from all users in their company
+    // Users with company see sync history from their company
     if (user.companyId) {
-      const companyUsers = await db.select({ id: users.id }).from(users).where(eq(users.companyId, user.companyId));
-      const companyUserIds = companyUsers.map(u => u.id);
-      if (companyUserIds.length === 0) return [];
       return await db
         .select()
         .from(syncHistory)
-        .where(inArray(syncHistory.userId, companyUserIds))
+        .where(eq(syncHistory.companyId, user.companyId))
         .orderBy(desc(syncHistory.startedAt))
         .limit(50);
     }
     
-    // Fallback for users without company
-    const history = await db
-      .select()
-      .from(syncHistory)
-      .where(eq(syncHistory.userId, userId))
-      .orderBy(desc(syncHistory.startedAt))
-      .limit(50);
-    return history;
+    return [];
   }
 
   async createSyncHistory(data: {
@@ -326,9 +312,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteAllSyncHistoryByUser(userId: string): Promise<void> {
+    const user = await this.getUserById(userId);
+    if (!user?.companyId) return;
+    
     await db
       .delete(syncHistory)
-      .where(eq(syncHistory.userId, userId));
+      .where(eq(syncHistory.companyId, user.companyId));
   }
 
   async createWebhookEvent(data: InsertWebhookEvent): Promise<WebhookEvent> {
@@ -368,7 +357,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(integrations)
       .set({ status: 'inactive', updatedAt: new Date() })
-      .where(and(eq(integrations.id, integrationId), eq(integrations.userId, userId)))
+      .where(eq(integrations.id, integrationId))
       .returning();
     return updated;
   }
@@ -459,7 +448,7 @@ export class DatabaseStorage implements IStorage {
       // Finally, delete the integration itself
       await tx
         .delete(integrations)
-        .where(and(eq(integrations.id, integrationId), eq(integrations.userId, userId)));
+        .where(eq(integrations.id, integrationId));
     });
   }
 
@@ -488,23 +477,15 @@ export class DatabaseStorage implements IStorage {
     
     // Super admin without company sees everything
     if (user.role === 'super_admin' && !user.companyId) {
-      return await db.select().from(campaigns);
+      return await db.select().from(campaigns).orderBy(desc(campaigns.createdAt));
     }
     
-    // Company admins see all campaigns in their company, operators see only theirs
+    // Users with company see campaigns from their company
     if (user.companyId) {
-      const isAdmin = user.role === 'company_admin' || user.role === 'super_admin';
-      if (isAdmin) {
-        return await db.select().from(campaigns).where(eq(campaigns.companyId, user.companyId));
-      } else {
-        return await db.select().from(campaigns).where(
-          and(eq(campaigns.userId, userId), eq(campaigns.companyId, user.companyId))
-        );
-      }
+      return await db.select().from(campaigns).where(eq(campaigns.companyId, user.companyId)).orderBy(desc(campaigns.createdAt));
     }
     
-    // Fallback for users without company (backward compatibility)
-    return await db.select().from(campaigns).where(eq(campaigns.userId, userId));
+    return [];
   }
 
   async getCampaignById(id: string): Promise<Campaign | undefined> {
@@ -519,7 +500,7 @@ export class DatabaseStorage implements IStorage {
     const [campaign] = await db.select().from(campaigns).where(
       and(
         eq(campaigns.id, id),
-        user.companyId ? eq(campaigns.companyId, user.companyId) : eq(campaigns.userId, userId)
+        user.companyId ? eq(campaigns.companyId, user.companyId) : sql`false`
       )
     );
     return campaign;
@@ -558,7 +539,7 @@ export class DatabaseStorage implements IStorage {
       }
     }
     
-    return await db.select().from(adSets).where(eq(adSets.userId, userId));
+    return await db.select().from(adSets).where(eq(adSets.companyId, user.companyId));
   }
 
   async getAdSetsByCampaign(campaignId: string): Promise<AdSet[]> {
@@ -603,7 +584,7 @@ export class DatabaseStorage implements IStorage {
       }
     }
     
-    return await db.select().from(creatives).where(eq(creatives.userId, userId));
+    return await db.select().from(creatives).where(eq(creatives.companyId, user.companyId));
   }
 
   async getCreativesByCampaign(campaignId: string): Promise<Creative[]> {
@@ -648,7 +629,7 @@ export class DatabaseStorage implements IStorage {
       }
     }
     
-    return await db.select().from(policies).where(eq(policies.userId, userId));
+    return await db.select().from(policies).where(eq(policies.companyId, user.companyId));
   }
 
   async getPolicyById(id: string): Promise<Policy | undefined> {
@@ -862,7 +843,7 @@ export class DatabaseStorage implements IStorage {
       }
     }
     
-    return db.select().from(brandConfigurations).where(eq(brandConfigurations.userId, userId))
+    return db.select().from(brandConfigurations).where(eq(brandConfigurations.companyId, user.companyId))
       .orderBy(desc(brandConfigurations.createdAt));
   }
 
@@ -910,7 +891,7 @@ export class DatabaseStorage implements IStorage {
       }
     }
     
-    return db.select().from(contentCriteria).where(eq(contentCriteria.userId, userId))
+    return db.select().from(contentCriteria).where(eq(contentCriteria.companyId, user.companyId))
       .orderBy(desc(contentCriteria.createdAt));
   }
 
@@ -1127,15 +1108,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteAllCampaignsByUser(userId: string): Promise<void> {
-    await db.delete(campaigns).where(eq(campaigns.userId, userId));
+    await db.delete(campaigns).where(eq(campaigns.companyId, user.companyId));
   }
 
   async deleteAllAdSetsByUser(userId: string): Promise<void> {
-    await db.delete(adSets).where(eq(adSets.userId, userId));
+    await db.delete(adSets).where(eq(adSets.companyId, user.companyId));
   }
 
   async deleteAllCreativesByUser(userId: string): Promise<void> {
-    await db.delete(creatives).where(eq(creatives.userId, userId));
+    await db.delete(creatives).where(eq(creatives.companyId, user.companyId));
   }
 
   /**
@@ -1145,7 +1126,7 @@ export class DatabaseStorage implements IStorage {
   async deleteAdSetsNotInList(userId: string, externalIds: string[]): Promise<number> {
     if (externalIds.length === 0) {
       // If no external IDs, delete all ad sets for this user
-      const result = await db.delete(adSets).where(eq(adSets.userId, userId));
+      const result = await db.delete(adSets).where(eq(adSets.companyId, user.companyId));
       return result.rowCount ?? 0;
     }
     
@@ -1167,7 +1148,7 @@ export class DatabaseStorage implements IStorage {
   async deleteCreativesNotInList(userId: string, externalIds: string[]): Promise<number> {
     if (externalIds.length === 0) {
       // If no external IDs, delete all creatives for this user
-      const result = await db.delete(creatives).where(eq(creatives.userId, userId));
+      const result = await db.delete(creatives).where(eq(creatives.companyId, user.companyId));
       return result.rowCount ?? 0;
     }
     
@@ -1189,7 +1170,7 @@ export class DatabaseStorage implements IStorage {
   async deleteCampaignsNotInList(userId: string, externalIds: string[]): Promise<number> {
     if (externalIds.length === 0) {
       // If no external IDs, delete all campaigns for this user
-      const result = await db.delete(campaigns).where(eq(campaigns.userId, userId));
+      const result = await db.delete(campaigns).where(eq(campaigns.companyId, user.companyId));
       return result.rowCount ?? 0;
     }
     
