@@ -63,7 +63,7 @@ export default function Users() {
 
   const createMutation = useMutation({
     mutationFn: (data: UserFormData) =>
-      apiRequest('/api/users', 'POST', data),
+      apiRequest('POST', '/api/users', data),
     onSuccess: () => {
       toast({
         title: "Sucesso",
@@ -85,7 +85,7 @@ export default function Users() {
 
   const updateMutation = useMutation({
     mutationFn: (data: UserFormData) =>
-      apiRequest(`/api/users/${editingUser?.id}`, 'PATCH', data),
+      apiRequest('PATCH', `/api/users/${editingUser?.id}`, data),
     onSuccess: () => {
       toast({
         title: "Sucesso",
@@ -107,7 +107,7 @@ export default function Users() {
 
   const deleteMutation = useMutation({
     mutationFn: (userId: string) =>
-      apiRequest(`/api/users/${userId}`, 'DELETE'),
+      apiRequest('DELETE', `/api/users/${userId}`),
     onSuccess: () => {
       toast({
         title: "Sucesso",
