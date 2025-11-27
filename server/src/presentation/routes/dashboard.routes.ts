@@ -15,17 +15,15 @@ router.get('/metrics', authenticateToken, async (req: Request, res: Response, ne
     const creatives = await storage.getCreativesByUser(userId);
     const audits = await storage.getAuditsByUser(userId);
     
-    // Count non-compliant from audits
+    // Count compliant and non-compliant from audits
+    const compliantAudits = audits.filter(a => a.status === 'conforme').length;
     const nonCompliantAudits = audits.filter(a => a.status === 'non_compliant' || a.status === 'nao_conforme').length;
-    const lowPerformanceAudits = audits.filter(a => a.status === 'low_performance' || a.status === 'baixa_performance').length;
     
     res.json({
-      totalCampaigns: campaigns.length,
       activeCampaigns: campaigns.filter(c => c.status === 'Ativo' || c.status === 'active' || c.status === 'Em veiculação').length,
-      creativesAnalyzed: creatives.length,
-      totalAudits: audits.length,
+      totalCreatives: creatives.length,
+      compliant: compliantAudits,
       nonCompliant: nonCompliantAudits,
-      lowPerformance: lowPerformanceAudits,
     });
   } catch (error) {
     next(error);

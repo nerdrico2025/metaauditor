@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BellRing, Image, AlertTriangle, TrendingDown } from "lucide-react";
+import { BellRing, Image, CheckCircle, XCircle } from "lucide-react";
 import { useTranslation } from 'react-i18next';
 
 export default function MetricsCards() {
@@ -9,9 +9,9 @@ export default function MetricsCards() {
   
   const { data: metrics, isLoading } = useQuery<{
     activeCampaigns: number;
-    creativesAnalyzed: number;
+    totalCreatives: number;
+    compliant: number;
     nonCompliant: number;
-    lowPerformance: number;
   }>({
     queryKey: ["/api/dashboard/metrics"],
   });
@@ -21,29 +21,29 @@ export default function MetricsCards() {
       title: t('dashboard.activeCampaigns'),
       value: metrics?.activeCampaigns || 0,
       icon: BellRing,
-      bgColor: "bg-primary",
-      iconColor: "text-primary-foreground",
+      bgColor: "bg-blue-500",
+      iconColor: "text-white",
     },
     {
-      title: t('dashboard.creativesAnalyzed'), 
-      value: metrics?.creativesAnalyzed || 0,
+      title: t('dashboard.creatives'), 
+      value: metrics?.totalCreatives || 0,
       icon: Image,
-      bgColor: "bg-primary",
-      iconColor: "text-primary-foreground",
+      bgColor: "bg-purple-500",
+      iconColor: "text-white",
     },
     {
-      title: t('creatives.nonCompliant'),
+      title: "Em Conformidade",
+      value: metrics?.compliant || 0,
+      icon: CheckCircle,
+      bgColor: "bg-green-500",
+      iconColor: "text-white",
+    },
+    {
+      title: "Não Conforme",
       value: metrics?.nonCompliant || 0,
-      icon: AlertTriangle,
-      bgColor: "bg-destructive",
-      iconColor: "text-destructive-foreground",
-    },
-    {
-      title: t('reports.low'),
-      value: metrics?.lowPerformance || 0,
-      icon: TrendingDown,
-      bgColor: "bg-secondary",
-      iconColor: "text-secondary-foreground",
+      icon: XCircle,
+      bgColor: "bg-red-500",
+      iconColor: "text-white",
     },
   ];
 
