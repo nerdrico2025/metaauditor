@@ -306,7 +306,6 @@ export const audits = pgTable("audits", {
 export const auditActions = pgTable("audit_actions", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: uuid("company_id").references(() => companies.id, { onDelete: 'cascade' }),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   auditId: uuid("audit_id").notNull().references(() => audits.id, { onDelete: 'cascade' }),
   action: varchar("action").notNull(),
   status: varchar("status").default('pending'),
@@ -516,10 +515,6 @@ export const auditsRelations = relations(audits, ({ one, many }) => ({
 }));
 
 export const auditActionsRelations = relations(auditActions, ({ one }) => ({
-  user: one(users, {
-    fields: [auditActions.userId],
-    references: [users.id],
-  }),
   audit: one(audits, {
     fields: [auditActions.auditId],
     references: [audits.id],
