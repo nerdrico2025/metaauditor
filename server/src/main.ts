@@ -9,7 +9,7 @@
 
           // Import DDD routes
           import authRoutes from "./presentation/routes/auth.routes.js";
-          import userRoutes from "./presentation/routes/user.routes.js";
+          import usersRouter from "./presentation/routes/user.routes.js";
           import campaignRoutes from "./presentation/routes/campaign.routes.js";
           import adSetRoutes from "./presentation/routes/adset.routes.js";
           import creativeRoutes from "./presentation/routes/creative.routes.js";
@@ -81,7 +81,7 @@
 
             // Register DDD routes
             app.use("/api/auth", authRoutes);
-            app.use("/api/users", userRoutes);
+            app.use("/api/users", usersRouter);
             app.use("/api/campaigns", campaignRoutes);
             app.use("/api/adsets", adSetRoutes);
             app.use("/api/creatives", creativeRoutes);

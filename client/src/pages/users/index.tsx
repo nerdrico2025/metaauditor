@@ -55,7 +55,7 @@ export default function Users() {
     },
   });
 
-  const { data: users = [], isLoading } = useQuery({
+  const { data: users = [], isLoading } = useQuery<UserData[]>({
     queryKey: ['/api/users'],
     staleTime: 1000 * 60 * 5,
   });
@@ -211,7 +211,7 @@ export default function Users() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {users.map((user: UserData) => (
+                          {(users as UserData[]).map((user: UserData) => (
                             <TableRow key={user.id}>
                               <TableCell className="font-medium">
                                 {user.firstName && user.lastName
