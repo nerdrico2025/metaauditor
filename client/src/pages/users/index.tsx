@@ -57,6 +57,7 @@ export default function Users() {
 
   const { data: users = [], isLoading } = useQuery<UserData[]>({
     queryKey: ['/api/users'],
+    queryFn: () => apiRequest('GET', '/api/users'),
     staleTime: 1000 * 60 * 5,
   });
 
