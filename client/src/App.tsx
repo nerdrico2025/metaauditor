@@ -33,6 +33,9 @@ import BrandSettings from "@/pages/settings/brand";
 import ContentCriteria from "@/pages/settings/content-criteria";
 import Company from "@/pages/settings/company";
 
+// Users
+import Users from "@/pages/users";
+
 // Admin
 import SuperAdmin from "@/pages/admin";
 
@@ -115,6 +118,11 @@ function Router() {
       <Route path="/settings/company">
         <ProtectedRoute>
           <Company />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/users">
+        <ProtectedRoute>
+          <Users />
         </ProtectedRoute>
       </Route>
       <Route path="/super-admin">

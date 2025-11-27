@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
-import { Search, BarChart3, BellRing, Target, Image, FileText, Settings, History, LogOut, ExternalLink, ChevronDown, ChevronRight, Building2, Shield } from "lucide-react";
+import { Search, BarChart3, BellRing, Target, Image, FileText, Settings, History, LogOut, ExternalLink, ChevronDown, ChevronRight, Building2, Shield, Users } from "lucide-react";
 import { useTranslation } from 'react-i18next';
 
 interface NavigationItem {
@@ -10,6 +10,7 @@ interface NavigationItem {
   href?: string;
   icon: React.ElementType;
   children?: NavigationItem[];
+  requiredRole?: string;
 }
 
 const navigation: NavigationItem[] = [
@@ -27,6 +28,7 @@ const navigation: NavigationItem[] = [
   { name: 'Histórico', href: '/history', icon: History },
   { name: 'Políticas de Validação', href: '/policies', icon: Shield },
   { name: 'Integrações', href: '/integrations', icon: ExternalLink },
+  { name: 'Usuários', href: '/users', icon: Users, requiredRole: 'company_admin' },
   { name: 'Dados da Empresa', href: '/company', icon: Building2 },
 ];
 
@@ -35,10 +37,17 @@ export default function Sidebar() {
   const { user, logout, isSuperAdmin } = useAuth();
   const { t } = useTranslation();
   
+  const filteredNavigation = navigation.filter(item => {
+    if (item.requiredRole && user?.role !== item.requiredRole) {
+      return false;
+    }
+    return true;
+  });
+  
   // Initialize expanded items based on current location
   const getInitialExpandedItems = () => {
     const expanded: string[] = [];
-    navigation.forEach(item => {
+    filteredNavigation.forEach(item => {
       if (item.children) {
         const hasActiveChild = item.children.some(child => child.href === location);
         if (hasActiveChild) {
@@ -65,7 +74,7 @@ export default function Sidebar() {
     setLocation(href);
     
     // Auto-expand parent menu if navigating to a child
-    navigation.forEach(item => {
+    filteredNavigation.forEach(item => {
       if (item.children) {
         const isChildActive = item.children.some(child => child.href === href);
         if (isChildActive && !expandedItems.includes(item.name)) {
@@ -177,7 +186,7 @@ export default function Sidebar() {
 
         {/* Navigation */}
         <nav className="mt-8 flex-1 px-2 space-y-1">
-          {navigation.map((item) => renderNavigationItem(item))}
+          {filteredNavigation.map((item) => renderNavigationItem(item))}
         </nav>
 
         {/* User Profile */}
