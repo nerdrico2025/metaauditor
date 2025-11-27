@@ -9,7 +9,8 @@
 
           // Import DDD routes
           import authRoutes from "./presentation/routes/auth.routes.js";
-          import usersRouter from "./presentation/routes/user.routes.js";
+          import userRoutes from "./presentation/routes/user.routes.js";
+          import usersRouter from "./presentation/routes/users.routes.js";
           import campaignRoutes from "./presentation/routes/campaign.routes.js";
           import adSetRoutes from "./presentation/routes/adset.routes.js";
           import creativeRoutes from "./presentation/routes/creative.routes.js";

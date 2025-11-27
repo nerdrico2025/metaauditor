@@ -31,11 +31,11 @@ interface UserData {
 
 const userFormSchema = z.object({
   email: z.string().email("Email inválido"),
-  firstName: z.string().optional(),
-  lastName: z.string().optional(),
-  password: z.string().min(8, "Senha deve ter pelo menos 8 caracteres").optional(),
+  firstName: z.string().optional().or(z.literal("")),
+  lastName: z.string().optional().or(z.literal("")),
+  password: z.string().min(8, "Senha deve ter pelo menos 8 caracteres").optional().or(z.literal("")),
   role: z.enum(['company_admin', 'operador']),
-});
+}) as any;
 
 type UserFormData = z.infer<typeof userFormSchema>;
 

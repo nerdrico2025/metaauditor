@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { authenticateToken, authorizeRoles } from '../middlewares/auth.middleware';
+import { authenticateToken } from '../middlewares/auth.middleware.js';
 import { storage } from '../../shared/services/storage.service.js';
 import bcrypt from 'bcryptjs';
 
@@ -26,10 +26,16 @@ router.get('/', authenticateToken, async (req: Request, res: Response) => {
 });
 
 // Create user (company_admin only)
-router.post('/', authenticateToken, authorizeRoles(['company_admin']), async (req: Request, res: Response) => {
+router.post('/', authenticateToken, async (req: Request, res: Response) => {
   try {
-    const { email, firstName, lastName, password, role } = req.body;
     const user = (req as any).user;
+    
+    if (user.role !== 'company_admin') {
+      res.status(403).json({ message: 'Only company admins can create users' });
+      return;
+    }
+
+    const { email, firstName, lastName, password, role } = req.body;
 
     if (!email || !password || !role) {
       res.status(400).json({ message: 'Email, password, and role are required' });
@@ -70,11 +76,17 @@ router.post('/', authenticateToken, authorizeRoles(['company_admin']), async (re
 });
 
 // Update user (company_admin only)
-router.patch('/:id', authenticateToken, authorizeRoles(['company_admin']), async (req: Request, res: Response) => {
+router.patch('/:id', authenticateToken, async (req: Request, res: Response) => {
   try {
+    const user = (req as any).user;
+    
+    if (user.role !== 'company_admin') {
+      res.status(403).json({ message: 'Only company admins can update users' });
+      return;
+    }
+
     const { id } = req.params;
     const { firstName, lastName, role } = req.body;
-    const user = (req as any).user;
 
     const targetUser = await storage.getUserById(id);
     if (!targetUser || targetUser.companyId !== user.companyId) {
@@ -109,10 +121,16 @@ router.patch('/:id', authenticateToken, authorizeRoles(['company_admin']), async
 });
 
 // Delete user (company_admin only)
-router.delete('/:id', authenticateToken, authorizeRoles(['company_admin']), async (req: Request, res: Response) => {
+router.delete('/:id', authenticateToken, async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
     const user = (req as any).user;
+    
+    if (user.role !== 'company_admin') {
+      res.status(403).json({ message: 'Only company admins can delete users' });
+      return;
+    }
+
+    const { id } = req.params;
 
     const targetUser = await storage.getUserById(id);
     if (!targetUser || targetUser.companyId !== user.companyId) {

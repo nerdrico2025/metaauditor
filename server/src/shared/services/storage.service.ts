@@ -693,18 +693,14 @@ export class DatabaseStorage implements IStorage {
       return await db.select().from(auditActions).orderBy(desc(auditActions.createdAt));
     }
     
-    // Users with company see audit actions from all users in their company
+    // Users with company see audit actions from their company
     if (user.companyId) {
-      const companyUsers = await db.select({ id: users.id }).from(users).where(eq(users.companyId, user.companyId));
-      const companyUserIds = companyUsers.map(u => u.id);
-      if (companyUserIds.length === 0) return [];
       return await db.select().from(auditActions)
-        .where(inArray(auditActions.userId, companyUserIds))
+        .where(eq(auditActions.companyId, user.companyId))
         .orderBy(desc(auditActions.createdAt));
     }
     
-    // Fallback for users without company
-    return await db.select().from(auditActions).where(eq(auditActions.userId, userId)).orderBy(desc(auditActions.createdAt));
+    return [];
   }
 
   async updateAuditAction(id: string, data: Partial<InsertAuditAction>): Promise<AuditAction | undefined> {
