@@ -443,9 +443,9 @@ export const usersRelations = relations(users, ({ one, many }) => ({
 }));
 
 export const integrationsRelations = relations(integrations, ({ one, many }) => ({
-  user: one(users, {
-    fields: [integrations.userId],
-    references: [users.id],
+  company: one(companies, {
+    fields: [integrations.companyId],
+    references: [companies.id],
   }),
   campaigns: many(campaigns),
   syncHistory: many(syncHistory),
@@ -456,16 +456,16 @@ export const syncHistoryRelations = relations(syncHistory, ({ one }) => ({
     fields: [syncHistory.integrationId],
     references: [integrations.id],
   }),
-  user: one(users, {
-    fields: [syncHistory.userId],
-    references: [users.id],
+  company: one(companies, {
+    fields: [syncHistory.companyId],
+    references: [companies.id],
   }),
 }));
 
 export const campaignsRelations = relations(campaigns, ({ one, many }) => ({
-  user: one(users, {
-    fields: [campaigns.userId],
-    references: [users.id],
+  company: one(companies, {
+    fields: [campaigns.companyId],
+    references: [companies.id],
   }),
   integration: one(integrations, {
     fields: [campaigns.integrationId],
@@ -476,9 +476,9 @@ export const campaignsRelations = relations(campaigns, ({ one, many }) => ({
 }));
 
 export const adSetsRelations = relations(adSets, ({ one, many }) => ({
-  user: one(users, {
-    fields: [adSets.userId],
-    references: [users.id],
+  company: one(companies, {
+    fields: [adSets.companyId],
+    references: [companies.id],
   }),
   campaign: one(campaigns, {
     fields: [adSets.campaignId],
@@ -488,9 +488,9 @@ export const adSetsRelations = relations(adSets, ({ one, many }) => ({
 }));
 
 export const creativesRelations = relations(creatives, ({ one, many }) => ({
-  user: one(users, {
-    fields: [creatives.userId],
-    references: [users.id],
+  company: one(companies, {
+    fields: [creatives.companyId],
+    references: [companies.id],
   }),
   campaign: one(campaigns, {
     fields: [creatives.campaignId],
@@ -504,17 +504,17 @@ export const creativesRelations = relations(creatives, ({ one, many }) => ({
 }));
 
 export const policiesRelations = relations(policies, ({ one, many }) => ({
-  user: one(users, {
-    fields: [policies.userId],
-    references: [users.id],
+  company: one(companies, {
+    fields: [policies.companyId],
+    references: [companies.id],
   }),
   audits: many(audits),
 }));
 
 export const auditsRelations = relations(audits, ({ one, many }) => ({
-  user: one(users, {
-    fields: [audits.userId],
-    references: [users.id],
+  company: one(companies, {
+    fields: [audits.companyId],
+    references: [companies.id],
   }),
   creative: one(creatives, {
     fields: [audits.creativeId],
@@ -539,14 +539,14 @@ export const auditActionsRelations = relations(auditActions, ({ one }) => ({
 }));
 
 export const campaignMetricsRelations = relations(campaignMetrics, ({ one }) => ({
-  user: one(users, {
-    fields: [campaignMetrics.userId],
-    references: [users.id],
+  company: one(companies, {
+    fields: [campaignMetrics.companyId],
+    references: [companies.id],
   }),
 }));
 
 export const brandConfigurationsRelations = relations(brandConfigurations, ({ one }) => ({
-  user: one(users, {
+  company: one(companies, {
     fields: [brandConfigurations.userId],
     references: [users.id],
   }),
