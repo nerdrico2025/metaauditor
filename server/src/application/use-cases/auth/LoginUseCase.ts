@@ -44,7 +44,7 @@ export class LoginUseCase {
     await this.userRepository.updateLastLogin(user.id);
 
     const token = jwt.sign(
-      { userId: user.id, role: user.role },
+      { userId: user.id, role: user.role, companyId: user.companyId },
       process.env.JWT_SECRET || 'fallback-secret',
       { expiresIn: '7d' }
     );
