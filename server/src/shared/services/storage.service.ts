@@ -525,21 +525,14 @@ export class DatabaseStorage implements IStorage {
     if (!user) return [];
     
     if (user.role === 'super_admin' && !user.companyId) {
-      return await db.select().from(adSets);
+      return await db.select().from(adSets).orderBy(desc(adSets.createdAt));
     }
     
     if (user.companyId) {
-      const isAdmin = user.role === 'company_admin' || user.role === 'super_admin';
-      if (isAdmin) {
-        return await db.select().from(adSets).where(eq(adSets.companyId, user.companyId));
-      } else {
-        return await db.select().from(adSets).where(
-          and(eq(adSets.userId, userId), eq(adSets.companyId, user.companyId))
-        );
-      }
+      return await db.select().from(adSets).where(eq(adSets.companyId, user.companyId)).orderBy(desc(adSets.createdAt));
     }
     
-    return await db.select().from(adSets).where(eq(adSets.companyId, user.companyId));
+    return [];
   }
 
   async getAdSetsByCampaign(campaignId: string): Promise<AdSet[]> {
@@ -570,21 +563,14 @@ export class DatabaseStorage implements IStorage {
     if (!user) return [];
     
     if (user.role === 'super_admin' && !user.companyId) {
-      return await db.select().from(creatives);
+      return await db.select().from(creatives).orderBy(desc(creatives.createdAt));
     }
     
     if (user.companyId) {
-      const isAdmin = user.role === 'company_admin' || user.role === 'super_admin';
-      if (isAdmin) {
-        return await db.select().from(creatives).where(eq(creatives.companyId, user.companyId));
-      } else {
-        return await db.select().from(creatives).where(
-          and(eq(creatives.userId, userId), eq(creatives.companyId, user.companyId))
-        );
-      }
+      return await db.select().from(creatives).where(eq(creatives.companyId, user.companyId)).orderBy(desc(creatives.createdAt));
     }
     
-    return await db.select().from(creatives).where(eq(creatives.companyId, user.companyId));
+    return [];
   }
 
   async getCreativesByCampaign(campaignId: string): Promise<Creative[]> {
@@ -615,21 +601,14 @@ export class DatabaseStorage implements IStorage {
     if (!user) return [];
     
     if (user.role === 'super_admin' && !user.companyId) {
-      return await db.select().from(policies);
+      return await db.select().from(policies).orderBy(desc(policies.createdAt));
     }
     
     if (user.companyId) {
-      const isAdmin = user.role === 'company_admin' || user.role === 'super_admin';
-      if (isAdmin) {
-        return await db.select().from(policies).where(eq(policies.companyId, user.companyId));
-      } else {
-        return await db.select().from(policies).where(
-          and(eq(policies.userId, userId), eq(policies.companyId, user.companyId))
-        );
-      }
+      return await db.select().from(policies).where(eq(policies.companyId, user.companyId)).orderBy(desc(policies.createdAt));
     }
     
-    return await db.select().from(policies).where(eq(policies.companyId, user.companyId));
+    return [];
   }
 
   async getPolicyById(id: string): Promise<Policy | undefined> {
@@ -738,25 +717,28 @@ export class DatabaseStorage implements IStorage {
     nonCompliant: number;
     lowPerformance: number;
   }> {
+    const user = await this.getUserById(userId);
+    if (!user?.companyId) return { activeCampaigns: 0, creativesAnalyzed: 0, nonCompliant: 0, lowPerformance: 0 };
+
     const [activeCampaignsResult] = await db
-      .select({ count: sql<number>`COUNT(DISTINCT campanha)` })
-      .from(campaignMetrics)
-      .where(eq(campaignMetrics.source, 'google_sheets'));
+      .select({ count: count() })
+      .from(campaigns)
+      .where(and(eq(campaigns.companyId, user.companyId), eq(campaigns.status, 'Ativo')));
 
     const [creativesAnalyzedResult] = await db
       .select({ count: count() })
       .from(audits)
-      .where(eq(audits.userId, userId));
+      .where(eq(audits.companyId, user.companyId));
 
     const [nonCompliantResult] = await db
       .select({ count: count() })
       .from(audits)
-      .where(and(eq(audits.userId, userId), eq(audits.status, 'non_compliant')));
+      .where(and(eq(audits.companyId, user.companyId), eq(audits.status, 'nao_conforme')));
 
     const [lowPerformanceResult] = await db
       .select({ count: count() })
       .from(audits)
-      .where(and(eq(audits.userId, userId), eq(audits.status, 'low_performance')));
+      .where(and(eq(audits.companyId, user.companyId), eq(audits.status, 'low_performance')));
 
     return {
       activeCampaigns: activeCampaignsResult?.count || 0,
@@ -767,11 +749,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getProblemCreatives(userId: string, limit = 10): Promise<(Creative & { audit: Audit })[]> {
+    const user = await this.getUserById(userId);
+    if (!user?.companyId) return [];
+
     const problemCreatives = await db
       .select()
       .from(audits)
       .innerJoin(creatives, eq(audits.creativeId, creatives.id))
-      .where(and(eq(audits.userId, userId), eq(audits.status, 'non_compliant')))
+      .where(and(eq(audits.companyId, user.companyId), eq(audits.status, 'nao_conforme')))
       .orderBy(desc(audits.createdAt))
       .limit(limit);
 
@@ -880,19 +865,11 @@ export class DatabaseStorage implements IStorage {
     }
     
     if (user.companyId) {
-      const isAdmin = user.role === 'company_admin' || user.role === 'super_admin';
-      if (isAdmin) {
-        return db.select().from(contentCriteria).where(eq(contentCriteria.companyId, user.companyId))
-          .orderBy(desc(contentCriteria.createdAt));
-      } else {
-        return db.select().from(contentCriteria).where(
-          and(eq(contentCriteria.userId, userId), eq(contentCriteria.companyId, user.companyId))
-        ).orderBy(desc(contentCriteria.createdAt));
-      }
+      return db.select().from(contentCriteria).where(eq(contentCriteria.companyId, user.companyId))
+        .orderBy(desc(contentCriteria.createdAt));
     }
     
-    return db.select().from(contentCriteria).where(eq(contentCriteria.companyId, user.companyId))
-      .orderBy(desc(contentCriteria.createdAt));
+    return [];
   }
 
   async getContentCriteriaById(id: string): Promise<ContentCriteria | undefined> {
@@ -915,32 +892,41 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createOrUpdatePerformanceBenchmarks(userId: string, benchmarks: InsertPerformanceBenchmarks): Promise<PerformanceBenchmarks> {
+    const user = await this.getUserById(userId);
+    if (!user?.companyId) throw new Error('User must be associated with a company');
+
     const existing = await this.getPerformanceBenchmarksByUser(userId);
 
     if (existing) {
       const [result] = await db
         .update(performanceBenchmarks)
         .set({ ...benchmarks, updatedAt: new Date() })
-        .where(eq(performanceBenchmarks.userId, userId))
+        .where(eq(performanceBenchmarks.companyId, user.companyId))
         .returning();
       return result;
     } else {
       const [result] = await db
         .insert(performanceBenchmarks)
-        .values({ ...benchmarks, userId })
+        .values({ ...benchmarks, companyId: user.companyId })
         .returning();
       return result;
     }
   }
 
   async getPerformanceBenchmarksByUser(userId: string): Promise<PerformanceBenchmarks | undefined> {
+    const user = await this.getUserById(userId);
+    if (!user?.companyId) return undefined;
+
     const [result] = await db.select().from(performanceBenchmarks)
-      .where(eq(performanceBenchmarks.userId, userId));
+      .where(eq(performanceBenchmarks.companyId, user.companyId));
     return result;
   }
 
   async deletePerformanceBenchmarks(userId: string): Promise<boolean> {
-    const result = await db.delete(performanceBenchmarks).where(eq(performanceBenchmarks.userId, userId));
+    const user = await this.getUserById(userId);
+    if (!user?.companyId) return false;
+
+    const result = await db.delete(performanceBenchmarks).where(eq(performanceBenchmarks.companyId, user.companyId));
     return (result.rowCount ?? 0) > 0;
   }
 
@@ -986,8 +972,7 @@ export class DatabaseStorage implements IStorage {
     const [campaignCount] = await db
       .select({ count: count() })
       .from(campaigns)
-      .innerJoin(users, eq(campaigns.userId, users.id))
-      .where(eq(users.companyId, companyId));
+      .where(eq(campaigns.companyId, companyId));
 
     return {
       users: userCount?.count || 0,
@@ -1108,14 +1093,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteAllCampaignsByUser(userId: string): Promise<void> {
+    const user = await this.getUserById(userId);
+    if (!user?.companyId) return;
     await db.delete(campaigns).where(eq(campaigns.companyId, user.companyId));
   }
 
   async deleteAllAdSetsByUser(userId: string): Promise<void> {
+    const user = await this.getUserById(userId);
+    if (!user?.companyId) return;
     await db.delete(adSets).where(eq(adSets.companyId, user.companyId));
   }
 
   async deleteAllCreativesByUser(userId: string): Promise<void> {
+    const user = await this.getUserById(userId);
+    if (!user?.companyId) return;
     await db.delete(creatives).where(eq(creatives.companyId, user.companyId));
   }
 
@@ -1124,8 +1115,11 @@ export class DatabaseStorage implements IStorage {
    * Used for cleanup after sync to remove obsolete ad sets
    */
   async deleteAdSetsNotInList(userId: string, externalIds: string[]): Promise<number> {
+    const user = await this.getUserById(userId);
+    if (!user?.companyId) return 0;
+
     if (externalIds.length === 0) {
-      // If no external IDs, delete all ad sets for this user
+      // If no external IDs, delete all ad sets for this company
       const result = await db.delete(adSets).where(eq(adSets.companyId, user.companyId));
       return result.rowCount ?? 0;
     }
@@ -1134,7 +1128,7 @@ export class DatabaseStorage implements IStorage {
       .delete(adSets)
       .where(
         and(
-          eq(adSets.userId, userId),
+          eq(adSets.companyId, user.companyId),
           notInArray(adSets.externalId, externalIds)
         )
       );
@@ -1146,8 +1140,11 @@ export class DatabaseStorage implements IStorage {
    * Used for cleanup after sync to remove obsolete creatives
    */
   async deleteCreativesNotInList(userId: string, externalIds: string[]): Promise<number> {
+    const user = await this.getUserById(userId);
+    if (!user?.companyId) return 0;
+
     if (externalIds.length === 0) {
-      // If no external IDs, delete all creatives for this user
+      // If no external IDs, delete all creatives for this company
       const result = await db.delete(creatives).where(eq(creatives.companyId, user.companyId));
       return result.rowCount ?? 0;
     }
@@ -1156,7 +1153,7 @@ export class DatabaseStorage implements IStorage {
       .delete(creatives)
       .where(
         and(
-          eq(creatives.userId, userId),
+          eq(creatives.companyId, user.companyId),
           notInArray(creatives.externalId, externalIds)
         )
       );
@@ -1168,8 +1165,11 @@ export class DatabaseStorage implements IStorage {
    * Used for cleanup after sync to remove obsolete campaigns
    */
   async deleteCampaignsNotInList(userId: string, externalIds: string[]): Promise<number> {
+    const user = await this.getUserById(userId);
+    if (!user?.companyId) return 0;
+
     if (externalIds.length === 0) {
-      // If no external IDs, delete all campaigns for this user
+      // If no external IDs, delete all campaigns for this company
       const result = await db.delete(campaigns).where(eq(campaigns.companyId, user.companyId));
       return result.rowCount ?? 0;
     }
@@ -1178,7 +1178,7 @@ export class DatabaseStorage implements IStorage {
       .delete(campaigns)
       .where(
         and(
-          eq(campaigns.userId, userId),
+          eq(campaigns.companyId, user.companyId),
           notInArray(campaigns.externalId, externalIds)
         )
       );
