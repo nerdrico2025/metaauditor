@@ -150,6 +150,11 @@ export default function Policies() {
       queryClient.invalidateQueries({ queryKey: ['/api/policies'] });
       toast({ title: '✅ Política criada com sucesso!' });
       setDialogOpen(false);
+      setPendingLogoFile(null);
+      if (logoPreviewUrl) {
+        URL.revokeObjectURL(logoPreviewUrl);
+        setLogoPreviewUrl(null);
+      }
       form.reset();
     },
     onError: () => {
@@ -165,6 +170,11 @@ export default function Policies() {
       toast({ title: '✅ Política atualizada com sucesso!' });
       setDialogOpen(false);
       setEditingPolicy(null);
+      setPendingLogoFile(null);
+      if (logoPreviewUrl) {
+        URL.revokeObjectURL(logoPreviewUrl);
+        setLogoPreviewUrl(null);
+      }
       form.reset();
     },
     onError: () => {
@@ -186,12 +196,22 @@ export default function Policies() {
 
   const handleCreateNew = () => {
     setEditingPolicy(null);
+    setPendingLogoFile(null);
+    if (logoPreviewUrl) {
+      URL.revokeObjectURL(logoPreviewUrl);
+      setLogoPreviewUrl(null);
+    }
     form.reset();
     setDialogOpen(true);
   };
 
   const handleEdit = (policy: Policy) => {
     setEditingPolicy(policy);
+    setPendingLogoFile(null);
+    if (logoPreviewUrl) {
+      URL.revokeObjectURL(logoPreviewUrl);
+      setLogoPreviewUrl(null);
+    }
     form.reset({
       name: policy.name,
       description: policy.description || "",
@@ -535,86 +555,144 @@ export default function Policies() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="logoUpload">Logo da Marca</Label>
-                  <div className="flex gap-2">
+                {/* Logo with Switch */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="logoUpload">Logo da Marca</Label>
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="requiresLogo"
+                        checked={form.watch('requiresLogo')}
+                        onCheckedChange={(checked) => form.setValue('requiresLogo', checked)}
+                        data-testid="switch-requires-logo"
+                      />
+                      <Label htmlFor="requiresLogo" className="text-sm text-gray-600 dark:text-gray-400">Exige Logo</Label>
+                    </div>
+                  </div>
+                  <div className={`space-y-2 ${!form.watch('requiresLogo') ? 'opacity-50' : ''}`}>
                     <Input 
                       id="logoUpload" 
                       type="file"
-                      accept="image/*"
-                      onChange={async (e) => {
+                      accept="image/*,.svg"
+                      disabled={!form.watch('requiresLogo')}
+                      onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (!file) return;
                         
-                        const formData = new FormData();
-                        formData.append('logo', file);
-                        
-                        try {
-                          const token = localStorage.getItem('auth_token');
-                          const response = await fetch('/api/policies/upload-logo', {
-                            method: 'POST',
-                            headers: {
-                              'Authorization': `Bearer ${token}`,
-                            },
-                            body: formData,
-                          });
-                          
-                          if (response.ok) {
-                            const data = await response.json();
-                            form.setValue('logoUrl', data.url);
-                            toast({
-                              title: 'Logo enviado!',
-                              description: 'O logo foi carregado com sucesso.',
-                            });
-                          } else {
-                            throw new Error('Erro ao fazer upload');
-                          }
-                        } catch (error) {
-                          toast({
-                            title: 'Erro no upload',
-                            description: 'Não foi possível enviar o logo.',
-                            variant: 'destructive',
-                          });
+                        if (logoPreviewUrl) {
+                          URL.revokeObjectURL(logoPreviewUrl);
                         }
+                        
+                        setPendingLogoFile(file);
+                        const previewUrl = URL.createObjectURL(file);
+                        setLogoPreviewUrl(previewUrl);
+                        form.setValue('logoUrl', '');
                       }}
                       data-testid="input-logo-upload"
                     />
+                    {(logoPreviewUrl || form.watch('logoUrl')) && (
+                      <div className="mt-2 p-3 border rounded bg-gray-50 dark:bg-gray-800 flex items-center gap-3">
+                        {pendingLogoFile?.type === 'image/svg+xml' || form.watch('logoUrl')?.endsWith('.svg') ? (
+                          <object 
+                            data={logoPreviewUrl || form.watch('logoUrl')} 
+                            type="image/svg+xml"
+                            className="h-16 w-auto max-w-[120px]"
+                          >
+                            <img 
+                              src={logoPreviewUrl || form.watch('logoUrl')} 
+                              alt="Logo preview" 
+                              className="h-16 w-auto object-contain"
+                            />
+                          </object>
+                        ) : (
+                          <img 
+                            src={logoPreviewUrl || form.watch('logoUrl')} 
+                            alt="Logo preview" 
+                            className="h-16 w-auto object-contain max-w-[120px]"
+                          />
+                        )}
+                        <span className="text-sm text-gray-500">
+                          {pendingLogoFile ? `${pendingLogoFile.name} (será enviado ao salvar)` : 'Logo atual'}
+                        </span>
+                      </div>
+                    )}
+                    <p className="text-xs text-gray-500">
+                      JPG, PNG, GIF, SVG - máx. 5MB
+                    </p>
                   </div>
-                  {form.watch('logoUrl') && (
-                    <div className="mt-2 p-2 border rounded bg-gray-50 dark:bg-gray-800">
-                      <img 
-                        src={form.watch('logoUrl')} 
-                        alt="Logo preview" 
-                        className="h-16 w-auto object-contain"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = 'none';
-                        }}
+                </div>
+
+                {/* Colors with Switch */}
+                <div className="col-span-2 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label>Cores da Marca</Label>
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="requiresBrandColors"
+                        checked={form.watch('requiresBrandColors')}
+                        onCheckedChange={(checked) => form.setValue('requiresBrandColors', checked)}
+                        data-testid="switch-requires-brand-colors"
                       />
+                      <Label htmlFor="requiresBrandColors" className="text-sm text-gray-600 dark:text-gray-400">Exige Cores da Marca</Label>
                     </div>
-                  )}
-                  <p className="text-xs text-gray-500">
-                    Faça upload da imagem do logo (JPG, PNG, GIF, SVG - máx. 5MB)
-                  </p>
-                </div>
+                  </div>
+                  <div className={`grid grid-cols-2 gap-4 ${!form.watch('requiresBrandColors') ? 'opacity-50' : ''}`}>
+                    <div className="space-y-2">
+                      <Label htmlFor="primaryColor" className="text-sm">Cor Primária</Label>
+                      <div className="flex items-center gap-3">
+                        <div 
+                          className="w-12 h-12 rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-sm cursor-pointer overflow-hidden"
+                          style={{ backgroundColor: form.watch('primaryColor') || '#ffffff' }}
+                        >
+                          <Input 
+                            id="primaryColor" 
+                            type="color"
+                            disabled={!form.watch('requiresBrandColors')}
+                            className="w-full h-full opacity-0 cursor-pointer"
+                            {...form.register('primaryColor')} 
+                            data-testid="input-primary-color"
+                          />
+                        </div>
+                        <Input
+                          type="text"
+                          placeholder="#000000"
+                          value={form.watch('primaryColor') || ''}
+                          disabled={!form.watch('requiresBrandColors')}
+                          onChange={(e) => form.setValue('primaryColor', e.target.value)}
+                          className="flex-1 font-mono text-sm"
+                          data-testid="input-primary-color-text"
+                        />
+                      </div>
+                    </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="primaryColor">Cor Primária</Label>
-                  <Input 
-                    id="primaryColor" 
-                    type="color"
-                    {...form.register('primaryColor')} 
-                    data-testid="input-primary-color"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="secondaryColor">Cor Secundária</Label>
-                  <Input 
-                    id="secondaryColor" 
-                    type="color"
-                    {...form.register('secondaryColor')} 
-                    data-testid="input-secondary-color"
-                  />
+                    <div className="space-y-2">
+                      <Label htmlFor="secondaryColor" className="text-sm">Cor Secundária</Label>
+                      <div className="flex items-center gap-3">
+                        <div 
+                          className="w-12 h-12 rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-sm cursor-pointer overflow-hidden"
+                          style={{ backgroundColor: form.watch('secondaryColor') || '#ffffff' }}
+                        >
+                          <Input 
+                            id="secondaryColor" 
+                            type="color"
+                            disabled={!form.watch('requiresBrandColors')}
+                            className="w-full h-full opacity-0 cursor-pointer"
+                            {...form.register('secondaryColor')} 
+                            data-testid="input-secondary-color"
+                          />
+                        </div>
+                        <Input
+                          type="text"
+                          placeholder="#000000"
+                          value={form.watch('secondaryColor') || ''}
+                          disabled={!form.watch('requiresBrandColors')}
+                          onChange={(e) => form.setValue('secondaryColor', e.target.value)}
+                          className="flex-1 font-mono text-sm"
+                          data-testid="input-secondary-color-text"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -652,28 +730,6 @@ export default function Policies() {
                   placeholder="Digite e pressione Enter"
                   data-testid="input-prohibited-keywords"
                 />
-              </div>
-
-              <div className="flex gap-4">
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="requiresLogo"
-                    checked={form.watch('requiresLogo')}
-                    onCheckedChange={(checked) => form.setValue('requiresLogo', checked)}
-                    data-testid="switch-requires-logo"
-                  />
-                  <Label htmlFor="requiresLogo">Exige Logo</Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="requiresBrandColors"
-                    checked={form.watch('requiresBrandColors')}
-                    onCheckedChange={(checked) => form.setValue('requiresBrandColors', checked)}
-                    data-testid="switch-requires-brand-colors"
-                  />
-                  <Label htmlFor="requiresBrandColors">Exige Cores da Marca</Label>
-                </div>
               </div>
             </div>
 
