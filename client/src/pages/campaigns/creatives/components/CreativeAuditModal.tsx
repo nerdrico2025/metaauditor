@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
-import { X, Eye, CheckCircle, AlertTriangle, BarChart3, Image as ImageIcon, Palette, Sparkles, ChevronRight, Shield, TrendingUp, MousePointer } from "lucide-react";
+import { Eye, CheckCircle, AlertTriangle, BarChart3, Image as ImageIcon, Palette, Sparkles, ChevronRight, Shield, TrendingUp, MousePointer, XCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { CreativeImage } from "./CreativeImage";
 import type { Creative, Audit } from "@shared/schema";
@@ -630,20 +630,12 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
       {imageZoomed && (
         <Dialog open={imageZoomed} onOpenChange={setImageZoomed}>
           <DialogContent className="max-w-6xl max-h-[90vh] p-0">
-            <div className="relative bg-black">
+            <div className="bg-black">
               <CreativeImage 
                 creative={creative}
                 className="w-full h-auto max-h-[90vh] object-contain"
                 size="large"
               />
-              <Button 
-                variant="secondary" 
-                size="sm" 
-                className="absolute top-4 right-4"
-                onClick={() => setImageZoomed(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
             </div>
           </DialogContent>
         </Dialog>
