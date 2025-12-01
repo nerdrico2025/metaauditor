@@ -15,7 +15,7 @@ export class ObjectNotFoundError extends Error {
 
 export interface UploadContext {
   companyId: string;
-  type: 'creatives' | 'logos' | 'documents' | 'policies';
+  type: 'creatives' | 'logos' | 'documents' | 'policies' | 'campaigns';
   subPath?: string;
 }
 
@@ -54,7 +54,7 @@ export class ObjectStorageService {
   async uploadCreative(companyId: string, adSetId: string, buffer: Buffer, extension: string = 'jpg'): Promise<{ objectPath: string }> {
     const path = this.generateObjectPath({
       companyId,
-      type: 'creatives',
+      type: 'campaigns',
       subPath: adSetId,
     }, extension);
     

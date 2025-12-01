@@ -139,7 +139,9 @@ export class GoogleAdsService {
     integration: Integration,
     campaignExternalId: string,
     campaignId: string,
-    userId: string
+    userId: string,
+    companyId: string | null = null,
+    adSetId: string | null = null
   ): Promise<InsertCreative[]> {
     if (!integration.accessToken || !integration.accountId) {
       throw new Error('Missing access token or account ID');
@@ -207,11 +209,11 @@ export class GoogleAdsService {
           type = 'image';
           imageUrl = ad.imageAd.imageUrl || null;
           
-          // Download and store image permanently if it exists
-          if (imageUrl) {
+          // Download and store image to Object Storage if it exists
+          if (imageUrl && companyId && adSetId) {
             console.log(`🖼️  Downloading image for Google ad ${ad.id}...`);
-            const permanentUrl = await imageStorageService.downloadAndSaveImage(imageUrl);
-            imageUrl = permanentUrl || imageUrl;
+            const objectUrl = await imageStorageService.downloadAndSaveImage(imageUrl, companyId, adSetId);
+            imageUrl = objectUrl || imageUrl;
           }
         } else if (ad.videoAd) {
           type = 'video';

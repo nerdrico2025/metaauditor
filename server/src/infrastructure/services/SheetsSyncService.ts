@@ -398,11 +398,11 @@ export class SheetsSyncService {
           normalizedAdStatus = 'active';
         }
         
-        // Download and store image permanently if URL exists
+        // Download and store image to Object Storage if URL exists
         let permanentImageUrl: string | null = null;
-        if (row.ad_url) {
+        if (row.ad_url && companyId) {
           console.log(`🖼️  Downloading image for creative ${row.anuncios}...`);
-          permanentImageUrl = await imageStorageService.downloadAndSaveImage(row.ad_url);
+          permanentImageUrl = await imageStorageService.downloadAndSaveImage(row.ad_url, companyId, campaignId);
         }
         
         await db.insert(creatives).values({

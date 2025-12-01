@@ -20,6 +20,7 @@ router.post('/migrate-images', authenticateToken, async (req: Request, res: Resp
       .from(creatives)
       .where(
         sql`${creatives.imageUrl} IS NOT NULL 
+            AND ${creatives.imageUrl} NOT LIKE '/objects/%'
             AND ${creatives.imageUrl} NOT LIKE '/uploads/%'
             AND ${creatives.imageUrl} NOT LIKE '%placeholder%'`
       );
@@ -36,7 +37,16 @@ router.post('/migrate-images', authenticateToken, async (req: Request, res: Resp
       
       try {
         console.log(`📥 Migrating image for creative ${creative.id}: ${creative.name}`);
-        const permanentUrl = await imageStorageService.downloadAndSaveImage(creative.imageUrl);
+        
+        // Use adSetId if available, otherwise use campaignId as fallback
+        const storageAdSetId = creative.adSetId || creative.campaignId || 'unknown';
+        const storageCompanyId = creative.companyId || 'unknown';
+        
+        const permanentUrl = await imageStorageService.downloadAndSaveImage(
+          creative.imageUrl,
+          storageCompanyId,
+          storageAdSetId
+        );
         
         if (permanentUrl) {
           await db
@@ -82,8 +92,8 @@ router.get('/migration-status', authenticateToken, async (req: Request, res: Res
     const result = await db.execute(sql`
       SELECT 
         COUNT(*) as total,
-        COUNT(CASE WHEN image_url LIKE '/uploads/%' THEN 1 END) as migrated,
-        COUNT(CASE WHEN image_url NOT LIKE '/uploads/%' AND image_url NOT LIKE '%placeholder%' AND image_url IS NOT NULL THEN 1 END) as pending,
+        COUNT(CASE WHEN image_url LIKE '/objects/%' OR image_url LIKE '/uploads/%' THEN 1 END) as migrated,
+        COUNT(CASE WHEN image_url NOT LIKE '/objects/%' AND image_url NOT LIKE '/uploads/%' AND image_url NOT LIKE '%placeholder%' AND image_url IS NOT NULL THEN 1 END) as pending,
         COUNT(CASE WHEN image_url IS NULL OR image_url LIKE '%placeholder%' THEN 1 END) as no_image
       FROM ${creatives}
     `);

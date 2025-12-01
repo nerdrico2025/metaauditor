@@ -644,14 +644,14 @@ export class MetaAdsService {
 
         const insights = insightsMap.get(ad.id) || {};
         
-        // Download and save image locally
+        // Download and save image to Object Storage
         let imageUrl = ad.creative?.image_url || null;
-        if (imageUrl) {
+        if (imageUrl && companyId) {
           console.log(`🖼️  Downloading image for ad ${ad.id}...`);
-          const localUrl = await imageStorageService.downloadAndSaveImage(imageUrl);
-          if (localUrl) {
-            imageUrl = localUrl;
-            console.log(`✅ Image saved locally: ${localUrl}`);
+          const objectUrl = await imageStorageService.downloadAndSaveImage(imageUrl, companyId, adSetInfo.dbId);
+          if (objectUrl) {
+            imageUrl = objectUrl;
+            console.log(`✅ Image saved to Object Storage: ${objectUrl}`);
           }
         }
         
@@ -716,14 +716,14 @@ export class MetaAdsService {
         ads.map(async (ad) => {
           const insights = insightsMap.get(ad.id) || {};
           
-          // Download and save image locally
+          // Download and save image to Object Storage
           let imageUrl = ad.creative?.image_url || null;
-          if (imageUrl) {
+          if (imageUrl && companyId) {
             console.log(`🖼️  Downloading image for ad ${ad.id}...`);
-            const localUrl = await imageStorageService.downloadAndSaveImage(imageUrl);
-            if (localUrl) {
-              imageUrl = localUrl;
-              console.log(`✅ Image saved locally: ${localUrl}`);
+            const objectUrl = await imageStorageService.downloadAndSaveImage(imageUrl, companyId, adSetId);
+            if (objectUrl) {
+              imageUrl = objectUrl;
+              console.log(`✅ Image saved to Object Storage: ${objectUrl}`);
             }
           }
           
