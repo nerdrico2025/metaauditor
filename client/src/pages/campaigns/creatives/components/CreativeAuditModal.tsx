@@ -631,11 +631,11 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
       {/* Image Zoom Modal */}
       {imageZoomed && (
         <Dialog open={imageZoomed} onOpenChange={setImageZoomed}>
-          <DialogContent className="max-w-6xl max-h-[90vh] p-0">
-            <div className="bg-black">
+          <DialogContent className="max-w-6xl max-h-[90vh] p-2" hideCloseButton={false}>
+            <div className="bg-black rounded-lg overflow-hidden">
               <CreativeImage 
                 creative={creative}
-                className="w-full h-auto max-h-[90vh] object-contain"
+                className="w-full h-auto max-h-[85vh] object-contain"
                 size="large"
               />
             </div>
