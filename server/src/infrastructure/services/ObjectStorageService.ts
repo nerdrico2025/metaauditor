@@ -47,14 +47,14 @@ export class ObjectStorageService {
   private bucketName: string;
 
   constructor() {
-    this.bucketName = process.env.OBJECT_STORAGE_BUCKET || '';
+    this.bucketName = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID || process.env.OBJECT_STORAGE_BUCKET || '';
   }
 
   getBucketName(): string {
     if (!this.bucketName) {
       throw new Error(
-        "OBJECT_STORAGE_BUCKET not set. Create a bucket in 'Object Storage' " +
-          "tool and set OBJECT_STORAGE_BUCKET env var."
+        "DEFAULT_OBJECT_STORAGE_BUCKET_ID not set. Create a bucket in 'Object Storage' " +
+          "tool and set DEFAULT_OBJECT_STORAGE_BUCKET_ID env var."
       );
     }
     return this.bucketName;

@@ -1,0 +1,23 @@
+Error getting logo upload URL: Error: OBJECT_STORAGE_BUCKET not set. Create a bucket in 'Object Storage' tool and set OBJECT_STORAGE_BUCKET env var.
+    at ObjectStorageService.getBucketName (/home/runner/workspace/server/src/infrastructure/services/ObjectStorageService.ts:55:13)
+    at ObjectStorageService.getUploadURL (/home/runner/workspace/server/src/infrastructure/services/ObjectStorageService.ts:78:29)
+    at ObjectStorageService.getLogoUploadURL (/home/runner/workspace/server/src/infrastructure/services/ObjectStorageService.ts:105:17)
+    at <anonymous> (/home/runner/workspace/server/src/presentation/routes/object-storage.routes.ts:65:66)
+    at Layer.handle [as handle_request] (/home/runner/workspace/node_modules/express/lib/router/layer.js:95:5)
+    at next (/home/runner/workspace/node_modules/express/lib/router/route.js:149:13)
+    at authenticateToken (/home/runner/workspace/server/src/presentation/middlewares/auth.middleware.ts:18:5)
+    at Layer.handle [as handle_request] (/home/runner/workspace/node_modules/express/lib/router/layer.js:95:5)
+    at next (/home/runner/workspace/node_modules/express/lib/router/route.js:149:13)
+    at Route.dispatch (/home/runner/workspace/node_modules/express/lib/router/route.js:119:3)
+🔥 Error: Error: OBJECT_STORAGE_BUCKET not set. Create a bucket in 'Object Storage' tool and set OBJECT_STORAGE_BUCKET env var.
+    at ObjectStorageService.getBucketName (/home/runner/workspace/server/src/infrastructure/services/ObjectStorageService.ts:55:13)
+    at ObjectStorageService.getUploadURL (/home/runner/workspace/server/src/infrastructure/services/ObjectStorageService.ts:78:29)
+    at ObjectStorageService.getLogoUploadURL (/home/runner/workspace/server/src/infrastructure/services/ObjectStorageService.ts:105:17)
+    at <anonymous> (/home/runner/workspace/server/src/presentation/routes/object-storage.routes.ts:65:66)
+    at Layer.handle [as handle_request] (/home/runner/workspace/node_modules/express/lib/router/layer.js:95:5)
+    at next (/home/runner/workspace/node_modules/express/lib/router/route.js:149:13)
+    at authenticateToken (/home/runner/workspace/server/src/presentation/middlewares/auth.middleware.ts:18:5)
+    at Layer.handle [as handle_request] (/home/runner/workspace/node_modules/express/lib/router/layer.js:95:5)
+    at next (/home/runner/workspace/node_modules/express/lib/router/route.js:149:13)
+    at Route.dispatch (/home/runner/workspace/node_modules/express/lib/router/route.js:119:3)
+POST /api/objects/upload/logo 500 in 11ms :: {"status":"error","message":"OBJEC…
