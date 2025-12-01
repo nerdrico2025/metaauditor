@@ -759,7 +759,7 @@ export default function Policies() {
                       <NumericFormat
                         customInput={Input}
                         id="ctrMin"
-                        value={value || ''}
+                        value={value ? parseFloat(value).toString() : ''}
                         onValueChange={(values) => onChange(values.value)}
                         decimalSeparator=","
                         thousandSeparator="."
@@ -780,7 +780,7 @@ export default function Policies() {
                       <NumericFormat
                         customInput={Input}
                         id="ctrTarget"
-                        value={value || ''}
+                        value={value ? parseFloat(value).toString() : ''}
                         onValueChange={(values) => onChange(values.value)}
                         decimalSeparator=","
                         thousandSeparator="."
