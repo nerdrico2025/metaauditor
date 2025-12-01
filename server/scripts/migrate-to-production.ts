@@ -9,7 +9,7 @@ async function migrateToProduction() {
   console.log('🚀 Iniciando migração de desenvolvimento para produção...\n');
 
   const devDatabaseUrl = process.env.DEV_DATABASE_URL || process.env.DATABASE_URL;
-  const prodDatabaseUrl = process.env.PROD_DATABASE_URL;
+  const prodDatabaseUrl = 'postgresql://neondb_owner:npg_FIdYaNcis72L@ep-little-dream-ahcf7suz.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require';
 
   if (!devDatabaseUrl) {
     console.error('❌ DEV_DATABASE_URL ou DATABASE_URL não configurado');
