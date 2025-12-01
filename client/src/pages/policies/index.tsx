@@ -67,7 +67,7 @@ const policyFormSchema = z.object({
   
   // Brand Config
   brandName: z.string().optional(),
-  logoUrl: z.string().url().optional().or(z.literal("")),
+  logoUrl: z.string().optional().or(z.literal("")),
   primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional().or(z.literal("")),
   secondaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional().or(z.literal("")),
   accentColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional().or(z.literal("")),
