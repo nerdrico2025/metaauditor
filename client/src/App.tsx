@@ -120,6 +120,11 @@ function Router() {
           <Company />
         </ProtectedRoute>
       </Route>
+      <Route path="/company">
+        <ProtectedRoute>
+          <Company />
+        </ProtectedRoute>
+      </Route>
       <Route path="/users">
         <ProtectedRoute>
           <Users />
