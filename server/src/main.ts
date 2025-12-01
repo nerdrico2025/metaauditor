@@ -25,6 +25,7 @@
           import metaOAuthRoutes from "./presentation/routes/meta-oauth.routes.js";
           import adminRoutes from "./presentation/routes/admin.routes.js";
           import plansRoutes from "./presentation/routes/plans.routes.js";
+          import objectStorageRoutes from "./presentation/routes/object-storage.routes.js";
 
           export async function startServer() {
             const app = express();
@@ -103,6 +104,7 @@
             app.use("/api/image-migration", imageMigrationRoutes);
             app.use("/api/platform-settings", platformSettingsRoutes);
             app.use("/api/auth/meta", metaOAuthRoutes);
+            app.use("", objectStorageRoutes);
 
             // Health check endpoints
             app.get("/healthz", (req, res) => {
