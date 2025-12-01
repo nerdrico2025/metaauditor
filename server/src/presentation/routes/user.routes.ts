@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authenticateToken } from '../middlewares/auth.middleware.js';
 import { storage } from '../../shared/services/storage.service.js';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import type { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 
