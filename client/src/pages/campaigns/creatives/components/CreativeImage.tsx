@@ -142,7 +142,10 @@ export const CreativeImage = ({
       src={imageUrl}
       alt={creative.name}
       className={imageClassName}
-      onError={() => setImageError(true)}
+      onError={(e) => {
+        console.error(`Failed to load image: ${imageUrl}`, e);
+        setImageError(true);
+      }}
       data-testid={`img-creative-${creative.id}`}
       loading="lazy"
     />
