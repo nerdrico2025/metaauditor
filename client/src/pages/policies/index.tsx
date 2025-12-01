@@ -763,9 +763,8 @@ export default function Policies() {
                         onValueChange={(values) => onChange(values.value)}
                         decimalSeparator=","
                         thousandSeparator="."
-                        suffix="%"
                         allowNegative={false}
-                        placeholder="Ex: 1,5%"
+                        placeholder="Ex: 1,5"
                         data-testid="input-ctr-min"
                       />
                     )}
@@ -785,9 +784,8 @@ export default function Policies() {
                         onValueChange={(values) => onChange(values.value)}
                         decimalSeparator=","
                         thousandSeparator="."
-                        suffix="%"
                         allowNegative={false}
-                        placeholder="Ex: 3%"
+                        placeholder="Ex: 3"
                         data-testid="input-ctr-target"
                       />
                     )}
