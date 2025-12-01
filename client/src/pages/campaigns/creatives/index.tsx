@@ -106,11 +106,26 @@ export default function Creatives() {
   const queryClient = useQueryClient();
   
   const [location] = useLocation();
+  
+  // Parse URL params for initial filter values
+  const getInitialFilters = () => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return {
+        campaignId: params.get('campaignId') || 'all',
+        adSetId: params.get('adSetId') || 'all',
+      };
+    }
+    return { campaignId: 'all', adSetId: 'all' };
+  };
+  
+  const initialFilters = getInitialFilters();
+  
   const [zoomedCreative, setZoomedCreative] = useState<Creative | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [campaignFilter, setCampaignFilter] = useState("all");
-  const [adSetFilter, setAdSetFilter] = useState("all");
+  const [campaignFilter, setCampaignFilter] = useState(initialFilters.campaignId);
+  const [adSetFilter, setAdSetFilter] = useState(initialFilters.adSetId);
   const [platformFilter, setPlatformFilter] = useState("all");
   const [selectedCreatives, setSelectedCreatives] = useState<string[]>([]);
   const [showPolicySelectionDialog, setShowPolicySelectionDialog] = useState(false);
@@ -123,11 +138,12 @@ export default function Creatives() {
   const [analyzingCreativeId, setAnalyzingCreativeId] = useState<string | null>(null);
   const itemsPerPage = 10;
 
-  // Check for campaignId or adSetId filter in URL params
+  // Update filters when URL changes (e.g., navigation from other pages)
   useEffect(() => {
     const params = new URLSearchParams(location.split('?')[1] || '');
     const campaignId = params.get('campaignId');
     const adSetId = params.get('adSetId');
+    
     if (campaignId) {
       setCampaignFilter(campaignId);
     }
@@ -375,6 +391,13 @@ export default function Creatives() {
     const matchesPlatform = platformFilter === "all" || creative.platform === platformFilter;
     
     return matchesSearch && matchesStatus && matchesCampaign && matchesAdSet && matchesPlatform;
+  }).sort((a, b) => {
+    // Active creatives first
+    const aIsActive = a.status === 'Ativo' ? 0 : 1;
+    const bIsActive = b.status === 'Ativo' ? 0 : 1;
+    if (aIsActive !== bIsActive) return aIsActive - bIsActive;
+    // Then alphabetically by name
+    return a.name.localeCompare(b.name);
   });
 
   const totalPages = Math.ceil(filteredCreatives.length / itemsPerPage);
