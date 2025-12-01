@@ -30,6 +30,7 @@
     "@uppy/core": "^5.1.1",
     "@uppy/dashboard": "^5.0.4",
     "@uppy/react": "^5.1.1",
-    "http-proxy-middleware": "^3.0.5"
+    "http-proxy-middleware": "^3.0.5",
+    "react-number-format": "^5.4.4"
   }
 }

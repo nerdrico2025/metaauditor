@@ -3,6 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { NumericFormat } from "react-number-format";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -289,27 +290,35 @@ export default function PolicyModal({ policy, onClose }: PolicyModalProps) {
                   <label className="block text-sm font-medium text-slate-700 mb-1">
                     CTR Mínimo (%)
                   </label>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    min="0"
+                  <NumericFormat
+                    customInput={Input}
                     value={performanceThresholds.minCTR}
-                    onChange={(e) => updatePerformanceThreshold('minCTR', parseFloat(e.target.value))}
-                    placeholder="0.8"
+                    onValueChange={(values) => updatePerformanceThreshold('minCTR', values.floatValue || 0)}
+                    decimalScale={2}
+                    fixedDecimalScale
+                    decimalSeparator=","
+                    thousandSeparator="."
+                    suffix="%"
+                    allowNegative={false}
+                    placeholder="0,80%"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">
-                    CPC Máximo (R$)
+                    CPC Máximo
                   </label>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    min="0"
+                  <NumericFormat
+                    customInput={Input}
                     value={performanceThresholds.maxCPC}
-                    onChange={(e) => updatePerformanceThreshold('maxCPC', parseFloat(e.target.value))}
-                    placeholder="5.0"
+                    onValueChange={(values) => updatePerformanceThreshold('maxCPC', values.floatValue || 0)}
+                    decimalScale={2}
+                    fixedDecimalScale
+                    decimalSeparator=","
+                    thousandSeparator="."
+                    prefix="R$ "
+                    allowNegative={false}
+                    placeholder="R$ 5,00"
                   />
                 </div>
 
@@ -317,11 +326,12 @@ export default function PolicyModal({ policy, onClose }: PolicyModalProps) {
                   <label className="block text-sm font-medium text-slate-700 mb-1">
                     Conversões Mínimas
                   </label>
-                  <Input
-                    type="number"
-                    min="0"
+                  <NumericFormat
+                    customInput={Input}
                     value={performanceThresholds.minConversions}
-                    onChange={(e) => updatePerformanceThreshold('minConversions', parseInt(e.target.value))}
+                    onValueChange={(values) => updatePerformanceThreshold('minConversions', values.floatValue || 0)}
+                    decimalScale={0}
+                    allowNegative={false}
                     placeholder="1"
                   />
                 </div>
