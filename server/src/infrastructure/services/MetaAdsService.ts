@@ -381,6 +381,7 @@ export class MetaAdsService {
           account: accountName,
           objective: campaign.objective,
           budget,
+          apiCreatedAt: campaign.created_time ? new Date(campaign.created_time) : null,
         };
       });
     } catch (error) {

@@ -192,6 +192,7 @@ export const campaigns = pgTable("campaigns", {
   account: varchar("account"),
   objective: varchar("objective"),
   budget: decimal("budget", { precision: 10, scale: 2 }),
+  apiCreatedAt: timestamp("api_created_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

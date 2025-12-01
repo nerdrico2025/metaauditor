@@ -29,11 +29,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
   BellRing, 
-  DollarSign, 
   Search, 
   Layers,
   Image as ImageIcon,
-  Facebook
+  Facebook,
+  Calendar
 } from "lucide-react";
 import { SiGoogle } from 'react-icons/si';
 import { Link } from "wouter";
@@ -167,9 +167,15 @@ export default function Campaigns() {
     return matchesSearch && matchesStatus && matchesPlatform;
   }) || [];
 
-  const totalPages = Math.ceil(filteredCampaigns.length / itemsPerPage);
+  const sortedCampaigns = [...filteredCampaigns].sort((a, b) => {
+    if (a.status === 'Ativo' && b.status !== 'Ativo') return -1;
+    if (a.status !== 'Ativo' && b.status === 'Ativo') return 1;
+    return a.name.localeCompare(b.name);
+  });
+
+  const totalPages = Math.ceil(sortedCampaigns.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedCampaigns = filteredCampaigns.slice(startIndex, startIndex + itemsPerPage);
+  const paginatedCampaigns = sortedCampaigns.slice(startIndex, startIndex + itemsPerPage);
 
   const metaCampaigns = filteredCampaigns.filter(c => c.platform === 'meta');
   const googleCampaigns = filteredCampaigns.filter(c => c.platform === 'google');
@@ -332,6 +338,7 @@ export default function Campaigns() {
                             <TableHead>Orçamento</TableHead>
                             <TableHead className="text-center">Grupos de Anúncios</TableHead>
                             <TableHead className="text-center">Anúncios</TableHead>
+                            <TableHead>Criada em</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -359,10 +366,9 @@ export default function Campaigns() {
                                   {(() => {
                                     const budget = getCampaignBudget(campaign);
                                     return budget ? (
-                                      <div className="flex items-center space-x-1 text-sm text-gray-600 dark:text-gray-400">
-                                        <DollarSign className="h-3 w-3" />
-                                        <span>R$ {budget.toFixed(2)}/dia</span>
-                                      </div>
+                                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                                        R$ {budget.toFixed(2)}/dia
+                                      </span>
                                     ) : (
                                       <span className="text-sm text-gray-400 dark:text-gray-600">-</span>
                                     );
@@ -395,6 +401,17 @@ export default function Campaigns() {
                                       {creativeCount}
                                     </Link>
                                   </Button>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center space-x-1 text-sm text-gray-600 dark:text-gray-400">
+                                    <Calendar className="h-3 w-3" />
+                                    <span>
+                                      {(campaign as any).apiCreatedAt 
+                                        ? new Date((campaign as any).apiCreatedAt).toLocaleDateString('pt-BR')
+                                        : '-'
+                                      }
+                                    </span>
+                                  </div>
                                 </TableCell>
                               </TableRow>
                             );
