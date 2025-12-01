@@ -142,6 +142,22 @@ export default function Campaigns() {
     return allCreatives.filter((creative: any) => adSetIds.includes(creative.adSetId)).length;
   };
 
+  const getCampaignBudget = (campaign: Campaign) => {
+    if (campaign.budget && parseFloat(campaign.budget) > 0) {
+      return parseFloat(campaign.budget);
+    }
+    if (!Array.isArray(allAdSets)) return null;
+    const campaignAdSets = allAdSets.filter((adSet: any) => adSet.campaignId === campaign.id);
+    if (campaignAdSets.length === 0) return null;
+    
+    const totalDailyBudget = campaignAdSets.reduce((sum: number, adSet: any) => {
+      const daily = parseFloat(adSet.dailyBudget || '0');
+      return sum + daily;
+    }, 0);
+    
+    return totalDailyBudget > 0 ? totalDailyBudget : null;
+  };
+
   const filteredCampaigns = campaigns?.filter((campaign) => {
     const matchesSearch = campaign.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          campaign.externalId.toLowerCase().includes(searchTerm.toLowerCase());
@@ -340,14 +356,17 @@ export default function Campaigns() {
                                   </Badge>
                                 </TableCell>
                                 <TableCell>
-                                  {campaign.budget ? (
-                                    <div className="flex items-center space-x-1 text-sm text-gray-600 dark:text-gray-400">
-                                      <DollarSign className="h-3 w-3" />
-                                      <span>R$ {parseFloat(campaign.budget).toFixed(2)}</span>
-                                    </div>
-                                  ) : (
-                                    <span className="text-sm text-gray-400 dark:text-gray-600">-</span>
-                                  )}
+                                  {(() => {
+                                    const budget = getCampaignBudget(campaign);
+                                    return budget ? (
+                                      <div className="flex items-center space-x-1 text-sm text-gray-600 dark:text-gray-400">
+                                        <DollarSign className="h-3 w-3" />
+                                        <span>R$ {budget.toFixed(2)}/dia</span>
+                                      </div>
+                                    ) : (
+                                      <span className="text-sm text-gray-400 dark:text-gray-600">-</span>
+                                    );
+                                  })()}
                                 </TableCell>
                                 <TableCell className="text-center">
                                   <Button
