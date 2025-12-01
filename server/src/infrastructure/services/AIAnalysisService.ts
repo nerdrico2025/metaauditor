@@ -207,13 +207,13 @@ RESPONDA OBRIGATORIAMENTE EM PORTUGUÊS-BR. Responda com JSON neste formato: {
       const conversionRate = conversions / Math.max(clicks, 1);
 
       const benchmarksContext = policy ? `
-Performance Benchmarks (user-defined thresholds):
-- CTR Minimum: ${policy.ctrMin || 'Not set'}%
-- CTR Target: ${policy.ctrTarget || 'Not set'}%
-- CPC Maximum: $${policy.cpcMax || 'Not set'}
-- CPC Target: $${policy.cpcTarget || 'Not set'}
-- Conversions Minimum: ${policy.conversionsMin || 'Not set'}
-- Conversions Target: ${policy.conversionsTarget || 'Not set'}` : '\nNo performance benchmarks configured.';
+Benchmarks de Performance (definidos pelo usuário):
+- CTR Mínimo: ${policy.ctrMin || 'Não definido'}%
+- CTR Alvo: ${policy.ctrTarget || 'Não definido'}%
+- CPC Máximo: R$ ${policy.cpcMax || 'Não definido'}
+- CPC Alvo: R$ ${policy.cpcTarget || 'Não definido'}
+- Conversões Mínimas: ${policy.conversionsMin || 'Não definido'}
+- Conversões Alvo: ${policy.conversionsTarget || 'Não definido'}` : '\nNenhum benchmark de performance configurado.';
 
       const prompt = `Analise a performance deste criativo publicitário contra os benchmarks definidos pelo usuário:
 
@@ -222,7 +222,7 @@ Métricas de Performance Atuais:
 - Cliques: ${creative.clicks}
 - Conversões: ${creative.conversions}
 - CTR: ${ctr}%
-- CPC: $${cpc}
+- CPC: R$ ${cpc}
 - Taxa de Conversão: ${(conversionRate * 100).toFixed(2)}%
 ${benchmarksContext}
 
