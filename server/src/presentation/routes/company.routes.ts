@@ -8,12 +8,10 @@ const router = Router();
 
 const updateCompanySchema = z.object({
   name: z.string().min(1),
-  cnpj: z.string().optional(),
-  phone: z.string().optional(),
-  address: z.string().optional(),
-  city: z.string().optional(),
-  state: z.string().optional(),
-  zipCode: z.string().optional(),
+  contactEmail: z.string().email().optional().or(z.literal('')),
+  contactPhone: z.string().optional(),
+  billingEmail: z.string().email().optional().or(z.literal('')),
+  taxId: z.string().optional(),
 });
 
 // Get company data
