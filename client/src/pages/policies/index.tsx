@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { NumericFormat } from "react-number-format";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -751,71 +752,133 @@ export default function Policies() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="ctrMin">CTR Mínimo (%)</Label>
-                  <Input 
-                    id="ctrMin" 
-                    type="number"
-                    step="0.001"
-                    placeholder="Ex: 1.5"
-                    {...form.register('ctrMin')} 
-                    data-testid="input-ctr-min"
+                  <Controller
+                    name="ctrMin"
+                    control={form.control}
+                    render={({ field: { onChange, value } }) => (
+                      <NumericFormat
+                        customInput={Input}
+                        id="ctrMin"
+                        value={value || ''}
+                        onValueChange={(values) => onChange(values.value)}
+                        decimalSeparator=","
+                        thousandSeparator="."
+                        suffix="%"
+                        allowNegative={false}
+                        placeholder="Ex: 1,5%"
+                        data-testid="input-ctr-min"
+                      />
+                    )}
                   />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="ctrTarget">CTR Alvo (%)</Label>
-                  <Input 
-                    id="ctrTarget" 
-                    type="number"
-                    step="0.001"
-                    placeholder="Ex: 3.0"
-                    {...form.register('ctrTarget')} 
-                    data-testid="input-ctr-target"
+                  <Controller
+                    name="ctrTarget"
+                    control={form.control}
+                    render={({ field: { onChange, value } }) => (
+                      <NumericFormat
+                        customInput={Input}
+                        id="ctrTarget"
+                        value={value || ''}
+                        onValueChange={(values) => onChange(values.value)}
+                        decimalSeparator=","
+                        thousandSeparator="."
+                        suffix="%"
+                        allowNegative={false}
+                        placeholder="Ex: 3%"
+                        data-testid="input-ctr-target"
+                      />
+                    )}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="cpcMax">CPC Máximo ($)</Label>
-                  <Input 
-                    id="cpcMax" 
-                    type="number"
-                    step="0.01"
-                    placeholder="Ex: 2.50"
-                    {...form.register('cpcMax')} 
-                    data-testid="input-cpc-max"
+                  <Label htmlFor="cpcMax">CPC Máximo (R$)</Label>
+                  <Controller
+                    name="cpcMax"
+                    control={form.control}
+                    render={({ field: { onChange, value } }) => (
+                      <NumericFormat
+                        customInput={Input}
+                        id="cpcMax"
+                        value={value || ''}
+                        onValueChange={(values) => onChange(values.value)}
+                        decimalScale={2}
+                        fixedDecimalScale
+                        decimalSeparator=","
+                        thousandSeparator="."
+                        prefix="R$ "
+                        allowNegative={false}
+                        placeholder="Ex: R$ 2,50"
+                        data-testid="input-cpc-max"
+                      />
+                    )}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="cpcTarget">CPC Alvo ($)</Label>
-                  <Input 
-                    id="cpcTarget" 
-                    type="number"
-                    step="0.01"
-                    placeholder="Ex: 1.50"
-                    {...form.register('cpcTarget')} 
-                    data-testid="input-cpc-target"
+                  <Label htmlFor="cpcTarget">CPC Alvo (R$)</Label>
+                  <Controller
+                    name="cpcTarget"
+                    control={form.control}
+                    render={({ field: { onChange, value } }) => (
+                      <NumericFormat
+                        customInput={Input}
+                        id="cpcTarget"
+                        value={value || ''}
+                        onValueChange={(values) => onChange(values.value)}
+                        decimalScale={2}
+                        fixedDecimalScale
+                        decimalSeparator=","
+                        thousandSeparator="."
+                        prefix="R$ "
+                        allowNegative={false}
+                        placeholder="Ex: R$ 1,50"
+                        data-testid="input-cpc-target"
+                      />
+                    )}
                   />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="conversionsMin">Conversões Mínimas</Label>
-                  <Input 
-                    id="conversionsMin" 
-                    type="number"
-                    placeholder="Ex: 10"
-                    {...form.register('conversionsMin')} 
-                    data-testid="input-conversions-min"
+                  <Controller
+                    name="conversionsMin"
+                    control={form.control}
+                    render={({ field: { onChange, value } }) => (
+                      <NumericFormat
+                        customInput={Input}
+                        id="conversionsMin"
+                        value={value || ''}
+                        onValueChange={(values) => onChange(values.floatValue)}
+                        decimalScale={0}
+                        allowNegative={false}
+                        placeholder="Ex: 10"
+                        data-testid="input-conversions-min"
+                      />
+                    )}
                   />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="conversionsTarget">Conversões Alvo</Label>
-                  <Input 
-                    id="conversionsTarget" 
-                    type="number"
-                    placeholder="Ex: 50"
-                    {...form.register('conversionsTarget')} 
-                    data-testid="input-conversions-target"
+                  <Controller
+                    name="conversionsTarget"
+                    control={form.control}
+                    render={({ field: { onChange, value } }) => (
+                      <NumericFormat
+                        customInput={Input}
+                        id="conversionsTarget"
+                        value={value || ''}
+                        onValueChange={(values) => onChange(values.floatValue)}
+                        decimalScale={0}
+                        allowNegative={false}
+                        placeholder="Ex: 50"
+                        data-testid="input-conversions-target"
+                      />
+                    )}
                   />
                 </div>
               </div>
