@@ -53,19 +53,30 @@ export interface PerformanceAnalysis {
 
 export class AIAnalysisService {
   private async getImageBase64(imageUrl: string): Promise<string | null> {
-    if (!imageUrl) return null;
+    if (!imageUrl) {
+      console.log("AIAnalysisService: No image URL provided");
+      return null;
+    }
     
     try {
+      console.log(`AIAnalysisService: Attempting to get image from: ${imageUrl}`);
+      
       if (imageUrl.startsWith('/objects/')) {
         const buffer = await objectStorageService.downloadAsBuffer(imageUrl);
         if (buffer) {
           const mimeType = getImageMimeType(imageUrl);
-          return `data:${mimeType};base64,${buffer.toString('base64')}`;
+          const base64 = buffer.toString('base64');
+          console.log(`AIAnalysisService: Successfully converted image to base64 (${buffer.length} bytes, ${mimeType})`);
+          return `data:${mimeType};base64,${base64}`;
+        } else {
+          console.log("AIAnalysisService: Buffer is null - image not found in storage");
         }
+      } else {
+        console.log(`AIAnalysisService: Image URL does not start with /objects/: ${imageUrl}`);
       }
       return null;
     } catch (error) {
-      console.error("Error getting image base64:", error);
+      console.error("AIAnalysisService: Error getting image base64:", error);
       return null;
     }
   }
@@ -92,8 +103,10 @@ Content Criteria:
 - Requires Logo: ${policy.requiresLogo ? 'Yes' : 'No'}
 - Requires Brand Colors: ${policy.requiresBrandColors ? 'Yes' : 'No'}` : '\nNo content criteria found.';
 
+      console.log(`AIAnalysisService: Starting compliance analysis for creative: ${creative.name}, imageUrl: ${creative.imageUrl}`);
       const imageBase64 = await this.getImageBase64(creative.imageUrl || '');
       const hasImage = !!imageBase64;
+      console.log(`AIAnalysisService: hasImage=${hasImage}, imageBase64 length=${imageBase64?.length || 0}`);
 
       const prompt = `Analise este criativo publicitário para conformidade com a marca baseado na configuração específica da marca e critérios de conteúdo do usuário.
 
