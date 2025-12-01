@@ -35,17 +35,21 @@ const pool = new Pool({ connectionString });
 
 export const db = drizzle(pool, { schema });
 
+let connectionLogged = false;
 pool.on('connect', () => {
-  const url = new URL(connectionString);
-  console.log('✅ Database connection validated:', {
-    host: url.hostname,
-    port: url.port || '5432',
-    database: url.pathname.slice(1),
-    ssl: url.searchParams.get('sslmode') || 'require',
-    environment: isDeploymentEnvironment() ? 'DEPLOYMENT' : 'DEVELOPMENT',
-    isNeonDb: url.hostname.includes('neon'),
-    protocol: url.protocol
-  });
+  if (!connectionLogged) {
+    connectionLogged = true;
+    const url = new URL(connectionString);
+    console.log('✅ Database connection validated:', {
+      host: url.hostname,
+      port: url.port || '5432',
+      database: url.pathname.slice(1),
+      ssl: url.searchParams.get('sslmode') || 'require',
+      environment: isDeploymentEnvironment() ? 'DEPLOYMENT' : 'DEVELOPMENT',
+      isNeonDb: url.hostname.includes('neon'),
+      protocol: url.protocol
+    });
+  }
 });
 
 pool.on('error', (err) => {
