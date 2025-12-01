@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -24,7 +24,8 @@ import {
   Calendar,
   Mail,
   Phone,
-  MapPin
+  Pencil,
+  X
 } from 'lucide-react';
 
 const companySchema = z.object({
@@ -83,6 +84,7 @@ const statusColors: Record<string, string> = {
 export default function Company() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
+  const [isEditing, setIsEditing] = useState(false);
 
   const { data: company, isLoading } = useQuery<Company>({
     queryKey: ['/api/company'],
@@ -120,6 +122,7 @@ export default function Company() {
     onSuccess: () => {
       toast({ title: 'Dados da empresa atualizados com sucesso!' });
       queryClient.invalidateQueries({ queryKey: ['/api/company'] });
+      setIsEditing(false);
     },
     onError: (error: any) => {
       toast({ 
@@ -132,6 +135,19 @@ export default function Company() {
 
   const onSubmit = (data: CompanyData) => {
     updateCompanyMutation.mutate(data);
+  };
+
+  const handleCancelEdit = () => {
+    if (company) {
+      form.reset({
+        name: company.name || '',
+        contactEmail: company.contactEmail || '',
+        contactPhone: company.contactPhone || '',
+        billingEmail: company.billingEmail || '',
+        taxId: company.taxId || '',
+      });
+    }
+    setIsEditing(false);
   };
 
   const formatDate = (dateString: string | null) => {
@@ -312,111 +328,185 @@ export default function Company() {
                 </CardContent>
               </Card>
 
-              {/* Company Data Form */}
+              {/* Company Data */}
               <Card className="bg-white dark:bg-gray-800">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Building2 className="h-5 w-5" />
-                    Dados Cadastrais
-                  </CardTitle>
-                  <CardDescription>
-                    Atualize as informações da sua empresa
-                  </CardDescription>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <Building2 className="h-5 w-5" />
+                        Dados Cadastrais
+                      </CardTitle>
+                      <CardDescription>
+                        Informações da sua empresa
+                      </CardDescription>
+                    </div>
+                    {!isEditing && (
+                      <Button
+                        variant="outline"
+                        onClick={() => setIsEditing(true)}
+                        data-testid="button-edit-company"
+                      >
+                        <Pencil className="w-4 h-4 mr-2" />
+                        Editar Informações
+                      </Button>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2 md:col-span-2">
-                        <Label htmlFor="name">Nome da Empresa *</Label>
-                        <Input
-                          id="name"
-                          placeholder="Ex: Click Hero Marketing Digital"
-                          data-testid="input-company-name"
-                          {...form.register('name')}
-                        />
-                        {form.formState.errors.name && (
-                          <p className="text-sm text-red-600 dark:text-red-400">
-                            {form.formState.errors.name.message}
-                          </p>
-                        )}
+                  {isEditing ? (
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2 md:col-span-2">
+                          <Label htmlFor="name">Nome da Empresa *</Label>
+                          <Input
+                            id="name"
+                            placeholder="Ex: Click Hero Marketing Digital"
+                            data-testid="input-company-name"
+                            {...form.register('name')}
+                          />
+                          {form.formState.errors.name && (
+                            <p className="text-sm text-red-600 dark:text-red-400">
+                              {form.formState.errors.name.message}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="taxId" className="flex items-center gap-2">
+                            <Building2 className="h-4 w-4" />
+                            CNPJ
+                          </Label>
+                          <Input
+                            id="taxId"
+                            placeholder="00.000.000/0000-00"
+                            data-testid="input-company-taxid"
+                            {...form.register('taxId')}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="contactPhone" className="flex items-center gap-2">
+                            <Phone className="h-4 w-4" />
+                            Telefone de Contato
+                          </Label>
+                          <Input
+                            id="contactPhone"
+                            placeholder="(00) 00000-0000"
+                            data-testid="input-company-phone"
+                            {...form.register('contactPhone')}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="contactEmail" className="flex items-center gap-2">
+                            <Mail className="h-4 w-4" />
+                            Email de Contato
+                          </Label>
+                          <Input
+                            id="contactEmail"
+                            type="email"
+                            placeholder="contato@empresa.com"
+                            data-testid="input-company-email"
+                            {...form.register('contactEmail')}
+                          />
+                          {form.formState.errors.contactEmail && (
+                            <p className="text-sm text-red-600 dark:text-red-400">
+                              {form.formState.errors.contactEmail.message}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="billingEmail" className="flex items-center gap-2">
+                            <CreditCard className="h-4 w-4" />
+                            Email de Faturamento
+                          </Label>
+                          <Input
+                            id="billingEmail"
+                            type="email"
+                            placeholder="financeiro@empresa.com"
+                            data-testid="input-company-billing-email"
+                            {...form.register('billingEmail')}
+                          />
+                          {form.formState.errors.billingEmail && (
+                            <p className="text-sm text-red-600 dark:text-red-400">
+                              {form.formState.errors.billingEmail.message}
+                            </p>
+                          )}
+                        </div>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="taxId" className="flex items-center gap-2">
+                      <div className="flex justify-end gap-3 pt-4 border-t">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleCancelEdit}
+                          data-testid="button-cancel-edit"
+                        >
+                          <X className="w-4 h-4 mr-2" />
+                          Cancelar
+                        </Button>
+                        <Button
+                          type="submit"
+                          disabled={updateCompanyMutation.isPending}
+                          data-testid="button-save-company"
+                        >
+                          <Save className="w-4 h-4 mr-2" />
+                          {updateCompanyMutation.isPending ? 'Salvando...' : 'Salvar Alterações'}
+                        </Button>
+                      </div>
+                    </form>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="md:col-span-2">
+                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Nome da Empresa</p>
+                        <p className="text-lg text-gray-900 dark:text-white mt-1">
+                          {company?.name || '-'}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400 flex items-center gap-2">
                           <Building2 className="h-4 w-4" />
                           CNPJ
-                        </Label>
-                        <Input
-                          id="taxId"
-                          placeholder="00.000.000/0000-00"
-                          data-testid="input-company-taxid"
-                          {...form.register('taxId')}
-                        />
+                        </p>
+                        <p className="text-lg text-gray-900 dark:text-white mt-1">
+                          {company?.taxId || '-'}
+                        </p>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="contactPhone" className="flex items-center gap-2">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400 flex items-center gap-2">
                           <Phone className="h-4 w-4" />
                           Telefone de Contato
-                        </Label>
-                        <Input
-                          id="contactPhone"
-                          placeholder="(00) 00000-0000"
-                          data-testid="input-company-phone"
-                          {...form.register('contactPhone')}
-                        />
+                        </p>
+                        <p className="text-lg text-gray-900 dark:text-white mt-1">
+                          {company?.contactPhone || '-'}
+                        </p>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="contactEmail" className="flex items-center gap-2">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400 flex items-center gap-2">
                           <Mail className="h-4 w-4" />
                           Email de Contato
-                        </Label>
-                        <Input
-                          id="contactEmail"
-                          type="email"
-                          placeholder="contato@empresa.com"
-                          data-testid="input-company-email"
-                          {...form.register('contactEmail')}
-                        />
-                        {form.formState.errors.contactEmail && (
-                          <p className="text-sm text-red-600 dark:text-red-400">
-                            {form.formState.errors.contactEmail.message}
-                          </p>
-                        )}
+                        </p>
+                        <p className="text-lg text-gray-900 dark:text-white mt-1">
+                          {company?.contactEmail || '-'}
+                        </p>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="billingEmail" className="flex items-center gap-2">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400 flex items-center gap-2">
                           <CreditCard className="h-4 w-4" />
                           Email de Faturamento
-                        </Label>
-                        <Input
-                          id="billingEmail"
-                          type="email"
-                          placeholder="financeiro@empresa.com"
-                          data-testid="input-company-billing-email"
-                          {...form.register('billingEmail')}
-                        />
-                        {form.formState.errors.billingEmail && (
-                          <p className="text-sm text-red-600 dark:text-red-400">
-                            {form.formState.errors.billingEmail.message}
-                          </p>
-                        )}
+                        </p>
+                        <p className="text-lg text-gray-900 dark:text-white mt-1">
+                          {company?.billingEmail || '-'}
+                        </p>
                       </div>
                     </div>
-
-                    <div className="flex justify-end pt-4 border-t">
-                      <Button
-                        type="submit"
-                        disabled={updateCompanyMutation.isPending}
-                        data-testid="button-save-company"
-                      >
-                        <Save className="w-4 h-4 mr-2" />
-                        {updateCompanyMutation.isPending ? 'Salvando...' : 'Salvar Alterações'}
-                      </Button>
-                    </div>
-                  </form>
+                  )}
                 </CardContent>
               </Card>
 
@@ -424,7 +514,7 @@ export default function Company() {
               <Card className="mt-6 bg-white dark:bg-gray-800">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <MapPin className="h-5 w-5" />
+                    <Building2 className="h-5 w-5" />
                     Informações da Conta
                   </CardTitle>
                 </CardHeader>
