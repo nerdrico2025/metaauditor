@@ -47,7 +47,8 @@ interface AdSet {
   externalId: string;
   campaignId: string;
   status: string;
-  budget: number | null;
+  dailyBudget: string | null;
+  lifetimeBudget: string | null;
   bidStrategy: string | null;
   targetingAge: string | null;
   targetingGender: string | null;
@@ -130,6 +131,13 @@ export default function AdSets() {
     const matchesPlatform = platformFilter === "all" || adSet.platform === platformFilter;
     
     return matchesSearch && matchesStatus && matchesCampaign && matchesPlatform;
+  })?.sort((a, b) => {
+    // Active ad sets first
+    const aIsActive = a.status === 'Ativo' ? 0 : 1;
+    const bIsActive = b.status === 'Ativo' ? 0 : 1;
+    if (aIsActive !== bIsActive) return aIsActive - bIsActive;
+    // Then alphabetically by name
+    return a.name.localeCompare(b.name);
   }) || [];
 
   const totalPages = Math.ceil(filteredAdSets.length / itemsPerPage);
@@ -408,10 +416,13 @@ export default function AdSets() {
                                   </Badge>
                                 </TableCell>
                                 <TableCell>
-                                  {adSet.budget ? (
+                                  {adSet.dailyBudget || adSet.lifetimeBudget ? (
                                     <div className="flex items-center space-x-1 text-sm text-gray-600 dark:text-gray-400">
                                       <DollarSign className="h-3 w-3" />
-                                      <span>{formatCurrency(adSet.budget)}</span>
+                                      <span>
+                                        {formatCurrency(parseFloat(adSet.dailyBudget || adSet.lifetimeBudget || '0'))}
+                                        {adSet.dailyBudget && <span className="text-xs text-gray-400">/dia</span>}
+                                      </span>
                                     </div>
                                   ) : (
                                     <span className="text-sm text-gray-400 dark:text-gray-600">-</span>
