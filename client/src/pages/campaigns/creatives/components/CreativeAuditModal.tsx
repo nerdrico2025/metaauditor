@@ -77,12 +77,14 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
   // Fetch audit data for this creative
   const { data: audits, isLoading: auditsLoading } = useQuery<ExtendedAudit[]>({
     queryKey: [`/api/creatives/${creative.id}/audits`],
-    onSuccess: (data) => {
-      if (data && data.length > 0) {
-        setViewingAudit(data[0]); // Set the latest audit to viewingAudit state
-      }
-    },
   });
+
+  // Update viewingAudit when audits data changes
+  useEffect(() => {
+    if (audits && audits.length > 0) {
+      setViewingAudit(audits[0]);
+    }
+  }, [audits]);
 
   // Fetch campaign name if campaignId exists
   const { data: campaign } = useQuery<any>({

@@ -1,6 +1,7 @@
 
 import OpenAI from "openai";
 import type { Creative, Policy } from "../../shared/schema.js";
+import { objectStorageService } from "./ObjectStorageService.js";
 
 let openai: OpenAI | null = null;
 
@@ -13,6 +14,18 @@ function getOpenAI(): OpenAI {
     openai = new OpenAI({ apiKey });
   }
   return openai;
+}
+
+function getImageMimeType(url: string): string {
+  const ext = url.split('.').pop()?.toLowerCase() || '';
+  const mimeTypes: Record<string, string> = {
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'png': 'image/png',
+    'gif': 'image/gif',
+    'webp': 'image/webp',
+  };
+  return mimeTypes[ext] || 'image/jpeg';
 }
 
 export interface ComplianceAnalysis {
@@ -39,6 +52,24 @@ export interface PerformanceAnalysis {
 }
 
 export class AIAnalysisService {
+  private async getImageBase64(imageUrl: string): Promise<string | null> {
+    if (!imageUrl) return null;
+    
+    try {
+      if (imageUrl.startsWith('/objects/')) {
+        const buffer = await objectStorageService.downloadAsBuffer(imageUrl);
+        if (buffer) {
+          const mimeType = getImageMimeType(imageUrl);
+          return `data:${mimeType};base64,${buffer.toString('base64')}`;
+        }
+      }
+      return null;
+    } catch (error) {
+      console.error("Error getting image base64:", error);
+      return null;
+    }
+  }
+
   async analyzeCreativeCompliance(
     creative: Creative,
     policy?: Policy | null
@@ -61,26 +92,37 @@ Content Criteria:
 - Requires Logo: ${policy.requiresLogo ? 'Yes' : 'No'}
 - Requires Brand Colors: ${policy.requiresBrandColors ? 'Yes' : 'No'}` : '\nNo content criteria found.';
 
-      const prompt = `Analise este criativo publicitário para conformidade com a marca baseado na configuração específica da marca e critérios de conteúdo do usuário:
+      const imageBase64 = await this.getImageBase64(creative.imageUrl || '');
+      const hasImage = !!imageBase64;
+
+      const prompt = `Analise este criativo publicitário para conformidade com a marca baseado na configuração específica da marca e critérios de conteúdo do usuário.
+
+${hasImage ? 'IMPORTANTE: Uma imagem do criativo foi fornecida. Analise VISUALMENTE a imagem para verificar:' : 'Nota: Nenhuma imagem disponível para análise visual.'}
+${hasImage ? '- Textos, palavras e frases que aparecem NA IMAGEM' : ''}
+${hasImage ? '- Cores predominantes e se correspondem às cores da marca' : ''}
+${hasImage ? '- Presença do logo da marca na imagem' : ''}
+${hasImage ? '- Qualquer elemento visual relevante para conformidade' : ''}
 
 Detalhes do Criativo:
 - Nome: ${creative.name}
 - Tipo: ${creative.type}
-- Texto: ${creative.text || 'N/A'}
+- Texto do Anúncio: ${creative.text || 'N/A'}
 - Título: ${creative.headline || 'N/A'}
 - Descrição: ${creative.description || 'N/A'}
 - Call to Action: ${creative.callToAction || 'N/A'}
-- URL da Imagem: ${creative.imageUrl ? 'Imagem fornecida' : 'Sem imagem'}
 ${brandRequirements}
 ${contentRequirements}
 
-IMPORTANTE: Analise a conformidade contra as cores específicas da marca, palavras-chave e critérios fornecidos acima.
+IMPORTANTE: 
+- Analise SOMENTE o que você realmente vê na imagem. NÃO invente ou suponha textos que não estão visíveis.
+- Verifique palavras proibidas APENAS se elas realmente aparecem na imagem ou nos textos fornecidos.
+- Seja preciso e factual na análise.
 
 Por favor, analise:
-1. Conformidade das cores da marca
-2. Presença e conformidade do logo
-3. Presença de palavras-chave/frases obrigatórias
-4. Ausência de palavras-chave/frases proibidas
+1. Conformidade das cores da marca (baseado na análise visual da imagem)
+2. Presença e conformidade do logo (verificar visualmente na imagem)
+3. Presença de palavras-chave/frases obrigatórias (no texto E na imagem)
+4. Ausência de palavras-chave/frases proibidas (no texto E na imagem)
 5. Conformidade do comprimento do texto
 6. Consistência geral da marca
 7. Linguagem profissional e adequação
@@ -95,21 +137,33 @@ RESPONDA OBRIGATORIAMENTE EM PORTUGUÊS-BR. Responda com JSON neste formato: {
   "brandGuidelines": boolean
 }`;
 
+      type MessageContent = 
+        | string 
+        | Array<{ type: "text"; text: string } | { type: "image_url"; image_url: { url: string; detail?: "low" | "high" | "auto" } }>;
+
+      const userContent: MessageContent = hasImage
+        ? [
+            { type: "text" as const, text: prompt },
+            { type: "image_url" as const, image_url: { url: imageBase64!, detail: "high" as const } }
+          ]
+        : prompt;
+
       const response = await getOpenAI().chat.completions.create({
         model: "gpt-4o",
         messages: [
           {
             role: "system",
-            content: "Você é um especialista em conformidade de marca. Analise criativos publicitários para problemas de conformidade e forneça recomendações acionáveis. SEMPRE responda em Português-BR."
+            content: "Você é um especialista em conformidade de marca. Analise criativos publicitários para problemas de conformidade e forneça recomendações acionáveis. SEMPRE responda em Português-BR. Quando uma imagem for fornecida, analise-a visualmente e seja PRECISO sobre o que você vê - nunca invente informações que não estão na imagem."
           },
           {
             role: "user",
-            content: prompt
+            content: userContent
           }
         ],
         response_format: { type: "json_object" },
+        max_tokens: 1500,
       }, {
-        timeout: 30000,
+        timeout: 60000,
       });
 
       const result = JSON.parse(response.choices[0].message.content || '{}');

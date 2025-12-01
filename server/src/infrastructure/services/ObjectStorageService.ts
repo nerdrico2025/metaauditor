@@ -71,6 +71,26 @@ export class ObjectStorageService {
     return this.uploadFromBuffer(path, buffer);
   }
 
+  async downloadAsBuffer(objectPath: string): Promise<Buffer | null> {
+    let cleanPath = objectPath;
+    if (cleanPath.startsWith("/objects/")) {
+      cleanPath = cleanPath.slice("/objects/".length);
+    }
+
+    try {
+      const result = await objectStorageClient.downloadAsBytes(cleanPath);
+      
+      if (!result.ok || !result.value) {
+        return null;
+      }
+
+      return result.value[0];
+    } catch (error) {
+      console.error("Error downloading file as buffer:", error);
+      return null;
+    }
+  }
+
   async downloadObject(objectPath: string, res: Response) {
     let cleanPath = objectPath;
     if (cleanPath.startsWith("/objects/")) {
