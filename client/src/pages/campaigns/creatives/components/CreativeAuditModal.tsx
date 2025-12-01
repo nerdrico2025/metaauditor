@@ -8,10 +8,51 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Eye, CheckCircle, AlertTriangle, BarChart3, Image as ImageIcon, Palette, Sparkles, ChevronRight, Shield, TrendingUp, MousePointer, XCircle } from "lucide-react";
+import { Eye, CheckCircle, AlertTriangle, BarChart3, Palette, Sparkles, ChevronRight, Shield, TrendingUp, MousePointer, XCircle, ArrowRight, Target } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { CreativeImage } from "./CreativeImage";
-import type { Creative, Audit } from "@shared/schema";
+
+interface Creative {
+  id: string;
+  name: string;
+  type?: string;
+  text?: string;
+  headline?: string;
+  imageUrl?: string | null;
+  thumbnailUrl?: string | null;
+  campaignId?: string;
+  adSetId?: string;
+  impressions?: number;
+  clicks?: number;
+  conversions?: number;
+  ctr?: string;
+  cpc?: string;
+  companyId?: string;
+}
+
+interface Policy {
+  id: string;
+  name: string;
+  ctrMin?: number | null;
+  ctrTarget?: number | null;
+  cpcMax?: number | null;
+  cpcTarget?: number | null;
+  conversionsMin?: number | null;
+  conversionsTarget?: number | null;
+  companyId?: string;
+}
+
+interface Audit {
+  id: string;
+  creativeId: string;
+  policyId?: string | null;
+  complianceScore?: number | null;
+  performanceScore?: number | null;
+  status?: string | null;
+  issues?: unknown;
+  recommendations?: unknown;
+  aiAnalysis?: unknown;
+}
 
 // Interfaces for better typing of JSON fields
 interface AuditIssue {
@@ -90,6 +131,12 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
   const { data: campaign } = useQuery<any>({
     queryKey: [`/api/campaigns/${creative.campaignId}`],
     enabled: !!creative.campaignId,
+  });
+
+  // Fetch policy used in the audit for comparison
+  const { data: policy } = useQuery<Policy>({
+    queryKey: ['/api/policies', viewingAudit?.policyId],
+    enabled: !!viewingAudit?.policyId,
   });
 
   // Create audit analysis mutation
@@ -399,11 +446,11 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
                             Conformidade de Marca
                           </p>
                           <p className="text-6xl font-extrabold text-primary mb-3 leading-none">
-                            {viewingAudit.complianceScore}
+                            {viewingAudit.complianceScore ?? 0}
                             <span className="text-3xl">%</span>
                           </p>
-                          <Badge className="text-sm px-4 py-1.5 font-semibold" variant={viewingAudit.complianceScore >= 80 ? 'default' : 'destructive'}>
-                            {viewingAudit.complianceScore >= 80 ? '✓ Aprovado' : '✗ Reprovado'}
+                          <Badge className="text-sm px-4 py-1.5 font-semibold" variant={(viewingAudit.complianceScore ?? 0) >= 80 ? 'default' : 'destructive'}>
+                            {(viewingAudit.complianceScore ?? 0) >= 80 ? '✓ Aprovado' : '✗ Reprovado'}
                           </Badge>
                         </div>
 
@@ -415,11 +462,11 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
                             Performance
                           </p>
                           <p className="text-6xl font-extrabold text-primary mb-3 leading-none">
-                            {viewingAudit.performanceScore}
+                            {viewingAudit.performanceScore ?? 0}
                             <span className="text-3xl">%</span>
                           </p>
-                          <Badge className="text-sm px-4 py-1.5 font-semibold" variant={viewingAudit.performanceScore >= 60 ? 'default' : 'destructive'}>
-                            {viewingAudit.performanceScore >= 80 ? '🔥 Alta' : viewingAudit.performanceScore >= 60 ? '📈 Média' : '📉 Baixa'}
+                          <Badge className="text-sm px-4 py-1.5 font-semibold" variant={(viewingAudit.performanceScore ?? 0) >= 60 ? 'default' : 'destructive'}>
+                            {(viewingAudit.performanceScore ?? 0) >= 80 ? '🔥 Alta' : (viewingAudit.performanceScore ?? 0) >= 60 ? '📈 Média' : '📉 Baixa'}
                           </Badge>
                         </div>
 
@@ -440,6 +487,113 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
                         </div>
                       </div>
                     </div>
+
+                    {/* Comparison Section: Found vs Policy */}
+                    {policy && (
+                      <Card className="border-2 border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/30">
+                        <CardContent className="pt-6">
+                          <h3 className="font-bold text-lg flex items-center gap-2 mb-4 text-amber-800 dark:text-amber-300">
+                            <Target className="h-5 w-5" />
+                            Comparação: Encontrado vs Política
+                          </h3>
+                          <p className="text-xs text-amber-700 dark:text-amber-400 mb-4">
+                            Política aplicada: <strong>{policy.name}</strong>
+                          </p>
+                          
+                          <div className="space-y-3">
+                            {/* CTR Comparison */}
+                            <div className="grid grid-cols-3 gap-2 items-center p-3 bg-white dark:bg-gray-800 rounded-lg border">
+                              <div className="text-left">
+                                <p className="text-xs font-medium text-gray-500 mb-1">CTR Encontrado</p>
+                                <p className="text-lg font-bold text-gray-900 dark:text-white">
+                                  {creative.ctr || '0'}%
+                                </p>
+                              </div>
+                              <div className="text-center flex justify-center">
+                                <ArrowRight className="h-5 w-5 text-gray-400" />
+                              </div>
+                              <div className="text-right">
+                                <p className="text-xs font-medium text-gray-500 mb-1">
+                                  Meta: {policy.ctrMin ? `≥${policy.ctrMin}%` : 'N/D'}
+                                </p>
+                                <Badge 
+                                  variant={
+                                    policy.ctrMin && parseFloat(creative.ctr || '0') >= policy.ctrMin 
+                                      ? 'default' 
+                                      : 'destructive'
+                                  }
+                                  className="text-sm"
+                                >
+                                  {policy.ctrMin && parseFloat(creative.ctr || '0') >= policy.ctrMin 
+                                    ? '✓ Atingiu' 
+                                    : '✗ Abaixo'}
+                                </Badge>
+                              </div>
+                            </div>
+
+                            {/* CPC Comparison */}
+                            <div className="grid grid-cols-3 gap-2 items-center p-3 bg-white dark:bg-gray-800 rounded-lg border">
+                              <div className="text-left">
+                                <p className="text-xs font-medium text-gray-500 mb-1">CPC Encontrado</p>
+                                <p className="text-lg font-bold text-gray-900 dark:text-white">
+                                  R$ {creative.cpc || '0'}
+                                </p>
+                              </div>
+                              <div className="text-center flex justify-center">
+                                <ArrowRight className="h-5 w-5 text-gray-400" />
+                              </div>
+                              <div className="text-right">
+                                <p className="text-xs font-medium text-gray-500 mb-1">
+                                  Meta: {policy.cpcMax ? `≤R$${policy.cpcMax}` : 'N/D'}
+                                </p>
+                                <Badge 
+                                  variant={
+                                    policy.cpcMax && parseFloat(creative.cpc || '999') <= policy.cpcMax 
+                                      ? 'default' 
+                                      : 'destructive'
+                                  }
+                                  className="text-sm"
+                                >
+                                  {policy.cpcMax && parseFloat(creative.cpc || '999') <= policy.cpcMax 
+                                    ? '✓ Dentro' 
+                                    : '✗ Acima'}
+                                </Badge>
+                              </div>
+                            </div>
+
+                            {/* Conversions Comparison */}
+                            <div className="grid grid-cols-3 gap-2 items-center p-3 bg-white dark:bg-gray-800 rounded-lg border">
+                              <div className="text-left">
+                                <p className="text-xs font-medium text-gray-500 mb-1">Conversões</p>
+                                <p className="text-lg font-bold text-gray-900 dark:text-white">
+                                  {creative.conversions || 0}
+                                </p>
+                              </div>
+                              <div className="text-center flex justify-center">
+                                <ArrowRight className="h-5 w-5 text-gray-400" />
+                              </div>
+                              <div className="text-right">
+                                <p className="text-xs font-medium text-gray-500 mb-1">
+                                  Meta: {policy.conversionsMin ? `≥${policy.conversionsMin}` : 'N/D'}
+                                </p>
+                                <Badge 
+                                  variant={
+                                    policy.conversionsMin && (creative.conversions || 0) >= policy.conversionsMin 
+                                      ? 'default' 
+                                      : 'destructive'
+                                  }
+                                  className="text-sm"
+                                >
+                                  {policy.conversionsMin && (creative.conversions || 0) >= policy.conversionsMin 
+                                    ? '✓ Atingiu' 
+                                    : '✗ Abaixo'}
+                                </Badge>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
 
                     {/* Detalhamento da IA - Accordion Expansível */}
                     {(viewingAudit.aiAnalysis?.compliance || viewingAudit.aiAnalysis?.performance) && (
