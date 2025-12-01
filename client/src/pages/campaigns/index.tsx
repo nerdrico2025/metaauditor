@@ -142,9 +142,9 @@ export default function Campaigns() {
     return allCreatives.filter((creative: any) => adSetIds.includes(creative.adSetId)).length;
   };
 
-  const getCampaignBudget = (campaign: Campaign) => {
+  const getCampaignBudget = (campaign: Campaign): { value: number; type: 'cbo' | 'abo' } | null => {
     if (campaign.budget && parseFloat(campaign.budget) > 0) {
-      return parseFloat(campaign.budget);
+      return { value: parseFloat(campaign.budget), type: 'cbo' };
     }
     if (!Array.isArray(allAdSets)) return null;
     const campaignAdSets = allAdSets.filter((adSet: any) => adSet.campaignId === campaign.id);
@@ -155,7 +155,7 @@ export default function Campaigns() {
       return sum + daily;
     }, 0);
     
-    return totalDailyBudget > 0 ? totalDailyBudget : null;
+    return totalDailyBudget > 0 ? { value: totalDailyBudget, type: 'abo' } : null;
   };
 
   const filteredCampaigns = campaigns?.filter((campaign) => {
@@ -365,12 +365,18 @@ export default function Campaigns() {
                                 <TableCell>
                                   {(() => {
                                     const budget = getCampaignBudget(campaign);
-                                    return budget ? (
-                                      <span className="text-sm text-gray-600 dark:text-gray-400">
-                                        R$ {budget.toFixed(2)}/dia
-                                      </span>
-                                    ) : (
-                                      <span className="text-sm text-gray-400 dark:text-gray-600">-</span>
+                                    if (!budget) {
+                                      return <span className="text-sm text-gray-400 dark:text-gray-600">-</span>;
+                                    }
+                                    return (
+                                      <div className="flex flex-col">
+                                        <span className="text-sm text-gray-900 dark:text-gray-100 font-medium">
+                                          R$ {budget.value.toFixed(2)}/dia
+                                        </span>
+                                        <span className={`text-xs ${budget.type === 'cbo' ? 'text-blue-600 dark:text-blue-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                                          {budget.type === 'cbo' ? 'CBO' : 'Soma grupos'}
+                                        </span>
+                                      </div>
                                     );
                                   })()}
                                 </TableCell>
