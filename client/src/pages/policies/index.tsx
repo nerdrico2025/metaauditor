@@ -496,8 +496,12 @@ export default function Policies() {
                         formData.append('logo', file);
                         
                         try {
+                          const token = localStorage.getItem('auth_token');
                           const response = await fetch('/api/policies/upload-logo', {
                             method: 'POST',
+                            headers: {
+                              'Authorization': `Bearer ${token}`,
+                            },
                             body: formData,
                           });
                           
