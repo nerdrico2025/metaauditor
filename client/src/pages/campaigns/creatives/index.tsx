@@ -642,7 +642,7 @@ export default function Creatives() {
                             <TableHead className="w-[50px]"></TableHead>
                             <TableHead>Nome do Anúncio</TableHead>
                             <TableHead>Campanha</TableHead>
-                            <TableHead>Ad Set</TableHead>
+                            <TableHead>Grupo de Anúncios</TableHead>
                             <TableHead>Veiculação</TableHead>
                             <TableHead className="text-right">Impressões</TableHead>
                             <TableHead className="text-right">Cliques</TableHead>
