@@ -123,10 +123,14 @@ export default function Creatives() {
   const [analyzingCreativeId, setAnalyzingCreativeId] = useState<string | null>(null);
   const itemsPerPage = 10;
 
-  // Check for adSetId filter in URL params
+  // Check for campaignId or adSetId filter in URL params
   useEffect(() => {
     const params = new URLSearchParams(location.split('?')[1] || '');
+    const campaignId = params.get('campaignId');
     const adSetId = params.get('adSetId');
+    if (campaignId) {
+      setCampaignFilter(campaignId);
+    }
     if (adSetId) {
       setAdSetFilter(adSetId);
     }

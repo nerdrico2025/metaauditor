@@ -448,7 +448,7 @@ export default function AdSets() {
                                     size="sm"
                                     onClick={() => {
                                       const params = new URLSearchParams();
-                                      params.set('adSetId', adSet.id);
+                                      params.set('campaignId', adSet.campaignId);
                                       setLocation(`/creatives?${params.toString()}`);
                                     }}
                                     data-testid={`button-view-ads-${adSet.id}`}
