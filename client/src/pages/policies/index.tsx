@@ -245,21 +245,23 @@ export default function Policies() {
     
     if (pendingLogoFile) {
       try {
-        const formData = new FormData();
-        formData.append('logo', pendingLogoFile);
+        const ext = pendingLogoFile.name.split('.').pop() || 'png';
         
-        const token = localStorage.getItem('auth_token');
-        const response = await fetch('/api/policies/upload-logo', {
+        const presignedResponse = await apiRequest('/api/objects/upload/logo', {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-          body: formData,
+          body: JSON.stringify({ extension: ext }),
         });
         
-        if (response.ok) {
-          const result = await response.json();
-          logoUrl = result.url;
+        const uploadResponse = await fetch(presignedResponse.uploadURL, {
+          method: 'PUT',
+          body: pendingLogoFile,
+          headers: {
+            'Content-Type': pendingLogoFile.type || 'image/png',
+          },
+        });
+        
+        if (uploadResponse.ok) {
+          logoUrl = presignedResponse.objectPath;
         } else {
           toast({
             title: 'Erro no upload',
@@ -269,6 +271,7 @@ export default function Policies() {
           return;
         }
       } catch (error) {
+        console.error('Upload error:', error);
         toast({
           title: 'Erro no upload',
           description: 'Não foi possível enviar o logo.',
