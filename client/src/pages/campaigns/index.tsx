@@ -29,14 +29,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
   BellRing, 
-  Calendar, 
   DollarSign, 
   Search, 
-  AlertCircle,
   Layers,
   Image as ImageIcon,
-  Facebook,
-  ChevronRight
+  Facebook
 } from "lucide-react";
 import { SiGoogle } from 'react-icons/si';
 import { Link } from "wouter";
@@ -131,27 +128,6 @@ export default function Campaigns() {
     return <BellRing className="h-5 w-5 text-gray-600" />;
   };
 
-  const getPlatformName = (platform: string) => {
-    switch (platform) {
-      case 'meta':
-        return 'Meta Ads';
-      case 'google':
-        return 'Google Ads';
-      default:
-        return platform;
-    }
-  };
-
-  const formatDate = (date: Date | null | string | undefined) => {
-    if (!date) return 'Nunca';
-    return new Date(date).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
 
 
   const getAdSetCount = (campaignId: string) => {
@@ -336,13 +312,10 @@ export default function Campaigns() {
                           <TableRow className="bg-gray-50 dark:bg-gray-900">
                             <TableHead className="w-[50px]"></TableHead>
                             <TableHead>Nome da Campanha</TableHead>
-                            <TableHead>Plataforma</TableHead>
                             <TableHead>Veiculação</TableHead>
                             <TableHead>Orçamento</TableHead>
-                            <TableHead className="text-center">Ad Sets</TableHead>
+                            <TableHead className="text-center">Grupos de Anúncios</TableHead>
                             <TableHead className="text-center">Anúncios</TableHead>
-                            <TableHead>Criada em</TableHead>
-                            <TableHead className="text-right">Ações</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -360,11 +333,6 @@ export default function Campaigns() {
                                     <div className="font-medium text-gray-900 dark:text-white">{campaign.name}</div>
                                     <div className="text-xs text-gray-500 dark:text-gray-500">ID: {campaign.externalId}</div>
                                   </div>
-                                </TableCell>
-                                <TableCell>
-                                  <span className="text-sm text-gray-600 dark:text-gray-400">
-                                    {getPlatformName(campaign.platform)}
-                                  </span>
                                 </TableCell>
                                 <TableCell>
                                   <Badge variant={getStatusBadgeVariant(campaign.status)}>
@@ -406,29 +374,6 @@ export default function Campaigns() {
                                     <Link href="/creatives">
                                       <ImageIcon className="h-4 w-4 mr-1" />
                                       {creativeCount}
-                                    </Link>
-                                  </Button>
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex items-center space-x-1 text-sm text-gray-600 dark:text-gray-400">
-                                    <Calendar className="h-3 w-3" />
-                                    <span>
-                                      {campaign.createdAt 
-                                        ? new Date(campaign.createdAt).toLocaleDateString('pt-BR')
-                                        : '-'
-                                      }
-                                    </span>
-                                  </div>
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    asChild
-                                    data-testid={`button-details-${campaign.id}`}
-                                  >
-                                    <Link href={`/campaigns/${campaign.id}`}>
-                                      <ChevronRight className="h-4 w-4" />
                                     </Link>
                                   </Button>
                                 </TableCell>
