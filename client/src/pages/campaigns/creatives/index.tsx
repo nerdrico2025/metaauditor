@@ -569,7 +569,7 @@ export default function Creatives() {
                         <SelectValue placeholder="Todos Ad Sets" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">Todos Ad Sets</SelectItem>
+                        <SelectItem value="all">Todos Grupos de Campanha</SelectItem>
                         {adSets.map((adSet) => (
                           <SelectItem key={adSet.id} value={adSet.id}>
                             {adSet.name}

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
-import { Search, BarChart3, BellRing, Target, Image, FileText, Settings, History, LogOut, ExternalLink, ChevronDown, ChevronRight, Building2, Shield, Users } from "lucide-react";
+import { Search, BarChart3, BellRing, Target, Image, Settings, LogOut, ExternalLink, ChevronDown, ChevronRight, Building2, Shield, Users } from "lucide-react";
 import { useTranslation } from 'react-i18next';
 
 interface NavigationItem {
@@ -24,8 +24,6 @@ const navigation: NavigationItem[] = [
       { name: 'Anúncios', href: '/creatives', icon: Image },
     ]
   },
-  { name: 'Relatórios', href: '/reports', icon: FileText },
-  { name: 'Histórico', href: '/history', icon: History },
   { name: 'Políticas de Validação', href: '/policies', icon: Shield },
   { name: 'Integrações', href: '/integrations', icon: ExternalLink },
   { name: 'Usuários', href: '/users', icon: Users, requiredRole: 'company_admin' },
