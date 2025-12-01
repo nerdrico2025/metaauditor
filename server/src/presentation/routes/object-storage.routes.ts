@@ -1,16 +1,19 @@
 import { Router } from 'express';
-import { authenticateToken } from '../middlewares/auth.middleware';
+import { authenticateToken } from '../middlewares/auth.middleware.js';
 import type { Request, Response, NextFunction } from 'express';
+import multer from 'multer';
 import { objectStorageService, ObjectNotFoundError } from '../../infrastructure/services/ObjectStorageService.js';
-import { ObjectPermission } from '../../infrastructure/services/ObjectAcl.js';
 
 const router = Router();
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }
+});
 
 router.get('/objects/*', async (req: Request, res: Response) => {
   try {
     const objectPath = req.path;
-    const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
-    await objectStorageService.downloadObject(objectFile, res);
+    await objectStorageService.downloadObject(objectPath, res);
   } catch (error) {
     if (error instanceof ObjectNotFoundError) {
       return res.status(404).json({ error: 'File not found' });
@@ -20,10 +23,11 @@ router.get('/objects/*', async (req: Request, res: Response) => {
   }
 });
 
-router.post('/api/objects/upload/creative', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
+router.post('/api/objects/upload/creative', authenticateToken, upload.single('file'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const companyId = (req as any).user?.companyId;
-    const { adSetId, extension = 'jpg' } = req.body;
+    const { adSetId } = req.body;
+    const file = req.file;
     
     if (!companyId) {
       return res.status(400).json({ error: 'Company ID is required' });
@@ -33,52 +37,54 @@ router.post('/api/objects/upload/creative', authenticateToken, async (req: Reque
       return res.status(400).json({ error: 'AdSet ID is required' });
     }
 
-    const { uploadURL, objectPath } = await objectStorageService.getCreativeUploadURL(
-      companyId,
-      adSetId,
-      extension
-    );
+    if (!file) {
+      return res.status(400).json({ error: 'File is required' });
+    }
+
+    const extension = file.originalname.split('.').pop() || 'jpg';
+    const result = await objectStorageService.uploadCreative(companyId, adSetId, file.buffer, extension);
 
     res.json({ 
-      uploadURL, 
-      objectPath,
-      method: 'PUT'
+      objectPath: result.objectPath,
+      success: true
     });
   } catch (error) {
-    console.error('Error getting creative upload URL:', error);
+    console.error('Error uploading creative:', error);
     next(error);
   }
 });
 
-router.post('/api/objects/upload/logo', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
+router.post('/api/objects/upload/logo', authenticateToken, upload.single('file'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const companyId = (req as any).user?.companyId;
-    const { extension = 'png' } = req.body;
+    const file = req.file;
     
     if (!companyId) {
       return res.status(400).json({ error: 'Company ID is required' });
     }
 
-    const { uploadURL, objectPath } = await objectStorageService.getLogoUploadURL(
-      companyId,
-      extension
-    );
+    if (!file) {
+      return res.status(400).json({ error: 'File is required' });
+    }
+
+    const extension = file.originalname.split('.').pop() || 'png';
+    const result = await objectStorageService.uploadLogo(companyId, file.buffer, extension);
 
     res.json({ 
-      uploadURL, 
-      objectPath,
-      method: 'PUT'
+      objectPath: result.objectPath,
+      success: true
     });
   } catch (error) {
-    console.error('Error getting logo upload URL:', error);
+    console.error('Error uploading logo:', error);
     next(error);
   }
 });
 
-router.post('/api/objects/upload', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
+router.post('/api/objects/upload', authenticateToken, upload.single('file'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const companyId = (req as any).user?.companyId;
-    const { type, subPath, extension = 'jpg' } = req.body;
+    const { type, subPath } = req.body;
+    const file = req.file;
     
     if (!companyId) {
       return res.status(400).json({ error: 'Company ID is required' });
@@ -88,49 +94,20 @@ router.post('/api/objects/upload', authenticateToken, async (req: Request, res: 
       return res.status(400).json({ error: 'Invalid type. Must be creatives, logos, or documents' });
     }
 
-    const { uploadURL, objectPath } = await objectStorageService.getUploadURL(
-      { companyId, type, subPath },
-      extension
-    );
-
-    res.json({ 
-      uploadURL, 
-      objectPath,
-      method: 'PUT'
-    });
-  } catch (error) {
-    console.error('Error getting upload URL:', error);
-    next(error);
-  }
-});
-
-router.put('/api/objects/acl', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const userId = (req as any).user?.userId;
-    const companyId = (req as any).user?.companyId;
-    const { objectPath, visibility = 'private' } = req.body;
-    
-    if (!objectPath) {
-      return res.status(400).json({ error: 'Object path is required' });
+    if (!file) {
+      return res.status(400).json({ error: 'File is required' });
     }
 
-    const normalizedPath = await objectStorageService.trySetObjectEntityAclPolicy(
-      objectPath,
-      {
-        owner: userId,
-        visibility,
-      }
-    );
+    const extension = file.originalname.split('.').pop() || 'jpg';
+    const objectPath = objectStorageService.generateObjectPath({ companyId, type, subPath }, extension);
+    const result = await objectStorageService.uploadFromBuffer(objectPath, file.buffer);
 
     res.json({ 
-      success: true,
-      objectPath: normalizedPath 
+      objectPath: result.objectPath,
+      success: true
     });
   } catch (error) {
-    console.error('Error setting object ACL:', error);
-    if (error instanceof ObjectNotFoundError) {
-      return res.status(404).json({ error: 'Object not found' });
-    }
+    console.error('Error uploading file:', error);
     next(error);
   }
 });

@@ -1,33 +1,9 @@
-import { Storage, File } from "@google-cloud/storage";
+import { Client } from "@replit/object-storage";
 import { Response } from "express";
 import { randomUUID } from "crypto";
-import {
-  ObjectAclPolicy,
-  ObjectPermission,
-  canAccessObject,
-  getObjectAclPolicy,
-  setObjectAclPolicy,
-} from "./ObjectAcl.js";
+import { Readable } from "stream";
 
-const REPLIT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
-
-export const objectStorageClient = new Storage({
-  credentials: {
-    audience: "replit",
-    subject_token_type: "access_token",
-    token_url: `${REPLIT_SIDECAR_ENDPOINT}/token`,
-    type: "external_account",
-    credential_source: {
-      url: `${REPLIT_SIDECAR_ENDPOINT}/credential`,
-      format: {
-        type: "json",
-        subject_token_field_name: "access_token",
-      },
-    },
-    universe_domain: "googleapis.com",
-  },
-  projectId: "",
-});
+const objectStorageClient = new Client();
 
 export class ObjectNotFoundError extends Error {
   constructor() {
@@ -43,74 +19,8 @@ export interface UploadContext {
   subPath?: string;
 }
 
-function parseObjectPath(path: string): { bucketName: string; objectName: string } {
-  if (!path.startsWith("/")) {
-    path = `/${path}`;
-  }
-  const pathParts = path.split("/");
-  if (pathParts.length < 3) {
-    throw new Error("Invalid path: must contain at least a bucket name");
-  }
-
-  const bucketName = pathParts[1];
-  const objectName = pathParts.slice(2).join("/");
-
-  return { bucketName, objectName };
-}
-
-async function signObjectURL({
-  bucketName,
-  objectName,
-  method,
-  ttlSec,
-}: {
-  bucketName: string;
-  objectName: string;
-  method: "GET" | "PUT" | "DELETE" | "HEAD";
-  ttlSec: number;
-}): Promise<string> {
-  const request = {
-    bucket_name: bucketName,
-    object_name: objectName,
-    method,
-    expires_at: new Date(Date.now() + ttlSec * 1000).toISOString(),
-  };
-  
-  const response = await fetch(
-    `${REPLIT_SIDECAR_ENDPOINT}/object-storage/signed-object-url`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(request),
-    }
-  );
-  
-  if (!response.ok) {
-    throw new Error(
-      `Failed to sign object URL, errorcode: ${response.status}, ` +
-        `make sure you're running on Replit`
-    );
-  }
-
-  const data = await response.json() as { signed_url: string };
-  return data.signed_url;
-}
-
 export class ObjectStorageService {
   constructor() {}
-
-  getPrivateObjectDir(): string {
-    const dir = process.env.PRIVATE_OBJECT_DIR || "";
-    if (!dir) {
-      throw new Error(
-        "PRIVATE_OBJECT_DIR not set. Create a bucket in 'Object Storage' " +
-          "tool and set PRIVATE_OBJECT_DIR env var."
-      );
-    }
-    return dir;
-  }
 
   buildCompanyPath(companyId: string, type: string, subPath?: string): string {
     const parts = ['companies', companyId, type];
@@ -120,165 +30,122 @@ export class ObjectStorageService {
     return parts.join('/');
   }
 
-  async getUploadURL(context: UploadContext, extension: string = 'jpg'): Promise<{ uploadURL: string; objectPath: string }> {
-    const privateObjectDir = this.getPrivateObjectDir();
+  generateObjectPath(context: UploadContext, extension: string = 'jpg'): string {
     const objectId = randomUUID();
     const filename = `${objectId}.${extension}`;
-    const relativePath = `${this.buildCompanyPath(context.companyId, context.type, context.subPath)}/${filename}`;
-    
-    let fullPath = privateObjectDir;
-    if (!fullPath.endsWith('/')) {
-      fullPath = `${fullPath}/`;
-    }
-    fullPath = `${fullPath}${relativePath}`;
-
-    const { bucketName, objectName } = parseObjectPath(fullPath);
-
-    const signedUrl = await signObjectURL({
-      bucketName,
-      objectName,
-      method: "PUT",
-      ttlSec: 900,
-    });
-
-    return {
-      uploadURL: signedUrl,
-      objectPath: `/objects/${relativePath}`,
-    };
+    return `${this.buildCompanyPath(context.companyId, context.type, context.subPath)}/${filename}`;
   }
 
-  async getCreativeUploadURL(companyId: string, adSetId: string, extension: string = 'jpg'): Promise<{ uploadURL: string; objectPath: string }> {
-    return this.getUploadURL({
+  async uploadFromBuffer(objectPath: string, buffer: Buffer): Promise<{ objectPath: string }> {
+    let cleanPath = objectPath;
+    if (cleanPath.startsWith("/objects/")) {
+      cleanPath = cleanPath.slice("/objects/".length);
+    }
+
+    const result = await objectStorageClient.uploadFromBytes(cleanPath, buffer);
+    
+    if (!result.ok) {
+      throw new Error(`Failed to upload: ${result.error?.message || 'Unknown error'}`);
+    }
+
+    return { objectPath: `/objects/${cleanPath}` };
+  }
+
+  async uploadCreative(companyId: string, adSetId: string, buffer: Buffer, extension: string = 'jpg'): Promise<{ objectPath: string }> {
+    const path = this.generateObjectPath({
       companyId,
       type: 'creatives',
       subPath: adSetId,
     }, extension);
+    
+    return this.uploadFromBuffer(path, buffer);
   }
 
-  async getLogoUploadURL(companyId: string, extension: string = 'png'): Promise<{ uploadURL: string; objectPath: string }> {
-    return this.getUploadURL({
+  async uploadLogo(companyId: string, buffer: Buffer, extension: string = 'png'): Promise<{ objectPath: string }> {
+    const path = this.generateObjectPath({
       companyId,
       type: 'logos',
     }, extension);
+    
+    return this.uploadFromBuffer(path, buffer);
   }
 
-  async getObjectEntityFile(objectPath: string): Promise<File> {
-    if (!objectPath.startsWith("/objects/")) {
-      throw new ObjectNotFoundError();
+  async downloadObject(objectPath: string, res: Response) {
+    let cleanPath = objectPath;
+    if (cleanPath.startsWith("/objects/")) {
+      cleanPath = cleanPath.slice("/objects/".length);
     }
 
-    const parts = objectPath.slice(1).split("/");
-    if (parts.length < 2) {
-      throw new ObjectNotFoundError();
-    }
-
-    const entityId = parts.slice(1).join("/");
-    let entityDir = this.getPrivateObjectDir();
-    if (!entityDir.endsWith("/")) {
-      entityDir = `${entityDir}/`;
-    }
-    const objectEntityPath = `${entityDir}${entityId}`;
-    const { bucketName, objectName } = parseObjectPath(objectEntityPath);
-    const bucket = objectStorageClient.bucket(bucketName);
-    const objectFile = bucket.file(objectName);
-    const [exists] = await objectFile.exists();
-    if (!exists) {
-      throw new ObjectNotFoundError();
-    }
-    return objectFile;
-  }
-
-  async downloadObject(file: File, res: Response, cacheTtlSec: number = 3600) {
     try {
-      const [metadata] = await file.getMetadata();
-      const aclPolicy = await getObjectAclPolicy(file);
-      const isPublic = aclPolicy?.visibility === "public";
+      const result = await objectStorageClient.downloadAsBytes(cleanPath);
       
+      if (!result.ok || !result.value) {
+        throw new ObjectNotFoundError();
+      }
+
+      const buffer = result.value[0];
+      const ext = cleanPath.split('.').pop()?.toLowerCase() || '';
+      const contentTypes: Record<string, string> = {
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'png': 'image/png',
+        'gif': 'image/gif',
+        'svg': 'image/svg+xml',
+        'webp': 'image/webp',
+        'mp4': 'video/mp4',
+        'webm': 'video/webm',
+        'pdf': 'application/pdf',
+      };
+
       res.set({
-        "Content-Type": metadata.contentType || "application/octet-stream",
-        "Content-Length": metadata.size,
-        "Cache-Control": `${isPublic ? "public" : "private"}, max-age=${cacheTtlSec}`,
+        "Content-Type": contentTypes[ext] || "application/octet-stream",
+        "Content-Length": buffer.length,
+        "Cache-Control": "public, max-age=3600",
       });
 
-      const stream = file.createReadStream();
-
-      stream.on("error", (err) => {
-        console.error("Stream error:", err);
-        if (!res.headersSent) {
-          res.status(500).json({ error: "Error streaming file" });
-        }
-      });
-
-      stream.pipe(res);
+      res.send(buffer);
     } catch (error) {
       console.error("Error downloading file:", error);
+      if (error instanceof ObjectNotFoundError) {
+        throw error;
+      }
       if (!res.headersSent) {
         res.status(500).json({ error: "Error downloading file" });
       }
     }
   }
 
-  normalizeObjectEntityPath(rawPath: string): string {
-    if (!rawPath.startsWith("https://storage.googleapis.com/")) {
-      return rawPath;
-    }
-
-    const url = new URL(rawPath);
-    const rawObjectPath = url.pathname;
-
-    let objectEntityDir = this.getPrivateObjectDir();
-    if (!objectEntityDir.endsWith("/")) {
-      objectEntityDir = `${objectEntityDir}/`;
-    }
-
-    if (!rawObjectPath.startsWith(objectEntityDir)) {
-      return rawObjectPath;
-    }
-
-    const entityId = rawObjectPath.slice(objectEntityDir.length);
-    return `/objects/${entityId}`;
-  }
-
-  async trySetObjectEntityAclPolicy(
-    rawPath: string,
-    aclPolicy: ObjectAclPolicy
-  ): Promise<string> {
-    const normalizedPath = this.normalizeObjectEntityPath(rawPath);
-    if (!normalizedPath.startsWith("/")) {
-      return normalizedPath;
-    }
-
-    const objectFile = await this.getObjectEntityFile(normalizedPath);
-    await setObjectAclPolicy(objectFile, aclPolicy);
-    return normalizedPath;
-  }
-
-  async canAccessObjectEntity({
-    userId,
-    objectFile,
-    requestedPermission,
-  }: {
-    userId?: string;
-    objectFile: File;
-    requestedPermission?: ObjectPermission;
-  }): Promise<boolean> {
-    return canAccessObject({
-      userId,
-      objectFile,
-      requestedPermission: requestedPermission ?? ObjectPermission.READ,
-    });
-  }
-
   async deleteObject(objectPath: string): Promise<void> {
-    try {
-      const objectFile = await this.getObjectEntityFile(objectPath);
-      await objectFile.delete();
-    } catch (error) {
-      if (error instanceof ObjectNotFoundError) {
-        return;
-      }
-      throw error;
+    let cleanPath = objectPath;
+    if (cleanPath.startsWith("/objects/")) {
+      cleanPath = cleanPath.slice("/objects/".length);
     }
+
+    try {
+      await objectStorageClient.delete(cleanPath, { ignoreNotFound: true });
+    } catch (error) {
+      console.error("Error deleting object:", error);
+    }
+  }
+
+  async objectExists(objectPath: string): Promise<boolean> {
+    let cleanPath = objectPath;
+    if (cleanPath.startsWith("/objects/")) {
+      cleanPath = cleanPath.slice("/objects/".length);
+    }
+
+    const result = await objectStorageClient.exists(cleanPath);
+    return result.ok && result.value === true;
+  }
+
+  async listObjects(prefix: string): Promise<string[]> {
+    const result = await objectStorageClient.list({ prefix });
+    
+    if (!result.ok || !result.value) {
+      return [];
+    }
+
+    return result.value.map(obj => `/objects/${obj.name}`);
   }
 }
 

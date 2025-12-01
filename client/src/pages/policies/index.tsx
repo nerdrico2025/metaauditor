@@ -245,23 +245,21 @@ export default function Policies() {
     
     if (pendingLogoFile) {
       try {
-        const ext = pendingLogoFile.name.split('.').pop() || 'png';
+        const formData = new FormData();
+        formData.append('file', pendingLogoFile);
         
-        const presignedResponse = await apiRequest('/api/objects/upload/logo', {
+        const token = localStorage.getItem('auth_token');
+        const response = await fetch('/api/objects/upload/logo', {
           method: 'POST',
-          body: JSON.stringify({ extension: ext }),
-        });
-        
-        const uploadResponse = await fetch(presignedResponse.uploadURL, {
-          method: 'PUT',
-          body: pendingLogoFile,
           headers: {
-            'Content-Type': pendingLogoFile.type || 'image/png',
+            'Authorization': `Bearer ${token}`,
           },
+          body: formData,
         });
         
-        if (uploadResponse.ok) {
-          logoUrl = presignedResponse.objectPath;
+        if (response.ok) {
+          const result = await response.json();
+          logoUrl = result.objectPath;
         } else {
           toast({
             title: 'Erro no upload',
