@@ -70,7 +70,7 @@ export interface SyncProgressCallback {
 }
 
 export class MetaAdsService {
-  private readonly apiVersion = 'v21.0';
+  private readonly apiVersion = 'v22.0';
   private readonly baseUrl = 'https://graph.facebook.com';
   private readonly requestDelay = 3000; // 3s delay between page requests (increased from 2s)
   private readonly campaignDelay = 8000; // 8s delay between campaigns
