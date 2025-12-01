@@ -128,9 +128,10 @@ router.delete('/:id', authenticateToken, async (req: Request, res: Response, nex
 router.post('/:id/sync-token', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user?.userId;
+    const userCompanyId = (req as any).user?.companyId;
     const integration = await storage.getIntegrationById(req.params.id);
     
-    if (!integration || integration.userId !== userId) {
+    if (!integration || integration.companyId !== userCompanyId) {
       return res.status(404).json({ message: 'Integração não encontrada' });
     }
     
@@ -173,8 +174,9 @@ router.get('/:id/sync-stream', async (req: Request, res: Response) => {
   }
   
   const integration = await storage.getIntegrationById(integrationId);
+  const user = await storage.getUserById(userId);
   
-  if (!integration || integration.userId !== userId) {
+  if (!integration || integration.companyId !== user?.companyId) {
     return res.status(404).json({ message: 'Integração não encontrada' });
   }
 
@@ -452,13 +454,14 @@ router.get('/:id/sync-stream', async (req: Request, res: Response) => {
 router.post('/:id/sync', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user?.userId;
+    const userCompanyId = (req as any).user?.companyId;
     const integration = await storage.getIntegrationById(req.params.id);
     
     if (!integration) {
       return res.status(404).json({ message: 'Integração não encontrada' });
     }
 
-    if (integration.userId !== userId) {
+    if (integration.companyId !== userCompanyId) {
       return res.status(403).json({ message: 'Sem permissão para acessar esta integração' });
     }
 
@@ -663,13 +666,14 @@ router.post('/:id/sync', authenticateToken, async (req: Request, res: Response, 
 router.get('/:id/debug/count-ads', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user?.userId;
+    const userCompanyId = (req as any).user?.companyId;
     const integration = await storage.getIntegrationById(req.params.id);
     
     if (!integration) {
       return res.status(404).json({ message: 'Integração não encontrada' });
     }
 
-    if (integration.userId !== userId) {
+    if (integration.companyId !== userCompanyId) {
       return res.status(403).json({ message: 'Sem permissão para acessar esta integração' });
     }
 
@@ -807,13 +811,14 @@ router.get('/:id/debug/count-ads', authenticateToken, async (req: Request, res: 
 router.post('/:id/validate', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user?.userId;
+    const userCompanyId = (req as any).user?.companyId;
     const integration = await storage.getIntegrationById(req.params.id);
     
     if (!integration) {
       return res.status(404).json({ message: 'Integração não encontrada' });
     }
 
-    if (integration.userId !== userId) {
+    if (integration.companyId !== userCompanyId) {
       return res.status(403).json({ message: 'Sem permissão para acessar esta integração' });
     }
 
