@@ -97,6 +97,8 @@ export default function Policies() {
   const { isAuthenticated, isLoading } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPolicy, setEditingPolicy] = useState<Policy | null>(null);
+  const [pendingLogoFile, setPendingLogoFile] = useState<File | null>(null);
+  const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
 
   const form = useForm<PolicyFormData>({
     resolver: zodResolver(policyFormSchema),
@@ -216,12 +218,64 @@ export default function Policies() {
     setDialogOpen(true);
   };
 
-  const handleSubmit = (data: PolicyFormData) => {
-    if (editingPolicy) {
-      updateMutation.mutate({ id: editingPolicy.id, data });
-    } else {
-      createMutation.mutate(data);
+  const handleSubmit = async (data: PolicyFormData) => {
+    let logoUrl = data.logoUrl;
+    
+    if (pendingLogoFile) {
+      try {
+        const formData = new FormData();
+        formData.append('logo', pendingLogoFile);
+        
+        const token = localStorage.getItem('auth_token');
+        const response = await fetch('/api/policies/upload-logo', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+          body: formData,
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          logoUrl = result.url;
+        } else {
+          toast({
+            title: 'Erro no upload',
+            description: 'Não foi possível enviar o logo.',
+            variant: 'destructive',
+          });
+          return;
+        }
+      } catch (error) {
+        toast({
+          title: 'Erro no upload',
+          description: 'Não foi possível enviar o logo.',
+          variant: 'destructive',
+        });
+        return;
+      }
     }
+    
+    const finalData = { ...data, logoUrl };
+    
+    if (editingPolicy) {
+      updateMutation.mutate({ id: editingPolicy.id, data: finalData });
+    } else {
+      createMutation.mutate(finalData);
+    }
+  };
+  
+  const handleDialogClose = (open: boolean) => {
+    if (!open) {
+      setEditingPolicy(null);
+      setPendingLogoFile(null);
+      if (logoPreviewUrl) {
+        URL.revokeObjectURL(logoPreviewUrl);
+        setLogoPreviewUrl(null);
+      }
+      form.reset();
+    }
+    setDialogOpen(open);
   };
 
   const handleDelete = (id: string) => {
@@ -350,7 +404,7 @@ export default function Policies() {
         </main>
       </div>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={handleDialogClose}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingPolicy ? 'Editar Política' : 'Nova Política de Validação'}</DialogTitle>
