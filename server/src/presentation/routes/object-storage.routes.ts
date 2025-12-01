@@ -1,16 +1,15 @@
 import { Router } from 'express';
 import { authenticateToken } from '../middlewares/auth.middleware';
 import type { Request, Response, NextFunction } from 'express';
-import { objectStorageService, ObjectNotFoundError } from '../../infrastructure/services/ObjectStorageService';
-import { ObjectPermission } from '../../infrastructure/services/ObjectAcl';
-import { storage } from '../../shared/services/storage.service.js';
+import { objectStorageService, ObjectNotFoundError } from '../../infrastructure/services/ObjectStorageService.js';
+import { ObjectPermission } from '../../infrastructure/services/ObjectAcl.js';
 
 const router = Router();
 
 router.get('/objects/*', async (req: Request, res: Response) => {
   try {
     const objectPath = req.path;
-    const objectFile = await objectStorageService.getObjectFile(objectPath);
+    const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
     await objectStorageService.downloadObject(objectFile, res);
   } catch (error) {
     if (error instanceof ObjectNotFoundError) {
@@ -23,7 +22,6 @@ router.get('/objects/*', async (req: Request, res: Response) => {
 
 router.post('/api/objects/upload/creative', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = (req as any).user?.userId;
     const companyId = (req as any).user?.companyId;
     const { adSetId, extension = 'jpg' } = req.body;
     
@@ -54,7 +52,6 @@ router.post('/api/objects/upload/creative', authenticateToken, async (req: Reque
 
 router.post('/api/objects/upload/logo', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = (req as any).user?.userId;
     const companyId = (req as any).user?.companyId;
     const { extension = 'png' } = req.body;
     
@@ -80,7 +77,6 @@ router.post('/api/objects/upload/logo', authenticateToken, async (req: Request, 
 
 router.post('/api/objects/upload', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = (req as any).user?.userId;
     const companyId = (req as any).user?.companyId;
     const { type, subPath, extension = 'jpg' } = req.body;
     
@@ -118,13 +114,13 @@ router.put('/api/objects/acl', authenticateToken, async (req: Request, res: Resp
       return res.status(400).json({ error: 'Object path is required' });
     }
 
-    const normalizedPath = objectStorageService.normalizeObjectPath(objectPath);
-    
-    await objectStorageService.setObjectAcl(normalizedPath, {
-      owner: userId,
-      companyId,
-      visibility,
-    });
+    const normalizedPath = await objectStorageService.trySetObjectEntityAclPolicy(
+      objectPath,
+      {
+        owner: userId,
+        visibility,
+      }
+    );
 
     res.json({ 
       success: true,
