@@ -7,7 +7,7 @@ import {
   canAccessObject,
   getObjectAclPolicy,
   setObjectAclPolicy,
-} from "./ObjectAcl";
+} from "./ObjectAcl.js";
 
 const REPLIT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
 
@@ -264,8 +264,8 @@ export class ObjectStorageService {
       );
     }
 
-    const { signed_url: signedURL } = await response.json();
-    return signedURL;
+    const data = await response.json() as { signed_url: string };
+    return data.signed_url;
   }
 }
 
