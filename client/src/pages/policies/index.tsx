@@ -92,6 +92,30 @@ const policyFormSchema = z.object({
 
 type PolicyFormData = z.infer<typeof policyFormSchema>;
 
+const defaultFormValues: PolicyFormData = {
+  name: "",
+  description: "",
+  scope: "global",
+  campaignIds: [],
+  brandName: "",
+  logoUrl: "",
+  primaryColor: "",
+  secondaryColor: "",
+  accentColor: "",
+  brandGuidelines: "",
+  requiredKeywords: [],
+  prohibitedKeywords: [],
+  requiresLogo: false,
+  requiresBrandColors: false,
+  ctrMin: "",
+  ctrTarget: "",
+  cpcMax: "",
+  cpcTarget: "",
+  conversionsMin: undefined,
+  conversionsTarget: undefined,
+  isDefault: false,
+};
+
 export default function Policies() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
@@ -102,29 +126,7 @@ export default function Policies() {
 
   const form = useForm<PolicyFormData>({
     resolver: zodResolver(policyFormSchema),
-    defaultValues: {
-      name: "",
-      description: "",
-      scope: "global",
-      campaignIds: [],
-      brandName: "",
-      logoUrl: "",
-      primaryColor: "",
-      secondaryColor: "",
-      accentColor: "",
-      brandGuidelines: "",
-      requiredKeywords: [],
-      prohibitedKeywords: [],
-      requiresLogo: false,
-      requiresBrandColors: false,
-      ctrMin: "",
-      ctrTarget: "",
-      cpcMax: "",
-      cpcTarget: "",
-      conversionsMin: undefined,
-      conversionsTarget: undefined,
-      isDefault: false,
-    },
+    defaultValues: defaultFormValues,
   });
 
   useEffect(() => {
@@ -155,7 +157,7 @@ export default function Policies() {
         URL.revokeObjectURL(logoPreviewUrl);
         setLogoPreviewUrl(null);
       }
-      form.reset();
+      form.reset(defaultFormValues);
     },
     onError: () => {
       toast({ title: 'Erro ao criar política', variant: 'destructive' });
@@ -175,7 +177,7 @@ export default function Policies() {
         URL.revokeObjectURL(logoPreviewUrl);
         setLogoPreviewUrl(null);
       }
-      form.reset();
+      form.reset(defaultFormValues);
     },
     onError: () => {
       toast({ title: 'Erro ao atualizar política', variant: 'destructive' });
@@ -201,7 +203,7 @@ export default function Policies() {
       URL.revokeObjectURL(logoPreviewUrl);
       setLogoPreviewUrl(null);
     }
-    form.reset();
+    form.reset(defaultFormValues);
     setDialogOpen(true);
   };
 
@@ -293,7 +295,7 @@ export default function Policies() {
         URL.revokeObjectURL(logoPreviewUrl);
         setLogoPreviewUrl(null);
       }
-      form.reset();
+      form.reset(defaultFormValues);
     }
     setDialogOpen(open);
   };
