@@ -359,8 +359,9 @@ router.get('/:id/sync-stream', async (req: Request, res: Response) => {
           integration,
           userId,
           companyId,
+          integration.id,
           adSetMap,
-          (current, message) => {
+          (current: number, message?: string) => {
             // Send progress during API fetch (before total count is known)
             sendEvent('progress', {
               step: 3,
@@ -570,6 +571,7 @@ router.post('/:id/sync', authenticateToken, async (req: Request, res: Response, 
           integration,
           userId,
           companyId,
+          integration.id,
           adSetMap
         );
         console.log(`✅ Found ${ads.length} ads from Meta API`);

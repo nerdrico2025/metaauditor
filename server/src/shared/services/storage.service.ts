@@ -369,6 +369,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteIntegration(integrationId: string, userId: string, deleteData: boolean = true): Promise<void> {
+    // Get integration info before deleting (for Object Storage cleanup)
+    const integration = await this.getIntegrationById(integrationId);
+    const companyId = integration?.companyId;
+    
     // Use a database transaction to prevent deadlocks and ensure atomicity
     await db.transaction(async (tx) => {
       if (deleteData) {
@@ -381,21 +385,13 @@ export class DatabaseStorage implements IStorage {
         const campaignIds = integrationCampaigns.map(c => c.id);
         
         if (campaignIds.length > 0) {
-          // Get all creatives to delete their images
+          // Delete in reverse order of dependencies to avoid foreign key conflicts
+          // 1. Delete all audits and audit actions for these creatives
           const creativesToDelete = await tx
             .select()
             .from(creatives)
             .where(inArray(creatives.campaignId, campaignIds));
           
-          // Delete image files from filesystem (outside transaction, but safe)
-          for (const creative of creativesToDelete) {
-            if (creative.imageUrl && creative.imageUrl.startsWith('/uploads/')) {
-              await this.deleteImageFile(creative.imageUrl);
-            }
-          }
-          
-          // Delete in reverse order of dependencies to avoid foreign key conflicts
-          // 1. Delete all audits and audit actions for these creatives
           const creativeIds = creativesToDelete.map(c => c.id);
           if (creativeIds.length > 0) {
             // Get all audit IDs for these creatives
@@ -446,6 +442,13 @@ export class DatabaseStorage implements IStorage {
         .delete(integrations)
         .where(eq(integrations.id, integrationId));
     });
+    
+    // Delete all images from Object Storage (outside transaction)
+    if (deleteData && companyId) {
+      console.log(`🗑️  Deleting all images from Object Storage for integration ${integrationId}...`);
+      const deletedCount = await objectStorageService.deleteIntegrationFolder(companyId, integrationId);
+      console.log(`✅ Deleted ${deletedCount} images from Object Storage`);
+    }
   }
 
   private async deleteImageFile(imageUrl: string): Promise<void> {

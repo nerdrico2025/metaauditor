@@ -608,6 +608,7 @@ export class MetaAdsService {
     integration: Integration,
     userId: string,
     companyId: string | null,
+    integrationId: string,
     adSetMap: Map<string, { dbId: string; campaignId: string }>, // Map of externalAdSetId -> { dbAdSetId, dbCampaignId }
     progressCallback?: (current: number, message?: string) => void
   ): Promise<InsertCreative[]> {
@@ -647,9 +648,9 @@ export class MetaAdsService {
         
         // Download and save image to Object Storage
         let imageUrl = ad.creative?.image_url || null;
-        if (imageUrl && companyId) {
+        if (imageUrl && companyId && integrationId) {
           console.log(`🖼️  Downloading image for ad ${ad.id}...`);
-          const objectUrl = await imageStorageService.downloadAndSaveImage(imageUrl, companyId, adSetInfo.dbId);
+          const objectUrl = await imageStorageService.downloadAndSaveImage(imageUrl, companyId, integrationId, adSetInfo.dbId);
           if (objectUrl) {
             imageUrl = objectUrl;
             console.log(`✅ Image saved to Object Storage: ${objectUrl}`);
@@ -698,7 +699,8 @@ export class MetaAdsService {
     adSetId: string,
     campaignId: string,
     userId: string,
-    companyId: string | null = null
+    companyId: string | null = null,
+    integrationId: string | null = null
   ): Promise<InsertCreative[]> {
     if (!integration.accessToken) {
       throw new Error('Missing access token');
@@ -719,9 +721,9 @@ export class MetaAdsService {
           
           // Download and save image to Object Storage
           let imageUrl = ad.creative?.image_url || null;
-          if (imageUrl && companyId) {
+          if (imageUrl && companyId && integrationId) {
             console.log(`🖼️  Downloading image for ad ${ad.id}...`);
-            const objectUrl = await imageStorageService.downloadAndSaveImage(imageUrl, companyId, adSetId);
+            const objectUrl = await imageStorageService.downloadAndSaveImage(imageUrl, companyId, integrationId, adSetId);
             if (objectUrl) {
               imageUrl = objectUrl;
               console.log(`✅ Image saved to Object Storage: ${objectUrl}`);

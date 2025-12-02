@@ -7,10 +7,11 @@ export class ImageStorageService {
    * Downloads an image from a URL and saves it to Object Storage
    * @param imageUrl - The external URL of the image
    * @param companyId - The company ID for the storage path
+   * @param integrationId - The integration ID for organizing by integration
    * @param adSetId - The ad set ID for organizing creatives
    * @returns The Object Storage path to the saved image
    */
-  async downloadAndSaveImage(imageUrl: string, companyId: string, adSetId: string): Promise<string | null> {
+  async downloadAndSaveImage(imageUrl: string, companyId: string, integrationId: string, adSetId: string): Promise<string | null> {
     try {
       // Skip if already an Object Storage URL
       if (imageUrl.startsWith('/objects/')) {
@@ -56,8 +57,8 @@ export class ImageStorageService {
       // Download image as buffer
       const buffer = await response.buffer();
       
-      // Upload to Object Storage
-      const result = await objectStorageService.uploadCreative(companyId, adSetId, buffer, extension);
+      // Upload to Object Storage with integration path
+      const result = await objectStorageService.uploadCreative(companyId, integrationId, adSetId, buffer, extension);
       
       console.log(`✅ Image saved to Object Storage: ${result.objectPath}`);
       return result.objectPath;
@@ -71,11 +72,12 @@ export class ImageStorageService {
    * Downloads multiple images in parallel
    * @param imageUrls - Array of image URLs to download
    * @param companyId - The company ID for the storage path
+   * @param integrationId - The integration ID for organizing by integration
    * @param adSetId - The ad set ID for organizing creatives
    * @returns Array of Object Storage paths (nulls for failed downloads)
    */
-  async downloadAndSaveMultiple(imageUrls: string[], companyId: string, adSetId: string): Promise<(string | null)[]> {
-    const promises = imageUrls.map(url => this.downloadAndSaveImage(url, companyId, adSetId));
+  async downloadAndSaveMultiple(imageUrls: string[], companyId: string, integrationId: string, adSetId: string): Promise<(string | null)[]> {
+    const promises = imageUrls.map(url => this.downloadAndSaveImage(url, companyId, integrationId, adSetId));
     return Promise.all(promises);
   }
 }

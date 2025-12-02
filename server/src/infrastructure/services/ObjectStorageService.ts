@@ -51,14 +51,32 @@ export class ObjectStorageService {
     return { objectPath: `/objects/${cleanPath}` };
   }
 
-  async uploadCreative(companyId: string, adSetId: string, buffer: Buffer, extension: string = 'jpg'): Promise<{ objectPath: string }> {
-    const path = this.generateObjectPath({
-      companyId,
-      type: 'campaigns',
-      subPath: adSetId,
-    }, extension);
+  async uploadCreative(companyId: string, integrationId: string, adSetId: string, buffer: Buffer, extension: string = 'jpg'): Promise<{ objectPath: string }> {
+    const objectId = randomUUID();
+    const filename = `${objectId}.${extension}`;
+    const path = `companies/${companyId}/integrations/${integrationId}/campaigns/${adSetId}/${filename}`;
     
     return this.uploadFromBuffer(path, buffer);
+  }
+
+  async deleteIntegrationFolder(companyId: string, integrationId: string): Promise<number> {
+    const prefix = `companies/${companyId}/integrations/${integrationId}/`;
+    console.log(`🗑️  Deleting all objects with prefix: ${prefix}`);
+    
+    try {
+      const objects = await this.listObjects(prefix);
+      console.log(`📁 Found ${objects.length} objects to delete`);
+      
+      for (const objectPath of objects) {
+        await this.deleteObject(objectPath);
+      }
+      
+      console.log(`✅ Deleted ${objects.length} objects from integration folder`);
+      return objects.length;
+    } catch (error) {
+      console.error('Error deleting integration folder:', error);
+      return 0;
+    }
   }
 
   async uploadLogo(companyId: string, buffer: Buffer, extension: string = 'png'): Promise<{ objectPath: string }> {
