@@ -438,16 +438,6 @@ export class DatabaseStorage implements IStorage {
         await tx
           .delete(syncHistory)
           .where(eq(syncHistory.integrationId, integrationId));
-        
-        // 6. Delete webhook events related to campaigns from this integration
-        if (campaignIds.length > 0) {
-          const campaignExternalIds = integrationCampaigns.map(c => c.externalId);
-          if (campaignExternalIds.length > 0) {
-            await tx
-              .delete(webhookEvents)
-              .where(inArray(webhookEvents.externalId, campaignExternalIds));
-          }
-        }
       }
       
       // Finally, delete the integration itself
