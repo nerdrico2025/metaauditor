@@ -1,6 +1,7 @@
 
 import { db } from '../../infrastructure/database/connection';
 import { eq, desc, sql, and, count, inArray, notInArray, not } from "drizzle-orm";
+import { objectStorageService } from '../../infrastructure/services/ObjectStorageService.js';
 import {
   companies,
   users,
@@ -449,13 +450,16 @@ export class DatabaseStorage implements IStorage {
 
   private async deleteImageFile(imageUrl: string): Promise<void> {
     try {
-      const { unlink } = await import('fs/promises');
-      const { join } = await import('path');
-      
-      // Convert URL path to filesystem path
-      const filepath = join(process.cwd(), 'server', 'public', imageUrl);
-      await unlink(filepath);
-      console.log(`🗑️  Deleted image file: ${filepath}`);
+      if (imageUrl.startsWith('/objects/')) {
+        await objectStorageService.deleteObject(imageUrl);
+        console.log(`🗑️  Deleted image from Object Storage: ${imageUrl}`);
+      } else {
+        const { unlink } = await import('fs/promises');
+        const { join } = await import('path');
+        const filepath = join(process.cwd(), 'server', 'public', imageUrl);
+        await unlink(filepath);
+        console.log(`🗑️  Deleted image file: ${filepath}`);
+      }
     } catch (error) {
       console.log(`⚠️  Could not delete image file ${imageUrl}:`, error);
     }
