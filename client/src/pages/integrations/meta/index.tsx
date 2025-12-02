@@ -303,9 +303,7 @@ export default function MetaIntegrations() {
 
   const deleteMutation = useMutation({
     mutationFn: ({ id, deleteData }: { id: string; deleteData: boolean }) => {
-      const url = deleteData 
-        ? `/api/integrations/${id}?deleteData=true`
-        : `/api/integrations/${id}`;
+      const url = `/api/integrations/${id}?deleteData=${deleteData}`;
       return apiRequest(url, { method: 'DELETE' });
     },
     onSuccess: (_, variables) => {
