@@ -72,10 +72,16 @@ router.post('/reset-sync', authenticateToken, async (req: Request, res: Response
 router.post('/', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user?.userId;
-    const companyId = (req as any).user?.companyId;
+    let companyId = (req as any).user?.companyId;
+    
+    // If companyId is not in token, fetch from user record
+    if (!companyId && userId) {
+      const user = await storage.getUserById(userId);
+      companyId = user?.companyId || null;
+    }
+    
     const integration = await storage.createIntegration({
       ...req.body,
-      userId,
       companyId,
     });
     res.status(201).json(integration);
