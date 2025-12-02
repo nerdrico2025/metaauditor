@@ -72,9 +72,11 @@ router.post('/reset-sync', authenticateToken, async (req: Request, res: Response
 router.post('/', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user?.userId;
+    const companyId = (req as any).user?.companyId;
     const integration = await storage.createIntegration({
       ...req.body,
       userId,
+      companyId,
     });
     res.status(201).json(integration);
   } catch (error) {
