@@ -372,6 +372,12 @@ router.post('/select-account', async (req: Request, res: Response, next: NextFun
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
+    // Get user's companyId from database
+    const user = await storage.getUserById(userId);
+    const companyId = user?.companyId || null;
+    
+    console.log(`📋 Creating integration for user ${userId} with companyId: ${companyId}`);
+
     // Create or update integration
     const existingIntegrations = await storage.getIntegrationsByUser(userId);
     const metaIntegration = existingIntegrations.find(i => i.platform === 'meta');
@@ -386,7 +392,7 @@ router.post('/select-account', async (req: Request, res: Response, next: NextFun
       });
     } else {
       await storage.createIntegration({
-        userId,
+        companyId,
         platform: 'meta',
         accessToken,
         accountId,
@@ -396,7 +402,7 @@ router.post('/select-account', async (req: Request, res: Response, next: NextFun
       });
     }
 
-    console.log(`✅ Account selected and saved: ${accountId} - ${accountName}`);
+    console.log(`✅ Account selected and saved: ${accountId} - ${accountName} (companyId: ${companyId})`);
     res.json({ success: true });
   } catch (error) {
     console.error('Error saving selected account:', error);
