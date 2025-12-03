@@ -4,21 +4,29 @@ import { SheetsSyncService } from '../../infrastructure/services/SheetsSyncServi
 import { db } from '../../infrastructure/database/connection.js';
 import { googleSheetsConfig, integrations } from '../../shared/schema.js';
 import { eq } from 'drizzle-orm';
+import { storage } from '../../shared/services/storage.service.js';
 
 const router = Router();
 const sheetsSyncService = new SheetsSyncService();
+
+// Helper function to get companyId from user
+async function getCompanyIdFromUser(userId: string): Promise<string | null> {
+  const user = await storage.getUserById(userId);
+  return user?.companyId || null;
+}
 
 // Sync data from Google Sheets
 router.post('/sync-single-tab-now', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user?.userId;
+    const companyId = await getCompanyIdFromUser(userId);
     
     // Get or create a default integration for Google Sheets
     let [integration] = await db.select().from(integrations).where(eq(integrations.platform, 'google_sheets')).limit(1);
     
     if (!integration) {
       const [newIntegration] = await db.insert(integrations).values({
-        userId,
+        companyId,
         platform: 'google_sheets',
         status: 'active',
         accountId: 'default',
@@ -48,6 +56,7 @@ router.get('/sync/status', authenticateToken, async (req: Request, res: Response
 router.post('/sheets/config', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user?.userId;
+    const companyId = await getCompanyIdFromUser(userId);
     
     const { sheetId, tabGid, name } = req.body;
     
@@ -56,8 +65,7 @@ router.post('/sheets/config', authenticateToken, async (req: Request, res: Respo
     }
     
     const [config] = await db.insert(googleSheetsConfig).values({
-      userId,
-      companyId: null,
+      companyId,
       sheetId,
       tabGid: tabGid || '0',
       name,
@@ -74,8 +82,12 @@ router.post('/sheets/config', authenticateToken, async (req: Request, res: Respo
 router.get('/sheets/config', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user?.userId;
+    const companyId = await getCompanyIdFromUser(userId);
     
-    const configs = await db.select().from(googleSheetsConfig).where(eq(googleSheetsConfig.userId, userId));
+    // Filter by companyId if available
+    const configs = companyId 
+      ? await db.select().from(googleSheetsConfig).where(eq(googleSheetsConfig.companyId, companyId))
+      : await db.select().from(googleSheetsConfig);
     
     return res.status(200).json(configs);
   } catch (error) {

@@ -84,9 +84,18 @@ router.get('/:id', authenticateToken, async (req: Request, res: Response, next: 
 router.post('/', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user?.userId;
+    let companyId = (req as any).user?.companyId;
+    
+    // If companyId is not in token, fetch from user record
+    if (!companyId && userId) {
+      const user = await storage.getUserById(userId);
+      companyId = user?.companyId || null;
+    }
+    
     const creative = await storage.createCreative({
       ...req.body,
       userId,
+      companyId,
     });
     res.status(201).json(creative);
   } catch (error) {
@@ -168,7 +177,6 @@ router.post('/:id/analyze', authenticateToken, async (req: Request, res: Respons
     // Create audit record with policy reference and company_id
     const audit = await storage.createAudit({
       creativeId: creative.id,
-      userId,
       companyId: creative.companyId || userCompanyId,
       policyId: applicablePolicy?.id,
       status: complianceStatus,
@@ -233,7 +241,6 @@ router.post('/analyze-batch', authenticateToken, async (req: Request, res: Respo
         // Multi-tenant access check
         const hasAccess = creative && (
           userRole === 'super_admin' ||
-          creative.userId === userId ||
           (userCompanyId && creative.companyId === userCompanyId)
         );
         
@@ -287,7 +294,6 @@ router.post('/analyze-batch', authenticateToken, async (req: Request, res: Respo
         // Create audit record with policy reference and company_id
         const audit = await storage.createAudit({
           creativeId: creative.id,
-          userId,
           companyId: creative.companyId || userCompanyId,
           policyId: applicablePolicy?.id,
           status: complianceStatus,
