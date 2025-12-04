@@ -72,11 +72,14 @@ export interface SyncProgressCallback {
 export class MetaAdsService {
   private readonly baseUrl = 'https://graph.facebook.com';
   private readonly apiVersion = 'v22.0'; // Meta Graph API version (January 2025)
-  private readonly requestDelay = 3000; // 3s delay between page requests (increased from 2s)
-  private readonly campaignDelay = 8000; // 8s delay between campaigns
-  private readonly adSetDelay = 5000; // 5s delay between ad sets
-  private readonly maxRetries = 5; // More retries with longer waits
-  private readonly batchDelay = 5000; // 5s delay between batch requests
+  
+  // PRODUCTION MODE: Faster delays since app is approved
+  // Meta Graph API allows ~200 calls/user/hour in production mode
+  private readonly requestDelay = 300; // 300ms delay between page requests
+  private readonly campaignDelay = 500; // 500ms delay between campaigns
+  private readonly adSetDelay = 300; // 300ms delay between ad sets
+  private readonly maxRetries = 3; // Fewer retries needed in production
+  private readonly batchDelay = 300; // 300ms delay between batch requests
   private progressCallback?: SyncProgressCallback;
 
   setProgressCallback(callback: SyncProgressCallback) {
@@ -125,11 +128,11 @@ export class MetaAdsService {
       return [];
     }
 
-    // Reduced from 50 to 10 to avoid Meta rate limits
-    const BATCH_SIZE = 10;
+    // PRODUCTION MODE: Use full 50 batch size (max allowed by Meta API)
+    const BATCH_SIZE = 50;
     const results: T[] = [];
 
-    // Split into chunks of 10
+    // Split into chunks of 50
     for (let i = 0; i < requests.length; i += BATCH_SIZE) {
       const batch = requests.slice(i, i + BATCH_SIZE);
       

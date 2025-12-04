@@ -242,33 +242,17 @@ router.get('/:id/sync-stream', async (req: Request, res: Response) => {
           description: `Encontramos ${campaigns.length} campanhas. Salvando no banco de dados...`
         });
         
-        // Save campaigns and build map
-        const campaignMap = new Map<string, string>();
+        // Save campaigns using batch upsert (MUCH faster)
         const existingCampaigns = await storage.getCampaignsByUser(userId);
+        const campaignMap = await storage.batchUpsertCampaigns(campaigns, existingCampaigns);
+        syncedCampaigns = campaigns.length;
         
-        for (let i = 0; i < campaigns.length; i++) {
-          const campaign = campaigns[i];
-          let dbCampaign = existingCampaigns.find(c => c.externalId === campaign.externalId);
-          
-          if (dbCampaign) {
-            await storage.updateCampaign(dbCampaign.id, campaign);
-            campaignMap.set(campaign.externalId, dbCampaign.id);
-          } else {
-            dbCampaign = await storage.createCampaign(campaign);
-            campaignMap.set(campaign.externalId, dbCampaign!.id);
-          }
-          syncedCampaigns++;
-          
-          // Send progress update every 10 campaigns
-          if ((i + 1) % 10 === 0 || i === campaigns.length - 1) {
-            sendEvent('progress', {
-              step: 1,
-              current: i + 1,
-              total: campaigns.length,
-              message: `Salvando campanhas: ${i + 1} de ${campaigns.length}`
-            });
-          }
-        }
+        sendEvent('progress', {
+          step: 1,
+          current: campaigns.length,
+          total: campaigns.length,
+          message: `Campanhas salvas: ${campaigns.length}`
+        });
         
         // Clean up obsolete campaigns
         const campaignExternalIds = campaigns.map(c => c.externalId);
@@ -305,33 +289,17 @@ router.get('/:id/sync-stream', async (req: Request, res: Response) => {
           description: `Encontramos ${adSets.length} grupos de anúncios. Salvando no banco de dados...`
         });
         
-        // Save ad sets and build map
-        const adSetMap = new Map<string, { dbId: string; campaignId: string }>();
+        // Save ad sets using batch upsert (MUCH faster)
         const existingAdSets = await storage.getAdSetsByUser(userId);
+        const adSetMap = await storage.batchUpsertAdSets(adSets, existingAdSets);
+        syncedAdSets = adSets.length;
         
-        for (let i = 0; i < adSets.length; i++) {
-          const adSet = adSets[i];
-          let dbAdSet = existingAdSets.find(a => a.externalId === adSet.externalId);
-          
-          if (dbAdSet) {
-            await storage.updateAdSet(dbAdSet.id, adSet);
-            adSetMap.set(adSet.externalId, { dbId: dbAdSet.id, campaignId: adSet.campaignId });
-          } else {
-            dbAdSet = await storage.createAdSet(adSet);
-            adSetMap.set(adSet.externalId, { dbId: dbAdSet!.id, campaignId: adSet.campaignId });
-          }
-          syncedAdSets++;
-          
-          // Send progress update every 10 ad sets
-          if ((i + 1) % 10 === 0 || i === adSets.length - 1) {
-            sendEvent('progress', {
-              step: 2,
-              current: i + 1,
-              total: adSets.length,
-              message: `Salvando grupos de anúncios: ${i + 1} de ${adSets.length}`
-            });
-          }
-        }
+        sendEvent('progress', {
+          step: 2,
+          current: adSets.length,
+          total: adSets.length,
+          message: `Grupos de anúncios salvos: ${adSets.length}`
+        });
         
         // Clean up obsolete ad sets
         const adSetExternalIds = adSets.map(a => a.externalId);
@@ -387,31 +355,18 @@ router.get('/:id/sync-stream', async (req: Request, res: Response) => {
           step: 3, 
           totalSteps: 3,
           name: 'Salvando anúncios',
-          description: `Encontramos ${ads.length} anúncios. Baixando imagens e salvando...`
+          description: `Encontramos ${ads.length} anúncios. Salvando no banco de dados...`
         });
         
-        // Save creatives (reuse existingCreatives from earlier)
-        for (let i = 0; i < ads.length; i++) {
-          const creative = ads[i];
-          const existingCreative = existingCreatives.find(c => c.externalId === creative.externalId);
-          
-          if (existingCreative) {
-            await storage.updateCreative(existingCreative.id, creative);
-          } else {
-            await storage.createCreative(creative);
-          }
-          syncedCreatives++;
-          
-          // Send progress update every 50 ads (ads can be many!)
-          if ((i + 1) % 50 === 0 || i === ads.length - 1) {
-            sendEvent('progress', {
-              step: 3,
-              current: i + 1,
-              total: ads.length,
-              message: `Salvando anúncios: ${i + 1} de ${ads.length}`
-            });
-          }
-        }
+        // Save creatives using batch upsert (MUCH faster)
+        syncedCreatives = await storage.batchUpsertCreatives(ads, existingCreatives);
+        
+        sendEvent('progress', {
+          step: 3,
+          current: ads.length,
+          total: ads.length,
+          message: `Anúncios salvos: ${ads.length}`
+        });
         
         // Clean up obsolete creatives
         const creativeExternalIds = ads.map(a => a.externalId);

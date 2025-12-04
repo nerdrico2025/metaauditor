@@ -593,6 +593,150 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
+  /**
+   * Batch upsert campaigns - much faster than individual insert/update
+   * Returns map of externalId -> dbId for building relationships
+   */
+  async batchUpsertCampaigns(
+    campaignsData: InsertCampaign[],
+    existingCampaigns: Campaign[]
+  ): Promise<Map<string, string>> {
+    const campaignMap = new Map<string, string>();
+    
+    if (campaignsData.length === 0) return campaignMap;
+    
+    // Build existing map for quick lookup
+    const existingMap = new Map(existingCampaigns.map(c => [c.externalId, c]));
+    
+    // Separate into inserts and updates
+    const toInsert: InsertCampaign[] = [];
+    const toUpdate: { id: string; data: InsertCampaign }[] = [];
+    
+    for (const campaign of campaignsData) {
+      const existing = existingMap.get(campaign.externalId);
+      if (existing) {
+        toUpdate.push({ id: existing.id, data: campaign });
+        campaignMap.set(campaign.externalId!, existing.id);
+      } else {
+        toInsert.push(campaign);
+      }
+    }
+    
+    // Batch insert new campaigns
+    if (toInsert.length > 0) {
+      const inserted = await db.insert(campaigns).values(toInsert).returning();
+      for (const c of inserted) {
+        campaignMap.set(c.externalId!, c.id);
+      }
+    }
+    
+    // Batch update existing (in chunks of 50 for safety)
+    const CHUNK_SIZE = 50;
+    for (let i = 0; i < toUpdate.length; i += CHUNK_SIZE) {
+      const chunk = toUpdate.slice(i, i + CHUNK_SIZE);
+      await Promise.all(chunk.map(({ id, data }) => 
+        db.update(campaigns).set({ ...data, updatedAt: new Date() }).where(eq(campaigns.id, id))
+      ));
+    }
+    
+    console.log(`📦 Batch upsert campaigns: ${toInsert.length} inserted, ${toUpdate.length} updated`);
+    return campaignMap;
+  }
+
+  /**
+   * Batch upsert ad sets - much faster than individual insert/update
+   * Returns map of externalId -> { dbId, campaignId }
+   */
+  async batchUpsertAdSets(
+    adSetsData: InsertAdSet[],
+    existingAdSets: AdSet[]
+  ): Promise<Map<string, { dbId: string; campaignId: string }>> {
+    const adSetMap = new Map<string, { dbId: string; campaignId: string }>();
+    
+    if (adSetsData.length === 0) return adSetMap;
+    
+    // Build existing map for quick lookup
+    const existingMap = new Map(existingAdSets.map(a => [a.externalId, a]));
+    
+    // Separate into inserts and updates
+    const toInsert: InsertAdSet[] = [];
+    const toUpdate: { id: string; data: InsertAdSet }[] = [];
+    
+    for (const adSet of adSetsData) {
+      const existing = existingMap.get(adSet.externalId);
+      if (existing) {
+        toUpdate.push({ id: existing.id, data: adSet });
+        adSetMap.set(adSet.externalId!, { dbId: existing.id, campaignId: adSet.campaignId });
+      } else {
+        toInsert.push(adSet);
+      }
+    }
+    
+    // Batch insert new ad sets
+    if (toInsert.length > 0) {
+      const inserted = await db.insert(adSets).values(toInsert).returning();
+      for (const a of inserted) {
+        adSetMap.set(a.externalId!, { dbId: a.id, campaignId: a.campaignId });
+      }
+    }
+    
+    // Batch update existing (in chunks of 50 for safety)
+    const CHUNK_SIZE = 50;
+    for (let i = 0; i < toUpdate.length; i += CHUNK_SIZE) {
+      const chunk = toUpdate.slice(i, i + CHUNK_SIZE);
+      await Promise.all(chunk.map(({ id, data }) => 
+        db.update(adSets).set({ ...data, updatedAt: new Date() }).where(eq(adSets.id, id))
+      ));
+    }
+    
+    console.log(`📦 Batch upsert ad sets: ${toInsert.length} inserted, ${toUpdate.length} updated`);
+    return adSetMap;
+  }
+
+  /**
+   * Batch upsert creatives - much faster than individual insert/update
+   */
+  async batchUpsertCreatives(
+    creativesData: InsertCreative[],
+    existingCreatives: Creative[]
+  ): Promise<number> {
+    if (creativesData.length === 0) return 0;
+    
+    // Build existing map for quick lookup
+    const existingMap = new Map(existingCreatives.map(c => [c.externalId, c]));
+    
+    // Separate into inserts and updates
+    const toInsert: InsertCreative[] = [];
+    const toUpdate: { id: string; data: InsertCreative }[] = [];
+    
+    for (const creative of creativesData) {
+      const existing = existingMap.get(creative.externalId);
+      if (existing) {
+        toUpdate.push({ id: existing.id, data: creative });
+      } else {
+        toInsert.push(creative);
+      }
+    }
+    
+    // Batch insert new creatives (in chunks to avoid query size limits)
+    const CHUNK_SIZE = 100;
+    for (let i = 0; i < toInsert.length; i += CHUNK_SIZE) {
+      const chunk = toInsert.slice(i, i + CHUNK_SIZE);
+      await db.insert(creatives).values(chunk);
+    }
+    
+    // Batch update existing (in chunks of 50 for safety)
+    for (let i = 0; i < toUpdate.length; i += CHUNK_SIZE) {
+      const chunk = toUpdate.slice(i, i + CHUNK_SIZE);
+      await Promise.all(chunk.map(({ id, data }) => 
+        db.update(creatives).set({ ...data, updatedAt: new Date() }).where(eq(creatives.id, id))
+      ));
+    }
+    
+    console.log(`📦 Batch upsert creatives: ${toInsert.length} inserted, ${toUpdate.length} updated`);
+    return toInsert.length + toUpdate.length;
+  }
+
   async createPolicy(policy: InsertPolicy): Promise<Policy> {
     const [newPolicy] = await db.insert(policies).values(policy).returning();
     return newPolicy;
