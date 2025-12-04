@@ -603,6 +603,8 @@ export class MetaAdsService {
    * - Captures all ads in one API call (faster, less rate limiting)
    * - Doesn't miss ads from paused/archived ad sets
    * - Returns 100% of ads regardless of ad set status
+   * 
+   * @param existingCreativesMap - Map of externalId -> existing imageUrl to skip re-downloading images
    */
   async syncAllAdsFromAccount(
     integration: Integration,
@@ -610,7 +612,8 @@ export class MetaAdsService {
     companyId: string | null,
     integrationId: string,
     adSetMap: Map<string, { dbId: string; campaignId: string }>, // Map of externalAdSetId -> { dbAdSetId, dbCampaignId }
-    progressCallback?: (current: number, message?: string) => void
+    progressCallback?: (current: number, message?: string) => void,
+    existingCreativesMap?: Map<string, string | null> // Map of externalId -> existing imageUrl (to skip re-download)
   ): Promise<InsertCreative[]> {
     if (!integration.accessToken || !integration.accountId) {
       throw new Error('Missing access token or account ID');
@@ -646,11 +649,18 @@ export class MetaAdsService {
 
         const insights = insightsMap.get(ad.id) || {};
         
-        // Download and save image to Object Storage
-        let imageUrl = ad.creative?.image_url || null;
-        if (imageUrl && companyId && integrationId) {
+        // Check if creative already exists with a valid image (skip re-download)
+        const existingImageUrl = existingCreativesMap?.get(ad.id);
+        let imageUrl: string | null = null;
+        
+        if (existingImageUrl && existingImageUrl.startsWith('/objects/')) {
+          // Creative already has a valid Object Storage image - skip download
+          imageUrl = existingImageUrl;
+          console.log(`⏭️  Skipping image download for ad ${ad.id} (already exists: ${existingImageUrl})`);
+        } else if (ad.creative?.image_url && companyId && integrationId) {
+          // Download and save new image to Object Storage
           console.log(`🖼️  Downloading image for ad ${ad.id}...`);
-          const objectUrl = await imageStorageService.downloadAndSaveImage(imageUrl, companyId, integrationId, adSetInfo.dbId);
+          const objectUrl = await imageStorageService.downloadAndSaveImage(ad.creative.image_url, companyId, integrationId, adSetInfo.dbId);
           if (objectUrl) {
             imageUrl = objectUrl;
             console.log(`✅ Image saved to Object Storage: ${objectUrl}`);

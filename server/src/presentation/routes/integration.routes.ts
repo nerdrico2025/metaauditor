@@ -354,6 +354,16 @@ router.get('/:id/sync-stream', async (req: Request, res: Response) => {
           description: 'Carregando todos os anúncios e suas imagens da sua conta'
         });
         
+        // Get existing creatives to skip re-downloading images that already exist
+        const existingCreatives = await storage.getCreativesByUser(userId);
+        const existingCreativesMap = new Map<string, string | null>();
+        for (const creative of existingCreatives) {
+          if (creative.externalId) {
+            existingCreativesMap.set(creative.externalId, creative.imageUrl);
+          }
+        }
+        console.log(`📦 Found ${existingCreativesMap.size} existing creatives (will skip re-downloading their images)`);
+        
         // Sync ads with real-time progress updates during API pagination
         const ads = await metaAdsService.syncAllAdsFromAccount(
           integration,
@@ -369,7 +379,8 @@ router.get('/:id/sync-stream', async (req: Request, res: Response) => {
               total: current, // Total unknown during fetch, so show current as total
               message: message || `Carregando anúncios da API: ${current} encontrados...`
             });
-          }
+          },
+          existingCreativesMap // Pass existing creatives to skip re-downloading images
         );
         
         sendEvent('step', { 
@@ -379,9 +390,7 @@ router.get('/:id/sync-stream', async (req: Request, res: Response) => {
           description: `Encontramos ${ads.length} anúncios. Baixando imagens e salvando...`
         });
         
-        // Save creatives
-        const existingCreatives = await storage.getCreativesByUser(userId);
-        
+        // Save creatives (reuse existingCreatives from earlier)
         for (let i = 0; i < ads.length; i++) {
           const creative = ads[i];
           const existingCreative = existingCreatives.find(c => c.externalId === creative.externalId);
