@@ -95,13 +95,14 @@ function AnalyzeButton({ creativeId, isAnalyzing, onAnalyze }: AnalyzeButtonProp
 
   return (
     <Button
-      variant="outline"
       size="sm"
       onClick={onAnalyze}
       disabled={isAnalyzing || isLoading}
       title={hasAudit ? "Refazer análise deste anúncio" : "Analisar este anúncio"}
       data-testid={`button-analyze-${creativeId}`}
-      className="gap-1.5"
+      className={`gap-1.5 ${hasAudit 
+        ? 'bg-emerald-500 hover:bg-emerald-600 text-white' 
+        : 'bg-orange-500 hover:bg-orange-600 text-white'}`}
     >
       <Sparkles className={`h-4 w-4 ${isAnalyzing ? 'animate-spin' : ''}`} />
       <span className="text-xs">{label}</span>
