@@ -234,15 +234,24 @@ export default function Creatives() {
     try {
       await apiRequest(`/api/creatives/${creativeId}/analyze`, { method: 'POST' });
       
-      setBatchAnalysisProgress(prev => ({
-        ...prev,
+      // Close progress modal and open creative detail modal
+      setBatchAnalysisProgress({
         isRunning: false,
-        current: 1,
-        successCount: 1,
-      }));
+        current: 0,
+        total: 0,
+        currentCreativeName: '',
+        successCount: 0,
+        failedCount: 0,
+        failedCreatives: [],
+      });
       
       queryClient.invalidateQueries({ queryKey: ['/api/creatives'] });
       queryClient.invalidateQueries({ queryKey: [`/api/creatives/${creativeId}/audits`] });
+      
+      // Open the creative detail modal to show the analysis
+      if (creative) {
+        setSelectedCreativeForModal(creative);
+      }
     } catch (error: any) {
       setBatchAnalysisProgress(prev => ({
         ...prev,
