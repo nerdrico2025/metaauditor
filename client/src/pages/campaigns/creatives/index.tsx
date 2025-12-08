@@ -7,6 +7,7 @@ import Sidebar from "@/components/Layout/Sidebar";
 import Header from "@/components/Layout/Header";
 import { Pagination } from "@/components/Pagination";
 import { CreativeImage } from "./components/CreativeImage";
+import CreativeAuditModal from "./components/CreativeAuditModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -78,30 +79,6 @@ function CreativeAnalysisIndicator({ creativeId }: { creativeId: string }) {
   );
 }
 
-function CreativeAuditButton({ creativeId, onViewAudit }: { creativeId: string; onViewAudit: (audit: Audit) => void }) {
-  const { data: audits, isLoading } = useQuery<Audit[]>({
-    queryKey: [`/api/creatives/${creativeId}/audits`],
-  });
-
-  if (isLoading || !audits || audits.length === 0) {
-    return null;
-  }
-
-  const latestAudit = audits[audits.length - 1];
-
-  return (
-    <Button
-      variant="ghost"
-      size="sm"
-      onClick={() => onViewAudit(latestAudit)}
-      title="Ver análise"
-      data-testid={`button-view-audit-${creativeId}`}
-    >
-      <Eye className="h-4 w-4" />
-    </Button>
-  );
-}
-
 export default function Creatives() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
@@ -123,7 +100,7 @@ export default function Creatives() {
   
   const initialFilters = getInitialFilters();
   
-  const [zoomedCreative, setZoomedCreative] = useState<Creative | null>(null);
+  const [selectedCreativeForModal, setSelectedCreativeForModal] = useState<Creative | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [campaignFilter, setCampaignFilter] = useState(initialFilters.campaignId);
@@ -134,8 +111,6 @@ export default function Creatives() {
   const [selectedPolicyId, setSelectedPolicyId] = useState<string | null>(null);
   const [pendingAnalysisType, setPendingAnalysisType] = useState<'single' | 'selected' | 'all' | null>(null);
   const [pendingCreativeId, setPendingCreativeId] = useState<string | null>(null);
-  const [viewingAudit, setViewingAudit] = useState<Audit | null>(null);
-  const [showAuditDialog, setShowAuditDialog] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [analyzingCreativeId, setAnalyzingCreativeId] = useState<string | null>(null);
   const itemsPerPage = 10;
@@ -763,7 +738,7 @@ export default function Creatives() {
                                 </button>
                               </TableCell>
                               <TableCell>
-                                <div onClick={() => setZoomedCreative(creative)} className="cursor-pointer">
+                                <div onClick={() => setSelectedCreativeForModal(creative)} className="cursor-pointer">
                                   <CreativeImage 
                                     creative={creative}
                                     className="w-20 h-20 object-cover rounded-lg hover:opacity-80 transition-opacity border border-gray-200 dark:border-gray-700"
@@ -824,10 +799,15 @@ export default function Creatives() {
                                   >
                                     <Sparkles className={`h-4 w-4 ${analyzingCreativeId === creative.id ? 'animate-spin' : ''}`} />
                                   </Button>
-                                  <CreativeAuditButton creativeId={creative.id} onViewAudit={(audit) => {
-                                    setViewingAudit(audit);
-                                    setShowAuditDialog(true);
-                                  }} />
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setSelectedCreativeForModal(creative)}
+                                    title="Ver detalhes do anúncio"
+                                    data-testid={`button-view-creative-${creative.id}`}
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
                                 </div>
                               </TableCell>
                             </TableRow>
@@ -890,311 +870,13 @@ export default function Creatives() {
         </DialogContent>
       </Dialog>
 
-      {/* Audit View Dialog */}
-      <Dialog open={showAuditDialog} onOpenChange={setShowAuditDialog}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-auto">
-          <DialogHeader>
-            <DialogTitle>Resultado da Análise Detalhada</DialogTitle>
-            <DialogDescription>
-              Análise completa de conformidade de marca e performance de métricas
-            </DialogDescription>
-          </DialogHeader>
-          {viewingAudit && (
-            <div className="space-y-5">
-              {/* KPIs Principais - Design Moderno e Clean */}
-              <div className="grid grid-cols-3 gap-4">
-                <Card className="border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
-                  <CardContent className="p-5">
-                    <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-primary/10 dark:bg-primary/20 flex items-center justify-center">
-                        <Shield className="h-5 w-5 text-primary" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
-                          Conformidade de Marca
-                        </p>
-                        <div className="flex items-baseline gap-2">
-                          <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                            {viewingAudit.complianceScore}%
-                          </p>
-                          <Badge 
-                            variant={viewingAudit.complianceScore >= 80 ? 'default' : 'destructive'}
-                            className="text-xs"
-                          >
-                            {viewingAudit.complianceScore >= 80 ? 'Aprovado' : 'Reprovado'}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
 
-                <Card className="border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
-                  <CardContent className="p-5">
-                    <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-primary/10 dark:bg-primary/20 flex items-center justify-center">
-                        <TrendingUp className="h-5 w-5 text-primary" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
-                          Performance
-                        </p>
-                        <div className="flex items-baseline gap-2">
-                          <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                            {viewingAudit.performanceScore}%
-                          </p>
-                          <Badge 
-                            variant={viewingAudit.performanceScore >= 60 ? 'default' : 'destructive'}
-                            className="text-xs"
-                          >
-                            {viewingAudit.performanceScore >= 80 ? 'Alta' : viewingAudit.performanceScore >= 60 ? 'Média' : 'Baixa'}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
-                  <CardContent className="p-5">
-                    <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-primary/10 dark:bg-primary/20 flex items-center justify-center">
-                        <CheckCircle className="h-5 w-5 text-primary" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
-                          Status Geral
-                        </p>
-                        <div className="mt-2">
-                          <Badge 
-                            variant={viewingAudit.status === 'conforme' ? 'default' : 'destructive'}
-                            className="text-sm px-3 py-1"
-                          >
-                            {viewingAudit.status === 'conforme' ? 'Conforme' :
-                             viewingAudit.status === 'parcialmente_conforme' ? 'Parcial' :
-                             'Não Conforme'}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Detalhamento da IA - Seção Expansível */}
-              {(viewingAudit.aiAnalysis?.compliance || viewingAudit.aiAnalysis?.performance) && (
-                <Card className="border border-gray-200 dark:border-gray-700">
-                  <CardContent className="p-0">
-                    <details className="group">
-                      <summary className="flex items-center justify-between cursor-pointer list-none hover:bg-gray-50 dark:hover:bg-gray-800 p-4 transition-colors">
-                        <div className="flex items-center gap-2">
-                          <Sparkles className="h-4 w-4 text-primary" />
-                          <h3 className="font-semibold text-sm text-gray-700 dark:text-gray-300">
-                            Detalhamento da Análise IA
-                          </h3>
-                        </div>
-                        <ChevronRight className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-90" />
-                      </summary>
-
-                      <div className="px-4 pb-4 pt-2 space-y-4 border-t border-gray-100 dark:border-gray-800">
-                        {/* Compliance Details */}
-                        {viewingAudit.aiAnalysis?.compliance && (
-                          <div className="bg-gray-50/50 dark:bg-gray-800/50 rounded-lg p-3">
-                            <h4 className="font-medium text-sm mb-2.5 flex items-center gap-1.5 text-gray-700 dark:text-gray-300">
-                              <Palette className="h-3.5 w-3.5 text-primary" />
-                              Conformidade de Marca
-                            </h4>
-                            <div className="grid grid-cols-2 gap-2">
-                              <div className="flex items-center gap-2 text-sm">
-                                {viewingAudit.aiAnalysis.compliance.analysis?.logoCompliance ? (
-                                  <CheckCircle className="h-3.5 w-3.5 text-green-600 dark:text-green-500" />
-                                ) : (
-                                  <XCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-500" />
-                                )}
-                                <span className="text-xs text-gray-600 dark:text-gray-400">Logo da Marca</span>
-                              </div>
-                              <div className="flex items-center gap-2 text-sm">
-                                {viewingAudit.aiAnalysis.compliance.analysis?.colorCompliance ? (
-                                  <CheckCircle className="h-3.5 w-3.5 text-green-600 dark:text-green-500" />
-                                ) : (
-                                  <XCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-500" />
-                                )}
-                                <span className="text-xs text-gray-600 dark:text-gray-400">Cores da Marca</span>
-                              </div>
-                              <div className="flex items-center gap-2 text-sm">
-                                {viewingAudit.aiAnalysis.compliance.analysis?.textCompliance ? (
-                                  <CheckCircle className="h-3.5 w-3.5 text-green-600 dark:text-green-500" />
-                                ) : (
-                                  <XCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-500" />
-                                )}
-                                <span className="text-xs text-gray-600 dark:text-gray-400">Texto e Palavras-chave</span>
-                              </div>
-                              <div className="flex items-center gap-2 text-sm">
-                                {viewingAudit.aiAnalysis.compliance.analysis?.brandGuidelines ? (
-                                  <CheckCircle className="h-3.5 w-3.5 text-green-600 dark:text-green-500" />
-                                ) : (
-                                  <XCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-500" />
-                                )}
-                                <span className="text-xs text-gray-600 dark:text-gray-400">Diretrizes da Marca</span>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Performance Metrics */}
-                        {viewingAudit.aiAnalysis?.performance && (
-                          <div className="bg-gray-50/50 dark:bg-gray-800/50 rounded-lg p-3">
-                            <h4 className="font-medium text-sm mb-2.5 flex items-center gap-1.5 text-gray-700 dark:text-gray-300">
-                              <BarChart3 className="h-3.5 w-3.5 text-primary" />
-                              Métricas de Performance
-                            </h4>
-                            <div className="space-y-2">
-                              {viewingAudit.aiAnalysis.performance.metrics?.ctrAnalysis && (
-                                <div className="bg-white dark:bg-gray-900 p-2.5 rounded border border-blue-100 dark:border-blue-900/30">
-                                  <p className="font-medium text-xs mb-1 flex items-center gap-1.5 text-gray-700 dark:text-gray-300">
-                                    <MousePointer className="h-3 w-3 text-blue-600 dark:text-blue-500" />
-                                    CTR (Click-Through Rate)
-                                  </p>
-                                  <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-                                    {viewingAudit.aiAnalysis.performance.metrics.ctrAnalysis}
-                                  </p>
-                                </div>
-                              )}
-                              {viewingAudit.aiAnalysis.performance.metrics?.conversionAnalysis && (
-                                <div className="bg-white dark:bg-gray-900 p-2.5 rounded border border-green-100 dark:border-green-900/30">
-                                  <p className="font-medium text-xs mb-1 flex items-center gap-1.5 text-gray-700 dark:text-gray-300">
-                                    <TrendingUp className="h-3 w-3 text-green-600 dark:text-green-500" />
-                                    Conversões
-                                  </p>
-                                  <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-                                    {viewingAudit.aiAnalysis.performance.metrics.conversionAnalysis}
-                                  </p>
-                                </div>
-                              )}
-                              {viewingAudit.aiAnalysis.performance.metrics?.costEfficiency && (
-                                <div className="bg-white dark:bg-gray-900 p-2.5 rounded border border-purple-100 dark:border-purple-900/30">
-                                  <p className="font-medium text-xs mb-1 flex items-center gap-1.5 text-gray-700 dark:text-gray-300">
-                                    <BarChart3 className="h-3 w-3 text-purple-600 dark:text-purple-500" />
-                                    Custo e Eficiência
-                                  </p>
-                                  <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-                                    {viewingAudit.aiAnalysis.performance.metrics.costEfficiency}
-                                  </p>
-                                </div>
-                              )}
-                              <div className="bg-white dark:bg-gray-900 p-2.5 rounded border border-orange-100 dark:border-orange-900/30">
-                                <p className="font-medium text-xs mb-1.5 text-gray-700 dark:text-gray-300">Classificação</p>
-                                <Badge 
-                                  variant={
-                                    viewingAudit.aiAnalysis.performance.performance === 'high' ? 'default' :
-                                    viewingAudit.aiAnalysis.performance.performance === 'medium' ? 'secondary' :
-                                    'destructive'
-                                  }
-                                  className="text-xs"
-                                >
-                                  {viewingAudit.aiAnalysis.performance.performance === 'high' ? 'Alta Performance' :
-                                   viewingAudit.aiAnalysis.performance.performance === 'medium' ? 'Performance Média' :
-                                   'Baixa Performance'}
-                                </Badge>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </details>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Issues Section */}
-              {viewingAudit.issues && viewingAudit.issues.length > 0 && (
-                <Card className="border-red-200 dark:border-red-800">
-                  <CardContent className="pt-6">
-                    <h3 className="font-bold text-lg mb-3 flex items-center gap-2 text-red-600 dark:text-red-400">
-                      <AlertCircle className="h-5 w-5" />
-                      Problemas Encontrados ({viewingAudit.issues.length})
-                    </h3>
-                    <ul className="space-y-2">
-                      {viewingAudit.issues.map((issue: string, i: number) => (
-                        <li key={i} className="flex items-start gap-2 p-2 bg-red-50 dark:bg-red-950 rounded">
-                          <XCircle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
-                          <span className="text-sm text-gray-700 dark:text-gray-300">{issue}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Recommendations Section */}
-              {viewingAudit.recommendations && viewingAudit.recommendations.length > 0 && (
-                <Card className="border-green-200 dark:border-green-800">
-                  <CardContent className="pt-6">
-                    <h3 className="font-bold text-lg mb-3 flex items-center gap-2 text-green-600 dark:text-green-400">
-                      <Sparkles className="h-5 w-5" />
-                      Recomendações de Melhoria ({viewingAudit.recommendations.length})
-                    </h3>
-                    <ul className="space-y-2">
-                      {viewingAudit.recommendations.map((rec: string, i: number) => (
-                        <li key={i} className="flex items-start gap-2 p-2 bg-green-50 dark:bg-green-950 rounded">
-                          <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                          <span className="text-sm text-gray-700 dark:text-gray-300">{rec}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Policy Used */}
-              {viewingAudit.aiAnalysis?.policyUsed && (
-                <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                  Política utilizada: <span className="font-semibold">{viewingAudit.aiAnalysis.policyUsed}</span>
-                </div>
-              )}
-
-              <div className="flex justify-end gap-2 pt-4 border-t">
-                <Button variant="outline" onClick={() => setShowAuditDialog(false)}>
-                  Fechar
-                </Button>
-                <Button onClick={() => setShowAuditDialog(false)} className="bg-primary">
-                  Entendido
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {zoomedCreative && (
-        <Dialog open={!!zoomedCreative} onOpenChange={() => setZoomedCreative(null)}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
-            <div className="relative">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute top-2 right-2 z-10"
-                onClick={() => setZoomedCreative(null)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-              <CreativeImage 
-                creative={zoomedCreative}
-                className="w-full h-auto rounded-lg"
-                size="large"
-              />
-              <div className="mt-4 space-y-2">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{zoomedCreative.name}</h3>
-                {zoomedCreative.headline && (
-                  <p className="text-sm text-gray-600 dark:text-gray-400">{zoomedCreative.headline}</p>
-                )}
-                {zoomedCreative.description && (
-                  <p className="text-sm text-gray-600 dark:text-gray-400">{zoomedCreative.description}</p>
-                )}
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+      {/* Creative Audit Modal - Unified modal for viewing creative details and audit */}
+      {selectedCreativeForModal && (
+        <CreativeAuditModal
+          creative={selectedCreativeForModal}
+          onClose={() => setSelectedCreativeForModal(null)}
+        />
       )}
 
       {/* Batch Analysis Progress Modal */}
