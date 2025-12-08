@@ -235,14 +235,11 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
   const deleteAuditMutation = useMutation({
     mutationFn: async () => {
       if (!viewingAudit) throw new Error("No audit found");
-
-      const response = await apiRequest("DELETE", `/api/audits/${viewingAudit.id}`);
-      return await response.json();
+      return await apiRequest("DELETE", `/api/audits/${viewingAudit.id}`);
     },
     onSuccess: () => {
-      // Invalidate audits query to refresh the data
-      queryClient.invalidateQueries({ queryKey: ["/api/creatives", creative.id, "audits"] });
-      setViewingAudit(null); // Clear viewingAudit state after deletion
+      queryClient.invalidateQueries({ queryKey: [`/api/creatives/${creative.id}/audits`] });
+      setViewingAudit(null);
     },
     onError: (error) => {
       console.error("Error deleting audit:", error);
