@@ -215,29 +215,51 @@ export default function Creatives() {
     enabled: isAuthenticated,
   });
 
-  const analyzeCreativeMutation = useMutation({
-    mutationFn: (creativeId: string) => {
-      setAnalyzingCreativeId(creativeId);
-      return apiRequest(`/api/creatives/${creativeId}/analyze`, { method: 'POST' });
-    },
-    onSuccess: (data, creativeId) => {
+  // Single creative analysis with progress modal
+  const runSingleAnalysis = async (creativeId: string) => {
+    const creative = creatives.find(c => c.id === creativeId);
+    const creativeName = creative?.name || 'Criativo';
+    
+    setAnalyzingCreativeId(creativeId);
+    setBatchAnalysisProgress({
+      isRunning: true,
+      current: 0,
+      total: 1,
+      currentCreativeName: creativeName,
+      successCount: 0,
+      failedCount: 0,
+      failedCreatives: [],
+    });
+
+    try {
+      await apiRequest(`/api/creatives/${creativeId}/analyze`, { method: 'POST' });
+      
+      setBatchAnalysisProgress(prev => ({
+        ...prev,
+        isRunning: false,
+        current: 1,
+        successCount: 1,
+      }));
+      
       queryClient.invalidateQueries({ queryKey: ['/api/creatives'] });
       queryClient.invalidateQueries({ queryKey: [`/api/creatives/${creativeId}/audits`] });
+    } catch (error: any) {
+      setBatchAnalysisProgress(prev => ({
+        ...prev,
+        isRunning: false,
+        current: 1,
+        failedCount: 1,
+        failedCreatives: [{ name: creativeName, error: error.message || 'Erro desconhecido' }],
+      }));
+    } finally {
       setAnalyzingCreativeId(null);
-      toast({ 
-        title: '✅ Análise concluída!',
-        description: 'O criativo foi analisado com sucesso.',
-      });
-    },
-    onError: (error: Error) => {
-      setAnalyzingCreativeId(null);
-      toast({
-        title: 'Erro na análise',
-        description: error.message,
-        variant: 'destructive',
-      });
-    },
-  });
+    }
+  };
+
+  const analyzeCreativeMutation = {
+    isPending: analyzingCreativeId !== null,
+    mutate: runSingleAnalysis,
+  };
 
   // Sequential batch analysis function with progress tracking
   const runBatchAnalysis = async (creativeIds: string[]) => {
