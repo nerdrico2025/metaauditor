@@ -399,30 +399,6 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="text-sm font-medium text-slate-900">Resultados da Auditoria</h4>
-                  <div className="flex gap-2">
-                    {viewingAudit && (
-                      <Button 
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          // TODO: Implement report generation
-                          toast({
-                            title: "Relatório",
-                            description: "Funcionalidade em desenvolvimento",
-                          });
-                        }}
-                      >
-                        Ver Relatório
-                      </Button>
-                    )}
-                    <Button 
-                      size="sm" 
-                      onClick={handleAnalyze}
-                      disabled={analyzeMutation.isPending || !!viewingAudit}
-                    >
-                      {analyzeMutation.isPending ? 'Analisando...' : 'Analisar'}
-                    </Button>
-                  </div>
                 </div>
 
                 {auditsLoading ? (
@@ -433,55 +409,54 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
                 ) : viewingAudit ? (
                   <div className="space-y-6">
                     {/* KPIs Principais - Destaque Máximo */}
-                    <div className="bg-gradient-to-br from-primary/5 to-primary/10 dark:from-primary/10 dark:to-primary/20 rounded-xl p-6 border-2 border-primary/20">
-                      <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6 text-center">
-                        📊 Principais Indicadores de Performance
+                    <div className="bg-gradient-to-br from-primary/5 to-primary/10 dark:from-primary/10 dark:to-primary/20 rounded-xl p-4 border-2 border-primary/20">
+                      <h3 className="text-base font-bold text-gray-900 dark:text-white mb-4 text-center flex items-center justify-center gap-2">
+                        <BarChart3 className="h-5 w-5 text-primary" />
+                        Principais Indicadores
                       </h3>
-                      <div className="grid grid-cols-3 gap-6">
-                        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 text-center shadow-lg border-2 border-primary/30 hover:border-primary/60 transition-colors">
-                          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 dark:bg-primary/20 mb-4">
-                            <Shield className="h-8 w-8 text-primary" />
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center shadow-sm border border-primary/20">
+                          <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 dark:bg-primary/20 mb-2">
+                            <Shield className="h-5 w-5 text-primary" />
                           </div>
-                          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
-                            Conformidade de Marca
+                          <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
+                            Conformidade
                           </p>
-                          <p className="text-6xl font-extrabold text-primary mb-3 leading-none">
-                            {viewingAudit.complianceScore ?? 0}
-                            <span className="text-3xl">%</span>
+                          <p className="text-2xl font-bold text-primary mb-2">
+                            {viewingAudit.complianceScore ?? 0}%
                           </p>
-                          <Badge className="text-sm px-4 py-1.5 font-semibold" variant={(viewingAudit.complianceScore ?? 0) >= 80 ? 'default' : 'destructive'}>
-                            {(viewingAudit.complianceScore ?? 0) >= 80 ? '✓ Aprovado' : '✗ Reprovado'}
+                          <Badge className="text-xs px-2 py-0.5" variant={(viewingAudit.complianceScore ?? 0) >= 80 ? 'default' : 'destructive'}>
+                            {(viewingAudit.complianceScore ?? 0) >= 80 ? 'Aprovado' : 'Reprovado'}
                           </Badge>
                         </div>
 
-                        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 text-center shadow-lg border-2 border-primary/30 hover:border-primary/60 transition-colors">
-                          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 dark:bg-primary/20 mb-4">
-                            <TrendingUp className="h-8 w-8 text-primary" />
+                        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center shadow-sm border border-primary/20">
+                          <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 dark:bg-primary/20 mb-2">
+                            <TrendingUp className="h-5 w-5 text-primary" />
                           </div>
-                          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+                          <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
                             Performance
                           </p>
-                          <p className="text-6xl font-extrabold text-primary mb-3 leading-none">
-                            {viewingAudit.performanceScore ?? 0}
-                            <span className="text-3xl">%</span>
+                          <p className="text-2xl font-bold text-primary mb-2">
+                            {viewingAudit.performanceScore ?? 0}%
                           </p>
-                          <Badge className="text-sm px-4 py-1.5 font-semibold" variant={(viewingAudit.performanceScore ?? 0) >= 60 ? 'default' : 'destructive'}>
-                            {(viewingAudit.performanceScore ?? 0) >= 80 ? '🔥 Alta' : (viewingAudit.performanceScore ?? 0) >= 60 ? '📈 Média' : '📉 Baixa'}
+                          <Badge className="text-xs px-2 py-0.5" variant={(viewingAudit.performanceScore ?? 0) >= 60 ? 'default' : 'destructive'}>
+                            {(viewingAudit.performanceScore ?? 0) >= 80 ? 'Alta' : (viewingAudit.performanceScore ?? 0) >= 60 ? 'Média' : 'Baixa'}
                           </Badge>
                         </div>
 
-                        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 text-center shadow-lg border-2 border-primary/30 hover:border-primary/60 transition-colors">
-                          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 dark:bg-primary/20 mb-4">
-                            <CheckCircle className="h-8 w-8 text-primary" />
+                        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center shadow-sm border border-primary/20">
+                          <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 dark:bg-primary/20 mb-2">
+                            <CheckCircle className="h-5 w-5 text-primary" />
                           </div>
-                          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
-                            Status Geral
+                          <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
+                            Status
                           </p>
-                          <div className="h-24 flex items-center justify-center">
-                            <Badge className="text-lg px-6 py-3 font-bold" variant={viewingAudit.status === 'conforme' ? 'default' : 'destructive'}>
-                              {viewingAudit.status === 'conforme' ? '✓ Conforme' :
-                               viewingAudit.status === 'parcialmente_conforme' ? '⚠ Parcial' :
-                               '✗ Não Conforme'}
+                          <div className="h-12 flex items-center justify-center">
+                            <Badge className="text-xs px-2 py-1" variant={viewingAudit.status === 'conforme' ? 'default' : 'destructive'}>
+                              {viewingAudit.status === 'conforme' ? 'Conforme' :
+                               viewingAudit.status === 'parcialmente_conforme' ? 'Parcial' :
+                               'Não Conforme'}
                             </Badge>
                           </div>
                         </div>
@@ -724,60 +699,23 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
                 )}
               </div>
 
-              {/* Recommended Actions */}
-              {viewingAudit && viewingAudit.recommendations && Array.isArray(viewingAudit.recommendations) && viewingAudit.recommendations.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-medium text-slate-900 mb-3">Ações Recomendadas</h4>
-                  <div className="space-y-2">
-                    <label className="flex items-center">
-                      <Checkbox 
-                        checked={selectedActions.includes('pause')}
-                        onCheckedChange={(checked) => handleActionChange('pause', checked as boolean)}
-                      />
-                      <span className="ml-2 text-sm text-slate-700">Pausar criativo</span>
-                    </label>
-                    <label className="flex items-center">
-                      <Checkbox 
-                        checked={selectedActions.includes('flag_review')}
-                        onCheckedChange={(checked) => handleActionChange('flag_review', checked as boolean)}
-                      />
-                      <span className="ml-2 text-sm text-slate-700">Marcar para revisão manual</span>
-                    </label>
-                    <label className="flex items-center">
-                      <Checkbox 
-                        checked={selectedActions.includes('request_correction')}
-                        onCheckedChange={(checked) => handleActionChange('request_correction', checked as boolean)}
-                      />
-                      <span className="ml-2 text-sm text-slate-700">Solicitar correção</span>
-                    </label>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex flex-row-reverse space-x-reverse space-x-3 pt-6 border-t border-slate-200">
-            <Button 
-              onClick={handleExecuteActions}
-              disabled={executeActionsMutation.isPending || selectedActions.length === 0}
-              className="bg-primary hover:bg-primary/90"
-            >
-              {executeActionsMutation.isPending ? 'Executando...' : 'Executar Ações'}
+          <div className="flex justify-end space-x-3 pt-6 border-t border-slate-200">
+            <Button variant="outline" onClick={onClose}>
+              Fechar
             </Button>
             {viewingAudit && (
               <Button 
                 onClick={handleReanalyze}
-                disabled={analyzeMutation.isPending}
-                variant="outline"
-                className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                disabled={analyzeMutation.isPending || deleteAuditMutation.isPending}
+                className="bg-primary hover:bg-primary/90"
               >
-                {analyzeMutation.isPending ? 'Reprocessando...' : 'Refazer Análise'}
+                {(analyzeMutation.isPending || deleteAuditMutation.isPending) ? 'Reprocessando...' : 'Refazer Análise'}
               </Button>
             )}
-            <Button variant="outline" onClick={onClose}>
-              Cancelar
-            </Button>
           </div>
         </DialogContent>
       </Dialog>
