@@ -743,7 +743,6 @@ export default function Creatives() {
                             <TableHead className="text-right">Impressões</TableHead>
                             <TableHead className="text-right">Cliques</TableHead>
                             <TableHead className="text-right">CTR</TableHead>
-                            <TableHead className="text-center">Analisado</TableHead>
                             <TableHead className="text-right">Ações</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -813,9 +812,6 @@ export default function Creatives() {
                               </TableCell>
                               <TableCell className="text-right text-sm text-gray-600 dark:text-gray-400">
                                 {formatCTR(creative.ctr)}%
-                              </TableCell>
-                              <TableCell className="text-center">
-                                <CreativeAnalysisIndicator creativeId={creative.id} />
                               </TableCell>
                               <TableCell className="text-right">
                                 <div className="flex items-center justify-end gap-2">
