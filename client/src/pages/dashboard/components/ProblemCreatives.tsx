@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ type ProblemCreative = Creative & { audit: Audit };
 
 export default function ProblemCreatives() {
   const { t } = useTranslation();
+  const [, setLocation] = useLocation();
   const [selectedCreative, setSelectedCreative] = useState<Creative | null>(null);
 
   const { data: problemCreatives, isLoading } = useQuery<ProblemCreative[]>({
@@ -70,7 +72,12 @@ export default function ProblemCreatives() {
           <CardTitle className="text-lg font-medium text-slate-900">
             Criativos com Problemas
           </CardTitle>
-          <Button variant="link" className="text-primary hover:text-primary/80 text-sm font-medium p-0">
+          <Button 
+            variant="link" 
+            className="text-primary hover:text-primary/80 text-sm font-medium p-0"
+            onClick={() => setLocation("/creatives?status=problem")}
+            data-testid="button-view-all-problems"
+          >
             Ver todos
           </Button>
         </CardHeader>
