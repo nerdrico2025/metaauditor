@@ -256,19 +256,29 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
   };
 
   const handleReanalyze = async () => {
-    if (!viewingAudit) return;
-
     try {
-      // First delete the existing audit
-      await deleteAuditMutation.mutateAsync();
-
-      // Then create a new analysis
-      analyzeMutation.mutate();
-
+      // Try to delete existing audit if it exists
+      if (viewingAudit) {
+        try {
+          await deleteAuditMutation.mutateAsync();
+        } catch (deleteError: any) {
+          // If 404, audit already deleted - proceed with new analysis
+          if (!deleteError?.status || deleteError.status !== 404) {
+            console.error("Error deleting audit:", deleteError);
+          }
+        }
+      }
+      
+      // Clear local state and start new analysis
+      setViewingAudit(null);
+      
       toast({
         title: "Reprocessando Análise",
-        description: "Análise anterior removida. Iniciando nova análise...",
+        description: "Iniciando nova análise...",
       });
+
+      // Create new analysis
+      analyzeMutation.mutate();
     } catch (error) {
       console.error("Error during reanalysis:", error);
       toast({
