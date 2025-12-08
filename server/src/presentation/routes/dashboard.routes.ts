@@ -16,8 +16,14 @@ router.get('/metrics', authenticateToken, async (req: Request, res: Response, ne
     const audits = await storage.getAuditsByUser(userId);
     
     // Count compliant and non-compliant from audits
+    // conforme = fully compliant
+    // parcialmente_conforme or nao_conforme = non-compliant (has issues)
     const compliantAudits = audits.filter(a => a.status === 'conforme').length;
-    const nonCompliantAudits = audits.filter(a => a.status === 'non_compliant' || a.status === 'nao_conforme').length;
+    const nonCompliantAudits = audits.filter(a => 
+      a.status === 'non_compliant' || 
+      a.status === 'nao_conforme' || 
+      a.status === 'parcialmente_conforme'
+    ).length;
     
     res.json({
       activeCampaigns: campaigns.filter(c => c.status === 'Ativo' || c.status === 'active' || c.status === 'Em veiculação').length,
