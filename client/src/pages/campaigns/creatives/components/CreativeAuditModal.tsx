@@ -135,7 +135,7 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
 
   // Fetch policy used in the audit for comparison
   const { data: policy } = useQuery<Policy>({
-    queryKey: ['/api/policies', viewingAudit?.policyId],
+    queryKey: [`/api/policies/${viewingAudit?.policyId}`],
     enabled: !!viewingAudit?.policyId,
   });
 
