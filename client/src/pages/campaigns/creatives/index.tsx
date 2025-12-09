@@ -750,14 +750,14 @@ export default function Creatives() {
                               </button>
                             </TableHead>
                             <TableHead className="w-24 text-left font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200/50 dark:border-gray-700/50">Imagem</TableHead>
-                            <TableHead className="w-[18%] text-left font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200/50 dark:border-gray-700/50">Anúncio</TableHead>
-                            <TableHead className="w-[14%] text-left font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200/50 dark:border-gray-700/50">Campanha</TableHead>
-                            <TableHead className="w-[14%] text-left font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200/50 dark:border-gray-700/50">Grupo</TableHead>
+                            <TableHead className="w-[20%] text-left font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200/50 dark:border-gray-700/50">Anúncio</TableHead>
+                            <TableHead className="w-[12%] text-left font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200/50 dark:border-gray-700/50">Campanha</TableHead>
+                            <TableHead className="w-[12%] text-left font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200/50 dark:border-gray-700/50">Grupo</TableHead>
                             <TableHead className="w-24 text-center font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200/50 dark:border-gray-700/50">Status</TableHead>
                             <TableHead className="w-20 text-right font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200/50 dark:border-gray-700/50">Impr.</TableHead>
                             <TableHead className="w-16 text-right font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200/50 dark:border-gray-700/50">Cliques</TableHead>
                             <TableHead className="w-14 text-right font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200/50 dark:border-gray-700/50">CTR</TableHead>
-                            <TableHead className="w-24 text-center font-semibold text-gray-700 dark:text-gray-300">Ações</TableHead>
+                            <TableHead className="w-28 text-center font-semibold text-gray-700 dark:text-gray-300">Ações</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -805,12 +805,12 @@ export default function Creatives() {
                                 </div>
                               </TableCell>
                               <TableCell className="border-r border-gray-100 dark:border-gray-800">
-                                <span className="text-sm text-gray-600 dark:text-gray-400 block truncate" title={getCampaignName(creative.campaignId)}>
+                                <span className="text-sm text-gray-600 dark:text-gray-400 leading-tight">
                                   {getCampaignName(creative.campaignId)}
                                 </span>
                               </TableCell>
                               <TableCell className="border-r border-gray-100 dark:border-gray-800">
-                                <span className="text-sm text-gray-600 dark:text-gray-400 block truncate" title={getAdSetName(creative.adSetId)}>
+                                <span className="text-sm text-gray-600 dark:text-gray-400 leading-tight">
                                   {getAdSetName(creative.adSetId)}
                                 </span>
                               </TableCell>
@@ -829,20 +829,21 @@ export default function Creatives() {
                                 {formatCTR(creative.ctr)}%
                               </TableCell>
                               <TableCell className="text-center">
-                                <div className="flex items-center justify-center gap-1">
+                                <div className="flex flex-col items-center gap-1">
                                   <AnalyzeButton
                                     creativeId={creative.id}
                                     isAnalyzing={analyzingCreativeId === creative.id}
                                     onAnalyze={() => handleAnalyzeSingle(creative.id)}
                                   />
                                   <Button
-                                    variant="ghost"
+                                    variant="outline"
                                     size="sm"
                                     onClick={() => setSelectedCreativeForModal(creative)}
-                                    title="Ver detalhes do anúncio"
+                                    className="h-7 text-xs px-2"
                                     data-testid={`button-view-creative-${creative.id}`}
                                   >
-                                    <Eye className="h-4 w-4" />
+                                    <Eye className="h-3 w-3 mr-1" />
+                                    Detalhes
                                   </Button>
                                 </div>
                               </TableCell>
