@@ -7,14 +7,21 @@ import Sidebar from '@/components/Layout/Sidebar';
 import Header from '@/components/Layout/Header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { HelpCircle, Trash2, Bug } from 'lucide-react';
+import { HelpCircle, Trash2, Bug, Plus, Loader2, CheckCircle2 } from 'lucide-react';
 import { SiFacebook } from 'react-icons/si';
 import { HowToConnectModal } from '../components/HowToConnectModal';
 import { DeleteConfirmationDialog } from '../components/DeleteConfirmationDialog';
 import { IntegrationCard } from '../components/IntegrationCard';
 import { DeleteAllDataDialog } from '../components/DeleteAllDataDialog';
 import { SyncLoadingModal } from '../components/SyncLoadingModal';
+
+interface AdAccount {
+  id: string;
+  name: string;
+  accountStatus: number;
+}
 
 interface Integration {
   id: string;
@@ -50,6 +57,10 @@ export default function MetaIntegrations() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [integrationToDelete, setIntegrationToDelete] = useState<Integration | null>(null);
   const [deleteAllDialogOpen, setDeleteAllDialogOpen] = useState(false);
+  const [showAddAccountModal, setShowAddAccountModal] = useState(false);
+  const [availableAccounts, setAvailableAccounts] = useState<AdAccount[]>([]);
+  const [connectedAccountIds, setConnectedAccountIds] = useState<string[]>([]);
+  const [loadingAccounts, setLoadingAccounts] = useState(false);
   
   // Sync modal state
   const [showSyncModal, setShowSyncModal] = useState(false);
@@ -450,6 +461,67 @@ export default function MetaIntegrations() {
   };
 
   const metaIntegrations = integrations.filter(i => i.platform === 'meta');
+  const hasExistingIntegration = metaIntegrations.length > 0;
+
+  const addAccountMutation = useMutation({
+    mutationFn: async (account: AdAccount) => {
+      return apiRequest('/api/auth/meta/add-account', {
+        method: 'POST',
+        body: JSON.stringify({
+          accountId: account.id,
+          accountName: account.name,
+          accountStatus: account.accountStatus,
+        }),
+      });
+    },
+    onSuccess: () => {
+      toast({ title: 'Conta adicionada com sucesso!' });
+      queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
+      setShowAddAccountModal(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Erro ao adicionar conta',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const handleAddAccount = async () => {
+    if (hasExistingIntegration) {
+      setLoadingAccounts(true);
+      try {
+        const response = await fetch('/api/auth/meta/ad-accounts');
+        const data = await response.json();
+        
+        if (data.tokenExpired || data.error) {
+          toast({
+            title: 'Token expirado',
+            description: 'O token expirou. Por favor, reconecte ao Meta.',
+            variant: 'destructive',
+          });
+          handleConnectOAuth();
+          return;
+        }
+        
+        setAvailableAccounts(data.accounts || []);
+        setConnectedAccountIds(data.connectedAccountIds || []);
+        setShowAddAccountModal(true);
+      } catch (error: any) {
+        toast({
+          title: 'Erro ao buscar contas',
+          description: error.message,
+          variant: 'destructive',
+        });
+        handleConnectOAuth();
+      } finally {
+        setLoadingAccounts(false);
+      }
+    } else {
+      handleConnectOAuth();
+    }
+  };
 
   return (
     <div className="flex h-screen bg-background">
@@ -506,13 +578,19 @@ export default function MetaIntegrations() {
                         Como Conectar
                       </Button>
                       <Button 
-                        onClick={handleConnectOAuth} 
+                        onClick={handleAddAccount} 
                         size="sm"
-                        disabled={isConnecting}
+                        disabled={isConnecting || loadingAccounts}
                         data-testid="button-connect-meta-oauth"
                       >
-                        <SiFacebook className="w-4 h-4 mr-2" />
-                        {isConnecting ? 'Conectando...' : 'Conectar Conta'}
+                        {loadingAccounts ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : hasExistingIntegration ? (
+                          <Plus className="w-4 h-4 mr-2" />
+                        ) : (
+                          <SiFacebook className="w-4 h-4 mr-2" />
+                        )}
+                        {isConnecting ? 'Conectando...' : loadingAccounts ? 'Carregando...' : hasExistingIntegration ? 'Adicionar Conta' : 'Conectar Conta'}
                       </Button>
                     </div>
                   </div>
@@ -613,6 +691,60 @@ export default function MetaIntegrations() {
         dataType="Dados Meta"
         count={campaigns.length + adSets.length + creatives.length}
       />
+
+      <Dialog open={showAddAccountModal} onOpenChange={setShowAddAccountModal}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Adicionar Conta de Anúncios</DialogTitle>
+            <DialogDescription>
+              Selecione uma conta de anúncios para conectar. As contas já conectadas estão desabilitadas.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 max-h-80 overflow-y-auto">
+            {availableAccounts.length === 0 ? (
+              <p className="text-center text-gray-500 py-4">Nenhuma conta disponível encontrada.</p>
+            ) : (
+              availableAccounts.map((account) => {
+                const isConnected = connectedAccountIds.includes(account.id);
+                return (
+                  <button
+                    key={account.id}
+                    onClick={() => !isConnected && addAccountMutation.mutate(account)}
+                    disabled={isConnected || addAccountMutation.isPending}
+                    className={`w-full p-4 rounded-lg border text-left flex items-center justify-between transition-colors ${
+                      isConnected 
+                        ? 'bg-gray-50 border-gray-200 cursor-not-allowed opacity-60' 
+                        : 'hover:bg-blue-50 hover:border-blue-300 cursor-pointer'
+                    }`}
+                  >
+                    <div>
+                      <p className="font-medium text-gray-900">{account.name}</p>
+                      <p className="text-sm text-gray-500 font-mono">{account.id}</p>
+                    </div>
+                    {isConnected ? (
+                      <span className="flex items-center gap-1 text-green-600 text-sm">
+                        <CheckCircle2 className="w-4 h-4" />
+                        Conectada
+                      </span>
+                    ) : addAccountMutation.isPending ? (
+                      <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+                    ) : null}
+                  </button>
+                );
+              })
+            )}
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setShowAddAccountModal(false)}>
+              Fechar
+            </Button>
+            <Button variant="secondary" onClick={handleConnectOAuth}>
+              <SiFacebook className="w-4 h-4 mr-2" />
+              Nova Autenticação
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

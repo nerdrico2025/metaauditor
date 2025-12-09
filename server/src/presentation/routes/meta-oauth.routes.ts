@@ -415,4 +415,135 @@ router.post('/select-account', async (req: Request, res: Response, next: NextFun
   }
 });
 
+// Check token validity
+router.get('/check-token/:integrationId', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { integrationId } = req.params;
+    const integration = await storage.getIntegrationById(integrationId);
+    
+    if (!integration || !integration.accessToken) {
+      return res.json({ valid: false, error: 'No token found' });
+    }
+
+    // Call Meta API to check token validity
+    const debugUrl = `https://graph.facebook.com/v22.0/debug_token?input_token=${integration.accessToken}&access_token=${integration.accessToken}`;
+    
+    const response = await fetch(debugUrl);
+    const data = await response.json();
+    
+    if (data.data) {
+      const tokenData = data.data;
+      const isValid = tokenData.is_valid;
+      const expiresAt = tokenData.expires_at ? new Date(tokenData.expires_at * 1000) : null;
+      const scopes = tokenData.scopes || [];
+      
+      return res.json({
+        valid: isValid,
+        expiresAt,
+        scopes,
+        appId: tokenData.app_id,
+        userId: tokenData.user_id,
+      });
+    }
+    
+    return res.json({ valid: false, error: data.error?.message || 'Unknown error' });
+  } catch (error: any) {
+    console.error('Error checking token:', error);
+    return res.json({ valid: false, error: error.message });
+  }
+});
+
+// Get available ad accounts using existing valid token
+router.get('/ad-accounts', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = (req as any).user?.userId;
+    
+    // Find any existing Meta integration with a valid token
+    const integrations = await storage.getIntegrationsByUser(userId);
+    const metaIntegration = integrations.find(i => i.platform === 'meta' && i.accessToken);
+    
+    if (!metaIntegration || !metaIntegration.accessToken) {
+      return res.status(404).json({ error: 'No valid Meta token found. Please connect an account first.' });
+    }
+
+    const accessToken = metaIntegration.accessToken;
+    
+    // Fetch all ad accounts using the existing token
+    const accountsUrl = `https://graph.facebook.com/v22.0/me/adaccounts?fields=id,name,account_status&access_token=${accessToken}`;
+    const response = await fetch(accountsUrl);
+    const data = await response.json() as AdAccountsResponse;
+
+    if (data.error) {
+      return res.status(400).json({ error: data.error, tokenExpired: true });
+    }
+
+    const accounts = (data.data || []).map(acc => ({
+      id: acc.id.replace('act_', ''),
+      name: acc.name,
+      accountStatus: acc.account_status,
+    }));
+
+    // Get already connected account IDs
+    const connectedAccountIds = integrations
+      .filter(i => i.platform === 'meta')
+      .map(i => i.accountId);
+
+    res.json({ 
+      accounts,
+      connectedAccountIds,
+      tokenValid: true,
+    });
+  } catch (error: any) {
+    console.error('Error fetching ad accounts:', error);
+    next(error);
+  }
+});
+
+// Add account using existing token
+router.post('/add-account', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = (req as any).user?.userId;
+    const { accountId, accountName, accountStatus } = req.body;
+
+    if (!accountId) {
+      return res.status(400).json({ error: 'Account ID is required' });
+    }
+
+    // Get user's company
+    const user = await storage.getUserById(userId);
+    const companyId = user?.companyId || null;
+
+    // Find existing Meta integration to get the token
+    const integrations = await storage.getIntegrationsByUser(userId);
+    const metaIntegration = integrations.find(i => i.platform === 'meta' && i.accessToken);
+
+    if (!metaIntegration || !metaIntegration.accessToken) {
+      return res.status(400).json({ error: 'No valid token found. Please reconnect to Meta.' });
+    }
+
+    // Check if this specific account is already connected
+    const existingAccount = integrations.find(i => i.platform === 'meta' && i.accountId === accountId);
+    if (existingAccount) {
+      return res.status(400).json({ error: 'This account is already connected.' });
+    }
+
+    // Create new integration with existing token
+    await storage.createIntegration({
+      companyId,
+      platform: 'meta',
+      accessToken: metaIntegration.accessToken,
+      accountId,
+      accountName,
+      accountStatus: String(accountStatus),
+      status: 'active',
+    });
+
+    console.log(`✅ Added new account ${accountId} - ${accountName} using existing token`);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Error adding account:', error);
+    next(error);
+  }
+});
+
 export default router;

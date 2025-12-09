@@ -1,6 +1,8 @@
+import { useQuery } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, AlertCircle, RefreshCw, Trash2, Clock } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { CheckCircle2, AlertCircle, RefreshCw, Trash2, Clock, ShieldCheck, ShieldX, Calendar } from 'lucide-react';
 
 interface Integration {
   id: string;
@@ -12,6 +14,13 @@ interface Integration {
   lastSync: Date | null;
   lastFullSync: Date | null;
   createdAt: Date;
+}
+
+interface TokenInfo {
+  valid: boolean;
+  expiresAt?: string | null;
+  scopes?: string[];
+  error?: string;
 }
 
 interface SyncHistoryItem {
@@ -42,6 +51,13 @@ export function IntegrationCard({
   onDelete,
   isSyncing
 }: IntegrationCardProps) {
+  const { data: tokenInfo, isLoading: tokenLoading } = useQuery<TokenInfo>({
+    queryKey: ['/api/auth/meta/check-token', integration.id],
+    queryFn: () => fetch(`/api/auth/meta/check-token/${integration.id}`).then(r => r.json()),
+    enabled: integration.platform === 'meta',
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
   const formatDate = (date: Date | null | string | undefined) => {
     if (!date) return 'Nunca';
     return new Date(date).toLocaleDateString('pt-BR', {
@@ -92,7 +108,7 @@ export function IntegrationCard({
             </Badge>
           </div>
           
-          <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <div>
               <span className="text-gray-500">Account ID:</span>
               <p className="font-mono text-gray-900 dark:text-white">{integration.accountId}</p>
@@ -104,6 +120,27 @@ export function IntegrationCard({
             <div>
               <span className="text-gray-500">Conectada em:</span>
               <p className="text-gray-900 dark:text-white">{formatDate(integration.createdAt)}</p>
+            </div>
+            <div>
+              <span className="text-gray-500">Status do Token:</span>
+              {tokenLoading ? (
+                <Skeleton className="h-5 w-20 mt-1" />
+              ) : tokenInfo?.valid ? (
+                <div className="flex items-center gap-1 text-green-600 dark:text-green-400">
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>Válido</span>
+                  {tokenInfo.expiresAt && (
+                    <span className="text-xs text-gray-500 ml-1">
+                      (até {formatDate(tokenInfo.expiresAt)})
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center gap-1 text-red-600 dark:text-red-400">
+                  <ShieldX className="w-4 h-4" />
+                  <span>Inválido</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
