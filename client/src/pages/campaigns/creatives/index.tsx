@@ -434,15 +434,24 @@ export default function Creatives() {
   };
 
   const checkPolicyBeforeAnalysis = (type: 'single' | 'selected' | 'all', creativeId?: string) => {
-    const hasDefaultPolicy = policies.some(p => p.isDefault && p.scope === 'global');
+    const globalPolicies = policies.filter(p => p.scope === 'global');
     
-    if (!hasDefaultPolicy) {
-      setPendingAnalysisType(type);
-      setPendingCreativeId(creativeId || null);
-      setShowPolicySelectionDialog(true);
+    if (globalPolicies.length === 0) {
+      toast({
+        title: 'Nenhuma política disponível',
+        description: 'Crie uma política global antes de analisar anúncios.',
+        variant: 'destructive',
+      });
       return false;
     }
-    return true;
+    
+    // Sempre perguntar qual política usar
+    const defaultPolicy = globalPolicies.find(p => p.isDefault);
+    setPendingAnalysisType(type);
+    setPendingCreativeId(creativeId || null);
+    setSelectedPolicyId(defaultPolicy?.id || null);
+    setShowPolicySelectionDialog(true);
+    return false;
   };
 
   const handleAnalyzeSelected = () => {
@@ -875,33 +884,40 @@ export default function Creatives() {
           <DialogHeader>
             <DialogTitle>Selecionar Política para Análise</DialogTitle>
             <DialogDescription>
-              Nenhuma política padrão definida. Por favor, selecione uma política para usar na análise dos anúncios.
+              {pendingAnalysisType === 'single' 
+                ? 'Escolha qual política será usada para analisar este anúncio.'
+                : pendingAnalysisType === 'selected'
+                  ? `Escolha qual política será usada para analisar os ${selectedCreatives.length} anúncios selecionados.`
+                  : `Escolha qual política será usada para analisar todos os ${filteredCreatives.length} anúncios.`
+              }
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <Select value={selectedPolicyId || ''} onValueChange={setSelectedPolicyId}>
-              <SelectTrigger data-testid="select-policy">
-                <SelectValue placeholder="Escolha uma política..." />
-              </SelectTrigger>
-              <SelectContent>
-                {policies.filter(p => p.scope === 'global').map((policy) => (
-                  <SelectItem key={policy.id} value={policy.id}>
-                    {policy.name} {policy.isDefault ? '(Padrão)' : ''}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <div className="flex justify-end gap-2">
+            <div>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
+                Política de Análise
+              </label>
+              <Select value={selectedPolicyId || ''} onValueChange={setSelectedPolicyId}>
+                <SelectTrigger data-testid="select-policy">
+                  <SelectValue placeholder="Escolha uma política..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {policies.filter(p => p.scope === 'global').map((policy) => (
+                    <SelectItem key={policy.id} value={policy.id}>
+                      {policy.name} {policy.isDefault ? '(Padrão)' : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setShowPolicySelectionDialog(false)}>
                 Cancelar
               </Button>
-              <Button onClick={proceedWithSelectedPolicy} data-testid="button-confirm-policy">
-                Continuar com Análise
+              <Button onClick={proceedWithSelectedPolicy} data-testid="button-confirm-policy" disabled={!selectedPolicyId}>
+                <Sparkles className="h-4 w-4 mr-2" />
+                Iniciar Análise
               </Button>
-            </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">
-              Dica: Você pode definir uma política padrão em{' '}
-              <Link href="/policies" className="text-primary underline">Políticas</Link>
             </div>
           </div>
         </DialogContent>
