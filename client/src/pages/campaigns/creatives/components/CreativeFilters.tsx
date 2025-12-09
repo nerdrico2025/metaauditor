@@ -157,7 +157,7 @@ export function CreativeFilters({
                 data-testid="switch-only-analyzed"
               />
               <Label htmlFor="only-analyzed" className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer whitespace-nowrap">
-                Apenas Analisados
+                Analisados
               </Label>
             </div>
           </div>
