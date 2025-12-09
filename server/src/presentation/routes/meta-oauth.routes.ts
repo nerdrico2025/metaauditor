@@ -376,21 +376,26 @@ router.post('/select-account', async (req: Request, res: Response, next: NextFun
     const user = await storage.getUserById(userId);
     const companyId = user?.companyId || null;
     
-    console.log(`📋 Creating integration for user ${userId} with companyId: ${companyId}`);
+    console.log(`📋 Processing integration for user ${userId} with companyId: ${companyId}`);
 
-    // Create or update integration
+    // Check if THIS SPECIFIC account is already connected (by accountId)
     const existingIntegrations = await storage.getIntegrationsByUser(userId);
-    const metaIntegration = existingIntegrations.find(i => i.platform === 'meta');
+    const existingAccountIntegration = existingIntegrations.find(
+      i => i.platform === 'meta' && i.accountId === accountId
+    );
 
-    if (metaIntegration) {
-      await storage.updateIntegration(metaIntegration.id, {
+    if (existingAccountIntegration) {
+      // Same account already connected - just update the token
+      console.log(`🔄 Updating existing integration for account ${accountId}`);
+      await storage.updateIntegration(existingAccountIntegration.id, {
         accessToken,
-        accountId,
         accountName,
         accountStatus,
         status: 'active',
       });
     } else {
+      // Different account or no Meta integration yet - CREATE NEW
+      console.log(`➕ Creating NEW integration for account ${accountId} - ${accountName}`);
       await storage.createIntegration({
         companyId,
         platform: 'meta',
