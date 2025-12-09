@@ -193,143 +193,56 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
       return sendResultAndClose(false, 'Nenhuma conta encontrada nos Business Managers autorizados. Verifique se você tem contas de anúncios nos BMs que autorizou.');
     }
 
-    // Store access token and accounts for user to select
-    // Send accounts list back to popup for selection
+    // Get user's companyId
+    const user = await storage.getUser(userId);
+    if (!user) {
+      return sendResultAndClose(false, 'Usuário não encontrado');
+    }
+
+    // Get already connected accounts for this company
+    const existingIntegrations = await storage.getIntegrationsByCompanyId(user.companyId);
+    const connectedAccountIds = existingIntegrations
+      .filter(i => i.platform === 'meta')
+      .map(i => i.accountId);
+
+    // Send accounts list and token back to parent window for selection
+    const accountsForSelection = adAccountsData.data.map(acc => ({
+      id: acc.id,
+      name: acc.name,
+      account_status: acc.account_status,
+      business_id: acc.business_id || null,
+      business_name: acc.business_name || 'Conta Pessoal',
+      is_connected: connectedAccountIds.includes(acc.id)
+    }));
+
     const html = `
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Selecione a Conta</title>
-          <style>
-            body {
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-              padding: 20px;
-              background: #f5f5f5;
-            }
-            .container {
-              max-width: 500px;
-              margin: 0 auto;
-              background: white;
-              border-radius: 12px;
-              padding: 24px;
-              box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            }
-            h2 {
-              margin: 0 0 8px 0;
-              font-size: 20px;
-              color: #1a1a1a;
-            }
-            p {
-              margin: 0 0 20px 0;
-              color: #666;
-              font-size: 14px;
-            }
-            .account-list {
-              max-height: 400px;
-              overflow-y: auto;
-            }
-            .account-item {
-              border: 2px solid #e0e0e0;
-              border-radius: 8px;
-              padding: 16px;
-              margin-bottom: 12px;
-              cursor: pointer;
-              transition: all 0.2s;
-            }
-            .account-item:hover {
-              border-color: #1877f2;
-              background: #f0f8ff;
-            }
-            .account-name {
-              font-weight: 600;
-              font-size: 16px;
-              color: #1a1a1a;
-              margin-bottom: 4px;
-            }
-            .account-id {
-              font-size: 13px;
-              color: #666;
-              font-family: monospace;
-            }
-            .account-bm {
-              font-size: 12px;
-              color: #1877f2;
-              margin-top: 4px;
-              font-weight: 500;
-            }
-            .account-status {
-              display: inline-block;
-              margin-top: 8px;
-              padding: 4px 8px;
-              border-radius: 4px;
-              font-size: 12px;
-              font-weight: 500;
-            }
-            .status-active {
-              background: #e7f5e7;
-              color: #2e7d32;
-            }
-            .status-disabled {
-              background: #fff3e0;
-              color: #e65100;
-            }
-          </style>
+          <title>OAuth Callback</title>
         </head>
         <body>
-          <div class="container">
-            <h2>🎯 Selecione a Conta de Anúncios</h2>
-            <p><strong>✅ Contas dos Business Managers Autorizados</strong><br>
-            Encontramos ${adAccountsData.data.length} conta(s) de anúncios nos BMs que você autorizou. Selecione qual deseja conectar:</p>
-            <div class="account-list">
-              ${adAccountsData.data.map(account => `
-                <div class="account-item" onclick="selectAccount('${account.id}', '${account.name.replace(/'/g, "\\'")}', ${account.account_status}, '${account.business_id || ''}', '${(account.business_name || '').replace(/'/g, "\\'")}')">
-                  <div class="account-name">${account.name}</div>
-                  <div class="account-id">${account.id}</div>
-                  ${account.business_name ? `<div class="account-bm">🏢 ${account.business_name}</div>` : ''}
-                  <span class="account-status ${account.account_status === 1 ? 'status-active' : 'status-disabled'}">
-                    ${account.account_status === 1 ? '✓ Ativa' : '⚠ Desativada'}
-                  </span>
-                </div>
-              `).join('')}
-            </div>
-          </div>
           <script>
-            async function selectAccount(accountId, accountName, accountStatus, businessId, businessName) {
-              try {
-                const response = await fetch('/api/auth/meta/select-account', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    userId: '${userId}',
-                    accessToken: '${accessToken}',
-                    accountId,
-                    accountName,
-                    accountStatus: accountStatus === 1 ? 'ACTIVE' : 'DISABLED',
-                    businessId: businessId || null,
-                    businessName: businessName || null
-                  })
-                });
-                
-                if (response.ok) {
-                  if (window.opener) {
-                    window.opener.postMessage({
-                      type: 'META_OAUTH_SUCCESS',
-                      message: 'Conta conectada: ' + accountName
-                    }, '*');
-                  }
-                  setTimeout(() => window.close(), 500);
-                } else {
-                  alert('Erro ao conectar conta');
-                }
-              } catch (error) {
-                alert('Erro ao conectar conta: ' + error.message);
-              }
+            if (window.opener) {
+              window.opener.postMessage({
+                type: 'META_OAUTH_ACCOUNTS',
+                accessToken: '${accessToken}',
+                accounts: ${JSON.stringify(accountsForSelection)},
+                userId: ${userId}
+              }, '*');
+              setTimeout(() => window.close(), 300);
+            } else {
+              window.location.href = '/?error=popup_blocked';
             }
           </script>
+          <p style="text-align: center; font-family: sans-serif; margin-top: 50px;">
+            ✅ Autenticação concluída!
+            <br><br>
+            Esta janela será fechada automaticamente...
+          </p>
         </body>
       </html>
     `;
-    
     return res.send(html);
   } catch (error) {
     console.error('OAuth callback error:', error);

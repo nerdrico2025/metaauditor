@@ -21,6 +21,10 @@ interface AdAccount {
   id: string;
   name: string;
   accountStatus: number;
+  account_status?: number;
+  business_id?: string | null;
+  business_name?: string;
+  is_connected?: boolean;
 }
 
 interface Integration {
@@ -74,6 +78,10 @@ export default function MetaIntegrations() {
   const [selectedBusinessName, setSelectedBusinessName] = useState<string>('');
   const [showOAuthModal, setShowOAuthModal] = useState(false);
   const [oauthUrl, setOauthUrl] = useState<string | null>(null);
+  const [oauthAccounts, setOauthAccounts] = useState<AdAccount[]>([]);
+  const [oauthToken, setOauthToken] = useState<string | null>(null);
+  const [showAccountSelectionModal, setShowAccountSelectionModal] = useState(false);
+  const [connectingAccountId, setConnectingAccountId] = useState<string | null>(null);
   
   // Sync modal state
   const [showSyncModal, setShowSyncModal] = useState(false);
@@ -406,13 +414,22 @@ export default function MetaIntegrations() {
         
         // Listen for OAuth callback message
         const handleMessage = (event: MessageEvent) => {
-          if (event.data.type === 'META_OAUTH_SUCCESS') {
+          if (event.data.type === 'META_OAUTH_ACCOUNTS') {
+            // Received accounts list from OAuth - show selection modal
+            setOauthAccounts(event.data.accounts || []);
+            setOauthToken(event.data.accessToken);
+            setShowOAuthModal(false);
+            setShowAccountSelectionModal(true);
+            setIsConnecting(false);
+            window.removeEventListener('message', handleMessage);
+          } else if (event.data.type === 'META_OAUTH_SUCCESS') {
             toast({
               title: 'Conectado com sucesso!',
               description: 'Sua conta Meta Ads foi conectada.',
             });
             queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
             setShowOAuthModal(false);
+            setShowAccountSelectionModal(false);
             setOauthUrl(null);
             setIsConnecting(false);
             window.removeEventListener('message', handleMessage);
@@ -435,9 +452,12 @@ export default function MetaIntegrations() {
         const checkClosed = setInterval(() => {
           if (popup?.closed) {
             clearInterval(checkClosed);
-            setShowOAuthModal(false);
-            setOauthUrl(null);
-            setIsConnecting(false);
+            // Don't close everything if we got accounts
+            if (!showAccountSelectionModal) {
+              setShowOAuthModal(false);
+              setOauthUrl(null);
+              setIsConnecting(false);
+            }
             window.removeEventListener('message', handleMessage);
           }
         }, 1000);
@@ -458,6 +478,48 @@ export default function MetaIntegrations() {
       });
       setShowOAuthModal(false);
       setIsConnecting(false);
+    }
+  };
+  
+  // Handle selecting an account from the OAuth modal
+  const handleSelectOAuthAccount = async (account: AdAccount) => {
+    if (account.is_connected) return;
+    
+    try {
+      setConnectingAccountId(account.id);
+      
+      await apiRequest('/api/auth/meta/select-account', {
+        method: 'POST',
+        body: JSON.stringify({
+          userId: user?.id,
+          accessToken: oauthToken,
+          accountId: account.id,
+          accountName: account.name,
+          accountStatus: account.account_status === 1 ? 'ACTIVE' : 'DISABLED',
+          businessId: account.business_id || null,
+          businessName: account.business_name || null
+        })
+      });
+      
+      toast({
+        title: 'Conta conectada!',
+        description: `${account.name} foi conectada com sucesso.`,
+      });
+      
+      // Mark account as connected in the list
+      setOauthAccounts(prev => prev.map(acc => 
+        acc.id === account.id ? { ...acc, is_connected: true } : acc
+      ));
+      
+      queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao conectar conta',
+        description: error.message || 'Ocorreu um erro ao conectar a conta',
+        variant: 'destructive'
+      });
+    } finally {
+      setConnectingAccountId(null);
     }
   };
   
@@ -885,6 +947,87 @@ export default function MetaIntegrations() {
           <div className="flex justify-center">
             <Button variant="outline" onClick={handleCloseOAuthModal}>
               Cancelar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Account Selection Modal after OAuth */}
+      <Dialog open={showAccountSelectionModal} onOpenChange={(open) => !open && setShowAccountSelectionModal(false)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <SiFacebook className="w-5 h-5 text-blue-600" />
+              Selecione as Contas para Conectar
+            </DialogTitle>
+            <DialogDescription>
+              Encontramos {oauthAccounts.length} conta(s) nos Business Managers autorizados. Clique nas contas que deseja conectar.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 max-h-96 overflow-y-auto py-2">
+            {(() => {
+              // Group accounts by Business Manager
+              const groupedAccounts = oauthAccounts.reduce((acc, account) => {
+                const bmName = account.business_name || 'Conta Pessoal';
+                if (!acc[bmName]) {
+                  acc[bmName] = [];
+                }
+                acc[bmName].push(account);
+                return acc;
+              }, {} as Record<string, AdAccount[]>);
+
+              return Object.entries(groupedAccounts).map(([bmName, accounts]) => (
+                <div key={bmName} className="mb-4">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
+                    <span className="text-blue-600">🏢</span> {bmName}
+                  </h4>
+                  <div className="space-y-2 pl-2">
+                    {accounts.map((account) => (
+                      <button
+                        key={account.id}
+                        onClick={() => handleSelectOAuthAccount(account)}
+                        disabled={account.is_connected || connectingAccountId === account.id}
+                        className={`w-full p-3 rounded-lg border text-left flex items-center justify-between transition-colors ${
+                          account.is_connected 
+                            ? 'bg-green-50 border-green-200 cursor-not-allowed' 
+                            : connectingAccountId === account.id
+                              ? 'bg-blue-50 border-blue-300'
+                              : 'hover:bg-blue-50 hover:border-blue-300 cursor-pointer'
+                        }`}
+                      >
+                        <div>
+                          <p className="font-medium text-gray-900">{account.name}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xs text-gray-500 font-mono">{account.id}</span>
+                            <span className={`text-xs px-1.5 py-0.5 rounded ${
+                              account.account_status === 1 
+                                ? 'bg-green-100 text-green-700' 
+                                : 'bg-orange-100 text-orange-700'
+                            }`}>
+                              {account.account_status === 1 ? 'Ativa' : 'Desativada'}
+                            </span>
+                          </div>
+                        </div>
+                        {account.is_connected ? (
+                          <span className="flex items-center gap-1 text-green-600 text-sm">
+                            <CheckCircle2 className="w-4 h-4" />
+                            Conectada
+                          </span>
+                        ) : connectingAccountId === account.id ? (
+                          <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+                        ) : (
+                          <Plus className="w-5 h-5 text-gray-400" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ));
+            })()}
+          </div>
+          <div className="flex justify-end gap-2 pt-2 border-t">
+            <Button variant="outline" onClick={() => setShowAccountSelectionModal(false)}>
+              Fechar
             </Button>
           </div>
         </DialogContent>
