@@ -382,15 +382,16 @@ export default function MetaIntegrations() {
     try {
       setIsConnecting(true);
       
-      const width = 600;
-      const height = 700;
-      const left = window.screen.width / 2 - width / 2;
-      const top = window.screen.height / 2 - height / 2;
+      const width = 520;
+      const height = 650;
+      const left = Math.round((window.screen.width - width) / 2);
+      const top = Math.round((window.screen.height - height) / 2);
       
+      // Force popup mode with specific window features
       const popup = window.open(
         'about:blank',
         'MetaOAuth',
-        `width=${width},height=${height},left=${left},top=${top},toolbar=0,scrollbars=1,status=0,resizable=1,location=1,menuBar=0`
+        `popup=yes,width=${width},height=${height},left=${left},top=${top},toolbar=no,scrollbars=yes,status=no,resizable=yes,location=yes,menubar=no`
       );
       
       if (!popup) {
