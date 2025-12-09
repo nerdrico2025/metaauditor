@@ -282,7 +282,7 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
             Encontramos ${adAccountsData.data.length} conta(s) de anúncios nos BMs que você autorizou. Selecione qual deseja conectar:</p>
             <div class="account-list">
               ${adAccountsData.data.map(account => `
-                <div class="account-item" onclick="selectAccount('${account.id}', '${account.name.replace(/'/g, "\\'")}', ${account.account_status})">
+                <div class="account-item" onclick="selectAccount('${account.id}', '${account.name.replace(/'/g, "\\'")}', ${account.account_status}, '${account.business_id || ''}', '${(account.business_name || '').replace(/'/g, "\\'")}')">
                   <div class="account-name">${account.name}</div>
                   <div class="account-id">${account.id}</div>
                   ${account.business_name ? `<div class="account-bm">🏢 ${account.business_name}</div>` : ''}
@@ -294,7 +294,7 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
             </div>
           </div>
           <script>
-            async function selectAccount(accountId, accountName, accountStatus) {
+            async function selectAccount(accountId, accountName, accountStatus, businessId, businessName) {
               try {
                 const response = await fetch('/api/auth/meta/select-account', {
                   method: 'POST',
@@ -304,7 +304,9 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
                     accessToken: '${accessToken}',
                     accountId,
                     accountName,
-                    accountStatus: accountStatus === 1 ? 'ACTIVE' : 'DISABLED'
+                    accountStatus: accountStatus === 1 ? 'ACTIVE' : 'DISABLED',
+                    businessId: businessId || null,
+                    businessName: businessName || null
                   })
                 });
                 
@@ -366,7 +368,7 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
 // Save selected account
 router.post('/select-account', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { userId, accessToken, accountId, accountName, accountStatus } = req.body;
+    const { userId, accessToken, accountId, accountName, accountStatus, businessId, businessName } = req.body;
 
     if (!userId || !accessToken || !accountId) {
       return res.status(400).json({ error: 'Missing required fields' });
@@ -376,7 +378,7 @@ router.post('/select-account', async (req: Request, res: Response, next: NextFun
     const user = await storage.getUserById(userId);
     const companyId = user?.companyId || null;
     
-    console.log(`📋 Processing integration for user ${userId} with companyId: ${companyId}`);
+    console.log(`📋 Processing integration for user ${userId} with companyId: ${companyId}, BM: ${businessName}`);
 
     // Check if THIS SPECIFIC account is already connected (by accountId)
     const existingIntegrations = await storage.getIntegrationsByUser(userId);
@@ -391,11 +393,13 @@ router.post('/select-account', async (req: Request, res: Response, next: NextFun
         accessToken,
         accountName,
         accountStatus,
+        businessId: businessId || null,
+        businessName: businessName || null,
         status: 'active',
       });
     } else {
       // Different account or no Meta integration yet - CREATE NEW
-      console.log(`➕ Creating NEW integration for account ${accountId} - ${accountName}`);
+      console.log(`➕ Creating NEW integration for account ${accountId} - ${accountName} (BM: ${businessName})`);
       await storage.createIntegration({
         companyId,
         platform: 'meta',
@@ -403,6 +407,8 @@ router.post('/select-account', async (req: Request, res: Response, next: NextFun
         accountId,
         accountName,
         accountStatus,
+        businessId: businessId || null,
+        businessName: businessName || null,
         status: 'active',
       });
     }
@@ -572,7 +578,7 @@ router.post('/renew-all-tokens', authenticateToken, async (req: Request, res: Re
 router.post('/add-account', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user?.userId;
-    const { accountId, accountName, accountStatus } = req.body;
+    const { accountId, accountName, accountStatus, businessId, businessName } = req.body;
 
     if (!accountId) {
       return res.status(400).json({ error: 'Account ID is required' });
@@ -604,6 +610,8 @@ router.post('/add-account', authenticateToken, async (req: Request, res: Respons
       accountId,
       accountName,
       accountStatus: String(accountStatus),
+      businessId: businessId || metaIntegration.businessId || null,
+      businessName: businessName || metaIntegration.businessName || null,
       status: 'active',
     });
 

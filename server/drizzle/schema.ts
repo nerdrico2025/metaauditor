@@ -140,6 +140,8 @@ export const integrations = pgTable("integrations", {
   accountId: varchar("account_id"),
   accountName: text("account_name"), // Nome da conta de anúncios
   accountStatus: varchar("account_status"), // Status da conta (ACTIVE, DISABLED, etc)
+  businessId: varchar("business_id"), // Business Manager ID
+  businessName: text("business_name"), // Business Manager Name
   status: varchar("status").default('active'),
   lastSync: timestamp("last_sync"),
   lastFullSync: timestamp("last_full_sync"), // Last complete sync (not incremental)

@@ -29,10 +29,18 @@ interface Integration {
   accountId: string | null;
   accountName: string | null;
   accountStatus: string | null;
+  businessId: string | null;
+  businessName: string | null;
   status: string;
   lastSync: Date | null;
   lastFullSync: Date | null;
   createdAt: Date;
+}
+
+interface BusinessGroup {
+  businessId: string | null;
+  businessName: string;
+  integrations: Integration[];
 }
 
 interface SyncHistoryItem {
@@ -464,6 +472,20 @@ export default function MetaIntegrations() {
   const metaIntegrations = integrations.filter(i => i.platform === 'meta');
   const hasExistingIntegration = metaIntegrations.length > 0;
 
+  // Group integrations by Business Manager
+  const groupedByBM: BusinessGroup[] = metaIntegrations.reduce((acc: BusinessGroup[], integration) => {
+    const bmId = integration.businessId || 'personal';
+    const bmName = integration.businessName || 'Conta Pessoal';
+    
+    let group = acc.find(g => g.businessId === bmId);
+    if (!group) {
+      group = { businessId: bmId === 'personal' ? null : bmId, businessName: bmName, integrations: [] };
+      acc.push(group);
+    }
+    group.integrations.push(integration);
+    return acc;
+  }, []);
+
   const addAccountMutation = useMutation({
     mutationFn: async (account: AdAccount) => {
       return apiRequest('/api/auth/meta/add-account', {
@@ -590,22 +612,6 @@ export default function MetaIntegrations() {
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      {hasExistingIntegration && (
-                        <Button 
-                          variant="outline"
-                          size="sm"
-                          onClick={handleRenewAllTokens}
-                          disabled={renewingTokens}
-                          data-testid="button-renew-all-tokens"
-                        >
-                          {renewingTokens ? (
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          ) : (
-                            <RefreshCw className="w-4 h-4 mr-2" />
-                          )}
-                          {renewingTokens ? 'Renovando...' : 'Renovar Tokens'}
-                        </Button>
-                      )}
                       <Button 
                         variant="outline"
                         size="sm"
@@ -616,19 +622,17 @@ export default function MetaIntegrations() {
                         Como Conectar
                       </Button>
                       <Button 
-                        onClick={handleAddAccount} 
+                        onClick={handleConnectOAuth} 
                         size="sm"
-                        disabled={isConnecting || loadingAccounts}
+                        disabled={isConnecting}
                         data-testid="button-connect-meta-oauth"
                       >
-                        {loadingAccounts ? (
+                        {isConnecting ? (
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        ) : hasExistingIntegration ? (
-                          <Plus className="w-4 h-4 mr-2" />
                         ) : (
-                          <SiFacebook className="w-4 h-4 mr-2" />
+                          <Plus className="w-4 h-4 mr-2" />
                         )}
-                        {isConnecting ? 'Conectando...' : loadingAccounts ? 'Carregando...' : hasExistingIntegration ? 'Adicionar Conta' : 'Conectar Conta'}
+                        {isConnecting ? 'Conectando...' : 'Adicionar BM'}
                       </Button>
                     </div>
                   </div>
@@ -648,25 +652,79 @@ export default function MetaIntegrations() {
                     </div>
                   ) : (
                     <>
-                      <div className="space-y-4">
-                        {metaIntegrations.map((integration) => {
-                          const integrationHistory = syncHistory.filter(h => h.integrationId === integration.id);
-                          
-                          return (
-                            <IntegrationCard
-                              key={integration.id}
-                              integration={integration}
-                              syncHistory={integrationHistory}
-                              onSync={() => syncMutation.mutate(integration.id)}
-                              onDelete={() => {
-                                setIntegrationToDelete(integration);
-                                setDeleteDialogOpen(true);
-                              }}
-                              onRenewToken={handleConnectOAuth}
-                              isSyncing={syncMutation.isPending}
-                            />
-                          );
-                        })}
+                      <div className="space-y-6">
+                        {groupedByBM.map((group) => (
+                          <div key={group.businessId || 'personal'} className="border rounded-lg overflow-hidden">
+                            <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 px-4 py-3 flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
+                                  <SiFacebook className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                                </div>
+                                <div>
+                                  <h3 className="font-semibold text-gray-900 dark:text-white">
+                                    {group.businessName}
+                                  </h3>
+                                  {group.businessId && (
+                                    <p className="text-xs text-gray-500 font-mono">{group.businessId}</p>
+                                  )}
+                                </div>
+                                <span className="ml-2 text-xs bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 px-2 py-0.5 rounded-full">
+                                  {group.integrations.length} conta{group.integrations.length > 1 ? 's' : ''}
+                                </span>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button 
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={handleRenewAllTokens}
+                                  disabled={renewingTokens}
+                                  data-testid={`button-renew-tokens-${group.businessId}`}
+                                >
+                                  {renewingTokens ? (
+                                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                                  ) : (
+                                    <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+                                  )}
+                                  Renovar Tokens
+                                </Button>
+                                <Button 
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={handleAddAccount}
+                                  disabled={loadingAccounts}
+                                  data-testid={`button-add-account-${group.businessId}`}
+                                >
+                                  {loadingAccounts ? (
+                                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                                  ) : (
+                                    <Plus className="w-3.5 h-3.5 mr-1.5" />
+                                  )}
+                                  Adicionar Conta
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="p-4 space-y-3">
+                              {group.integrations.map((integration) => {
+                                const integrationHistory = syncHistory.filter(h => h.integrationId === integration.id);
+                                
+                                return (
+                                  <IntegrationCard
+                                    key={integration.id}
+                                    integration={integration}
+                                    syncHistory={integrationHistory}
+                                    onSync={() => syncMutation.mutate(integration.id)}
+                                    onDelete={() => {
+                                      setIntegrationToDelete(integration);
+                                      setDeleteDialogOpen(true);
+                                    }}
+                                    onRenewToken={handleConnectOAuth}
+                                    isSyncing={syncMutation.isPending}
+                                  />
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))}
                       </div>
 
                       {(campaigns.length > 0 || adSets.length > 0 || creatives.length > 0) && (
