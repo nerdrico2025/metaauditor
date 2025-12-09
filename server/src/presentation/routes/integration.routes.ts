@@ -706,7 +706,7 @@ router.get('/:id/debug/count-ads', authenticateToken, async (req: Request, res: 
         console.log(`[${i+1}/${metaCampaigns.length}] Testing campaign: ${campaign.name}`);
         
         try {
-          const apiUrl = `https://graph.facebook.com/v21.0/${campaign.externalId}/adsets?fields=id,name&limit=100&access_token=${integration.accessToken}`;
+          const apiUrl = `https://graph.facebook.com/v22.0/${campaign.externalId}/adsets?fields=id,name&limit=100&access_token=${integration.accessToken}`;
           const response = await fetch(apiUrl);
           const data = await response.json() as any;
           
@@ -717,7 +717,7 @@ router.get('/:id/debug/count-ads', authenticateToken, async (req: Request, res: 
           console.log(`  ↳ Found ${adSetsFromAPI.length} ad sets`);
 
           for (const apiAdSet of adSetsFromAPI) {
-            const adsUrl = `https://graph.facebook.com/v21.0/${apiAdSet.id}/ads?fields=id&limit=1000&access_token=${integration.accessToken}`;
+            const adsUrl = `https://graph.facebook.com/v22.0/${apiAdSet.id}/ads?fields=id&limit=1000&access_token=${integration.accessToken}`;
             const adsResponse = await fetch(adsUrl);
             const adsData = await adsResponse.json() as any;
             

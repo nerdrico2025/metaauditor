@@ -41,7 +41,7 @@ router.get('/connect', authenticateToken, async (req: Request, res: Response, ne
     const state = Buffer.from(JSON.stringify({ userId })).toString('base64');
 
     // Add config_id parameter to ensure we're requesting business assets
-    const authUrl = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${settings.appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}&state=${state}&auth_type=rerequest`;
+    const authUrl = `https://www.facebook.com/v22.0/dialog/oauth?client_id=${settings.appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}&state=${state}&auth_type=rerequest`;
 
     console.log('🔗 Meta OAuth URL generated with scopes:', scope);
     
@@ -111,7 +111,7 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
     const redirectUri = settings.redirectUri || `${process.env.REPL_URL || 'http://localhost:5000'}/auth/meta/callback`;
 
     // Exchange code for access token
-    const tokenUrl = `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${settings.appId}&redirect_uri=${encodeURIComponent(redirectUri)}&client_secret=${settings.appSecret}&code=${code}`;
+    const tokenUrl = `https://graph.facebook.com/v22.0/oauth/access_token?client_id=${settings.appId}&redirect_uri=${encodeURIComponent(redirectUri)}&client_secret=${settings.appSecret}&code=${code}`;
     
     const tokenResponse = await fetch(tokenUrl);
     const tokenData = await tokenResponse.json() as TokenResponse;
@@ -124,7 +124,7 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
     const shortLivedToken = tokenData.access_token;
 
     // Exchange short-lived token for long-lived token (60 days)
-    const longLivedUrl = `https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${settings.appId}&client_secret=${settings.appSecret}&fb_exchange_token=${shortLivedToken}`;
+    const longLivedUrl = `https://graph.facebook.com/v22.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${settings.appId}&client_secret=${settings.appSecret}&fb_exchange_token=${shortLivedToken}`;
     
     const longLivedResponse = await fetch(longLivedUrl);
     const longLivedData = await longLivedResponse.json() as TokenResponse;
@@ -132,7 +132,7 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
     const accessToken = longLivedData.access_token || shortLivedToken;
 
     // Step 1: Get ONLY the Business Managers that were AUTHORIZED during OAuth
-    const businessesUrl = `https://graph.facebook.com/v21.0/me/businesses?access_token=${accessToken}&fields=id,name,verification_status&limit=100`;
+    const businessesUrl = `https://graph.facebook.com/v22.0/me/businesses?access_token=${accessToken}&fields=id,name,verification_status&limit=100`;
     const businessesResponse = await fetch(businessesUrl);
     const businessesData = await businessesResponse.json() as { data?: Array<{ id: string; name: string }> };
 
@@ -145,7 +145,7 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
       // Step 2: Get ad accounts ONLY from AUTHORIZED Business Managers
       for (const business of businessesData.data) {
         console.log(`🔍 Fetching ad accounts from authorized BM: ${business.name} (${business.id})`);
-        const bmAdAccountsUrl = `https://graph.facebook.com/v21.0/${business.id}/owned_ad_accounts?access_token=${accessToken}&fields=id,name,account_status&limit=500`;
+        const bmAdAccountsUrl = `https://graph.facebook.com/v22.0/${business.id}/owned_ad_accounts?access_token=${accessToken}&fields=id,name,account_status&limit=500`;
         const bmAdAccountsResponse = await fetch(bmAdAccountsUrl);
         const bmAdAccountsData = await bmAdAccountsResponse.json() as { data?: any[] };
         
@@ -165,7 +165,7 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
     } else {
       // Fallback: if no Business Manager was authorized, try personal ad accounts
       console.log('⚠️ No Business Manager authorized, trying personal ad accounts...');
-      const personalAccountsUrl = `https://graph.facebook.com/v21.0/me/adaccounts?access_token=${accessToken}&fields=id,name,account_status&limit=500`;
+      const personalAccountsUrl = `https://graph.facebook.com/v22.0/me/adaccounts?access_token=${accessToken}&fields=id,name,account_status&limit=500`;
       const personalAccountsResponse = await fetch(personalAccountsUrl);
       const personalAccountsData = await personalAccountsResponse.json() as AdAccountsResponse;
       
