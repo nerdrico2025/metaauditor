@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Image } from "lucide-react";
 import type { Creative } from "@shared/schema";
 
@@ -16,6 +16,11 @@ export const CreativeImage = ({
   variant = 'default'
 }: CreativeImageProps) => {
   const [imageError, setImageError] = useState(false);
+  
+  // Reset error state when creative image URL changes
+  useEffect(() => {
+    setImageError(false);
+  }, [creative.imageUrl]);
   
   // Size configurations
   const sizeConfig = {
