@@ -74,14 +74,27 @@ interface Campaign {
 export default function AdSets() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  const [location] = useLocation();
+  
+  // Parse URL params for initial filter values
+  const getInitialFilters = () => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return {
+        campaignFilter: params.get('campaignFilter') || 'all',
+      };
+    }
+    return { campaignFilter: 'all' };
+  };
+  
+  const urlFilters = getInitialFilters();
   
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [campaignFilter, setCampaignFilter] = useState<string>("all");
+  const [campaignFilter, setCampaignFilter] = useState<string>(urlFilters.campaignFilter);
   const [platformFilter, setPlatformFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
-  const [, setLocation] = useLocation();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -113,6 +126,16 @@ export default function AdSets() {
   });
   
   const allCreatives = creativesData?.creatives || [];
+
+  // Update filters when URL changes (e.g., navigation from other pages)
+  useEffect(() => {
+    const params = new URLSearchParams(location.split('?')[1] || '');
+    const campaignFilterParam = params.get('campaignFilter');
+    
+    if (campaignFilterParam) {
+      setCampaignFilter(campaignFilterParam);
+    }
+  }, [location]);
 
   // Reset to page 1 when filters change - must be before early return
   useEffect(() => {

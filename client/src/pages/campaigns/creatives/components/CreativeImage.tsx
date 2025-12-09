@@ -147,7 +147,6 @@ export const CreativeImage = ({
         setImageError(true);
       }}
       data-testid={`img-creative-${creative.id}`}
-      loading="lazy"
     />
   );
 };
