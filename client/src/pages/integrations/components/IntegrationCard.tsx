@@ -55,7 +55,14 @@ export function IntegrationCard({
 }: IntegrationCardProps) {
   const { data: tokenInfo, isLoading: tokenLoading } = useQuery<TokenInfo>({
     queryKey: ['/api/auth/meta/check-token', integration.id],
-    queryFn: () => fetch(`/api/auth/meta/check-token/${integration.id}`).then(r => r.json()),
+    queryFn: async () => {
+      const token = localStorage.getItem('auth_token');
+      const res = await fetch(`/api/auth/meta/check-token/${integration.id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error('Falha ao verificar token');
+      return res.json();
+    },
     enabled: integration.platform === 'meta',
     staleTime: 5 * 60 * 1000, // 5 minutes
   });

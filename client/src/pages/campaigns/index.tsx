@@ -67,7 +67,14 @@ export default function Campaigns() {
 
   const { data: campaigns, isLoading: campaignsLoading, error } = useQuery<Campaign[]>({
     queryKey: ["/api/campaigns", { integrationId: selectedAccountId }],
-    queryFn: () => fetch(`/api/campaigns${selectedAccountId ? `?integrationId=${selectedAccountId}` : ''}`).then(r => r.json()),
+    queryFn: async () => {
+      const token = localStorage.getItem('auth_token');
+      const res = await fetch(`/api/campaigns${selectedAccountId ? `?integrationId=${selectedAccountId}` : ''}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error('Falha ao carregar campanhas');
+      return res.json();
+    },
     enabled: isAuthenticated,
   });
 
