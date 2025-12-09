@@ -37,7 +37,7 @@ router.get('/connect', authenticateToken, async (req: Request, res: Response, ne
 
     // Build OAuth URL with ALL necessary scopes for Business Manager
     const redirectUri = settings.redirectUri || `${process.env.REPL_URL || 'http://localhost:5000'}/auth/meta/callback`;
-    const scope = 'ads_management,business_management,read_insights';
+    const scope = 'ads_management,ads_read,business_management,read_insights';
     const state = Buffer.from(JSON.stringify({ userId })).toString('base64');
 
     // Add config_id parameter to ensure we're requesting business assets
