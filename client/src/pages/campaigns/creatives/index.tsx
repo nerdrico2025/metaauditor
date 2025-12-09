@@ -749,7 +749,7 @@ export default function Creatives() {
                                 )}
                               </button>
                             </TableHead>
-                            <TableHead className="w-[96px] flex-shrink-0"></TableHead>
+                            <TableHead className="w-[96px] flex-shrink-0">Imagem</TableHead>
                             <TableHead className="w-[50px]"></TableHead>
                             <TableHead>Nome do Anúncio</TableHead>
                             <TableHead>Campanha</TableHead>
@@ -784,6 +784,7 @@ export default function Creatives() {
                               <TableCell className="w-[96px] flex-shrink-0">
                                 <div onClick={() => setSelectedCreativeForModal(creative)} className="cursor-pointer">
                                   <CreativeImage 
+                                    key={`img-${creative.id}-${currentPage}`}
                                     creative={creative}
                                     className="w-20 h-20 object-cover rounded-lg hover:opacity-80 transition-opacity border border-gray-200 dark:border-gray-700"
                                     size="small"
