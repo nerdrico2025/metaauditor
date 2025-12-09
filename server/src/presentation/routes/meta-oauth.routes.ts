@@ -499,6 +499,75 @@ router.get('/ad-accounts', authenticateToken, async (req: Request, res: Response
   }
 });
 
+// Renew all tokens for Meta integrations
+router.post('/renew-all-tokens', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = (req as any).user?.userId;
+    const integrations = await storage.getIntegrationsByUser(userId);
+    const metaIntegrations = integrations.filter(i => i.platform === 'meta');
+
+    if (metaIntegrations.length === 0) {
+      return res.status(400).json({ error: 'Nenhuma integração Meta encontrada' });
+    }
+
+    const settings = await storage.getPlatformSettingsByPlatform('meta');
+    if (!settings) {
+      return res.status(400).json({ error: 'App Meta não configurado' });
+    }
+
+    let renewed = 0;
+    let failed = 0;
+    const results: any[] = [];
+
+    for (const integration of metaIntegrations) {
+      if (!integration.accessToken) {
+        results.push({ id: integration.id, accountName: integration.accountName, success: false, error: 'Sem token' });
+        failed++;
+        continue;
+      }
+
+      try {
+        // Exchange current token for new long-lived token
+        const longLivedUrl = `https://graph.facebook.com/v22.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${settings.appId}&client_secret=${settings.appSecret}&fb_exchange_token=${integration.accessToken}`;
+        
+        const response = await fetch(longLivedUrl);
+        const data = await response.json() as TokenResponse;
+
+        if (data.access_token) {
+          // Update integration with new token
+          await storage.updateIntegration(integration.id, {
+            accessToken: data.access_token,
+            status: 'active',
+          });
+          renewed++;
+          results.push({ id: integration.id, accountName: integration.accountName, success: true });
+          console.log(`✅ Token renovado para ${integration.accountName}`);
+        } else {
+          failed++;
+          results.push({ id: integration.id, accountName: integration.accountName, success: false, error: 'Token expirado - reautenticação necessária' });
+          console.log(`❌ Falha ao renovar token para ${integration.accountName}:`, data);
+        }
+      } catch (err: any) {
+        failed++;
+        results.push({ id: integration.id, accountName: integration.accountName, success: false, error: err.message });
+      }
+    }
+
+    res.json({ 
+      renewed, 
+      failed,
+      total: metaIntegrations.length,
+      results,
+      message: failed > 0 
+        ? `${renewed} tokens renovados. ${failed} falharam - esses precisam de reautenticação.`
+        : `${renewed} tokens renovados com sucesso!`
+    });
+  } catch (error: any) {
+    console.error('Error renewing tokens:', error);
+    next(error);
+  }
+});
+
 // Add account using existing token
 router.post('/add-account', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {

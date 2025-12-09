@@ -61,6 +61,7 @@ export default function MetaIntegrations() {
   const [availableAccounts, setAvailableAccounts] = useState<AdAccount[]>([]);
   const [connectedAccountIds, setConnectedAccountIds] = useState<string[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(false);
+  const [renewingTokens, setRenewingTokens] = useState(false);
   
   // Sync modal state
   const [showSyncModal, setShowSyncModal] = useState(false);
@@ -523,6 +524,37 @@ export default function MetaIntegrations() {
     }
   };
 
+  const handleRenewAllTokens = async () => {
+    setRenewingTokens(true);
+    try {
+      const response = await apiRequest('/api/auth/meta/renew-all-tokens', { method: 'POST' });
+      
+      if (response.failed > 0) {
+        toast({
+          title: `${response.renewed} tokens renovados`,
+          description: `${response.failed} tokens expiraram e precisam de nova autenticação`,
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Tokens renovados!',
+          description: `${response.renewed} tokens renovados com sucesso por mais 60 dias`,
+        });
+      }
+      
+      queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/meta/check-token'] });
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao renovar tokens',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setRenewingTokens(false);
+    }
+  };
+
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />
@@ -558,6 +590,22 @@ export default function MetaIntegrations() {
                       </div>
                     </div>
                     <div className="flex gap-2">
+                      {hasExistingIntegration && (
+                        <Button 
+                          variant="outline"
+                          size="sm"
+                          onClick={handleRenewAllTokens}
+                          disabled={renewingTokens}
+                          data-testid="button-renew-all-tokens"
+                        >
+                          {renewingTokens ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          ) : (
+                            <RefreshCw className="w-4 h-4 mr-2" />
+                          )}
+                          {renewingTokens ? 'Renovando...' : 'Renovar Tokens'}
+                        </Button>
+                      )}
                       <Button 
                         variant="outline"
                         size="sm"
