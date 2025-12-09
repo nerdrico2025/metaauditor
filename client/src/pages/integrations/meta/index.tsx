@@ -385,12 +385,24 @@ export default function MetaIntegrations() {
   const handleConnectOAuth = async () => {
     try {
       setIsConnecting(true);
+      setShowOAuthModal(true);
       
       const data = await apiRequest('/api/auth/meta/connect');
       
       if (data.authUrl) {
         setOauthUrl(data.authUrl);
-        setShowOAuthModal(true);
+        
+        // Open popup for Facebook OAuth
+        const width = 520;
+        const height = 650;
+        const left = Math.round((window.screen.width - width) / 2);
+        const top = Math.round((window.screen.height - height) / 2);
+        
+        const popup = window.open(
+          data.authUrl,
+          'MetaOAuth',
+          `popup=yes,width=${width},height=${height},left=${left},top=${top},toolbar=no,scrollbars=yes,status=no,resizable=yes,location=yes,menubar=no`
+        );
         
         // Listen for OAuth callback message
         const handleMessage = (event: MessageEvent) => {
@@ -418,12 +430,24 @@ export default function MetaIntegrations() {
         };
 
         window.addEventListener('message', handleMessage);
+        
+        // Check if popup was closed without completing
+        const checkClosed = setInterval(() => {
+          if (popup?.closed) {
+            clearInterval(checkClosed);
+            setShowOAuthModal(false);
+            setOauthUrl(null);
+            setIsConnecting(false);
+            window.removeEventListener('message', handleMessage);
+          }
+        }, 1000);
       } else {
         toast({
           title: 'Erro ao conectar',
           description: data.error || 'Não foi possível gerar a URL de autenticação',
           variant: 'destructive'
         });
+        setShowOAuthModal(false);
         setIsConnecting(false);
       }
     } catch (error: any) {
@@ -432,6 +456,7 @@ export default function MetaIntegrations() {
         description: error.message || 'Erro ao iniciar processo de autenticação OAuth',
         variant: 'destructive'
       });
+      setShowOAuthModal(false);
       setIsConnecting(false);
     }
   };
@@ -827,33 +852,37 @@ export default function MetaIntegrations() {
         </DialogContent>
       </Dialog>
 
-      {/* OAuth Modal with iframe */}
+      {/* OAuth Status Modal */}
       <Dialog open={showOAuthModal} onOpenChange={(open) => !open && handleCloseOAuthModal()}>
-        <DialogContent className="max-w-2xl h-[85vh] flex flex-col p-0">
-          <DialogHeader className="px-6 py-4 border-b">
+        <DialogContent className="max-w-md">
+          <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <SiFacebook className="w-5 h-5 text-blue-600" />
-              Conectar ao Meta Business Manager
+              Conectando ao Meta
             </DialogTitle>
             <DialogDescription>
-              Faça login com sua conta do Facebook e autorize o acesso ao Business Manager.
+              Complete a autenticação na janela que foi aberta.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex-1 overflow-hidden">
-            {oauthUrl ? (
-              <iframe
-                src={oauthUrl}
-                className="w-full h-full border-0"
-                title="Meta OAuth"
-                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
-              />
-            ) : (
-              <div className="flex items-center justify-center h-full">
-                <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+          <div className="py-8 flex flex-col items-center gap-4">
+            <div className="relative">
+              <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center">
+                <SiFacebook className="w-8 h-8 text-blue-600" />
               </div>
-            )}
+              <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow">
+                <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+              </div>
+            </div>
+            <div className="text-center">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Uma janela foi aberta para autenticação.
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                Após autorizar, esta janela será atualizada automaticamente.
+              </p>
+            </div>
           </div>
-          <div className="px-6 py-4 border-t flex justify-end">
+          <div className="flex justify-center">
             <Button variant="outline" onClick={handleCloseOAuthModal}>
               Cancelar
             </Button>
