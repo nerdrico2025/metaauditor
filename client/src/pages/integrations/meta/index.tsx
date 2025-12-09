@@ -516,8 +516,7 @@ export default function MetaIntegrations() {
     if (hasExistingIntegration) {
       setLoadingAccounts(true);
       try {
-        const response = await fetch('/api/auth/meta/ad-accounts');
-        const data = await response.json();
+        const data = await apiRequest('/api/auth/meta/ad-accounts');
         
         if (data.tokenExpired || data.error) {
           toast({
