@@ -388,7 +388,7 @@ export default function Campaigns() {
                                     className="font-semibold"
                                     data-testid={`button-view-adsets-${campaign.id}`}
                                   >
-                                    <Link href="/adsets">
+                                    <Link href={`/adsets?campaignFilter=${campaign.id}`}>
                                       <Layers className="h-4 w-4 mr-1" />
                                       {adSetCount}
                                     </Link>
@@ -402,7 +402,7 @@ export default function Campaigns() {
                                     className="font-semibold"
                                     data-testid={`button-view-creatives-${campaign.id}`}
                                   >
-                                    <Link href="/creatives">
+                                    <Link href={`/creatives?campaignFilter=${campaign.id}`}>
                                       <ImageIcon className="h-4 w-4 mr-1" />
                                       {creativeCount}
                                     </Link>

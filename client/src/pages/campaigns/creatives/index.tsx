@@ -120,11 +120,11 @@ export default function Creatives() {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       return {
-        campaignId: params.get('campaignId') || 'all',
-        adSetId: params.get('adSetId') || 'all',
+        campaignFilter: params.get('campaignFilter') || 'all',
+        adSetFilter: params.get('adSetFilter') || 'all',
       };
     }
-    return { campaignId: 'all', adSetId: 'all' };
+    return { campaignFilter: 'all', adSetFilter: 'all' };
   };
   
   const urlFilters = getInitialFilters();
@@ -132,8 +132,8 @@ export default function Creatives() {
   const [selectedCreativeForModal, setSelectedCreativeForModal] = useState<Creative | null>(null);
   const [filters, setFilters] = useState<FilterState>({
     ...defaultFilters,
-    campaignFilter: urlFilters.campaignId,
-    adSetFilter: urlFilters.adSetId,
+    campaignFilter: urlFilters.campaignFilter,
+    adSetFilter: urlFilters.adSetFilter,
   });
   const [selectedCreatives, setSelectedCreatives] = useState<string[]>([]);
   const [showPolicySelectionDialog, setShowPolicySelectionDialog] = useState(false);
@@ -166,14 +166,14 @@ export default function Creatives() {
   // Update filters when URL changes (e.g., navigation from other pages)
   useEffect(() => {
     const params = new URLSearchParams(location.split('?')[1] || '');
-    const campaignId = params.get('campaignId');
-    const adSetId = params.get('adSetId');
+    const campaignFilter = params.get('campaignFilter');
+    const adSetFilter = params.get('adSetFilter');
     
-    if (campaignId || adSetId) {
+    if (campaignFilter || adSetFilter) {
       setFilters(prev => ({
         ...prev,
-        ...(campaignId && { campaignFilter: campaignId }),
-        ...(adSetId && { adSetFilter: adSetId }),
+        ...(campaignFilter && { campaignFilter }),
+        ...(adSetFilter && { adSetFilter }),
       }));
     }
   }, [location]);
