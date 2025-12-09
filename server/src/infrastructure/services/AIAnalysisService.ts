@@ -84,13 +84,26 @@ Brand Requirements:
 - Brand Guidelines: ${policy.brandGuidelines || 'Not specified'}
 - Logo URL: ${policy.logoUrl ? 'Logo provided' : 'No logo provided'}` : '\nNo brand configuration found.';
 
+      const requiredKeywordsList = policy?.requiredKeywords && policy.requiredKeywords.length > 0
+        ? policy.requiredKeywords.map((kw, i) => `  ${i + 1}. "${kw}"`).join('\n')
+        : '  Nenhuma palavra obrigatória definida';
+      
+      const prohibitedKeywordsList = policy?.prohibitedKeywords && policy.prohibitedKeywords.length > 0
+        ? policy.prohibitedKeywords.map((kw, i) => `  ${i + 1}. "${kw}"`).join('\n')
+        : '  Nenhuma palavra proibida definida';
+
       const contentRequirements = policy ? `
-Content Criteria:
-- Policy Name: ${policy.name}
-- Required Keywords: ${policy.requiredKeywords ? JSON.stringify(policy.requiredKeywords) : 'None'}
-- Prohibited Keywords: ${policy.prohibitedKeywords ? JSON.stringify(policy.prohibitedKeywords) : 'None'}
-- Requires Logo: ${policy.requiresLogo ? 'Yes' : 'No'}
-- Requires Brand Colors: ${policy.requiresBrandColors ? 'Yes' : 'No'}` : '\nNo content criteria found.';
+Critérios de Conteúdo:
+- Nome da Política: ${policy.name}
+
+PALAVRAS/FRASES OBRIGATÓRIAS (devem aparecer no texto ou imagem):
+${requiredKeywordsList}
+
+PALAVRAS/FRASES PROIBIDAS (NÃO podem aparecer no texto ou imagem):
+${prohibitedKeywordsList}
+
+- Requer Logo: ${policy.requiresLogo ? 'Sim' : 'Não'}
+- Requer Cores da Marca: ${policy.requiresBrandColors ? 'Sim' : 'Não'}` : '\nNenhum critério de conteúdo encontrado.';
 
       const imageBase64 = await this.getImageBase64(creative.imageUrl || '');
       const hasImage = !!imageBase64;
@@ -113,16 +126,30 @@ Detalhes do Criativo:
 ${brandRequirements}
 ${contentRequirements}
 
-IMPORTANTE: 
-- Analise SOMENTE o que você realmente vê na imagem. NÃO invente ou suponha textos que não estão visíveis.
-- Verifique palavras proibidas APENAS se elas realmente aparecem na imagem ou nos textos fornecidos.
-- Seja preciso e factual na análise.
+REGRAS CRÍTICAS PARA ANÁLISE DE PALAVRAS-CHAVE:
+
+1. PALAVRAS OBRIGATÓRIAS:
+   - Verifique se CADA palavra/frase obrigatória listada acima aparece nos textos OU na imagem
+   - Considere variações (maiúsculas/minúsculas, singular/plural)
+   - Se uma palavra obrigatória NÃO foi encontrada, liste isso como um problema
+   - NÃO invente que uma palavra está presente se você não a viu claramente
+
+2. PALAVRAS PROIBIDAS:
+   - Verifique se ALGUMA palavra/frase proibida listada acima aparece nos textos OU na imagem
+   - APENAS reporte como problema se você VIU a palavra proibida claramente
+   - NÃO reporte palavras proibidas que você NÃO encontrou - isso não é um problema
+   - Se nenhuma palavra proibida foi encontrada, isso é POSITIVO (não é um problema)
+
+3. PRECISÃO:
+   - Analise SOMENTE o que você realmente vê
+   - NÃO invente ou suponha textos que não estão visíveis
+   - Seja preciso e factual
 
 Por favor, analise:
 1. Conformidade das cores da marca (baseado na análise visual da imagem)
 2. Presença e conformidade do logo (verificar visualmente na imagem)
-3. Presença de palavras-chave/frases obrigatórias (no texto E na imagem)
-4. Ausência de palavras-chave/frases proibidas (no texto E na imagem)
+3. Presença de palavras-chave/frases obrigatórias (verificar CADA uma da lista)
+4. Ausência de palavras-chave/frases proibidas (verificar se ALGUMA aparece)
 5. Conformidade do comprimento do texto
 6. Consistência geral da marca
 7. Linguagem profissional e adequação
@@ -134,7 +161,12 @@ RESPONDA OBRIGATORIAMENTE EM PORTUGUÊS-BR. Responda com JSON neste formato: {
   "logoCompliance": boolean,
   "colorCompliance": boolean,
   "textCompliance": boolean,
-  "brandGuidelines": boolean
+  "brandGuidelines": boolean,
+  "keywordAnalysis": {
+    "requiredKeywordsFound": ["lista de palavras obrigatórias que FORAM encontradas"],
+    "requiredKeywordsMissing": ["lista de palavras obrigatórias que NÃO foram encontradas"],
+    "prohibitedKeywordsFound": ["lista de palavras proibidas que FORAM encontradas - vazio se nenhuma"]
+  }
 }`;
 
       type MessageContent = 
