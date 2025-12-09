@@ -70,6 +70,8 @@ export default function MetaIntegrations() {
   const [connectedAccountIds, setConnectedAccountIds] = useState<string[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(false);
   const [renewingTokens, setRenewingTokens] = useState(false);
+  const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
+  const [selectedBusinessName, setSelectedBusinessName] = useState<string>('');
   
   // Sync modal state
   const [showSyncModal, setShowSyncModal] = useState(false);
@@ -512,11 +514,16 @@ export default function MetaIntegrations() {
     },
   });
 
-  const handleAddAccount = async () => {
+  const handleAddAccount = async (businessId?: string | null, businessName?: string) => {
     if (hasExistingIntegration) {
       setLoadingAccounts(true);
+      setSelectedBusinessId(businessId || null);
+      setSelectedBusinessName(businessName || '');
       try {
-        const data = await apiRequest('/api/auth/meta/ad-accounts');
+        const url = businessId 
+          ? `/api/auth/meta/ad-accounts?businessId=${businessId}` 
+          : '/api/auth/meta/ad-accounts';
+        const data = await apiRequest(url);
         
         if (data.tokenExpired || data.error) {
           toast({
@@ -690,7 +697,7 @@ export default function MetaIntegrations() {
                                 <Button 
                                   variant="outline"
                                   size="sm"
-                                  onClick={handleAddAccount}
+                                  onClick={() => handleAddAccount(group.businessId, group.businessName)}
                                   disabled={loadingAccounts}
                                   data-testid={`button-add-account-${group.businessId}`}
                                 >
@@ -792,7 +799,14 @@ export default function MetaIntegrations() {
       <Dialog open={showAddAccountModal} onOpenChange={setShowAddAccountModal}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Adicionar Conta de Anúncios</DialogTitle>
+            <DialogTitle>
+              Adicionar Conta de Anúncios
+              {selectedBusinessName && (
+                <span className="text-sm font-normal text-gray-500 ml-2">
+                  - {selectedBusinessName}
+                </span>
+              )}
+            </DialogTitle>
             <DialogDescription>
               Selecione uma conta de anúncios para conectar. As contas já conectadas estão desabilitadas.
             </DialogDescription>

@@ -463,10 +463,19 @@ router.get('/check-token/:integrationId', authenticateToken, async (req: Request
 router.get('/ad-accounts', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user?.userId;
+    const { businessId } = req.query;
     
     // Find any existing Meta integration with a valid token
     const integrations = await storage.getIntegrationsByUser(userId);
-    const metaIntegration = integrations.find(i => i.platform === 'meta' && i.accessToken);
+    
+    // If businessId provided, find integration from that BM; otherwise use any valid token
+    let metaIntegration;
+    if (businessId) {
+      metaIntegration = integrations.find(i => i.platform === 'meta' && i.accessToken && i.businessId === businessId);
+    }
+    if (!metaIntegration) {
+      metaIntegration = integrations.find(i => i.platform === 'meta' && i.accessToken);
+    }
     
     if (!metaIntegration || !metaIntegration.accessToken) {
       return res.status(404).json({ error: 'No valid Meta token found. Please connect an account first.' });
@@ -474,20 +483,37 @@ router.get('/ad-accounts', authenticateToken, async (req: Request, res: Response
 
     const accessToken = metaIntegration.accessToken;
     
-    // Fetch all ad accounts using the existing token
-    const accountsUrl = `https://graph.facebook.com/v22.0/me/adaccounts?fields=id,name,account_status&access_token=${accessToken}`;
-    const response = await fetch(accountsUrl);
-    const data = await response.json() as AdAccountsResponse;
+    let accounts: { id: string; name: string; accountStatus: number }[] = [];
+    
+    // If businessId provided, fetch accounts from that specific BM
+    if (businessId) {
+      const bmAccountsUrl = `https://graph.facebook.com/v22.0/${businessId}/owned_ad_accounts?fields=id,name,account_status&access_token=${accessToken}&limit=100`;
+      const bmResponse = await fetch(bmAccountsUrl);
+      const bmData = await bmResponse.json() as AdAccountsResponse;
+      
+      if (bmData.data) {
+        accounts = bmData.data.map(acc => ({
+          id: acc.id.replace('act_', ''),
+          name: acc.name,
+          accountStatus: acc.account_status,
+        }));
+      }
+    } else {
+      // Fetch all ad accounts the user has access to
+      const accountsUrl = `https://graph.facebook.com/v22.0/me/adaccounts?fields=id,name,account_status&access_token=${accessToken}`;
+      const response = await fetch(accountsUrl);
+      const data = await response.json() as AdAccountsResponse;
 
-    if (data.error) {
-      return res.status(400).json({ error: data.error, tokenExpired: true });
+      if (data.error) {
+        return res.status(400).json({ error: data.error, tokenExpired: true });
+      }
+
+      accounts = (data.data || []).map(acc => ({
+        id: acc.id.replace('act_', ''),
+        name: acc.name,
+        accountStatus: acc.account_status,
+      }));
     }
-
-    const accounts = (data.data || []).map(acc => ({
-      id: acc.id.replace('act_', ''),
-      name: acc.name,
-      accountStatus: acc.account_status,
-    }));
 
     // Get already connected account IDs
     const connectedAccountIds = integrations
