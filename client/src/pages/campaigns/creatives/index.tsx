@@ -735,8 +735,8 @@ export default function Creatives() {
                     <div className="overflow-x-auto">
                       <Table>
                         <TableHeader>
-                          <TableRow className="bg-gray-50 dark:bg-gray-900">
-                            <TableHead className="w-[50px]">
+                          <TableRow className="bg-gray-100/80 dark:bg-gray-800/80 border-b-2 border-gray-200 dark:border-gray-700">
+                            <TableHead className="w-[50px] border-r border-gray-200/50 dark:border-gray-700/50">
                               <button
                                 onClick={toggleSelectAll}
                                 className="flex items-center justify-center w-5 h-5"
@@ -749,25 +749,25 @@ export default function Creatives() {
                                 )}
                               </button>
                             </TableHead>
-                            <TableHead className="w-[96px] flex-shrink-0">Imagem</TableHead>
-                            <TableHead>Nome do Anúncio</TableHead>
-                            <TableHead>Campanha</TableHead>
-                            <TableHead>Grupo de Anúncios</TableHead>
-                            <TableHead>Veiculação</TableHead>
-                            <TableHead className="text-right">Impressões</TableHead>
-                            <TableHead className="text-right">Cliques</TableHead>
-                            <TableHead className="text-right">CTR</TableHead>
-                            <TableHead className="text-right">Ações</TableHead>
+                            <TableHead className="w-[96px] flex-shrink-0 text-left font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200/50 dark:border-gray-700/50">Imagem</TableHead>
+                            <TableHead className="text-left font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200/50 dark:border-gray-700/50">Anúncio</TableHead>
+                            <TableHead className="text-left font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200/50 dark:border-gray-700/50">Campanha</TableHead>
+                            <TableHead className="text-left font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200/50 dark:border-gray-700/50">Grupo</TableHead>
+                            <TableHead className="text-center font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200/50 dark:border-gray-700/50">Status</TableHead>
+                            <TableHead className="text-right font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200/50 dark:border-gray-700/50">Impressões</TableHead>
+                            <TableHead className="text-right font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200/50 dark:border-gray-700/50">Cliques</TableHead>
+                            <TableHead className="text-right font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200/50 dark:border-gray-700/50">CTR</TableHead>
+                            <TableHead className="text-center font-semibold text-gray-700 dark:text-gray-300">Ações</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {paginatedCreatives.map((creative) => (
                             <TableRow 
                               key={creative.id} 
-                              className="hover:bg-gray-50 dark:hover:bg-gray-900/50" 
+                              className="hover:bg-blue-50/50 dark:hover:bg-gray-800/50 transition-colors border-b border-gray-100 dark:border-gray-800" 
                               data-testid={`row-creative-${creative.id}`}
                             >
-                              <TableCell>
+                              <TableCell className="border-r border-gray-100 dark:border-gray-800">
                                 <button
                                   onClick={() => toggleSelectCreative(creative.id)}
                                   className="flex items-center justify-center w-5 h-5"
@@ -780,7 +780,7 @@ export default function Creatives() {
                                   )}
                                 </button>
                               </TableCell>
-                              <TableCell className="w-[96px] flex-shrink-0">
+                              <TableCell className="w-[96px] flex-shrink-0 border-r border-gray-100 dark:border-gray-800">
                                 <div onClick={() => setSelectedCreativeForModal(creative)} className="cursor-pointer relative">
                                   <CreativeImage 
                                     key={`img-${creative.id}-${currentPage}`}
@@ -793,7 +793,7 @@ export default function Creatives() {
                                   </div>
                                 </div>
                               </TableCell>
-                              <TableCell>
+                              <TableCell className="border-r border-gray-100 dark:border-gray-800">
                                 <div>
                                   <div className="font-medium text-gray-900 dark:text-white max-w-xs truncate">{creative.name}</div>
                                   {creative.headline && (
@@ -801,35 +801,35 @@ export default function Creatives() {
                                       {creative.headline}
                                     </div>
                                   )}
-                                  <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">ID: {creative.externalId}</div>
+                                  <div className="text-xs text-gray-400 dark:text-gray-600 mt-1">ID: {creative.externalId}</div>
                                 </div>
                               </TableCell>
-                              <TableCell>
+                              <TableCell className="border-r border-gray-100 dark:border-gray-800">
                                 <span className="text-sm text-gray-600 dark:text-gray-400">
                                   {getCampaignName(creative.campaignId)}
                                 </span>
                               </TableCell>
-                              <TableCell>
+                              <TableCell className="border-r border-gray-100 dark:border-gray-800">
                                 <span className="text-sm text-gray-600 dark:text-gray-400">
                                   {getAdSetName(creative.adSetId)}
                                 </span>
                               </TableCell>
-                              <TableCell>
+                              <TableCell className="text-center border-r border-gray-100 dark:border-gray-800">
                                 <Badge variant={getStatusBadgeVariant(creative.status)}>
                                   {getStatusLabel(creative.status)}
                                 </Badge>
                               </TableCell>
-                              <TableCell className="text-right text-sm text-gray-600 dark:text-gray-400">
+                              <TableCell className="text-right text-sm text-gray-600 dark:text-gray-400 tabular-nums border-r border-gray-100 dark:border-gray-800">
                                 {creative.impressions?.toLocaleString('pt-BR') || 0}
                               </TableCell>
-                              <TableCell className="text-right text-sm text-gray-600 dark:text-gray-400">
+                              <TableCell className="text-right text-sm text-gray-600 dark:text-gray-400 tabular-nums border-r border-gray-100 dark:border-gray-800">
                                 {creative.clicks?.toLocaleString('pt-BR') || 0}
                               </TableCell>
-                              <TableCell className="text-right text-sm text-gray-600 dark:text-gray-400">
+                              <TableCell className="text-right text-sm text-gray-600 dark:text-gray-400 tabular-nums border-r border-gray-100 dark:border-gray-800">
                                 {formatCTR(creative.ctr)}%
                               </TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex items-center justify-end gap-2">
+                              <TableCell className="text-center">
+                                <div className="flex items-center justify-center gap-1">
                                   <AnalyzeButton
                                     creativeId={creative.id}
                                     isAnalyzing={analyzingCreativeId === creative.id}
