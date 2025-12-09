@@ -515,10 +515,10 @@ router.get('/ad-accounts', authenticateToken, async (req: Request, res: Response
       }));
     }
 
-    // Get already connected account IDs
+    // Get already connected account IDs (remove act_ prefix for comparison)
     const connectedAccountIds = integrations
       .filter(i => i.platform === 'meta')
-      .map(i => i.accountId);
+      .map(i => i.accountId?.replace('act_', '') || '');
 
     res.json({ 
       accounts,

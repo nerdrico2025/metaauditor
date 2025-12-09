@@ -72,6 +72,8 @@ export default function MetaIntegrations() {
   const [renewingTokens, setRenewingTokens] = useState(false);
   const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
   const [selectedBusinessName, setSelectedBusinessName] = useState<string>('');
+  const [showOAuthModal, setShowOAuthModal] = useState(false);
+  const [oauthUrl, setOauthUrl] = useState<string | null>(null);
   
   // Sync modal state
   const [showSyncModal, setShowSyncModal] = useState(false);
@@ -384,46 +386,13 @@ export default function MetaIntegrations() {
     try {
       setIsConnecting(true);
       
-      const width = 520;
-      const height = 650;
-      const left = Math.round((window.screen.width - width) / 2);
-      const top = Math.round((window.screen.height - height) / 2);
-      
-      // Force popup mode with specific window features
-      const popup = window.open(
-        'about:blank',
-        'MetaOAuth',
-        `popup=yes,width=${width},height=${height},left=${left},top=${top},toolbar=no,scrollbars=yes,status=no,resizable=yes,location=yes,menubar=no`
-      );
-      
-      if (!popup) {
-        toast({
-          title: 'Popup bloqueado',
-          description: 'Por favor, permita popups para este site e tente novamente.',
-          variant: 'destructive'
-        });
-        setIsConnecting(false);
-        return;
-      }
-
-      popup.document.write(`
-        <html>
-          <head><title>Conectando...</title></head>
-          <body style="display: flex; align-items: center; justify-content: center; height: 100vh; font-family: Arial, sans-serif; background: #f5f5f5;">
-            <div style="text-align: center;">
-              <div style="font-size: 48px; margin-bottom: 16px;">⏳</div>
-              <h2 style="margin: 0; color: #333;">Conectando ao Meta...</h2>
-              <p style="color: #666;">Aguarde um momento...</p>
-            </div>
-          </body>
-        </html>
-      `);
-
       const data = await apiRequest('/api/auth/meta/connect');
       
       if (data.authUrl) {
-        popup.location.href = data.authUrl;
-
+        setOauthUrl(data.authUrl);
+        setShowOAuthModal(true);
+        
+        // Listen for OAuth callback message
         const handleMessage = (event: MessageEvent) => {
           if (event.data.type === 'META_OAUTH_SUCCESS') {
             toast({
@@ -431,6 +400,8 @@ export default function MetaIntegrations() {
               description: 'Sua conta Meta Ads foi conectada.',
             });
             queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
+            setShowOAuthModal(false);
+            setOauthUrl(null);
             setIsConnecting(false);
             window.removeEventListener('message', handleMessage);
           } else if (event.data.type === 'META_OAUTH_ERROR') {
@@ -439,22 +410,15 @@ export default function MetaIntegrations() {
               description: event.data.message || 'Ocorreu um erro durante a autenticação',
               variant: 'destructive'
             });
+            setShowOAuthModal(false);
+            setOauthUrl(null);
             setIsConnecting(false);
             window.removeEventListener('message', handleMessage);
           }
         };
 
         window.addEventListener('message', handleMessage);
-
-        const checkClosed = setInterval(() => {
-          if (popup?.closed) {
-            clearInterval(checkClosed);
-            setIsConnecting(false);
-            window.removeEventListener('message', handleMessage);
-          }
-        }, 1000);
       } else {
-        popup.close();
         toast({
           title: 'Erro ao conectar',
           description: data.error || 'Não foi possível gerar a URL de autenticação',
@@ -470,6 +434,12 @@ export default function MetaIntegrations() {
       });
       setIsConnecting(false);
     }
+  };
+  
+  const handleCloseOAuthModal = () => {
+    setShowOAuthModal(false);
+    setOauthUrl(null);
+    setIsConnecting(false);
   };
 
   const metaIntegrations = integrations.filter(i => i.platform === 'meta');
@@ -852,6 +822,40 @@ export default function MetaIntegrations() {
             <Button variant="secondary" onClick={handleConnectOAuth}>
               <SiFacebook className="w-4 h-4 mr-2" />
               Nova Autenticação
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* OAuth Modal with iframe */}
+      <Dialog open={showOAuthModal} onOpenChange={(open) => !open && handleCloseOAuthModal()}>
+        <DialogContent className="max-w-2xl h-[85vh] flex flex-col p-0">
+          <DialogHeader className="px-6 py-4 border-b">
+            <DialogTitle className="flex items-center gap-2">
+              <SiFacebook className="w-5 h-5 text-blue-600" />
+              Conectar ao Meta Business Manager
+            </DialogTitle>
+            <DialogDescription>
+              Faça login com sua conta do Facebook e autorize o acesso ao Business Manager.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-hidden">
+            {oauthUrl ? (
+              <iframe
+                src={oauthUrl}
+                className="w-full h-full border-0"
+                title="Meta OAuth"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+              </div>
+            )}
+          </div>
+          <div className="px-6 py-4 border-t flex justify-end">
+            <Button variant="outline" onClick={handleCloseOAuthModal}>
+              Cancelar
             </Button>
           </div>
         </DialogContent>
