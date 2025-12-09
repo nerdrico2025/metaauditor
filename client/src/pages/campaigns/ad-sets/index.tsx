@@ -469,15 +469,13 @@ export default function AdSets() {
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={() => {
-                                      const params = new URLSearchParams();
-                                      params.set('campaignId', adSet.campaignId);
-                                      setLocation(`/creatives?${params.toString()}`);
-                                    }}
+                                    asChild
                                     data-testid={`button-view-ads-${adSet.id}`}
                                   >
-                                    Ver Anúncios
-                                    <ChevronRight className="h-4 w-4 ml-1" />
+                                    <Link href={`/creatives?campaignFilter=${adSet.campaignId}`}>
+                                      Ver Anúncios
+                                      <ChevronRight className="h-4 w-4 ml-1" />
+                                    </Link>
                                   </Button>
                                 </TableCell>
                               </TableRow>
