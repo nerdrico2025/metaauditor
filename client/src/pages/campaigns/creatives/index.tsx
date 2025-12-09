@@ -98,11 +98,11 @@ function AnalyzeButton({ creativeId, isAnalyzing, onAnalyze }: AnalyzeButtonProp
       disabled={isAnalyzing || isLoading}
       title={hasAudit ? "Refazer análise deste anúncio" : "Analisar este anúncio"}
       data-testid={`button-analyze-${creativeId}`}
-      className={`gap-1.5 ${hasAudit 
+      className={`h-7 w-full gap-1 px-2 ${hasAudit 
         ? 'bg-emerald-500 hover:bg-emerald-600 text-white' 
         : 'bg-orange-500 hover:bg-orange-600 text-white'}`}
     >
-      <Sparkles className={`h-4 w-4 ${isAnalyzing ? 'animate-spin' : ''}`} />
+      <Sparkles className={`h-3.5 w-3.5 ${isAnalyzing ? 'animate-spin' : ''}`} />
       <span className="text-xs">{label}</span>
     </Button>
   );
@@ -839,11 +839,11 @@ export default function Creatives() {
                                     variant="outline"
                                     size="sm"
                                     onClick={() => setSelectedCreativeForModal(creative)}
-                                    className="h-7 text-xs px-2"
+                                    className="h-7 w-full gap-1 px-2"
                                     data-testid={`button-view-creative-${creative.id}`}
                                   >
-                                    <Eye className="h-3 w-3 mr-1" />
-                                    Detalhes
+                                    <Eye className="h-3.5 w-3.5" />
+                                    <span className="text-xs">Detalhes</span>
                                   </Button>
                                 </div>
                               </TableCell>
