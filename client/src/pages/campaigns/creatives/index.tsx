@@ -56,9 +56,10 @@ interface Policy {
   scope: 'global' | 'campaign';
 }
 
-function CreativeAnalysisIndicator({ creativeId }: { creativeId: string }) {
+function CreativeAnalysisIndicator({ creativeId, enabled = true }: { creativeId: string; enabled?: boolean }) {
   const { data: audits, isLoading } = useQuery<Audit[]>({
     queryKey: [`/api/creatives/${creativeId}/audits`],
+    enabled,
   });
 
   if (isLoading) {
@@ -82,11 +83,13 @@ interface AnalyzeButtonProps {
   creativeId: string;
   isAnalyzing: boolean;
   onAnalyze: () => void;
+  enabled?: boolean;
 }
 
-function AnalyzeButton({ creativeId, isAnalyzing, onAnalyze }: AnalyzeButtonProps) {
+function AnalyzeButton({ creativeId, isAnalyzing, onAnalyze, enabled = true }: AnalyzeButtonProps) {
   const { data: audits, isLoading } = useQuery<Audit[]>({
     queryKey: [`/api/creatives/${creativeId}/audits`],
+    enabled,
   });
 
   const hasAudit = audits && audits.length > 0;
@@ -854,6 +857,7 @@ export default function Creatives() {
                                     creativeId={creative.id}
                                     isAnalyzing={analyzingCreativeId === creative.id}
                                     onAnalyze={() => handleAnalyzeSingle(creative.id)}
+                                    enabled={isAuthenticated}
                                   />
                                   <Button
                                     variant="outline"
