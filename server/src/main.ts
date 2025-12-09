@@ -17,6 +17,7 @@
           import policyRoutes from "./presentation/routes/policy.routes.js";
           import integrationRoutes from "./presentation/routes/integration.routes.js";
           import dashboardRoutes from "./presentation/routes/dashboard.routes.js";
+          import reportsRoutes from "./presentation/routes/reports.routes.js";
           import auditRoutes from "./presentation/routes/audit.routes.js";
           import companyRoutes from "./presentation/routes/company.routes.js";
           import sheetsRoutes from "./presentation/routes/sheets.routes.js";
@@ -90,6 +91,7 @@
             app.use("/api/policies", policyRoutes);
             app.use("/api/integrations", integrationRoutes);
             app.use("/api/dashboard", dashboardRoutes);
+            app.use("/api/reports", reportsRoutes);
             app.use("/api/audits", auditRoutes);
             app.use("/api/company", companyRoutes);
             app.use("/api/plans", plansRoutes);
