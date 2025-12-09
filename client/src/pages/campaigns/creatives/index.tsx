@@ -733,10 +733,10 @@ export default function Creatives() {
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
-                      <Table>
+                      <Table className="table-fixed w-full">
                         <TableHeader>
                           <TableRow className="bg-gray-100/80 dark:bg-gray-800/80 border-b-2 border-gray-200 dark:border-gray-700">
-                            <TableHead className="w-[50px] border-r border-gray-200/50 dark:border-gray-700/50">
+                            <TableHead className="w-10 border-r border-gray-200/50 dark:border-gray-700/50">
                               <button
                                 onClick={toggleSelectAll}
                                 className="flex items-center justify-center w-5 h-5"
@@ -749,15 +749,15 @@ export default function Creatives() {
                                 )}
                               </button>
                             </TableHead>
-                            <TableHead className="w-[96px] flex-shrink-0 text-left font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200/50 dark:border-gray-700/50">Imagem</TableHead>
-                            <TableHead className="text-left font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200/50 dark:border-gray-700/50">Anúncio</TableHead>
-                            <TableHead className="text-left font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200/50 dark:border-gray-700/50">Campanha</TableHead>
-                            <TableHead className="text-left font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200/50 dark:border-gray-700/50">Grupo</TableHead>
-                            <TableHead className="text-center font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200/50 dark:border-gray-700/50">Status</TableHead>
-                            <TableHead className="text-right font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200/50 dark:border-gray-700/50">Impressões</TableHead>
-                            <TableHead className="text-right font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200/50 dark:border-gray-700/50">Cliques</TableHead>
-                            <TableHead className="text-right font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200/50 dark:border-gray-700/50">CTR</TableHead>
-                            <TableHead className="text-center font-semibold text-gray-700 dark:text-gray-300">Ações</TableHead>
+                            <TableHead className="w-24 text-left font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200/50 dark:border-gray-700/50">Imagem</TableHead>
+                            <TableHead className="w-[18%] text-left font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200/50 dark:border-gray-700/50">Anúncio</TableHead>
+                            <TableHead className="w-[14%] text-left font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200/50 dark:border-gray-700/50">Campanha</TableHead>
+                            <TableHead className="w-[14%] text-left font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200/50 dark:border-gray-700/50">Grupo</TableHead>
+                            <TableHead className="w-24 text-center font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200/50 dark:border-gray-700/50">Status</TableHead>
+                            <TableHead className="w-20 text-right font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200/50 dark:border-gray-700/50">Impr.</TableHead>
+                            <TableHead className="w-16 text-right font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200/50 dark:border-gray-700/50">Cliques</TableHead>
+                            <TableHead className="w-14 text-right font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200/50 dark:border-gray-700/50">CTR</TableHead>
+                            <TableHead className="w-24 text-center font-semibold text-gray-700 dark:text-gray-300">Ações</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -794,23 +794,23 @@ export default function Creatives() {
                                 </div>
                               </TableCell>
                               <TableCell className="border-r border-gray-100 dark:border-gray-800">
-                                <div>
-                                  <div className="font-medium text-gray-900 dark:text-white max-w-xs truncate">{creative.name}</div>
+                                <div className="overflow-hidden">
+                                  <div className="font-medium text-gray-900 dark:text-white truncate" title={creative.name}>{creative.name}</div>
                                   {creative.headline && (
-                                    <div className="text-xs text-gray-500 dark:text-gray-500 max-w-xs truncate mt-1">
+                                    <div className="text-xs text-gray-500 dark:text-gray-500 truncate mt-1" title={creative.headline}>
                                       {creative.headline}
                                     </div>
                                   )}
-                                  <div className="text-xs text-gray-400 dark:text-gray-600 mt-1">ID: {creative.externalId}</div>
+                                  <div className="text-xs text-gray-400 dark:text-gray-600 mt-1 truncate">ID: {creative.externalId}</div>
                                 </div>
                               </TableCell>
                               <TableCell className="border-r border-gray-100 dark:border-gray-800">
-                                <span className="text-sm text-gray-600 dark:text-gray-400">
+                                <span className="text-sm text-gray-600 dark:text-gray-400 block truncate" title={getCampaignName(creative.campaignId)}>
                                   {getCampaignName(creative.campaignId)}
                                 </span>
                               </TableCell>
                               <TableCell className="border-r border-gray-100 dark:border-gray-800">
-                                <span className="text-sm text-gray-600 dark:text-gray-400">
+                                <span className="text-sm text-gray-600 dark:text-gray-400 block truncate" title={getAdSetName(creative.adSetId)}>
                                   {getAdSetName(creative.adSetId)}
                                 </span>
                               </TableCell>
