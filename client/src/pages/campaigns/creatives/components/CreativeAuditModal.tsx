@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Eye, CheckCircle, AlertTriangle, BarChart3, Palette, Sparkles, ChevronRight, Shield, TrendingUp, MousePointer, XCircle, ArrowRight, Target } from "lucide-react";
+import { Eye, CheckCircle, AlertTriangle, BarChart3, Palette, Sparkles, ChevronRight, Shield, TrendingUp, MousePointer, XCircle, ArrowRight, Target, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { CreativeImage } from "./CreativeImage";
 
@@ -113,7 +113,8 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
   const { toast } = useToast();
   const [selectedActions, setSelectedActions] = useState<string[]>([]);
   const [imageZoomed, setImageZoomed] = useState(false);
-  const [viewingAudit, setViewingAudit] = useState<ExtendedAudit | null>(null); // State to hold the latest audit
+  const [viewingAudit, setViewingAudit] = useState<ExtendedAudit | null>(null);
+  const [isReanalyzing, setIsReanalyzing] = useState(false);
 
   // Fetch audit data for this creative
   const { data: audits, isLoading: auditsLoading } = useQuery<ExtendedAudit[]>({
@@ -146,6 +147,7 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
       return response;
     },
     onSuccess: (newAudit) => {
+      setIsReanalyzing(false);
       toast({
         title: "Análise Concluída",
         description: "Criativo analisado com sucesso",
@@ -158,6 +160,7 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
       queryClient.invalidateQueries({ queryKey: ['/api/creatives'] });
     },
     onError: (error) => {
+      setIsReanalyzing(false);
       if (isUnauthorizedError(error as Error)) {
         toast({
           title: "Unauthorized",
@@ -256,6 +259,8 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
   };
 
   const handleReanalyze = async () => {
+    setIsReanalyzing(true);
+    
     try {
       // Try to delete existing audit if it exists
       if (viewingAudit) {
@@ -269,17 +274,13 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
         }
       }
       
-      // Clear local state and start new analysis
+      // Clear local state
       setViewingAudit(null);
-      
-      toast({
-        title: "Reprocessando Análise",
-        description: "Iniciando nova análise...",
-      });
 
       // Create new analysis
       analyzeMutation.mutate();
     } catch (error) {
+      setIsReanalyzing(false);
       console.error("Error during reanalysis:", error);
       toast({
         title: "Erro na Reprocessamento",
@@ -359,6 +360,15 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
             </div>
           </DialogHeader>
 
+          {/* Loading State during Re-analysis */}
+          {isReanalyzing ? (
+            <div className="flex flex-col items-center justify-center py-16 space-y-4">
+              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+              <p className="text-lg font-medium text-slate-900">Analisando criativo...</p>
+              <p className="text-sm text-slate-500">A IA está processando a imagem e verificando conformidade</p>
+            </div>
+          ) : (
+          <>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Creative Preview */}
             <div className="space-y-4">
@@ -577,125 +587,6 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
                       </Card>
                     )}
 
-                    {/* Detalhamento da IA - Accordion Expansível */}
-                    {(viewingAudit.aiAnalysis?.compliance || viewingAudit.aiAnalysis?.performance) && (
-                      <Card>
-                        <CardContent className="pt-6">
-                          <details className="group">
-                            <summary className="flex items-center justify-between cursor-pointer list-none">
-                              <h3 className="font-bold text-lg flex items-center gap-2">
-                                <Sparkles className="h-5 w-5 text-primary" />
-                                Detalhamento da Análise IA
-                              </h3>
-                              <ChevronRight className="h-5 w-5 text-gray-500 transition-transform group-open:rotate-90" />
-                            </summary>
-
-                            <div className="mt-6 space-y-6">
-                              {/* Compliance Details */}
-                              {viewingAudit.aiAnalysis?.compliance && (
-                                <div>
-                                  <h4 className="font-semibold text-md mb-3 flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                                    <Palette className="h-4 w-4" />
-                                    Conformidade de Marca
-                                  </h4>
-                                  <div className="grid grid-cols-2 gap-3">
-                                    <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded">
-                                      {viewingAudit.aiAnalysis.compliance.analysis?.logoCompliance ? (
-                                        <CheckCircle className="h-4 w-4 text-green-500" />
-                                      ) : (
-                                        <XCircle className="h-4 w-4 text-red-500" />
-                                      )}
-                                      <span className="text-sm">Logo da Marca</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded">
-                                      {viewingAudit.aiAnalysis.compliance.analysis?.colorCompliance ? (
-                                        <CheckCircle className="h-4 w-4 text-green-500" />
-                                      ) : (
-                                        <XCircle className="h-4 w-4 text-red-500" />
-                                      )}
-                                      <span className="text-sm">Cores da Marca</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded">
-                                      {viewingAudit.aiAnalysis.compliance.analysis?.textCompliance ? (
-                                        <CheckCircle className="h-4 w-4 text-green-500" />
-                                      ) : (
-                                        <XCircle className="h-4 w-4 text-red-500" />
-                                      )}
-                                      <span className="text-sm">Texto e Palavras-chave</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded">
-                                      {viewingAudit.aiAnalysis.compliance.analysis?.brandGuidelines ? (
-                                        <CheckCircle className="h-4 w-4 text-green-500" />
-                                      ) : (
-                                        <XCircle className="h-4 w-4 text-red-500" />
-                                      )}
-                                      <span className="text-sm">Diretrizes da Marca</span>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Performance Metrics */}
-                              {viewingAudit.aiAnalysis?.performance && (
-                                <div>
-                                  <h4 className="font-semibold text-md mb-3 flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                                    <BarChart3 className="h-4 w-4" />
-                                    Métricas de Performance
-                                  </h4>
-                                  <div className="space-y-3">
-                                    {viewingAudit.aiAnalysis.performance.metrics?.ctrAnalysis && (
-                                      <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
-                                        <p className="font-semibold text-sm mb-1 flex items-center gap-2">
-                                          <MousePointer className="h-4 w-4" />
-                                          CTR (Click-Through Rate)
-                                        </p>
-                                        <p className="text-xs text-gray-700 dark:text-gray-300">
-                                          {viewingAudit.aiAnalysis.performance.metrics.ctrAnalysis}
-                                        </p>
-                                      </div>
-                                    )}
-                                    {viewingAudit.aiAnalysis.performance.metrics?.conversionAnalysis && (
-                                      <div className="p-3 bg-green-50 dark:bg-green-950 rounded-lg">
-                                        <p className="font-semibold text-sm mb-1 flex items-center gap-2">
-                                          <TrendingUp className="h-4 w-4" />
-                                          Conversões
-                                        </p>
-                                        <p className="text-xs text-gray-700 dark:text-gray-300">
-                                          {viewingAudit.aiAnalysis.performance.metrics.conversionAnalysis}
-                                        </p>
-                                      </div>
-                                    )}
-                                    {viewingAudit.aiAnalysis.performance.metrics?.costEfficiency && (
-                                      <div className="p-3 bg-purple-50 dark:bg-purple-950 rounded-lg">
-                                        <p className="font-semibold text-sm mb-1 flex items-center gap-2">
-                                          <BarChart3 className="h-4 w-4" />
-                                          Custo e Eficiência
-                                        </p>
-                                        <p className="text-xs text-gray-700 dark:text-gray-300">
-                                          {viewingAudit.aiAnalysis.performance.metrics.costEfficiency}
-                                        </p>
-                                      </div>
-                                    )}
-                                    <div className="p-3 bg-orange-50 dark:bg-orange-950 rounded-lg">
-                                      <p className="font-semibold text-sm mb-1">Classificação de Performance</p>
-                                      <Badge variant={
-                                        viewingAudit.aiAnalysis.performance.performance === 'high' ? 'default' :
-                                        viewingAudit.aiAnalysis.performance.performance === 'medium' ? 'secondary' :
-                                        'destructive'
-                                      }>
-                                        {viewingAudit.aiAnalysis.performance.performance === 'high' ? 'Alta Performance' :
-                                         viewingAudit.aiAnalysis.performance.performance === 'medium' ? 'Performance Média' :
-                                         'Baixa Performance'}
-                                      </Badge>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </details>
-                        </CardContent>
-                      </Card>
-                    )}
                   </div>
                 ) : (
                   <div className="text-center py-6 border border-slate-200 rounded-lg">
@@ -708,6 +599,128 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
 
             </div>
           </div>
+
+          {/* Detalhamento da IA - Full Width Row */}
+          {viewingAudit && (viewingAudit.aiAnalysis?.compliance || viewingAudit.aiAnalysis?.performance) && (
+            <Card className="mt-4">
+              <CardContent className="pt-6">
+                <details className="group" open>
+                  <summary className="flex items-center justify-between cursor-pointer list-none">
+                    <h3 className="font-bold text-lg flex items-center gap-2">
+                      <Sparkles className="h-5 w-5 text-primary" />
+                      Detalhamento da Análise IA
+                    </h3>
+                    <ChevronRight className="h-5 w-5 text-gray-500 transition-transform group-open:rotate-90" />
+                  </summary>
+
+                  <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Compliance Details */}
+                    {viewingAudit.aiAnalysis?.compliance && (
+                      <div>
+                        <h4 className="font-semibold text-md mb-3 flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                          <Palette className="h-4 w-4" />
+                          Conformidade de Marca
+                        </h4>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                            {viewingAudit.aiAnalysis.compliance.analysis?.logoCompliance ? (
+                              <CheckCircle className="h-4 w-4 text-green-500" />
+                            ) : (
+                              <XCircle className="h-4 w-4 text-red-500" />
+                            )}
+                            <span className="text-sm">Logo da Marca</span>
+                          </div>
+                          <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                            {viewingAudit.aiAnalysis.compliance.analysis?.colorCompliance ? (
+                              <CheckCircle className="h-4 w-4 text-green-500" />
+                            ) : (
+                              <XCircle className="h-4 w-4 text-red-500" />
+                            )}
+                            <span className="text-sm">Cores da Marca</span>
+                          </div>
+                          <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                            {viewingAudit.aiAnalysis.compliance.analysis?.textCompliance ? (
+                              <CheckCircle className="h-4 w-4 text-green-500" />
+                            ) : (
+                              <XCircle className="h-4 w-4 text-red-500" />
+                            )}
+                            <span className="text-sm">Texto e Palavras-chave</span>
+                          </div>
+                          <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                            {viewingAudit.aiAnalysis.compliance.analysis?.brandGuidelines ? (
+                              <CheckCircle className="h-4 w-4 text-green-500" />
+                            ) : (
+                              <XCircle className="h-4 w-4 text-red-500" />
+                            )}
+                            <span className="text-sm">Diretrizes da Marca</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Performance Metrics */}
+                    {viewingAudit.aiAnalysis?.performance && (
+                      <div>
+                        <h4 className="font-semibold text-md mb-3 flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                          <BarChart3 className="h-4 w-4" />
+                          Métricas de Performance
+                        </h4>
+                        <div className="space-y-3">
+                          {viewingAudit.aiAnalysis.performance.metrics?.ctrAnalysis && (
+                            <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                              <p className="font-semibold text-sm mb-1 flex items-center gap-2">
+                                <MousePointer className="h-4 w-4" />
+                                CTR (Click-Through Rate)
+                              </p>
+                              <p className="text-xs text-gray-700 dark:text-gray-300">
+                                {viewingAudit.aiAnalysis.performance.metrics.ctrAnalysis}
+                              </p>
+                            </div>
+                          )}
+                          {viewingAudit.aiAnalysis.performance.metrics?.conversionAnalysis && (
+                            <div className="p-3 bg-green-50 dark:bg-green-950 rounded-lg">
+                              <p className="font-semibold text-sm mb-1 flex items-center gap-2">
+                                <TrendingUp className="h-4 w-4" />
+                                Conversões
+                              </p>
+                              <p className="text-xs text-gray-700 dark:text-gray-300">
+                                {viewingAudit.aiAnalysis.performance.metrics.conversionAnalysis}
+                              </p>
+                            </div>
+                          )}
+                          {viewingAudit.aiAnalysis.performance.metrics?.costEfficiency && (
+                            <div className="p-3 bg-purple-50 dark:bg-purple-950 rounded-lg">
+                              <p className="font-semibold text-sm mb-1 flex items-center gap-2">
+                                <BarChart3 className="h-4 w-4" />
+                                Custo e Eficiência
+                              </p>
+                              <p className="text-xs text-gray-700 dark:text-gray-300">
+                                {viewingAudit.aiAnalysis.performance.metrics.costEfficiency}
+                              </p>
+                            </div>
+                          )}
+                          <div className="p-3 bg-orange-50 dark:bg-orange-950 rounded-lg">
+                            <p className="font-semibold text-sm mb-1">Classificação de Performance</p>
+                            <Badge variant={
+                              viewingAudit.aiAnalysis.performance.performance === 'high' ? 'default' :
+                              viewingAudit.aiAnalysis.performance.performance === 'medium' ? 'secondary' :
+                              'destructive'
+                            }>
+                              {viewingAudit.aiAnalysis.performance.performance === 'high' ? 'Alta Performance' :
+                               viewingAudit.aiAnalysis.performance.performance === 'medium' ? 'Performance Média' :
+                               'Baixa Performance'}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </details>
+              </CardContent>
+            </Card>
+          )}
+          </>
+          )}
 
           {/* Action Buttons */}
           <div className="flex justify-end space-x-3 pt-6 border-t border-slate-200">
