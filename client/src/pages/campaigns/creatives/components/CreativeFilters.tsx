@@ -58,12 +58,14 @@ export function CreativeFilters({
     <Card className="mb-6 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardContent className="pt-6">
         {/* First row - Basic filters */}
-        <div className="flex flex-col lg:flex-row gap-4">
-          <div className="flex-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+          {/* Search */}
+          <div className="space-y-1.5 sm:col-span-2 lg:col-span-1">
+            <Label className="text-xs font-medium text-gray-500 dark:text-gray-400">Buscar</Label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
               <Input
-                placeholder="Buscar por nome ou ID..."
+                placeholder="Nome ou ID..."
                 value={filters.searchTerm}
                 onChange={(e) => onFilterChange("searchTerm", e.target.value)}
                 className="pl-10 bg-white dark:bg-gray-800"
@@ -72,138 +74,174 @@ export function CreativeFilters({
             </div>
           </div>
           
-          <Select value={filters.campaignFilter} onValueChange={(v) => onFilterChange("campaignFilter", v)}>
-            <SelectTrigger className="w-full lg:w-[220px] bg-white dark:bg-gray-800" data-testid="select-campaign-filter">
-              <SelectValue placeholder="Todas Campanhas" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas Campanhas</SelectItem>
-              {campaigns.map((campaign) => (
-                <SelectItem key={campaign.id} value={campaign.id}>
-                  {campaign.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {/* Campaign */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-gray-500 dark:text-gray-400">Campanha</Label>
+            <Select value={filters.campaignFilter} onValueChange={(v) => onFilterChange("campaignFilter", v)}>
+              <SelectTrigger className="w-full bg-white dark:bg-gray-800" data-testid="select-campaign-filter">
+                <SelectValue placeholder="Todas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                {campaigns.map((campaign) => (
+                  <SelectItem key={campaign.id} value={campaign.id}>
+                    {campaign.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-          <Select value={filters.adSetFilter} onValueChange={(v) => onFilterChange("adSetFilter", v)}>
-            <SelectTrigger className="w-full lg:w-[220px] bg-white dark:bg-gray-800" data-testid="select-adset-filter">
-              <SelectValue placeholder="Todos Ad Sets" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos Grupos de Campanha</SelectItem>
-              {adSets.map((adSet) => (
-                <SelectItem key={adSet.id} value={adSet.id}>
-                  {adSet.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {/* Ad Set */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-gray-500 dark:text-gray-400">Grupo de Anúncios</Label>
+            <Select value={filters.adSetFilter} onValueChange={(v) => onFilterChange("adSetFilter", v)}>
+              <SelectTrigger className="w-full bg-white dark:bg-gray-800" data-testid="select-adset-filter">
+                <SelectValue placeholder="Todos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {adSets.map((adSet) => (
+                  <SelectItem key={adSet.id} value={adSet.id}>
+                    {adSet.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-          <Select value={filters.platformFilter} onValueChange={(v) => onFilterChange("platformFilter", v)}>
-            <SelectTrigger className="w-full lg:w-[180px] bg-white dark:bg-gray-800" data-testid="select-platform-filter">
-              <SelectValue placeholder="Plataforma" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas Plataformas</SelectItem>
-              <SelectItem value="meta">Meta Ads</SelectItem>
-              <SelectItem value="google">Google Ads</SelectItem>
-            </SelectContent>
-          </Select>
+          {/* Platform */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-gray-500 dark:text-gray-400">Plataforma</Label>
+            <Select value={filters.platformFilter} onValueChange={(v) => onFilterChange("platformFilter", v)}>
+              <SelectTrigger className="w-full bg-white dark:bg-gray-800" data-testid="select-platform-filter">
+                <SelectValue placeholder="Todas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                <SelectItem value="meta">Meta Ads</SelectItem>
+                <SelectItem value="google">Google Ads</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-          <Select value={filters.statusFilter} onValueChange={(v) => onFilterChange("statusFilter", v)}>
-            <SelectTrigger className="w-full lg:w-[180px] bg-white dark:bg-gray-800" data-testid="select-status-filter">
-              <SelectValue placeholder="Veiculação" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas Veiculações</SelectItem>
-              <SelectItem value="Ativo">Ativo</SelectItem>
-              <SelectItem value="Não está em veiculação">Não está em veiculação</SelectItem>
-              <SelectItem value="Campanha Desativada">Campanha Desativada</SelectItem>
-              <SelectItem value="Grupo Desativado">Grupo Desativado</SelectItem>
-              <SelectItem value="Arquivado">Arquivado</SelectItem>
-            </SelectContent>
-          </Select>
+          {/* Status */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-gray-500 dark:text-gray-400">Veiculação</Label>
+            <Select value={filters.statusFilter} onValueChange={(v) => onFilterChange("statusFilter", v)}>
+              <SelectTrigger className="w-full bg-white dark:bg-gray-800" data-testid="select-status-filter">
+                <SelectValue placeholder="Todas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                <SelectItem value="Ativo">Ativo</SelectItem>
+                <SelectItem value="Não está em veiculação">Pausado</SelectItem>
+                <SelectItem value="Campanha Desativada">Camp. Desativada</SelectItem>
+                <SelectItem value="Grupo Desativado">Grupo Desativado</SelectItem>
+                <SelectItem value="Arquivado">Arquivado</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Second row - Analysis and Metrics filters */}
-        <div className="flex flex-col lg:flex-row gap-4 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
           {/* Only Analyzed Switch */}
-          <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-900 rounded-lg">
-            <Switch
-              id="only-analyzed"
-              checked={filters.onlyAnalyzed}
-              onCheckedChange={(v) => onFilterChange("onlyAnalyzed", v)}
-              data-testid="switch-only-analyzed"
-            />
-            <Label htmlFor="only-analyzed" className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer whitespace-nowrap">
-              Apenas Analisados
-            </Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-gray-500 dark:text-gray-400">Análise</Label>
+            <div className="flex items-center gap-2 h-10 px-3 bg-gray-50 dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-700">
+              <Switch
+                id="only-analyzed"
+                checked={filters.onlyAnalyzed}
+                onCheckedChange={(v) => onFilterChange("onlyAnalyzed", v)}
+                data-testid="switch-only-analyzed"
+              />
+              <Label htmlFor="only-analyzed" className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer whitespace-nowrap">
+                Apenas Analisados
+              </Label>
+            </div>
           </div>
 
           {/* Compliance Filter */}
-          <Select value={filters.complianceFilter} onValueChange={(v) => onFilterChange("complianceFilter", v)}>
-            <SelectTrigger className="w-full lg:w-[180px] bg-white dark:bg-gray-800" data-testid="select-compliance-filter">
-              <SelectValue placeholder="Conformidade" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Conformidade</SelectItem>
-              <SelectItem value="conforme">Conforme</SelectItem>
-              <SelectItem value="nao_conforme">Não Conforme</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-gray-500 dark:text-gray-400">Conformidade</Label>
+            <Select value={filters.complianceFilter} onValueChange={(v) => onFilterChange("complianceFilter", v)}>
+              <SelectTrigger className="w-full bg-white dark:bg-gray-800" data-testid="select-compliance-filter">
+                <SelectValue placeholder="Todas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                <SelectItem value="conforme">Conforme</SelectItem>
+                <SelectItem value="nao_conforme">Não Conforme</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
           {/* CTR Filter */}
-          <Select value={filters.ctrFilter} onValueChange={(v) => onFilterChange("ctrFilter", v)}>
-            <SelectTrigger className="w-full lg:w-[160px] bg-white dark:bg-gray-800" data-testid="select-ctr-filter">
-              <SelectValue placeholder="CTR" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">CTR</SelectItem>
-              <SelectItem value="low">Baixo (&lt;1%)</SelectItem>
-              <SelectItem value="medium">Médio (1-3%)</SelectItem>
-              <SelectItem value="high">Alto (&gt;3%)</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-gray-500 dark:text-gray-400">CTR</Label>
+            <Select value={filters.ctrFilter} onValueChange={(v) => onFilterChange("ctrFilter", v)}>
+              <SelectTrigger className="w-full bg-white dark:bg-gray-800" data-testid="select-ctr-filter">
+                <SelectValue placeholder="Todos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="low">&lt;1% (Baixo)</SelectItem>
+                <SelectItem value="medium">1-3% (Médio)</SelectItem>
+                <SelectItem value="high">&gt;3% (Alto)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
           {/* Impressions Filter */}
-          <Select value={filters.impressionsFilter} onValueChange={(v) => onFilterChange("impressionsFilter", v)}>
-            <SelectTrigger className="w-full lg:w-[180px] bg-white dark:bg-gray-800" data-testid="select-impressions-filter">
-              <SelectValue placeholder="Impressões" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Impressões</SelectItem>
-              <SelectItem value="low">Baixo (&lt;1k)</SelectItem>
-              <SelectItem value="medium">Médio (1k-10k)</SelectItem>
-              <SelectItem value="high">Alto (&gt;10k)</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-gray-500 dark:text-gray-400">Impressões</Label>
+            <Select value={filters.impressionsFilter} onValueChange={(v) => onFilterChange("impressionsFilter", v)}>
+              <SelectTrigger className="w-full bg-white dark:bg-gray-800" data-testid="select-impressions-filter">
+                <SelectValue placeholder="Todas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                <SelectItem value="low">&lt;1k (Baixo)</SelectItem>
+                <SelectItem value="medium">1k-10k (Médio)</SelectItem>
+                <SelectItem value="high">&gt;10k (Alto)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
           {/* Clicks Filter */}
-          <Select value={filters.clicksFilter} onValueChange={(v) => onFilterChange("clicksFilter", v)}>
-            <SelectTrigger className="w-full lg:w-[160px] bg-white dark:bg-gray-800" data-testid="select-clicks-filter">
-              <SelectValue placeholder="Cliques" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Cliques</SelectItem>
-              <SelectItem value="low">Baixo (&lt;50)</SelectItem>
-              <SelectItem value="medium">Médio (50-500)</SelectItem>
-              <SelectItem value="high">Alto (&gt;500)</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-gray-500 dark:text-gray-400">Cliques</Label>
+            <Select value={filters.clicksFilter} onValueChange={(v) => onFilterChange("clicksFilter", v)}>
+              <SelectTrigger className="w-full bg-white dark:bg-gray-800" data-testid="select-clicks-filter">
+                <SelectValue placeholder="Todos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="low">&lt;50 (Baixo)</SelectItem>
+                <SelectItem value="medium">50-500 (Médio)</SelectItem>
+                <SelectItem value="high">&gt;500 (Alto)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
           {/* Clear All Filters */}
-          {hasActiveFilters && (
-            <Button
-              variant="outline"
-              onClick={onClearFilters}
-              className="w-full lg:w-auto"
-              data-testid="button-clear-filters"
-            >
-              <X className="h-4 w-4 mr-1" />
-              Limpar Filtros
-            </Button>
-          )}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-gray-500 dark:text-gray-400 invisible">Ações</Label>
+            {hasActiveFilters ? (
+              <Button
+                variant="outline"
+                onClick={onClearFilters}
+                className="w-full h-10"
+                data-testid="button-clear-filters"
+              >
+                <X className="h-4 w-4 mr-1" />
+                Limpar Filtros
+              </Button>
+            ) : (
+              <div className="h-10" />
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>
