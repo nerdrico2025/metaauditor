@@ -41,6 +41,7 @@ interface IntegrationCardProps {
   syncHistory: SyncHistoryItem[];
   onSync: () => void;
   onDelete: () => void;
+  onRenewToken?: () => void;
   isSyncing: boolean;
 }
 
@@ -49,6 +50,7 @@ export function IntegrationCard({
   syncHistory,
   onSync,
   onDelete,
+  onRenewToken,
   isSyncing
 }: IntegrationCardProps) {
   const { data: tokenInfo, isLoading: tokenLoading } = useQuery<TokenInfo>({
@@ -136,9 +138,21 @@ export function IntegrationCard({
                   )}
                 </div>
               ) : (
-                <div className="flex items-center gap-1 text-red-600 dark:text-red-400">
-                  <ShieldX className="w-4 h-4" />
-                  <span>Inválido</span>
+                <div className="flex flex-col items-start gap-1">
+                  <div className="flex items-center gap-1 text-red-600 dark:text-red-400">
+                    <ShieldX className="w-4 h-4" />
+                    <span>Inválido</span>
+                  </div>
+                  {onRenewToken && (
+                    <Button 
+                      variant="link" 
+                      size="sm" 
+                      className="h-auto p-0 text-xs text-blue-600"
+                      onClick={onRenewToken}
+                    >
+                      Renovar token
+                    </Button>
+                  )}
                 </div>
               )}
             </div>

@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { HelpCircle, Trash2, Bug, Plus, Loader2, CheckCircle2 } from 'lucide-react';
+import { HelpCircle, Trash2, Plus, Loader2, CheckCircle2, RefreshCw } from 'lucide-react';
 import { SiFacebook } from 'react-icons/si';
 import { HowToConnectModal } from '../components/HowToConnectModal';
 import { DeleteConfirmationDialog } from '../components/DeleteConfirmationDialog';
@@ -558,16 +558,6 @@ export default function MetaIntegrations() {
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <Link href="/debug/meta">
-                        <Button 
-                          variant="outline"
-                          size="sm"
-                          data-testid="button-debug-meta"
-                        >
-                          <Bug className="w-4 h-4 mr-2" />
-                          Debug
-                        </Button>
-                      </Link>
                       <Button 
                         variant="outline"
                         size="sm"
@@ -624,6 +614,7 @@ export default function MetaIntegrations() {
                                 setIntegrationToDelete(integration);
                                 setDeleteDialogOpen(true);
                               }}
+                              onRenewToken={handleConnectOAuth}
                               isSyncing={syncMutation.isPending}
                             />
                           );
