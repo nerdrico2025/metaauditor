@@ -17,6 +17,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { 
   Search, 
   Eye, 
@@ -138,6 +140,13 @@ export default function Creatives() {
   const [adSetFilter, setAdSetFilter] = useState(initialFilters.adSetId);
   const [platformFilter, setPlatformFilter] = useState("all");
   const [selectedCreatives, setSelectedCreatives] = useState<string[]>([]);
+  
+  // New filters
+  const [onlyAnalyzed, setOnlyAnalyzed] = useState(false);
+  const [complianceFilter, setComplianceFilter] = useState("all"); // all, conforme, nao_conforme
+  const [ctrFilter, setCtrFilter] = useState("all"); // all, low (<1%), medium (1-3%), high (>3%)
+  const [impressionsFilter, setImpressionsFilter] = useState("all"); // all, low (<1000), medium (1000-10000), high (>10000)
+  const [clicksFilter, setClicksFilter] = useState("all"); // all, low (<50), medium (50-500), high (>500)
   const [showPolicySelectionDialog, setShowPolicySelectionDialog] = useState(false);
   const [selectedPolicyId, setSelectedPolicyId] = useState<string | null>(null);
   const [pendingAnalysisType, setPendingAnalysisType] = useState<'single' | 'selected' | 'all' | null>(null);
@@ -214,6 +223,20 @@ export default function Creatives() {
     queryKey: ['/api/policies'],
     enabled: isAuthenticated,
   });
+
+  // Fetch all audits for compliance filtering
+  const { data: allAudits = [] } = useQuery<Audit[]>({
+    queryKey: ['/api/audits'],
+    enabled: isAuthenticated,
+  });
+
+  // Create a map of creativeId -> latest audit for quick lookup
+  const auditsByCreativeId = allAudits.reduce((acc, audit) => {
+    if (!acc[audit.creativeId] || new Date(audit.createdAt) > new Date(acc[audit.creativeId].createdAt)) {
+      acc[audit.creativeId] = audit;
+    }
+    return acc;
+  }, {} as Record<string, Audit>);
 
   // Single creative analysis with progress modal
   const runSingleAnalysis = async (creativeId: string) => {
@@ -341,7 +364,7 @@ export default function Creatives() {
   // Reset to page 1 when filters change - must be before early return
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, statusFilter, campaignFilter, adSetFilter, platformFilter]);
+  }, [searchTerm, statusFilter, campaignFilter, adSetFilter, platformFilter, onlyAnalyzed, complianceFilter, ctrFilter, impressionsFilter, clicksFilter]);
 
   if (isLoading || !isAuthenticated) {
     return null;
@@ -491,7 +514,47 @@ export default function Creatives() {
     const matchesAdSet = adSetFilter === "all" || creative.adSetId === adSetFilter;
     const matchesPlatform = platformFilter === "all" || creative.platform === platformFilter;
     
-    return matchesSearch && matchesStatus && matchesCampaign && matchesAdSet && matchesPlatform;
+    // New filters
+    const audit = auditsByCreativeId[creative.id];
+    const hasAudit = !!audit;
+    
+    // Only analyzed filter
+    const matchesAnalyzed = !onlyAnalyzed || hasAudit;
+    
+    // Compliance filter
+    let matchesCompliance = true;
+    if (complianceFilter !== "all") {
+      if (!hasAudit) {
+        matchesCompliance = false;
+      } else {
+        const isCompliant = audit.complianceStatus === 'conforme';
+        matchesCompliance = complianceFilter === "conforme" ? isCompliant : !isCompliant;
+      }
+    }
+    
+    // CTR filter
+    let matchesCtr = true;
+    const ctr = typeof creative.ctr === 'string' ? parseFloat(creative.ctr) : (creative.ctr || 0);
+    if (ctrFilter === "low") matchesCtr = ctr < 1;
+    else if (ctrFilter === "medium") matchesCtr = ctr >= 1 && ctr <= 3;
+    else if (ctrFilter === "high") matchesCtr = ctr > 3;
+    
+    // Impressions filter
+    let matchesImpressions = true;
+    const impressions = creative.impressions || 0;
+    if (impressionsFilter === "low") matchesImpressions = impressions < 1000;
+    else if (impressionsFilter === "medium") matchesImpressions = impressions >= 1000 && impressions <= 10000;
+    else if (impressionsFilter === "high") matchesImpressions = impressions > 10000;
+    
+    // Clicks filter
+    let matchesClicks = true;
+    const clicks = creative.clicks || 0;
+    if (clicksFilter === "low") matchesClicks = clicks < 50;
+    else if (clicksFilter === "medium") matchesClicks = clicks >= 50 && clicks <= 500;
+    else if (clicksFilter === "high") matchesClicks = clicks > 500;
+    
+    return matchesSearch && matchesStatus && matchesCampaign && matchesAdSet && matchesPlatform && 
+           matchesAnalyzed && matchesCompliance && matchesCtr && matchesImpressions && matchesClicks;
   }).sort((a, b) => {
     // Active creatives first
     const aIsActive = a.status === 'Ativo' ? 0 : 1;
@@ -703,8 +766,76 @@ export default function Creatives() {
                         <SelectItem value="Arquivado">Arquivado</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
 
-                    {(searchTerm || statusFilter !== "all" || campaignFilter !== "all" || adSetFilter !== "all" || platformFilter !== "all") && (
+                  {/* Second row - Analysis and Metrics filters */}
+                  <div className="flex flex-col lg:flex-row gap-4 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                    {/* Only Analyzed Switch */}
+                    <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                      <Switch
+                        id="only-analyzed"
+                        checked={onlyAnalyzed}
+                        onCheckedChange={setOnlyAnalyzed}
+                        data-testid="switch-only-analyzed"
+                      />
+                      <Label htmlFor="only-analyzed" className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer whitespace-nowrap">
+                        Apenas Analisados
+                      </Label>
+                    </div>
+
+                    {/* Compliance Filter */}
+                    <Select value={complianceFilter} onValueChange={setComplianceFilter}>
+                      <SelectTrigger className="w-full lg:w-[180px] bg-white dark:bg-gray-800" data-testid="select-compliance-filter">
+                        <SelectValue placeholder="Conformidade" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas Conformidades</SelectItem>
+                        <SelectItem value="conforme">Conforme</SelectItem>
+                        <SelectItem value="nao_conforme">Não Conforme</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    {/* CTR Filter */}
+                    <Select value={ctrFilter} onValueChange={setCtrFilter}>
+                      <SelectTrigger className="w-full lg:w-[160px] bg-white dark:bg-gray-800" data-testid="select-ctr-filter">
+                        <SelectValue placeholder="CTR" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todo CTR</SelectItem>
+                        <SelectItem value="low">Baixo (&lt;1%)</SelectItem>
+                        <SelectItem value="medium">Médio (1-3%)</SelectItem>
+                        <SelectItem value="high">Alto (&gt;3%)</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    {/* Impressions Filter */}
+                    <Select value={impressionsFilter} onValueChange={setImpressionsFilter}>
+                      <SelectTrigger className="w-full lg:w-[180px] bg-white dark:bg-gray-800" data-testid="select-impressions-filter">
+                        <SelectValue placeholder="Impressões" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas Impressões</SelectItem>
+                        <SelectItem value="low">Baixo (&lt;1k)</SelectItem>
+                        <SelectItem value="medium">Médio (1k-10k)</SelectItem>
+                        <SelectItem value="high">Alto (&gt;10k)</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    {/* Clicks Filter */}
+                    <Select value={clicksFilter} onValueChange={setClicksFilter}>
+                      <SelectTrigger className="w-full lg:w-[160px] bg-white dark:bg-gray-800" data-testid="select-clicks-filter">
+                        <SelectValue placeholder="Cliques" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos Cliques</SelectItem>
+                        <SelectItem value="low">Baixo (&lt;50)</SelectItem>
+                        <SelectItem value="medium">Médio (50-500)</SelectItem>
+                        <SelectItem value="high">Alto (&gt;500)</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    {/* Clear All Filters */}
+                    {(searchTerm || statusFilter !== "all" || campaignFilter !== "all" || adSetFilter !== "all" || platformFilter !== "all" || onlyAnalyzed || complianceFilter !== "all" || ctrFilter !== "all" || impressionsFilter !== "all" || clicksFilter !== "all") && (
                       <Button
                         variant="outline"
                         onClick={() => {
@@ -713,10 +844,16 @@ export default function Creatives() {
                           setCampaignFilter("all");
                           setAdSetFilter("all");
                           setPlatformFilter("all");
+                          setOnlyAnalyzed(false);
+                          setComplianceFilter("all");
+                          setCtrFilter("all");
+                          setImpressionsFilter("all");
+                          setClicksFilter("all");
                         }}
                         className="w-full lg:w-auto"
                         data-testid="button-clear-filters"
                       >
+                        <X className="h-4 w-4 mr-1" />
                         Limpar Filtros
                       </Button>
                     )}
@@ -736,13 +873,13 @@ export default function Creatives() {
                     <div className="text-center py-12">
                       <ImageIcon className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
                       <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                        {searchTerm || statusFilter !== "all" || campaignFilter !== "all" || adSetFilter !== "all" || platformFilter !== "all"
+                        {searchTerm || statusFilter !== "all" || campaignFilter !== "all" || adSetFilter !== "all" || platformFilter !== "all" || onlyAnalyzed || complianceFilter !== "all" || ctrFilter !== "all" || impressionsFilter !== "all" || clicksFilter !== "all"
                           ? "Nenhum anúncio encontrado"
                           : "Nenhum anúncio sincronizado"
                         }
                       </h3>
                       <p className="text-gray-600 dark:text-gray-400 mb-6">
-                        {searchTerm || statusFilter !== "all" || campaignFilter !== "all" || adSetFilter !== "all" || platformFilter !== "all"
+                        {searchTerm || statusFilter !== "all" || campaignFilter !== "all" || adSetFilter !== "all" || platformFilter !== "all" || onlyAnalyzed || complianceFilter !== "all" || ctrFilter !== "all" || impressionsFilter !== "all" || clicksFilter !== "all"
                           ? "Tente ajustar os filtros de busca."
                           : "Conecte suas contas Meta Ads ou Google Ads e clique em 'Sincronizar Tudo'."
                         }
