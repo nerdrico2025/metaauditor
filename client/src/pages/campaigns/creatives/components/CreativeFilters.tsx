@@ -2,7 +2,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Search, X } from "lucide-react";
 import type { Campaign } from "@shared/schema";
@@ -20,7 +19,7 @@ export interface FilterState {
   campaignFilter: string;
   adSetFilter: string;
   platformFilter: string;
-  onlyAnalyzed: boolean;
+  analysisFilter: string;
   complianceFilter: string;
   ctrFilter: string;
   impressionsFilter: string;
@@ -48,7 +47,7 @@ export function CreativeFilters({
     filters.campaignFilter !== "all" || 
     filters.adSetFilter !== "all" || 
     filters.platformFilter !== "all" || 
-    filters.onlyAnalyzed || 
+    filters.analysisFilter !== "all" || 
     filters.complianceFilter !== "all" || 
     filters.ctrFilter !== "all" || 
     filters.impressionsFilter !== "all" || 
@@ -146,20 +145,19 @@ export function CreativeFilters({
 
         {/* Second row - Analysis and Metrics filters */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-          {/* Only Analyzed Switch */}
+          {/* Analysis Filter */}
           <div className="space-y-1.5">
             <Label className="text-xs font-medium text-gray-500 dark:text-gray-400">Análise</Label>
-            <div className="flex items-center gap-2 h-10 px-3 bg-gray-50 dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-700">
-              <Switch
-                id="only-analyzed"
-                checked={filters.onlyAnalyzed}
-                onCheckedChange={(v) => onFilterChange("onlyAnalyzed", v)}
-                data-testid="switch-only-analyzed"
-              />
-              <Label htmlFor="only-analyzed" className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer whitespace-nowrap">
-                Analisados
-              </Label>
-            </div>
+            <Select value={filters.analysisFilter} onValueChange={(v) => onFilterChange("analysisFilter", v)}>
+              <SelectTrigger className="w-full bg-white dark:bg-gray-800" data-testid="select-analysis-filter">
+                <SelectValue placeholder="Todos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="not_analyzed">Não Analisados</SelectItem>
+                <SelectItem value="analyzed">Analisados</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Compliance Filter */}
@@ -255,7 +253,7 @@ export function hasActiveFilters(filters: FilterState): boolean {
     filters.campaignFilter !== "all" || 
     filters.adSetFilter !== "all" || 
     filters.platformFilter !== "all" || 
-    filters.onlyAnalyzed || 
+    filters.analysisFilter !== "all" || 
     filters.complianceFilter !== "all" || 
     filters.ctrFilter !== "all" || 
     filters.impressionsFilter !== "all" || 
@@ -269,7 +267,7 @@ export const defaultFilters: FilterState = {
   campaignFilter: "all",
   adSetFilter: "all",
   platformFilter: "all",
-  onlyAnalyzed: false,
+  analysisFilter: "all",
   complianceFilter: "all",
   ctrFilter: "all",
   impressionsFilter: "all",

@@ -363,7 +363,7 @@ export default function Creatives() {
   // Reset to page 1 when filters change - must be before early return
   useEffect(() => {
     setCurrentPage(1);
-  }, [filters.searchTerm, filters.statusFilter, filters.campaignFilter, filters.adSetFilter, filters.platformFilter, filters.onlyAnalyzed, filters.complianceFilter, filters.ctrFilter, filters.impressionsFilter, filters.clicksFilter]);
+  }, [filters.searchTerm, filters.statusFilter, filters.campaignFilter, filters.adSetFilter, filters.platformFilter, filters.analysisFilter, filters.complianceFilter, filters.ctrFilter, filters.impressionsFilter, filters.clicksFilter]);
 
   if (isLoading || !isAuthenticated) {
     return null;
@@ -517,8 +517,10 @@ export default function Creatives() {
     const audit = auditsByCreativeId[creative.id];
     const hasAudit = !!audit;
     
-    // Only analyzed filter
-    const matchesAnalyzed = !filters.onlyAnalyzed || hasAudit;
+    // Analysis filter (all, not_analyzed, analyzed)
+    let matchesAnalyzed = true;
+    if (filters.analysisFilter === "analyzed") matchesAnalyzed = hasAudit;
+    else if (filters.analysisFilter === "not_analyzed") matchesAnalyzed = !hasAudit;
     
     // Compliance filter
     let matchesCompliance = true;
