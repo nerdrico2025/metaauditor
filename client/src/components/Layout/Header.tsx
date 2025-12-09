@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Menu } from "lucide-react";
+import { Menu, Database, ChevronDown } from "lucide-react";
 import { useAuth } from '@/hooks/useAuth';
 import { useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
@@ -22,9 +22,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { User, LogOut, Key, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useMetaAccount } from '@/contexts/MetaAccountContext';
+import { SiFacebook } from 'react-icons/si';
 
 interface HeaderProps {
   title: string;
@@ -33,6 +42,7 @@ interface HeaderProps {
 export default function Header({ title }: HeaderProps) {
   const { user, logout } = useAuth();
   const { toast } = useToast();
+  const { selectedAccountId, setSelectedAccountId, accounts } = useMetaAccount();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isPasswordOpen, setIsPasswordOpen] = useState(false);
   
@@ -188,6 +198,30 @@ export default function Header({ title }: HeaderProps) {
           </div>
 
           <div className="ml-4 flex items-center md:ml-6 space-x-4">
+            {accounts.length > 0 && (
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 text-sm text-gray-500">
+                  <SiFacebook className="w-4 h-4 text-blue-600" />
+                  <span className="hidden sm:inline">Fonte:</span>
+                </div>
+                <Select
+                  value={selectedAccountId || 'all'}
+                  onValueChange={(value) => setSelectedAccountId(value === 'all' ? null : value)}
+                >
+                  <SelectTrigger className="w-[200px] h-8 text-sm" data-testid="select-meta-account">
+                    <SelectValue placeholder="Selecionar conta" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas as contas</SelectItem>
+                    {accounts.map((account) => (
+                      <SelectItem key={account.id} value={account.id}>
+                        {account.accountName || account.accountId}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
