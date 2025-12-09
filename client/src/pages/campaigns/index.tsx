@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { useMetaAccount } from "@/contexts/MetaAccountContext";
 import Sidebar from "@/components/Layout/Sidebar";
 import Header from "@/components/Layout/Header";
 import { Pagination } from "@/components/Pagination";
@@ -42,6 +43,7 @@ import type { Campaign } from "@shared/schema";
 export default function Campaigns() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  const { selectedAccountId } = useMetaAccount();
   
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -64,7 +66,8 @@ export default function Campaigns() {
   }, [isAuthenticated, isLoading, toast]);
 
   const { data: campaigns, isLoading: campaignsLoading, error } = useQuery<Campaign[]>({
-    queryKey: ["/api/campaigns"],
+    queryKey: ["/api/campaigns", { integrationId: selectedAccountId }],
+    queryFn: () => fetch(`/api/campaigns${selectedAccountId ? `?integrationId=${selectedAccountId}` : ''}`).then(r => r.json()),
     enabled: isAuthenticated,
   });
 

@@ -78,7 +78,7 @@ export interface IStorage {
   getWebhookEvents(): Promise<WebhookEvent[]>;
   getUnprocessedWebhookEvents(): Promise<WebhookEvent[]>;
   createCampaign(campaign: InsertCampaign): Promise<Campaign>;
-  getCampaignsByUser(userId: string): Promise<Campaign[]>;
+  getCampaignsByUser(userId: string, integrationId?: string): Promise<Campaign[]>;
   getCampaignById(id: string): Promise<Campaign | undefined>;
   getCampaignByIdWithCompanyCheck(id: string, userId: string): Promise<Campaign | undefined>;
   updateCampaign(id: string, data: Partial<InsertCampaign>): Promise<Campaign | undefined>;
@@ -473,18 +473,31 @@ export class DatabaseStorage implements IStorage {
     return newCampaign;
   }
 
-  async getCampaignsByUser(userId: string): Promise<Campaign[]> {
+  async getCampaignsByUser(userId: string, integrationId?: string): Promise<Campaign[]> {
     const user = await this.getUserById(userId);
     if (!user) return [];
     
+    const conditions: any[] = [];
+    
     // Super admin without company sees everything
     if (user.role === 'super_admin' && !user.companyId) {
+      if (integrationId) {
+        return await db.select().from(campaigns)
+          .where(eq(campaigns.integrationId, integrationId))
+          .orderBy(desc(campaigns.createdAt));
+      }
       return await db.select().from(campaigns).orderBy(desc(campaigns.createdAt));
     }
     
     // Users with company see campaigns from their company
     if (user.companyId) {
-      return await db.select().from(campaigns).where(eq(campaigns.companyId, user.companyId)).orderBy(desc(campaigns.createdAt));
+      conditions.push(eq(campaigns.companyId, user.companyId));
+      if (integrationId) {
+        conditions.push(eq(campaigns.integrationId, integrationId));
+      }
+      return await db.select().from(campaigns)
+        .where(and(...conditions))
+        .orderBy(desc(campaigns.createdAt));
     }
     
     return [];

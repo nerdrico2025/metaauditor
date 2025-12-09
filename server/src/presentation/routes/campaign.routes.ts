@@ -10,7 +10,8 @@ const router = Router();
 router.get('/', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user?.userId;
-    const campaigns = await storage.getCampaignsByUser(userId);
+    const integrationId = req.query.integrationId as string | undefined;
+    const campaigns = await storage.getCampaignsByUser(userId, integrationId);
     res.json(campaigns);
   } catch (error) {
     next(error);

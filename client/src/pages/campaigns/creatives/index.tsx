@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useMetaAccount } from "@/contexts/MetaAccountContext";
 import Sidebar from "@/components/Layout/Sidebar";
 import Header from "@/components/Layout/Header";
 import { Pagination } from "@/components/Pagination";
@@ -111,6 +112,7 @@ function AnalyzeButton({ creativeId, isAnalyzing, onAnalyze }: AnalyzeButtonProp
 export default function Creatives() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  const { selectedAccountId } = useMetaAccount();
   const queryClient = useQueryClient();
   
   const [location] = useLocation();
@@ -209,9 +211,14 @@ export default function Creatives() {
   const creatives = creativesResponse?.creatives || [];
 
   const { data: campaigns = [] } = useQuery<Campaign[]>({
-    queryKey: ["/api/campaigns"],
+    queryKey: ["/api/campaigns", { integrationId: selectedAccountId }],
+    queryFn: () => fetch(`/api/campaigns${selectedAccountId ? `?integrationId=${selectedAccountId}` : ''}`).then(r => r.json()),
     enabled: isAuthenticated,
   });
+  
+  const filteredCampaignIds = useMemo(() => {
+    return new Set(campaigns.map(c => c.id));
+  }, [campaigns]);
 
   const { data: adSets = [] } = useQuery<AdSet[]>({
     queryKey: ["/api/adsets"],
@@ -515,6 +522,10 @@ export default function Creatives() {
   };
 
   const filteredCreatives = creatives.filter((creative) => {
+    // Filter by selected Meta account (integration) - uses campaigns from that integration
+    const matchesSelectedAccount = !selectedAccountId || filteredCampaignIds.has(creative.campaignId);
+    if (!matchesSelectedAccount) return false;
+    
     const matchesSearch = creative.name.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
                          creative.externalId?.toLowerCase().includes(filters.searchTerm.toLowerCase());
     const matchesStatus = filters.statusFilter === "all" || creative.status === filters.statusFilter;
