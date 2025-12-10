@@ -65,7 +65,7 @@ export default function AdminPlanos() {
   });
 
   const planForm = useForm<PlanData>({
-    resolver: zodResolver(planSchema),
+    resolver: zodResolver(planSchema) as any,
     defaultValues: {
       billingCycle: 'monthly',
       maxIntegrations: 2,

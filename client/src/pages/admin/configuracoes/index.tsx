@@ -37,7 +37,7 @@ export default function AdminConfiguracoes() {
   });
 
   const platformForm = useForm<PlatformSettingsData>({
-    resolver: zodResolver(platformSettingsSchema),
+    resolver: zodResolver(platformSettingsSchema) as any,
   });
 
   useEffect(() => {

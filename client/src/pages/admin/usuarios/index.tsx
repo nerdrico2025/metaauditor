@@ -78,8 +78,8 @@ export default function AdminUsuarios() {
   });
   const companies = companiesResponse?.data || [];
 
-  const userForm = useForm<AdminUserCreateData | AdminUserUpdateData>({
-    resolver: zodResolver(userDialog.user ? adminUserUpdateSchema : adminUserCreateSchema),
+  const userForm = useForm<AdminUserCreateData>({
+    resolver: zodResolver(adminUserCreateSchema) as any,
     defaultValues: {
       isActive: true,
     },

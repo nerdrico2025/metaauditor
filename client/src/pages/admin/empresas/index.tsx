@@ -63,7 +63,7 @@ export default function AdminEmpresas() {
   const companies = companiesResponse?.data || [];
 
   const companyForm = useForm<CompanyData>({
-    resolver: zodResolver(companySchema),
+    resolver: zodResolver(companySchema) as any,
     defaultValues: {
       subscriptionPlan: 'free',
       status: 'trial',
