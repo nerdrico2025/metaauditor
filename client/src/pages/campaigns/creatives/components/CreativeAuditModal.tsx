@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Eye, CheckCircle, AlertTriangle, BarChart3, Palette, Sparkles, ChevronRight, Shield, TrendingUp, MousePointer, XCircle, ArrowRight, Target, Loader2 } from "lucide-react";
+import { Eye, CheckCircle, AlertTriangle, BarChart3, Palette, Sparkles, ChevronRight, Shield, TrendingUp, MousePointer, XCircle, ArrowRight, Target, Loader2, FileText } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { CreativeImage } from "./CreativeImage";
 
@@ -381,6 +381,44 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
                   />
                 </div>
               </div>
+
+              {/* Ad Text Content */}
+              {(creative.text || creative.headline || creative.description || creative.callToAction) && (
+                <div className="border border-slate-200 rounded-lg p-4 bg-white space-y-3">
+                  <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Texto do Anúncio
+                  </h4>
+                  
+                  {creative.headline && (
+                    <div>
+                      <p className="text-xs text-slate-500 mb-1">Título</p>
+                      <p className="text-sm font-medium text-slate-900">{creative.headline}</p>
+                    </div>
+                  )}
+                  
+                  {creative.text && (
+                    <div>
+                      <p className="text-xs text-slate-500 mb-1">Texto Principal</p>
+                      <p className="text-sm text-slate-700 whitespace-pre-wrap">{creative.text}</p>
+                    </div>
+                  )}
+                  
+                  {creative.description && (
+                    <div>
+                      <p className="text-xs text-slate-500 mb-1">Descrição</p>
+                      <p className="text-sm text-slate-600">{creative.description}</p>
+                    </div>
+                  )}
+                  
+                  {creative.callToAction && (
+                    <div>
+                      <p className="text-xs text-slate-500 mb-1">Chamada para Ação</p>
+                      <Badge variant="outline" className="text-xs">{creative.callToAction}</Badge>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Creative Metrics */}
               <div className="grid grid-cols-2 gap-4">
