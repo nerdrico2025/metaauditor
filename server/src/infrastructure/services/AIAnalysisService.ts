@@ -1,5 +1,6 @@
 
 import OpenAI from "openai";
+import sharp from "sharp";
 import type { Creative, Policy } from "../../shared/schema.js";
 import { objectStorageService } from "./ObjectStorageService.js";
 
@@ -107,38 +108,60 @@ export class AIAnalysisService {
     
     try {
       if (imageUrl.startsWith('/objects/')) {
-        const buffer = await objectStorageService.downloadAsBuffer(imageUrl);
+        let buffer = await objectStorageService.downloadAsBuffer(imageUrl);
         if (buffer) {
-          // Log first bytes for debugging
-          const headerBytes = buffer.slice(0, 20).toString('hex');
-          console.log("AIAnalysisService: Image header bytes:", headerBytes);
-          console.log("AIAnalysisService: Image URL:", imageUrl);
-          console.log("AIAnalysisService: Buffer size:", buffer.length);
-          
-          // Try to detect from buffer first, then fall back to extension
+          // Detect format from buffer
           let mimeType = getImageMimeTypeFromBuffer(buffer);
-          console.log("AIAnalysisService: Detected from buffer:", mimeType);
+          console.log("AIAnalysisService: Detected from buffer:", mimeType, "URL:", imageUrl);
           
           if (!mimeType) {
             mimeType = getImageMimeTypeFromExtension(imageUrl);
             console.log("AIAnalysisService: Detected from extension:", mimeType);
           }
           
-          // If still can't detect, skip the image (will do text-only analysis)
+          // If still can't detect, try to convert anyway with sharp
           if (!mimeType) {
-            console.warn("AIAnalysisService: Could not detect image format, skipping image analysis");
-            return null;
+            console.log("AIAnalysisService: Unknown format, attempting conversion with sharp");
+            try {
+              const convertedBuffer = await sharp(buffer).jpeg({ quality: 85 }).toBuffer();
+              console.log("AIAnalysisService: Successfully converted to JPEG");
+              return `data:image/jpeg;base64,${convertedBuffer.toString('base64')}`;
+            } catch (conversionError) {
+              console.warn("AIAnalysisService: Conversion failed, skipping image");
+              return null;
+            }
           }
           
-          // Only return if it's a supported format
+          // Convert unsupported formats (AVIF, HEIC) to JPEG
+          const unsupportedFormats = ['image/avif', 'image/heic', 'image/heif'];
+          if (unsupportedFormats.includes(mimeType)) {
+            console.log("AIAnalysisService: Converting", mimeType, "to JPEG");
+            try {
+              const convertedBuffer = await sharp(buffer).jpeg({ quality: 85 }).toBuffer();
+              console.log("AIAnalysisService: Successfully converted to JPEG");
+              return `data:image/jpeg;base64,${convertedBuffer.toString('base64')}`;
+            } catch (conversionError) {
+              console.error("AIAnalysisService: Failed to convert image:", conversionError);
+              return null;
+            }
+          }
+          
+          // Supported format - use directly
           const supportedFormats = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
-          if (!supportedFormats.includes(mimeType)) {
-            console.warn("AIAnalysisService: Unsupported image format:", mimeType, "- skipping image analysis");
-            return null;
+          if (supportedFormats.includes(mimeType)) {
+            console.log("AIAnalysisService: Using mimeType:", mimeType);
+            return `data:${mimeType};base64,${buffer.toString('base64')}`;
           }
           
-          console.log("AIAnalysisService: Using mimeType:", mimeType);
-          return `data:${mimeType};base64,${buffer.toString('base64')}`;
+          // Unknown format - try to convert
+          console.log("AIAnalysisService: Unknown format", mimeType, "- attempting conversion");
+          try {
+            const convertedBuffer = await sharp(buffer).jpeg({ quality: 85 }).toBuffer();
+            return `data:image/jpeg;base64,${convertedBuffer.toString('base64')}`;
+          } catch (conversionError) {
+            console.warn("AIAnalysisService: Conversion failed");
+            return null;
+          }
         }
       }
       return null;
