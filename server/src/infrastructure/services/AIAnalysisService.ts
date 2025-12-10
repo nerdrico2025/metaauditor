@@ -208,65 +208,66 @@ ${prohibitedKeywordsList}
       const imageBase64 = await this.getImageBase64(creative.imageUrl || '');
       const hasImage = !!imageBase64;
 
-      const prompt = `Analise este criativo publicitário para conformidade com a marca baseado na configuração específica da marca e critérios de conteúdo do usuário.
+      const prompt = `Você é um auditor de compliance de marca. Analise este criativo publicitário com MÁXIMA PRECISÃO.
 
-${hasImage ? 'IMPORTANTE: Uma imagem do criativo foi fornecida. Analise VISUALMENTE a imagem para verificar:' : 'Nota: Nenhuma imagem disponível para análise visual.'}
-${hasImage ? '- Textos, palavras e frases que aparecem NA IMAGEM' : ''}
-${hasImage ? '- Cores predominantes e se correspondem às cores da marca' : ''}
-${hasImage ? '- Presença do logo da marca na imagem' : ''}
-${hasImage ? '- Qualquer elemento visual relevante para conformidade' : ''}
+${hasImage ? '🔍 ANÁLISE VISUAL OBRIGATÓRIA - Uma imagem foi fornecida. Examine CADA DETALHE:' : '⚠️ Sem imagem - análise apenas textual.'}
+${hasImage ? '• Leia TODO texto visível na imagem (títulos, legendas, watermarks, textos pequenos)' : ''}
+${hasImage ? '• Identifique TODAS as cores presentes e seus códigos HEX aproximados' : ''}
+${hasImage ? '• Localize EXATAMENTE onde está o logo (canto, centro, ausente)' : ''}
+${hasImage ? '• Descreva elementos visuais relevantes' : ''}
 
-Detalhes do Criativo:
+📋 DADOS DO CRIATIVO:
 - Nome: ${creative.name}
 - Tipo: ${creative.type}
-- Texto do Anúncio: ${creative.text || 'N/A'}
-- Título: ${creative.headline || 'N/A'}
-- Descrição: ${creative.description || 'N/A'}
-- Call to Action: ${creative.callToAction || 'N/A'}
+- Texto Principal: "${creative.text || 'N/A'}"
+- Título: "${creative.headline || 'N/A'}"
+- Descrição: "${creative.description || 'N/A'}"
+- CTA: "${creative.callToAction || 'N/A'}"
 ${brandRequirements}
 ${contentRequirements}
 
-REGRAS CRÍTICAS PARA ANÁLISE DE PALAVRAS-CHAVE:
+⚠️ REGRAS DE ANÁLISE - SIGA RIGOROSAMENTE:
 
-1. PALAVRAS OBRIGATÓRIAS:
-   - Verifique se CADA palavra/frase obrigatória listada acima aparece nos textos OU na imagem
-   - Considere variações (maiúsculas/minúsculas, singular/plural)
-   - Se uma palavra obrigatória NÃO foi encontrada, liste isso como um problema
-   - NÃO invente que uma palavra está presente se você não a viu claramente
+🎨 CORES:
+- Compare as cores da imagem com as cores especificadas acima
+- Se a cor primária é "#2fac16" (verde), verifique se existe um verde SIMILAR na imagem
+- Tolerância: cores com diferença de até 15% são consideradas conformes
+- Liste as cores encontradas com seus códigos HEX aproximados
+- colorCompliance = TRUE se cores da marca estão presentes (mesmo com pequenas variações)
 
-2. PALAVRAS PROIBIDAS:
-   - Verifique se ALGUMA palavra/frase proibida listada acima aparece nos textos OU na imagem
-   - APENAS reporte como problema se você VIU a palavra proibida claramente
-   - NÃO reporte palavras proibidas que você NÃO encontrou - isso não é um problema
-   - Se nenhuma palavra proibida foi encontrada, isso é POSITIVO (não é um problema)
+🏷️ LOGO:
+- Verifique se há QUALQUER logo/marca na imagem
+- Descreva a posição exata do logo se encontrado
+- logoCompliance = TRUE se logo está presente (independente da posição)
 
-3. PRECISÃO:
-   - Analise SOMENTE o que você realmente vê
-   - NÃO invente ou suponha textos que não estão visíveis
-   - Seja preciso e factual
+📝 PALAVRAS-CHAVE:
+- Busque cada palavra obrigatória TANTO no texto do anúncio QUANTO na imagem
+- Para cada palavra encontrada, indique se foi na "imagem", "texto" ou "ambos"
+- Se uma palavra está no texto E na imagem, marque como "ambos"
+- Seja SENSÍVEL a variações: "grátis", "GRÁTIS", "Gratis" são a mesma palavra
+- Palavras proibidas: SOMENTE reporte se REALMENTE viu a palavra
 
-Por favor, analise:
-1. Conformidade das cores da marca (baseado na análise visual da imagem)
-2. Presença e conformidade do logo (verificar visualmente na imagem)
-3. Presença de palavras-chave/frases obrigatórias (verificar CADA uma da lista)
-4. Ausência de palavras-chave/frases proibidas (verificar se ALGUMA aparece)
-5. Conformidade do comprimento do texto
-6. Linguagem profissional e adequação
+📊 PONTUAÇÃO:
+- Score 100: Tudo conforme
+- Score 80-99: Conformidade alta, pequenos ajustes
+- Score 60-79: Conformidade parcial, problemas moderados
+- Score 0-59: Não conforme, problemas críticos
 
-RESPONDA OBRIGATORIAMENTE EM PORTUGUÊS-BR. Responda com JSON neste formato: {
+Responda em JSON (PORTUGUÊS-BR):
+{
   "score": number (0-100),
-  "issues": ["problema1", "problema2"],
-  "recommendations": ["recomendação1", "recomendação2"],
+  "issues": ["problema específico 1", "problema específico 2"],
+  "recommendations": ["recomendação acionável 1", "recomendação acionável 2"],
   "logoCompliance": boolean,
-  "logoJustification": "Justificativa detalhada sobre a presença/ausência do logo. Ex: 'Logo presente no canto superior direito' ou 'Logo ausente - não foi identificado nenhum logo na imagem'",
+  "logoJustification": "Ex: 'Logo da marca presente no canto superior direito da imagem' ou 'Nenhum logo identificado na imagem'",
   "colorCompliance": boolean,
-  "colorJustification": "Justificativa detalhada sobre as cores. Ex: 'Cores da marca identificadas: azul e branco predominantes' ou 'Cores não correspondem - encontradas cores vermelhas que não fazem parte da paleta da marca'",
+  "colorJustification": "Ex: 'Cores encontradas: verde (#2DB516) e amarelo (#FFD700), compatíveis com a paleta da marca' ou 'Cores predominantes (azul, branco) não correspondem às cores da marca (verde, amarelo)'",
   "textCompliance": boolean,
-  "textJustification": "Justificativa detalhada sobre o texto e palavras-chave",
+  "textJustification": "Justificativa sobre textos e palavras-chave",
   "keywordAnalysis": {
-    "requiredKeywordsFound": [{"keyword": "palavra encontrada", "source": "imagem ou texto ou ambos"}],
-    "requiredKeywordsMissing": ["lista de palavras obrigatórias que NÃO foram encontradas"],
-    "prohibitedKeywordsFound": [{"keyword": "palavra proibida encontrada", "source": "imagem ou texto ou ambos"}]
+    "requiredKeywordsFound": [{"keyword": "palavra", "source": "imagem|texto|ambos"}],
+    "requiredKeywordsMissing": ["palavras não encontradas"],
+    "prohibitedKeywordsFound": [{"keyword": "palavra proibida", "source": "imagem|texto|ambos"}]
   }
 }`;
 
