@@ -27,6 +27,7 @@ import {
   XCircle,
   TrendingUp,
   MousePointer,
+  MousePointerClick,
   BarChart3,
   ChevronRight,
   Sparkles,
@@ -621,10 +622,18 @@ export default function Creatives() {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedCreatives = filteredCreatives.slice(startIndex, startIndex + itemsPerPage);
 
-  const metaCreatives = creatives.filter(c => c.platform === 'meta');
   const activeCreatives = filteredCreatives.filter(c => c.status === 'Ativo');
   const totalImpressions = filteredCreatives.reduce((sum, c) => sum + (c.impressions || 0), 0);
   const totalClicks = filteredCreatives.reduce((sum, c) => sum + (c.clicks || 0), 0);
+  
+  // Calculate average CTR
+  const creativesWithCtr = filteredCreatives.filter(c => c.impressions && c.impressions > 0);
+  const averageCtr = creativesWithCtr.length > 0
+    ? creativesWithCtr.reduce((sum, c) => {
+        const ctr = ((c.clicks || 0) / (c.impressions || 1)) * 100;
+        return sum + ctr;
+      }, 0) / creativesWithCtr.length
+    : 0;
 
   const formatCTR = (ctr: number | string | null | undefined): string => {
     if (ctr === null || ctr === undefined) return '0';
@@ -712,12 +721,12 @@ export default function Creatives() {
                   <CardContent className="pt-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Anúncios Meta Ads</p>
-                        <p className="text-3xl font-bold text-blue-600 dark:text-blue-400 mt-2" data-testid="stat-meta-creatives">
-                          {metaCreatives.length}
+                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Média de CTR</p>
+                        <p className="text-3xl font-bold text-blue-600 dark:text-blue-400 mt-2" data-testid="stat-average-ctr">
+                          {averageCtr.toFixed(2)}%
                         </p>
                       </div>
-                      <Facebook className="h-10 w-10 text-blue-600 dark:text-blue-400" />
+                      <MousePointerClick className="h-10 w-10 text-blue-600 dark:text-blue-400" />
                     </div>
                   </CardContent>
                 </Card>
