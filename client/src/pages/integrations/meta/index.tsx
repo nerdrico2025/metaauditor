@@ -303,22 +303,30 @@ export default function MetaIntegrations() {
         });
 
           eventSource.onerror = (error) => {
-            console.error('❌ EventSource connection error:', error);
-            if (!hasError && !finalResult) {
-              // Mark current step as error
-              setSyncSteps(prev => prev.map((step, idx) => {
-                if (idx === currentSyncStep) {
-                  return {
-                    ...step,
-                    status: 'error' as const,
-                    error: 'Conexão perdida com o servidor. Tente novamente.'
-                  };
-                }
-                return step;
-              }));
+            // Only log and handle if we haven't already completed successfully
+            if (!finalResult && !hasError) {
+              console.error('❌ EventSource connection error:', error);
               
-              eventSource.close();
-              reject(new Error('Conexão perdida com o servidor. Verifique sua internet e tente novamente.'));
+              // Add a small delay to check if we got a final result
+              // This handles race conditions where complete fires just before the connection closes
+              setTimeout(() => {
+                if (!finalResult && !hasError) {
+                  // Mark current step as error
+                  setSyncSteps(prev => prev.map((step, idx) => {
+                    if (idx === currentSyncStep) {
+                      return {
+                        ...step,
+                        status: 'error' as const,
+                        error: 'Conexão perdida com o servidor. Tente novamente.'
+                      };
+                    }
+                    return step;
+                  }));
+                  
+                  eventSource.close();
+                  reject(new Error('Conexão perdida com o servidor. Verifique sua internet e tente novamente.'));
+                }
+              }, 500);
             }
           };
         } catch (error: any) {
