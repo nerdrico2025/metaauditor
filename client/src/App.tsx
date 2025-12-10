@@ -39,6 +39,11 @@ import Users from "@/pages/users";
 
 // Admin
 import SuperAdmin from "@/pages/admin";
+import AdminDashboard from "@/pages/admin/dashboard";
+import AdminEmpresas from "@/pages/admin/empresas";
+import AdminPlanos from "@/pages/admin/planos";
+import AdminUsuarios from "@/pages/admin/usuarios";
+import AdminConfiguracoes from "@/pages/admin/configuracoes";
 
 // Error Pages
 import NotFound from "@/pages/errors/not-found";
@@ -131,6 +136,31 @@ function Router() {
       <Route path="/super-admin">
         <ProtectedRoute requireSuperAdmin={true}>
           <SuperAdmin />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/dashboard">
+        <ProtectedRoute requireSuperAdmin={true}>
+          <AdminDashboard />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/empresas">
+        <ProtectedRoute requireSuperAdmin={true}>
+          <AdminEmpresas />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/planos">
+        <ProtectedRoute requireSuperAdmin={true}>
+          <AdminPlanos />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/usuarios">
+        <ProtectedRoute requireSuperAdmin={true}>
+          <AdminUsuarios />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/configuracoes">
+        <ProtectedRoute requireSuperAdmin={true}>
+          <AdminConfiguracoes />
         </ProtectedRoute>
       </Route>
       <Route component={NotFound} />
