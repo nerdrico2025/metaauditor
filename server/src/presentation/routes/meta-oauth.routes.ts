@@ -5,9 +5,28 @@ import type { Request, Response, NextFunction } from 'express';
 import { storage } from '../../shared/services/storage.service.js';
 import { db } from '../../infrastructure/database';
 import { oauthSessions } from '../../../drizzle/schema';
-import { eq, lt } from 'drizzle-orm';
+import { eq, lt, sql } from 'drizzle-orm';
 
 const router = Router();
+
+// Ensure oauth_sessions table exists on startup
+(async () => {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS oauth_sessions (
+        id VARCHAR(100) PRIMARY KEY,
+        user_id UUID NOT NULL,
+        access_token TEXT NOT NULL,
+        accounts JSONB NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW(),
+        expires_at TIMESTAMP NOT NULL
+      )
+    `);
+    console.log('✅ oauth_sessions table ensured');
+  } catch (error) {
+    console.error('❌ Error ensuring oauth_sessions table:', error);
+  }
+})();
 
 interface TokenResponse {
   access_token?: string;
@@ -224,19 +243,30 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
     const oauthSessionId = `oauth_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes expiry
     
-    // Clean up old sessions (older than 5 minutes)
-    await db.delete(oauthSessions).where(lt(oauthSessions.expiresAt, new Date()));
-    
-    // Store new session in database
-    await db.insert(oauthSessions).values({
-      id: oauthSessionId,
-      userId,
-      accessToken,
-      accounts: accountsForSelection,
-      expiresAt,
-    });
-
-    console.log(`📦 Created OAuth session: ${oauthSessionId} with ${accountsForSelection.length} accounts`);
+    try {
+      // Clean up old sessions (older than 5 minutes)
+      await db.delete(oauthSessions).where(lt(oauthSessions.expiresAt, new Date()));
+      console.log(`🧹 Cleaned up old OAuth sessions`);
+      
+      // Store new session in database
+      const insertResult = await db.insert(oauthSessions).values({
+        id: oauthSessionId,
+        userId,
+        accessToken,
+        accounts: accountsForSelection,
+        expiresAt,
+      }).returning();
+      
+      console.log(`📦 Created OAuth session in DB: ${oauthSessionId} with ${accountsForSelection.length} accounts`);
+      console.log(`📦 Insert result:`, JSON.stringify(insertResult));
+      
+      // Verify the session was saved
+      const verifySession = await db.select().from(oauthSessions).where(eq(oauthSessions.id, oauthSessionId));
+      console.log(`📦 Verified session exists:`, verifySession.length > 0);
+    } catch (dbError) {
+      console.error(`❌ Database error saving OAuth session:`, dbError);
+      // Continue anyway - the session will be passed via URL params as fallback
+    }
     
     // In production, redirect directly to the integrations page with session ID
     // This avoids issues with popup communication across multiple workers

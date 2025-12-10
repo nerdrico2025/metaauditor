@@ -1,0 +1,74 @@
+🔗 Meta OAuth URL generated with scopes: ads_management,ads_read,business_management,read_insights
+2025-12-10 13:46:15.42
+c261ab63
+User
+GET /api/campaigns 304 in 2179ms :: []
+2025-12-10 13:46:23.59
+c261ab63
+User
+📦 Fetching OAuth session from database: oauth_1765385183325_4q8gkj0zm
+2025-12-10 13:46:23.62
+c261ab63
+User
+GET /api/auth/meta/oauth-session/oauth_1765385183325_4q8gkj0zm 404 in 37ms :: {…
+2025-12-10 13:46:23.62
+c261ab63
+User
+❌ Session not found in database: oauth_1765385183325_4q8gkj0zm
+2025-12-10 13:46:23.62
+c261ab63
+User
+❌ Session not found in database: oauth_1765385183325_4q8gkj0zm
+2025-12-10 13:46:23.62
+c261ab63
+User
+GET /api/auth/meta/oauth-session/oauth_1765385183325_4q8gkj0zm 404 in 37ms :: {…
+2025-12-10 13:46:23.62
+c261ab63
+User
+❌ Session not found in database: oauth_1765385183325_4q8gkj0zm
+
+2025-12-10 13:46:23.62
+c261ab63
+User
+GET /api/auth/meta/oauth-session/oauth_1765385183325_4q8gkj0zm 404 in 37ms :: {…
+2025-12-10 13:46:23.62
+c261ab63
+User
+❌ Session not found in database: oauth_1765385183325_4q8gkj0zm
+2025-12-10 13:46:23.62
+c261ab63
+User
+GET /api/auth/meta/oauth-session/oauth_1765385183325_4q8gkj0zm 404 in 37ms :: {…
+2025-12-10 13:46:23.62
+c261ab63
+User
+❌ Session not found in database: oauth_1765385183325_4q8gkj0zm
+2025-12-10 13:46:23.62
+c261ab63
+User
+GET /api/auth/meta/oauth-session/oauth_1765385183325_4q8gkj0zm 404 in 37ms :: {…
+2025-12-10 13:46:23.62
+c261ab63
+User
+❌ Session not found in database: oauth_1765385183325_4q8gkj0zm
+2025-12-10 13:46:23.62
+c261ab63
+User
+GET /api/auth/meta/oauth-session/oauth_1765385183325_4q8gkj0zm 404 in 37ms :: {…
+2025-12-10 13:46:23.62
+c261ab63
+User
+❌ Session not found in database: oauth_1765385183325_4q8gkj0zm
+2025-12-10 13:46:23.62
+c261ab63
+User
+GET /api/auth/meta/oauth-session/oauth_1765385183325_4q8gkj0zm 404 in 37ms :: {…
+2025-12-10 13:46:23.62
+c261ab63
+User
+❌ Session not found in database: oauth_1765385183325_4q8gkj0zm
+2025-12-10 13:46:23.62
+c261ab63
+User
+GET /api/auth/meta/oauth-session/oauth_1765385183325_4q8gkj0zm 404 in 37ms :: {…
