@@ -20,6 +20,7 @@ import {
   performanceBenchmarks,
   platformSettings,
   subscriptionPlans,
+  aiSettings,
   type Company,
   type InsertCompany,
   type User,
@@ -52,6 +53,8 @@ import {
   type SubscriptionPlan,
   type InsertWebhookEvent,
   type WebhookEvent,
+  type InsertAiSettings,
+  type AiSettings,
 } from "../schema.js";
 
 export interface IStorage {
@@ -159,6 +162,8 @@ export interface IStorage {
   createSubscriptionPlan(plan: InsertSubscriptionPlan): Promise<typeof subscriptionPlans.$inferSelect>;
   updateSubscriptionPlan(id: string, data: Partial<InsertSubscriptionPlan>): Promise<typeof subscriptionPlans.$inferSelect | undefined>;
   deleteSubscriptionPlan(id: string): Promise<boolean>;
+  getAiSettings(): Promise<AiSettings | undefined>;
+  upsertAiSettings(data: Omit<InsertAiSettings, 'id' | 'createdAt' | 'updatedAt'>): Promise<AiSettings>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1289,6 +1294,30 @@ export class DatabaseStorage implements IStorage {
   async deleteSubscriptionPlan(id: string): Promise<boolean> {
     const result = await db.delete(subscriptionPlans).where(eq(subscriptionPlans.id, id));
     return (result.rowCount ?? 0) > 0;
+  }
+
+  async getAiSettings(): Promise<AiSettings | undefined> {
+    const [settings] = await db.select().from(aiSettings).limit(1);
+    return settings;
+  }
+
+  async upsertAiSettings(data: Omit<InsertAiSettings, 'id' | 'createdAt' | 'updatedAt'>): Promise<AiSettings> {
+    const existing = await this.getAiSettings();
+    
+    if (existing) {
+      const [updated] = await db
+        .update(aiSettings)
+        .set({ ...data, updatedAt: new Date() })
+        .where(eq(aiSettings.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db
+        .insert(aiSettings)
+        .values(data)
+        .returning();
+      return created;
+    }
   }
 
   async deleteCampaign(id: string): Promise<boolean> {

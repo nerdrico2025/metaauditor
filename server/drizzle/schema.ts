@@ -51,6 +51,24 @@ export const oauthSessions = pgTable("oauth_sessions", {
   expiresAt: timestamp("expires_at").notNull(),
 });
 
+// AI Settings (Global configuration for AI/OpenAI)
+export const aiSettings = pgTable("ai_settings", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  model: varchar("model", { length: 50 }).notNull().default('gpt-4o'),
+  maxTokens: integer("max_tokens").notNull().default(1500),
+  temperature: decimal("temperature", { precision: 2, scale: 1 }).default('0.7'),
+  complianceSystemPrompt: text("compliance_system_prompt"),
+  complianceUserPromptTemplate: text("compliance_user_prompt_template"),
+  performanceSystemPrompt: text("performance_system_prompt"),
+  performanceUserPromptTemplate: text("performance_user_prompt_template"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertAiSettingsSchema = createInsertSchema(aiSettings).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertAiSettings = z.infer<typeof insertAiSettingsSchema>;
+export type AiSettings = typeof aiSettings.$inferSelect;
+
 // Subscription plan enum
 export const subscriptionPlanEnum = pgEnum('subscription_plan', ['free', 'starter', 'professional', 'enterprise']);
 

@@ -23,6 +23,7 @@
           import sheetsRoutes from "./presentation/routes/sheets.routes.js";
           import imageMigrationRoutes from "./presentation/routes/image-migration.routes.js";
           import platformSettingsRoutes from "./presentation/routes/platform-settings.routes.js";
+          import aiSettingsRoutes from "./presentation/routes/ai-settings.routes.js";
           import metaOAuthRoutes from "./presentation/routes/meta-oauth.routes.js";
           import adminRoutes from "./presentation/routes/admin.routes.js";
           import plansRoutes from "./presentation/routes/plans.routes.js";
@@ -105,6 +106,7 @@
             app.use("/api/admin", adminRoutes);
             app.use("/api/image-migration", imageMigrationRoutes);
             app.use("/api/platform-settings", platformSettingsRoutes);
+            app.use("/api/ai-settings", aiSettingsRoutes);
             app.use("/api/auth/meta", metaOAuthRoutes);
             app.use("", objectStorageRoutes);
 
