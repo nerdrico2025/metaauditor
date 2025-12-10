@@ -351,6 +351,8 @@ router.get('/:id/sync-stream', async (req: Request, res: Response) => {
           existingCreativesMap // Pass existing creatives to skip re-downloading images
         );
         
+        console.log(`🎯 About to save ${ads.length} ads to database...`);
+        
         sendEvent('step', { 
           step: 3, 
           totalSteps: 3,
@@ -359,7 +361,9 @@ router.get('/:id/sync-stream', async (req: Request, res: Response) => {
         });
         
         // Save creatives using batch upsert (MUCH faster)
+        console.log(`🎯 Calling batchUpsertCreatives with ${ads.length} ads and ${existingCreatives.length} existing...`);
         syncedCreatives = await storage.batchUpsertCreatives(ads, existingCreatives);
+        console.log(`✅ batchUpsertCreatives completed: ${syncedCreatives} creatives saved`);
         
         sendEvent('progress', {
           step: 3,
