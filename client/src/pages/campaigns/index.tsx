@@ -79,12 +79,34 @@ export default function Campaigns() {
   });
 
   const { data: allAdSets = [] } = useQuery<any[]>({
-    queryKey: ['/api/adsets'],
+    queryKey: ['/api/adsets', { integrationId: selectedAccountId }],
+    queryFn: async () => {
+      const token = localStorage.getItem('auth_token');
+      const url = selectedAccountId 
+        ? `/api/adsets?integrationId=${selectedAccountId}`
+        : '/api/adsets';
+      const res = await fetch(url, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error('Falha ao carregar grupos de anúncios');
+      return res.json();
+    },
     enabled: isAuthenticated,
   });
 
   const { data: creativesData } = useQuery<any>({
-    queryKey: ['/api/creatives?limit=10000'],
+    queryKey: ['/api/creatives', { integrationId: selectedAccountId }],
+    queryFn: async () => {
+      const token = localStorage.getItem('auth_token');
+      const url = selectedAccountId 
+        ? `/api/creatives?limit=10000&integrationId=${selectedAccountId}`
+        : '/api/creatives?limit=10000';
+      const res = await fetch(url, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error('Falha ao carregar criativos');
+      return res.json();
+    },
     enabled: isAuthenticated,
   });
   

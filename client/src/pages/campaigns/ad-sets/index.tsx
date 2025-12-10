@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useMetaAccount } from "@/contexts/MetaAccountContext";
 import Sidebar from "@/components/Layout/Sidebar";
 import Header from "@/components/Layout/Header";
 import { Pagination } from "@/components/Pagination";
@@ -74,6 +75,7 @@ interface Campaign {
 export default function AdSets() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  const { selectedAccountId } = useMetaAccount();
   const [location] = useLocation();
   
   // Parse URL params for initial filter values
@@ -111,17 +113,50 @@ export default function AdSets() {
   }, [isAuthenticated, isLoading, toast]);
 
   const { data: adSets, isLoading: adSetsLoading } = useQuery<AdSet[]>({
-    queryKey: ["/api/adsets"],
+    queryKey: ["/api/adsets", { integrationId: selectedAccountId }],
+    queryFn: async () => {
+      const token = localStorage.getItem('auth_token');
+      const url = selectedAccountId 
+        ? `/api/adsets?integrationId=${selectedAccountId}`
+        : '/api/adsets';
+      const res = await fetch(url, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error('Falha ao carregar grupos de anúncios');
+      return res.json();
+    },
     enabled: isAuthenticated,
   });
 
   const { data: campaigns = [] } = useQuery<Campaign[]>({
-    queryKey: ["/api/campaigns"],
+    queryKey: ["/api/campaigns", { integrationId: selectedAccountId }],
+    queryFn: async () => {
+      const token = localStorage.getItem('auth_token');
+      const url = selectedAccountId 
+        ? `/api/campaigns?integrationId=${selectedAccountId}`
+        : '/api/campaigns';
+      const res = await fetch(url, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error('Falha ao carregar campanhas');
+      return res.json();
+    },
     enabled: isAuthenticated,
   });
 
   const { data: creativesData } = useQuery<any>({
-    queryKey: ['/api/creatives?limit=10000'],
+    queryKey: ["/api/creatives", { integrationId: selectedAccountId }],
+    queryFn: async () => {
+      const token = localStorage.getItem('auth_token');
+      const url = selectedAccountId 
+        ? `/api/creatives?limit=10000&integrationId=${selectedAccountId}`
+        : '/api/creatives?limit=10000';
+      const res = await fetch(url, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error('Falha ao carregar criativos');
+      return res.json();
+    },
     enabled: isAuthenticated,
   });
   
