@@ -96,25 +96,35 @@ export class AIAnalysisService {
       if (imageUrl.startsWith('/objects/')) {
         const buffer = await objectStorageService.downloadAsBuffer(imageUrl);
         if (buffer) {
+          // Log first bytes for debugging
+          const headerBytes = buffer.slice(0, 20).toString('hex');
+          console.log("AIAnalysisService: Image header bytes:", headerBytes);
+          console.log("AIAnalysisService: Image URL:", imageUrl);
+          console.log("AIAnalysisService: Buffer size:", buffer.length);
+          
           // Try to detect from buffer first, then fall back to extension
           let mimeType = getImageMimeTypeFromBuffer(buffer);
+          console.log("AIAnalysisService: Detected from buffer:", mimeType);
+          
           if (!mimeType) {
             mimeType = getImageMimeTypeFromExtension(imageUrl);
+            console.log("AIAnalysisService: Detected from extension:", mimeType);
           }
           
-          // If still can't detect, skip the image
+          // If still can't detect, skip the image (will do text-only analysis)
           if (!mimeType) {
-            console.warn("AIAnalysisService: Could not detect image format for:", imageUrl);
+            console.warn("AIAnalysisService: Could not detect image format, skipping image analysis");
             return null;
           }
           
           // Only return if it's a supported format
           const supportedFormats = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
           if (!supportedFormats.includes(mimeType)) {
-            console.warn("AIAnalysisService: Unsupported image format:", mimeType);
+            console.warn("AIAnalysisService: Unsupported image format:", mimeType, "- skipping image analysis");
             return null;
           }
           
+          console.log("AIAnalysisService: Using mimeType:", mimeType);
           return `data:${mimeType};base64,${buffer.toString('base64')}`;
         }
       }

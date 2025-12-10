@@ -1,0 +1,49 @@
+AI compliance analysis failed: BadRequestError: 400 You uploaded an unsupported image. Please make sure your image has of one the following formats: ['png', 'jpeg', 'gif', 'webp'].
+    at Function.generate (/home/runner/workspace/node_modules/openai/src/core/error.ts:72:14)
+    at OpenAI.makeStatusError (/home/runner/workspace/node_modules/openai/src/client.ts:463:28)
+    at OpenAI.makeRequest (/home/runner/workspace/node_modules/openai/src/client.ts:713:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async AIAnalysisService.analyzeCreativeCompliance (/home/runner/workspace/server/src/infrastructure/services/AIAnalysisService.ts:238:24)
+    at async <anonymous> (/home/runner/workspace/server/src/presentation/routes/creative.routes.ts:171:32) {
+  status: 400,
+  headers: Headers {
+    date: 'Wed, 10 Dec 2025 15:05:09 GMT',
+    'content-type': 'application/json',
+    'content-length': '258',
+    connection: 'keep-alive',
+    'access-control-expose-headers': 'X-Request-ID',
+    'openai-organization': 'nerd-12',
+    'openai-processing-ms': '19',
+    'openai-project': 'proj_mwWUnLkOPU8e8N5nNJY1KhD4',
+    'openai-version': '2020-10-01',
+    'x-ratelimit-limit-input-images': '50000',
+    'x-ratelimit-limit-requests': '500',
+    'x-ratelimit-limit-tokens': '30000',
+    'x-ratelimit-remaining-input-images': '49999',
+    'x-ratelimit-remaining-requests': '499',
+    'x-ratelimit-remaining-tokens': '28192',
+    'x-ratelimit-reset-input-images': '1ms',
+    'x-ratelimit-reset-requests': '120ms',
+    'x-ratelimit-reset-tokens': '3.616s',
+    'x-request-id': 'req_434fdd49855b4864a1ac4091a5211a36',
+    'x-envoy-upstream-service-time': '46',
+    'x-openai-proxy-wasm': 'v0.1',
+    'cf-cache-status': 'DYNAMIC',
+    'set-cookie': '__cf_bm=4gDQzzRBXH5OKdHKLT0JumFJZ2hpJSoQZeV7D4KwazI-1765379109-1.0.1.1-.3Yvrhp8HIVMEk9Q9QkacRyKaE92BGPoSTnehMXCC0aSxMEAWTEfBer6wsBzYprZXc8gUVUjSiTdVFG4gyV..JXSEelQnYfq4OMYZt7XQmw; path=/; expires=Wed, 10-Dec-25 15:35:09 GMT; domain=.api.openai.com; HttpOnly; Secure; SameSite=None, _cfuvid=7dsuZ64RpFrubS3uKJfoY7SvS6IJOxAIks_jZnRMn_s-1765379109194-0.0.1.1-604800000; path=/; domain=.api.openai.com; HttpOnly; Secure; SameSite=None',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    'x-content-type-options': 'nosniff',
+    server: 'cloudflare',
+    'cf-ray': '9abda3878c8ce287-ORD',
+    'alt-svc': 'h3=":443"; ma=86400'
+  },
+  requestID: 'req_434fdd49855b4864a1ac4091a5211a36',
+  error: {
+    message: "You uploaded an unsupported image. Please make sure your image has of one the following formats: ['png', 'jpeg', 'gif', 'webp'].",
+    type: 'invalid_request_error',
+    param: null,
+    code: 'invalid_image_format'
+  },
+  code: 'invalid_image_format',
+  param: null,
+  type: 'invalid_request_error'
+}
