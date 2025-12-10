@@ -683,12 +683,12 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
                   </summary>
 
                   <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Compliance Details */}
+                    {/* ANÁLISE DA IMAGEM */}
                     {viewingAudit.aiAnalysis?.compliance && (
                       <div className="space-y-4">
                         <h4 className="font-semibold text-md flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                          <Palette className="h-4 w-4" />
-                          Conformidade de Marca
+                          <Image className="h-4 w-4" />
+                          Análise da Imagem
                         </h4>
                         
                         {/* Logo da Marca */}
@@ -727,20 +727,109 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
                           </p>
                         </div>
 
-                        {/* Palavras Obrigatórias - Card Separado */}
+                        {/* Palavras Obrigatórias na Imagem */}
                         {viewingAudit.aiAnalysis.compliance.analysis?.keywordAnalysis && (
                           (() => {
-                            const found = viewingAudit.aiAnalysis.compliance.analysis.keywordAnalysis.requiredKeywordsFound || [];
-                            const missing = viewingAudit.aiAnalysis.compliance.analysis.keywordAnalysis.requiredKeywordsMissing || [];
-                            const hasRequired = found.length > 0 || missing.length > 0;
-                            const allFound = missing.length === 0 && found.length > 0;
+                            const allFound = viewingAudit.aiAnalysis.compliance.analysis.keywordAnalysis.requiredKeywordsFound || [];
+                            const imageKeywords = allFound.filter((item: any) => {
+                              const source = typeof item === 'string' ? null : item.source;
+                              return source === 'imagem' || source === 'ambos';
+                            });
                             
-                            if (!hasRequired) return null;
+                            if (imageKeywords.length === 0) return null;
                             
                             return (
-                              <div className={`p-3 rounded-lg border ${allFound ? 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800'}`}>
+                              <div className="p-3 rounded-lg border bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
                                 <div className="flex items-center gap-2 mb-2">
-                                  {allFound ? (
+                                  <CheckCircle className="h-4 w-4 text-green-600" />
+                                  <span className="text-sm font-semibold">Palavras Obrigatórias</span>
+                                </div>
+                                <div className="flex flex-wrap gap-1">
+                                  {imageKeywords.map((item: any, idx: number) => {
+                                    const keyword = typeof item === 'string' ? item : item.keyword;
+                                    return (
+                                      <Badge key={idx} variant="outline" className="text-[10px] bg-green-100 text-green-800 border-green-300 flex items-center gap-1">
+                                        <CheckCircle className="h-3 w-3" />
+                                        {keyword}
+                                      </Badge>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })()
+                        )}
+
+                        {/* Palavras Proibidas na Imagem */}
+                        {viewingAudit.aiAnalysis.compliance.analysis?.keywordAnalysis && (
+                          (() => {
+                            const allProhibited = viewingAudit.aiAnalysis.compliance.analysis.keywordAnalysis.prohibitedKeywordsFound || [];
+                            const imageProhibited = allProhibited.filter((item: any) => {
+                              const source = typeof item === 'string' ? null : item.source;
+                              return source === 'imagem' || source === 'ambos';
+                            });
+                            
+                            const noneFound = imageProhibited.length === 0;
+                            
+                            return (
+                              <div className={`p-3 rounded-lg border ${noneFound ? 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800' : 'bg-orange-50 dark:bg-orange-950 border-orange-200 dark:border-orange-800'}`}>
+                                <div className="flex items-center gap-2 mb-2">
+                                  {noneFound ? (
+                                    <CheckCircle className="h-4 w-4 text-green-600" />
+                                  ) : (
+                                    <AlertTriangle className="h-4 w-4 text-orange-600" />
+                                  )}
+                                  <span className="text-sm font-semibold">Palavras Proibidas</span>
+                                </div>
+                                {noneFound ? (
+                                  <p className="text-xs text-green-600">Nenhuma palavra proibida encontrada na imagem</p>
+                                ) : (
+                                  <div className="flex flex-wrap gap-1">
+                                    {imageProhibited.map((item: any, idx: number) => {
+                                      const keyword = typeof item === 'string' ? item : item.keyword;
+                                      return (
+                                        <Badge key={idx} variant="destructive" className="text-[10px] flex items-center gap-1">
+                                          <AlertTriangle className="h-3 w-3" />
+                                          {keyword}
+                                        </Badge>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()
+                        )}
+                      </div>
+                    )}
+
+                    {/* ANÁLISE DO TEXTO */}
+                    {viewingAudit.aiAnalysis?.compliance && (
+                      <div className="space-y-4">
+                        <h4 className="font-semibold text-md flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                          <FileText className="h-4 w-4" />
+                          Análise do Texto
+                        </h4>
+                        
+                        {/* Palavras Obrigatórias no Texto */}
+                        {viewingAudit.aiAnalysis.compliance.analysis?.keywordAnalysis && (
+                          (() => {
+                            const allFound = viewingAudit.aiAnalysis.compliance.analysis.keywordAnalysis.requiredKeywordsFound || [];
+                            const missing = viewingAudit.aiAnalysis.compliance.analysis.keywordAnalysis.requiredKeywordsMissing || [];
+                            const textKeywords = allFound.filter((item: any) => {
+                              const source = typeof item === 'string' ? null : item.source;
+                              return source === 'texto' || source === 'ambos';
+                            });
+                            
+                            const hasAny = textKeywords.length > 0 || missing.length > 0;
+                            const allCompliant = missing.length === 0 && textKeywords.length > 0;
+                            
+                            if (!hasAny) return null;
+                            
+                            return (
+                              <div className={`p-3 rounded-lg border ${allCompliant ? 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800'}`}>
+                                <div className="flex items-center gap-2 mb-2">
+                                  {allCompliant ? (
                                     <CheckCircle className="h-4 w-4 text-green-600" />
                                   ) : (
                                     <XCircle className="h-4 w-4 text-red-600" />
@@ -748,22 +837,18 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
                                   <span className="text-sm font-semibold">Palavras Obrigatórias</span>
                                 </div>
                                 <div className="space-y-2">
-                                  {found.length > 0 && (
+                                  {textKeywords.length > 0 && (
                                     <div>
                                       <p className="text-[10px] font-semibold text-green-700 dark:text-green-400 uppercase mb-1">
                                         Encontradas
                                       </p>
                                       <div className="flex flex-wrap gap-1">
-                                        {found.map((item: any, idx: number) => {
+                                        {textKeywords.map((item: any, idx: number) => {
                                           const keyword = typeof item === 'string' ? item : item.keyword;
-                                          const source = typeof item === 'string' ? null : item.source;
                                           return (
-                                            <Badge key={idx} variant="outline" className="text-[10px] bg-green-100 text-green-800 border-green-300 flex items-center gap-1" title={source ? `Encontrado em: ${source}` : undefined}>
+                                            <Badge key={idx} variant="outline" className="text-[10px] bg-green-100 text-green-800 border-green-300 flex items-center gap-1">
                                               <CheckCircle className="h-3 w-3" />
                                               {keyword}
-                                              {source === 'imagem' && <Image className="h-3 w-3 ml-1 text-blue-600" />}
-                                              {source === 'texto' && <Type className="h-3 w-3 ml-1 text-purple-600" />}
-                                              {source === 'ambos' && <><Image className="h-3 w-3 ml-1 text-blue-600" /><Type className="h-3 w-3 text-purple-600" /></>}
                                             </Badge>
                                           );
                                         })}
@@ -790,11 +875,16 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
                           })()
                         )}
 
-                        {/* Palavras Proibidas - Card Separado */}
+                        {/* Palavras Proibidas no Texto */}
                         {viewingAudit.aiAnalysis.compliance.analysis?.keywordAnalysis && (
                           (() => {
-                            const prohibited = viewingAudit.aiAnalysis.compliance.analysis.keywordAnalysis.prohibitedKeywordsFound || [];
-                            const noneFound = prohibited.length === 0;
+                            const allProhibited = viewingAudit.aiAnalysis.compliance.analysis.keywordAnalysis.prohibitedKeywordsFound || [];
+                            const textProhibited = allProhibited.filter((item: any) => {
+                              const source = typeof item === 'string' ? null : item.source;
+                              return source === 'texto' || source === 'ambos';
+                            });
+                            
+                            const noneFound = textProhibited.length === 0;
                             
                             return (
                               <div className={`p-3 rounded-lg border ${noneFound ? 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800' : 'bg-orange-50 dark:bg-orange-950 border-orange-200 dark:border-orange-800'}`}>
@@ -807,19 +897,15 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
                                   <span className="text-sm font-semibold">Palavras Proibidas</span>
                                 </div>
                                 {noneFound ? (
-                                  <p className="text-xs text-green-600">Nenhuma palavra proibida encontrada</p>
+                                  <p className="text-xs text-green-600">Nenhuma palavra proibida encontrada no texto</p>
                                 ) : (
                                   <div className="flex flex-wrap gap-1">
-                                    {prohibited.map((item: any, idx: number) => {
+                                    {textProhibited.map((item: any, idx: number) => {
                                       const keyword = typeof item === 'string' ? item : item.keyword;
-                                      const source = typeof item === 'string' ? null : item.source;
                                       return (
-                                        <Badge key={idx} variant="destructive" className="text-[10px] flex items-center gap-1" title={source ? `Encontrado em: ${source}` : undefined}>
+                                        <Badge key={idx} variant="destructive" className="text-[10px] flex items-center gap-1">
                                           <AlertTriangle className="h-3 w-3" />
                                           {keyword}
-                                          {source === 'imagem' && <Image className="h-3 w-3 ml-1 text-blue-200" />}
-                                          {source === 'texto' && <Type className="h-3 w-3 ml-1 text-purple-200" />}
-                                          {source === 'ambos' && <><Image className="h-3 w-3 ml-1 text-blue-200" /><Type className="h-3 w-3 text-purple-200" /></>}
                                         </Badge>
                                       );
                                     })}
@@ -830,7 +916,7 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
                           })()
                         )}
 
-                        {/* Copywriting Analysis - Card Separado */}
+                        {/* Copywriting Analysis */}
                         {viewingAudit.aiAnalysis.compliance.analysis?.copywritingAnalysis && (
                           <div className="p-3 rounded-lg border bg-indigo-50 dark:bg-indigo-950 border-indigo-200 dark:border-indigo-800">
                             <div className="flex items-center justify-between mb-3">
