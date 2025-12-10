@@ -265,9 +265,9 @@ router.get('/:id/sync-stream', async (req: Request, res: Response) => {
           message: `Campanhas salvas: ${campaigns.length}`
         });
         
-        // Clean up obsolete campaigns
+        // Clean up obsolete campaigns (ONLY for this integration)
         const campaignExternalIds = campaigns.map(c => c.externalId);
-        const deletedCampaigns = await storage.deleteCampaignsNotInList(userId, campaignExternalIds);
+        const deletedCampaigns = await storage.deleteCampaignsNotInList(userId, campaignExternalIds, integration.id);
         
         sendEvent('step-complete', { 
           step: 1,
@@ -312,9 +312,9 @@ router.get('/:id/sync-stream', async (req: Request, res: Response) => {
           message: `Grupos de anúncios salvos: ${adSets.length}`
         });
         
-        // Clean up obsolete ad sets
+        // Clean up obsolete ad sets (ONLY for this integration)
         const adSetExternalIds = adSets.map(a => a.externalId);
-        const deletedAdSets = await storage.deleteAdSetsNotInList(userId, adSetExternalIds);
+        const deletedAdSets = await storage.deleteAdSetsNotInList(userId, adSetExternalIds, integration.id);
         
         sendEvent('step-complete', { 
           step: 2,
@@ -383,9 +383,9 @@ router.get('/:id/sync-stream', async (req: Request, res: Response) => {
           message: `Anúncios salvos: ${ads.length}`
         });
         
-        // Clean up obsolete creatives
+        // Clean up obsolete creatives (ONLY for this integration)
         const creativeExternalIds = ads.map(a => a.externalId);
-        const deletedCreatives = await storage.deleteCreativesNotInList(userId, creativeExternalIds);
+        const deletedCreatives = await storage.deleteCreativesNotInList(userId, creativeExternalIds, integration.id);
         
         sendEvent('step-complete', { 
           step: 3,
@@ -499,9 +499,9 @@ router.post('/:id/sync', authenticateToken, async (req: Request, res: Response, 
           syncedCampaigns++;
         }
         
-        // Clean up obsolete campaigns
+        // Clean up obsolete campaigns (ONLY for this integration)
         const campaignExternalIds = campaigns.map(c => c.externalId);
-        const deletedCampaigns = await storage.deleteCampaignsNotInList(userId, campaignExternalIds);
+        const deletedCampaigns = await storage.deleteCampaignsNotInList(userId, campaignExternalIds, integration.id);
         if (deletedCampaigns > 0) {
           console.log(`🗑️  Removed ${deletedCampaigns} obsolete campaigns from database`);
         }
@@ -535,9 +535,9 @@ router.post('/:id/sync', authenticateToken, async (req: Request, res: Response, 
           syncedAdSets++;
         }
         
-        // Clean up obsolete ad sets
+        // Clean up obsolete ad sets (ONLY for this integration)
         const adSetExternalIds = adSets.map(a => a.externalId);
-        const deletedAdSets = await storage.deleteAdSetsNotInList(userId, adSetExternalIds);
+        const deletedAdSets = await storage.deleteAdSetsNotInList(userId, adSetExternalIds, integration.id);
         if (deletedAdSets > 0) {
           console.log(`🗑️  Removed ${deletedAdSets} obsolete ad sets from database`);
         }
@@ -569,9 +569,9 @@ router.post('/:id/sync', authenticateToken, async (req: Request, res: Response, 
           syncedCreatives++;
         }
         
-        // Clean up obsolete creatives
+        // Clean up obsolete creatives (ONLY for this integration)
         const creativeExternalIds = ads.map(a => a.externalId);
-        const deletedCreatives = await storage.deleteCreativesNotInList(userId, creativeExternalIds);
+        const deletedCreatives = await storage.deleteCreativesNotInList(userId, creativeExternalIds, integration.id);
         if (deletedCreatives > 0) {
           console.log(`🗑️  Removed ${deletedCreatives} obsolete ads from database`);
         }

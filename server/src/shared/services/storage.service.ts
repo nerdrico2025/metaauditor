@@ -1346,14 +1346,20 @@ export class DatabaseStorage implements IStorage {
   /**
    * Delete ad sets that are NOT in the provided list of external IDs
    * Used for cleanup after sync to remove obsolete ad sets
+   * CRITICAL: Must filter by integrationId to avoid deleting data from other integrations
    */
-  async deleteAdSetsNotInList(userId: string, externalIds: string[]): Promise<number> {
-    const user = await this.getUserById(userId);
-    if (!user?.companyId) return 0;
+  async deleteAdSetsNotInList(userId: string, externalIds: string[], integrationId: string): Promise<number> {
+    // Get campaign IDs for this integration to scope the delete
+    const integrationCampaigns = await db.select({ id: campaigns.id })
+      .from(campaigns)
+      .where(eq(campaigns.integrationId, integrationId));
+    
+    const campaignIds = integrationCampaigns.map(c => c.id);
+    if (campaignIds.length === 0) return 0;
 
     if (externalIds.length === 0) {
-      // If no external IDs, delete all ad sets for this company
-      const result = await db.delete(adSets).where(eq(adSets.companyId, user.companyId));
+      // If no external IDs, delete all ad sets for this integration's campaigns
+      const result = await db.delete(adSets).where(inArray(adSets.campaignId, campaignIds));
       return result.rowCount ?? 0;
     }
     
@@ -1361,7 +1367,7 @@ export class DatabaseStorage implements IStorage {
       .delete(adSets)
       .where(
         and(
-          eq(adSets.companyId, user.companyId),
+          inArray(adSets.campaignId, campaignIds),
           notInArray(adSets.externalId, externalIds)
         )
       );
@@ -1371,14 +1377,23 @@ export class DatabaseStorage implements IStorage {
   /**
    * Delete creatives (ads) that are NOT in the provided list of external IDs
    * Used for cleanup after sync to remove obsolete creatives
+   * CRITICAL: Must filter by integrationId to avoid deleting data from other integrations
    */
-  async deleteCreativesNotInList(userId: string, externalIds: string[]): Promise<number> {
+  async deleteCreativesNotInList(userId: string, externalIds: string[], integrationId: string): Promise<number> {
     const user = await this.getUserById(userId);
     if (!user?.companyId) return 0;
 
+    // Get campaign IDs for this integration to scope the delete
+    const integrationCampaigns = await db.select({ id: campaigns.id })
+      .from(campaigns)
+      .where(eq(campaigns.integrationId, integrationId));
+    
+    const campaignIds = integrationCampaigns.map(c => c.id);
+    if (campaignIds.length === 0) return 0;
+
     if (externalIds.length === 0) {
-      // If no external IDs, delete all creatives for this company
-      const result = await db.delete(creatives).where(eq(creatives.companyId, user.companyId));
+      // If no external IDs, delete all creatives for this integration's campaigns
+      const result = await db.delete(creatives).where(inArray(creatives.campaignId, campaignIds));
       return result.rowCount ?? 0;
     }
     
@@ -1386,7 +1401,7 @@ export class DatabaseStorage implements IStorage {
       .delete(creatives)
       .where(
         and(
-          eq(creatives.companyId, user.companyId),
+          inArray(creatives.campaignId, campaignIds),
           notInArray(creatives.externalId, externalIds)
         )
       );
@@ -1396,14 +1411,12 @@ export class DatabaseStorage implements IStorage {
   /**
    * Delete campaigns that are NOT in the provided list of external IDs
    * Used for cleanup after sync to remove obsolete campaigns
+   * CRITICAL: Must filter by integrationId to avoid deleting data from other integrations
    */
-  async deleteCampaignsNotInList(userId: string, externalIds: string[]): Promise<number> {
-    const user = await this.getUserById(userId);
-    if (!user?.companyId) return 0;
-
+  async deleteCampaignsNotInList(userId: string, externalIds: string[], integrationId: string): Promise<number> {
     if (externalIds.length === 0) {
-      // If no external IDs, delete all campaigns for this company
-      const result = await db.delete(campaigns).where(eq(campaigns.companyId, user.companyId));
+      // If no external IDs, delete all campaigns for this integration
+      const result = await db.delete(campaigns).where(eq(campaigns.integrationId, integrationId));
       return result.rowCount ?? 0;
     }
     
@@ -1411,7 +1424,7 @@ export class DatabaseStorage implements IStorage {
       .delete(campaigns)
       .where(
         and(
-          eq(campaigns.companyId, user.companyId),
+          eq(campaigns.integrationId, integrationId),
           notInArray(campaigns.externalId, externalIds)
         )
       );
