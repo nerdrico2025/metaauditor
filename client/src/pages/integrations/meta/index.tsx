@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import Sidebar from '@/components/Layout/Sidebar';
@@ -63,6 +63,7 @@ interface SyncHistoryItem {
 export default function MetaIntegrations() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   
   const [howToConnectOpen, setHowToConnectOpen] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -91,6 +92,36 @@ export default function MetaIntegrations() {
   const [syncedItems, setSyncedItems] = useState(0);
   const [syncStartTime, setSyncStartTime] = useState<number | undefined>(undefined);
   const [syncEndTime, setSyncEndTime] = useState<number | undefined>(undefined);
+
+  // Check for OAuth session in URL on page load
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const oauthSessionId = params.get('oauth_session');
+    
+    if (oauthSessionId) {
+      // Remove the parameter from URL
+      setLocation('/integrations/meta', { replace: true });
+      
+      // Fetch the OAuth session data
+      fetch(`/api/auth/meta/oauth-session/${oauthSessionId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.accounts && data.accessToken) {
+            setOauthAccounts(data.accounts);
+            setOauthToken(data.accessToken);
+            setShowAccountSelectionModal(true);
+          }
+        })
+        .catch(err => {
+          console.error('Error fetching OAuth session:', err);
+          toast({
+            title: 'Erro',
+            description: 'Sessão de autenticação expirada. Tente novamente.',
+            variant: 'destructive'
+          });
+        });
+    }
+  }, []);
 
   const { data: integrations = [], isLoading } = useQuery<Integration[]>({
     queryKey: ['/api/integrations'],

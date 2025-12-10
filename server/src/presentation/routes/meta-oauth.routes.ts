@@ -209,6 +209,24 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
       is_connected: connectedAccountIds.includes(acc.id)
     }));
 
+    // Store OAuth data in memory for retrieval by the frontend
+    const oauthSessionId = `oauth_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    (global as any).pendingOAuthSessions = (global as any).pendingOAuthSessions || {};
+    (global as any).pendingOAuthSessions[oauthSessionId] = {
+      accessToken,
+      accounts: accountsForSelection,
+      userId,
+      createdAt: Date.now()
+    };
+    
+    // Clean up old sessions (older than 5 minutes)
+    const now = Date.now();
+    for (const key of Object.keys((global as any).pendingOAuthSessions)) {
+      if (now - (global as any).pendingOAuthSessions[key].createdAt > 300000) {
+        delete (global as any).pendingOAuthSessions[key];
+      }
+    }
+
     const html = `
       <!DOCTYPE html>
       <html>
@@ -217,22 +235,27 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
         </head>
         <body>
           <script>
-            if (window.opener) {
-              window.opener.postMessage({
-                type: 'META_OAUTH_ACCOUNTS',
-                accessToken: '${accessToken}',
-                accounts: ${JSON.stringify(accountsForSelection)},
-                userId: ${userId}
-              }, '*');
-              setTimeout(() => window.close(), 300);
+            // Try postMessage first (works when same-origin)
+            if (window.opener && !window.opener.closed) {
+              try {
+                window.opener.postMessage({
+                  type: 'META_OAUTH_ACCOUNTS',
+                  sessionId: '${oauthSessionId}'
+                }, '*');
+                setTimeout(() => window.close(), 300);
+              } catch(e) {
+                // Fallback: redirect to integrations page with session ID
+                window.location.href = '/integrations/meta?oauth_session=${oauthSessionId}';
+              }
             } else {
-              window.location.href = '/?error=popup_blocked';
+              // No opener, redirect directly
+              window.location.href = '/integrations/meta?oauth_session=${oauthSessionId}';
             }
           </script>
           <p style="text-align: center; font-family: sans-serif; margin-top: 50px;">
             ✅ Autenticação concluída!
             <br><br>
-            Esta janela será fechada automaticamente...
+            Redirecionando...
           </p>
         </body>
       </html>
@@ -269,6 +292,31 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
       </html>
     `;
     res.send(html);
+  }
+});
+
+// Get OAuth session data
+router.get('/oauth-session/:sessionId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { sessionId } = req.params;
+    const sessions = (global as any).pendingOAuthSessions || {};
+    
+    if (!sessions[sessionId]) {
+      return res.status(404).json({ error: 'Session not found or expired' });
+    }
+    
+    const sessionData = sessions[sessionId];
+    
+    // Delete session after retrieval (one-time use)
+    delete sessions[sessionId];
+    
+    res.json({
+      accessToken: sessionData.accessToken,
+      accounts: sessionData.accounts,
+      userId: sessionData.userId
+    });
+  } catch (error) {
+    next(error);
   }
 });
 
