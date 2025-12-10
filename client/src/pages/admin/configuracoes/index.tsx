@@ -29,9 +29,7 @@ const aiSettingsSchema = z.object({
   maxTokens: z.number().int().min(100).max(8000),
   temperature: z.string().optional(),
   complianceSystemPrompt: z.string().optional(),
-  complianceUserPromptTemplate: z.string().optional(),
   performanceSystemPrompt: z.string().optional(),
-  performanceUserPromptTemplate: z.string().optional(),
 });
 
 type PlatformSettingsData = z.infer<typeof platformSettingsSchema>;
@@ -51,14 +49,12 @@ interface AiSettings {
   maxTokens: number;
   temperature: string;
   complianceSystemPrompt: string | null;
-  complianceUserPromptTemplate: string | null;
   performanceSystemPrompt: string | null;
-  performanceUserPromptTemplate: string | null;
 }
 
-const DEFAULT_COMPLIANCE_SYSTEM_PROMPT = `Você é um especialista em conformidade de marca. Analise criativos publicitários para problemas de conformidade e forneça recomendações acionáveis. SEMPRE responda em Português-BR. Quando uma imagem for fornecida, analise-a visualmente e seja PRECISO sobre o que você vê - nunca invente informações que não estão na imagem.`;
+const DEFAULT_COMPLIANCE_PROMPT = `Você é um especialista em conformidade de marca. Analise criativos publicitários para problemas de conformidade e forneça recomendações acionáveis. SEMPRE responda em Português-BR. Quando uma imagem for fornecida, analise-a visualmente e seja PRECISO sobre o que você vê - nunca invente informações que não estão na imagem.`;
 
-const DEFAULT_PERFORMANCE_SYSTEM_PROMPT = `Você é um analista de performance de marketing digital. Analise métricas de performance de anúncios e forneça recomendações de otimização acionáveis. SEMPRE responda em Português-BR.`;
+const DEFAULT_PERFORMANCE_PROMPT = `Você é um analista de performance de marketing digital. Analise métricas de performance de anúncios e forneça recomendações de otimização acionáveis. SEMPRE responda em Português-BR.`;
 
 export default function AdminConfiguracoes() {
   const { user } = useAuth();
@@ -102,14 +98,12 @@ export default function AdminConfiguracoes() {
   useEffect(() => {
     if (aiSettings) {
       aiForm.reset({
-        apiKey: '', // Don't pre-fill, user needs to enter new one
+        apiKey: '',
         model: aiSettings.model || 'gpt-4o',
         maxTokens: aiSettings.maxTokens || 1500,
         temperature: aiSettings.temperature || '0.7',
         complianceSystemPrompt: aiSettings.complianceSystemPrompt || '',
-        complianceUserPromptTemplate: aiSettings.complianceUserPromptTemplate || '',
         performanceSystemPrompt: aiSettings.performanceSystemPrompt || '',
-        performanceUserPromptTemplate: aiSettings.performanceUserPromptTemplate || '',
       });
     }
   }, [aiSettings, aiForm]);
@@ -133,7 +127,6 @@ export default function AdminConfiguracoes() {
 
   const saveAiSettingsMutation = useMutation({
     mutationFn: (data: AiSettingsData) => {
-      // Only send apiKey if user entered a new one
       const payload = { ...data };
       if (!payload.apiKey || payload.apiKey.trim() === '') {
         delete (payload as any).apiKey;
@@ -146,7 +139,7 @@ export default function AdminConfiguracoes() {
     onSuccess: () => {
       toast({ title: 'Configurações de IA salvas com sucesso!' });
       queryClient.invalidateQueries({ queryKey: ['/api/ai-settings'] });
-      aiForm.setValue('apiKey', ''); // Clear after save
+      aiForm.setValue('apiKey', '');
     },
     onError: (error: any) => {
       toast({ title: 'Erro ao salvar configurações de IA', description: error.message, variant: 'destructive' });
@@ -168,232 +161,184 @@ export default function AdminConfiguracoes() {
         </TabsList>
 
         <TabsContent value="openai">
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Key className="w-5 h-5" />
-                  API Key OpenAI
-                </CardTitle>
-                <CardDescription>
-                  Configure a chave de API do OpenAI para habilitar análises de IA
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 mb-4">
-                    {aiSettings?.hasApiKey ? (
-                      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                        <CheckCircle className="w-3 h-3 mr-1" />
-                        API Key configurada {aiSettings.apiKey && `(${aiSettings.apiKey})`}
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
-                        <AlertCircle className="w-3 h-3 mr-1" />
-                        Nenhuma API Key configurada
-                      </Badge>
-                    )}
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="apiKey">Nova API Key (deixe vazio para manter a atual)</Label>
-                    <div className="relative">
-                      <Input
-                        id="apiKey"
-                        type={showApiKey ? 'text' : 'password'}
-                        {...aiForm.register('apiKey')}
-                        placeholder="sk-..."
-                        data-testid="input-api-key"
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                        onClick={() => setShowApiKey(!showApiKey)}
-                      >
-                        {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </Button>
+          <form onSubmit={aiForm.handleSubmit((data) => saveAiSettingsMutation.mutate(data))}>
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Key className="w-5 h-5" />
+                    API Key OpenAI
+                  </CardTitle>
+                  <CardDescription>
+                    Configure a chave de API do OpenAI para habilitar análises de IA
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      {aiSettings?.hasApiKey ? (
+                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          API Key configurada {aiSettings.apiKey && `(${aiSettings.apiKey})`}
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+                          <AlertCircle className="w-3 h-3 mr-1" />
+                          Nenhuma API Key configurada
+                        </Badge>
+                      )}
                     </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="apiKey">Nova API Key (deixe vazio para manter a atual)</Label>
+                      <div className="relative">
+                        <Input
+                          id="apiKey"
+                          type={showApiKey ? 'text' : 'password'}
+                          {...aiForm.register('apiKey')}
+                          placeholder="sk-..."
+                          data-testid="input-api-key"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                          onClick={() => setShowApiKey(!showApiKey)}
+                        >
+                          {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Obtenha sua API Key em platform.openai.com
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Bot className="w-5 h-5" />
+                    Configurações do Modelo
+                  </CardTitle>
+                  <CardDescription>
+                    Configure o modelo e parâmetros para as análises de IA
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="model">Modelo</Label>
+                      <Select
+                        value={aiForm.watch('model')}
+                        onValueChange={(value) => aiForm.setValue('model', value)}
+                      >
+                        <SelectTrigger data-testid="select-ai-model">
+                          <SelectValue placeholder="Selecione o modelo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="gpt-4o">GPT-4o (Recomendado)</SelectItem>
+                          <SelectItem value="gpt-4o-mini">GPT-4o Mini (Mais rápido)</SelectItem>
+                          <SelectItem value="gpt-4-turbo">GPT-4 Turbo</SelectItem>
+                          <SelectItem value="gpt-4">GPT-4</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        GPT-4o é recomendado para análise de imagens
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="maxTokens">Max Tokens</Label>
+                      <Input
+                        id="maxTokens"
+                        type="number"
+                        {...aiForm.register('maxTokens', { valueAsNumber: true })}
+                        placeholder="1500"
+                        data-testid="input-max-tokens"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Limite de tokens na resposta (100-8000)
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="temperature">Temperatura</Label>
+                      <Select
+                        value={aiForm.watch('temperature') || '0.7'}
+                        onValueChange={(value) => aiForm.setValue('temperature', value)}
+                      >
+                        <SelectTrigger data-testid="select-temperature">
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="0.0">0.0 - Determinístico</SelectItem>
+                          <SelectItem value="0.3">0.3 - Conservador</SelectItem>
+                          <SelectItem value="0.5">0.5 - Balanceado</SelectItem>
+                          <SelectItem value="0.7">0.7 - Padrão</SelectItem>
+                          <SelectItem value="1.0">1.0 - Criativo</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Controla a criatividade das respostas
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Instruções para a IA (Opcional)</CardTitle>
+                  <CardDescription>
+                    Personalize as instruções gerais que a IA recebe. Deixe vazio para usar o padrão.
+                    A estrutura da análise (dados do criativo, formato JSON, regras) permanece no código.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="complianceSystemPrompt">Instruções para Análise de Compliance</Label>
+                    <Textarea
+                      id="complianceSystemPrompt"
+                      {...aiForm.register('complianceSystemPrompt')}
+                      placeholder={DEFAULT_COMPLIANCE_PROMPT}
+                      rows={4}
+                      data-testid="textarea-compliance-prompt"
+                    />
                     <p className="text-xs text-muted-foreground">
-                      Obtenha sua API Key em platform.openai.com. A chave será armazenada de forma segura no banco de dados.
+                      Padrão: "{DEFAULT_COMPLIANCE_PROMPT.substring(0, 100)}..."
                     </p>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Bot className="w-5 h-5" />
-                  Configurações do Modelo
-                </CardTitle>
-                <CardDescription>
-                  Configure o modelo, tokens e temperatura para as análises de IA
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={aiForm.handleSubmit((data) => saveAiSettingsMutation.mutate(data))}>
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="model">Modelo</Label>
-                        <Select
-                          value={aiForm.watch('model')}
-                          onValueChange={(value) => aiForm.setValue('model', value)}
-                        >
-                          <SelectTrigger data-testid="select-ai-model">
-                            <SelectValue placeholder="Selecione o modelo" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="gpt-4o">GPT-4o (Recomendado)</SelectItem>
-                            <SelectItem value="gpt-4o-mini">GPT-4o Mini (Mais rápido)</SelectItem>
-                            <SelectItem value="gpt-4-turbo">GPT-4 Turbo</SelectItem>
-                            <SelectItem value="gpt-4">GPT-4</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <p className="text-xs text-muted-foreground">
-                          GPT-4o é recomendado para análise de imagens
-                        </p>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="maxTokens">Max Tokens</Label>
-                        <Input
-                          id="maxTokens"
-                          type="number"
-                          {...aiForm.register('maxTokens', { valueAsNumber: true })}
-                          placeholder="1500"
-                          data-testid="input-max-tokens"
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          Limite de tokens na resposta (100-8000)
-                        </p>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="temperature">Temperatura</Label>
-                        <Select
-                          value={aiForm.watch('temperature') || '0.7'}
-                          onValueChange={(value) => aiForm.setValue('temperature', value)}
-                        >
-                          <SelectTrigger data-testid="select-temperature">
-                            <SelectValue placeholder="Selecione" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="0.0">0.0 - Determinístico</SelectItem>
-                            <SelectItem value="0.3">0.3 - Conservador</SelectItem>
-                            <SelectItem value="0.5">0.5 - Balanceado</SelectItem>
-                            <SelectItem value="0.7">0.7 - Padrão</SelectItem>
-                            <SelectItem value="1.0">1.0 - Criativo</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <p className="text-xs text-muted-foreground">
-                          Controla a criatividade das respostas
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="border-t pt-6">
-                      <h3 className="text-lg font-medium mb-2">Prompts de Análise de Compliance</h3>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Personalize os prompts enviados à IA. Deixe vazio para usar os prompts padrão do sistema.
-                      </p>
-                      
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="complianceSystemPrompt">System Prompt (Compliance)</Label>
-                          <Textarea
-                            id="complianceSystemPrompt"
-                            {...aiForm.register('complianceSystemPrompt')}
-                            placeholder={DEFAULT_COMPLIANCE_SYSTEM_PROMPT}
-                            rows={3}
-                            data-testid="textarea-compliance-system-prompt"
-                          />
-                          <details className="text-xs">
-                            <summary className="text-muted-foreground cursor-pointer hover:text-foreground">
-                              Ver prompt padrão atual
-                            </summary>
-                            <pre className="mt-2 p-2 bg-muted rounded text-xs whitespace-pre-wrap">
-                              {DEFAULT_COMPLIANCE_SYSTEM_PROMPT}
-                            </pre>
-                          </details>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="complianceUserPromptTemplate">Template do Prompt de Usuário (Compliance)</Label>
-                          <Textarea
-                            id="complianceUserPromptTemplate"
-                            {...aiForm.register('complianceUserPromptTemplate')}
-                            placeholder="Deixe vazio para usar o prompt padrão detalhado do sistema"
-                            rows={4}
-                            data-testid="textarea-compliance-user-prompt"
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            O prompt de usuário inclui dados do criativo, requisitos da marca, palavras-chave e regras de análise.
-                            Personalize apenas se precisar de comportamento diferente.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="border-t pt-6">
-                      <h3 className="text-lg font-medium mb-2">Prompts de Análise de Performance</h3>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Configure os prompts para análise de métricas de performance dos anúncios.
-                      </p>
-                      
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="performanceSystemPrompt">System Prompt (Performance)</Label>
-                          <Textarea
-                            id="performanceSystemPrompt"
-                            {...aiForm.register('performanceSystemPrompt')}
-                            placeholder={DEFAULT_PERFORMANCE_SYSTEM_PROMPT}
-                            rows={3}
-                            data-testid="textarea-performance-system-prompt"
-                          />
-                          <details className="text-xs">
-                            <summary className="text-muted-foreground cursor-pointer hover:text-foreground">
-                              Ver prompt padrão atual
-                            </summary>
-                            <pre className="mt-2 p-2 bg-muted rounded text-xs whitespace-pre-wrap">
-                              {DEFAULT_PERFORMANCE_SYSTEM_PROMPT}
-                            </pre>
-                          </details>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="performanceUserPromptTemplate">Template do Prompt de Usuário (Performance)</Label>
-                          <Textarea
-                            id="performanceUserPromptTemplate"
-                            {...aiForm.register('performanceUserPromptTemplate')}
-                            placeholder="Deixe vazio para usar o prompt padrão detalhado do sistema"
-                            rows={4}
-                            data-testid="textarea-performance-user-prompt"
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            O prompt de performance inclui métricas (CTR, CPC, conversões) e benchmarks configurados na política.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <Button 
-                      type="submit" 
-                      disabled={saveAiSettingsMutation.isPending}
-                      data-testid="button-save-ai-settings"
-                      className="w-full md:w-auto"
-                    >
-                      <Save className="w-4 h-4 mr-2" />
-                      {saveAiSettingsMutation.isPending ? 'Salvando...' : 'Salvar Configurações de IA'}
-                    </Button>
+                  <div className="space-y-2">
+                    <Label htmlFor="performanceSystemPrompt">Instruções para Análise de Performance</Label>
+                    <Textarea
+                      id="performanceSystemPrompt"
+                      {...aiForm.register('performanceSystemPrompt')}
+                      placeholder={DEFAULT_PERFORMANCE_PROMPT}
+                      rows={4}
+                      data-testid="textarea-performance-prompt"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Padrão: "{DEFAULT_PERFORMANCE_PROMPT}"
+                    </p>
                   </div>
-                </form>
-              </CardContent>
-            </Card>
-          </div>
+                </CardContent>
+              </Card>
+
+              <Button 
+                type="submit" 
+                disabled={saveAiSettingsMutation.isPending}
+                data-testid="button-save-ai-settings"
+                className="w-full md:w-auto"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                {saveAiSettingsMutation.isPending ? 'Salvando...' : 'Salvar Configurações de IA'}
+              </Button>
+            </div>
+          </form>
         </TabsContent>
 
         <TabsContent value="meta">
