@@ -301,11 +301,16 @@ router.get('/oauth-session/:sessionId', async (req: Request, res: Response, next
     const { sessionId } = req.params;
     const sessions = (global as any).pendingOAuthSessions || {};
     
+    console.log(`📦 Fetching OAuth session: ${sessionId}`);
+    console.log(`📦 Available sessions:`, Object.keys(sessions));
+    
     if (!sessions[sessionId]) {
+      console.log(`❌ Session not found: ${sessionId}`);
       return res.status(404).json({ error: 'Session not found or expired' });
     }
     
     const sessionData = sessions[sessionId];
+    console.log(`✅ Session found with ${sessionData.accounts?.length || 0} accounts`);
     
     // Delete session after retrieval (one-time use)
     delete sessions[sessionId];
