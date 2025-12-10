@@ -18,8 +18,17 @@ router.get('/', authenticateToken, async (req: Request, res: Response, next: Nex
     const campaignId = req.query.campaignId as string;
     const status = req.query.status as string;
     const search = req.query.search as string;
+    const integrationId = req.query.integrationId as string | undefined;
     
     let creatives = await storage.getCreativesByUser(userId);
+    
+    // Filter by integrationId if provided
+    if (integrationId) {
+      const campaigns = await storage.getCampaignsByUser(userId);
+      const filteredCampaigns = campaigns.filter(c => c.integrationId === integrationId);
+      const campaignIds = new Set(filteredCampaigns.map(c => c.id));
+      creatives = creatives.filter(c => campaignIds.has(c.campaignId));
+    }
     
     // Apply filters
     if (campaignId) {

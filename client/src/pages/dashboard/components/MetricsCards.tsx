@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BellRing, Image, CheckCircle, XCircle } from "lucide-react";
+import { BellRing, MousePointerClick, CheckCircle, XCircle } from "lucide-react";
 import { useTranslation } from 'react-i18next';
 import { useMetaAccount } from "@/contexts/MetaAccountContext";
 
@@ -11,7 +11,7 @@ export default function MetricsCards() {
   
   const { data: metrics, isLoading } = useQuery<{
     activeCampaigns: number;
-    totalCreatives: number;
+    averageCtr: number;
     compliant: number;
     nonCompliant: number;
   }>({
@@ -36,13 +36,15 @@ export default function MetricsCards() {
       icon: BellRing,
       bgColor: "bg-blue-500",
       iconColor: "text-white",
+      isPercentage: false,
     },
     {
-      title: t('dashboard.creatives'), 
-      value: metrics?.totalCreatives || 0,
-      icon: Image,
+      title: "Média de CTR", 
+      value: metrics?.averageCtr || 0,
+      icon: MousePointerClick,
       bgColor: "bg-purple-500",
       iconColor: "text-white",
+      isPercentage: true,
     },
     {
       title: "Em Conformidade",
@@ -50,6 +52,7 @@ export default function MetricsCards() {
       icon: CheckCircle,
       bgColor: "bg-green-500",
       iconColor: "text-white",
+      isPercentage: false,
     },
     {
       title: "Não Conforme",
@@ -57,6 +60,7 @@ export default function MetricsCards() {
       icon: XCircle,
       bgColor: "bg-red-500",
       iconColor: "text-white",
+      isPercentage: false,
     },
   ];
 
@@ -80,7 +84,9 @@ export default function MetricsCards() {
                     {isLoading ? (
                       <Skeleton className="h-6 w-12" />
                     ) : (
-                      card.value.toLocaleString()
+                      card.isPercentage 
+                        ? `${card.value.toFixed(2)}%`
+                        : card.value.toLocaleString()
                     )}
                   </dd>
                 </dl>

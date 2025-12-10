@@ -9,7 +9,18 @@ const router = Router();
 router.get('/', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user?.userId;
-    const adSets = await storage.getAdSetsByUser(userId);
+    const integrationId = req.query.integrationId as string | undefined;
+    
+    let adSets = await storage.getAdSetsByUser(userId);
+    
+    // Filter by integrationId if provided
+    if (integrationId) {
+      const campaigns = await storage.getCampaignsByUser(userId);
+      const filteredCampaigns = campaigns.filter(c => c.integrationId === integrationId);
+      const campaignIds = new Set(filteredCampaigns.map(c => c.id));
+      adSets = adSets.filter(a => campaignIds.has(a.campaignId));
+    }
+    
     res.json(adSets);
   } catch (error) {
     next(error);

@@ -35,9 +35,22 @@ router.get('/metrics', authenticateToken, async (req: Request, res: Response, ne
       a.status === 'parcialmente_conforme'
     ).length;
     
+    // Calculate average CTR from creatives
+    const creativesWithCtr = creatives.filter(c => 
+      c.impressions && c.impressions > 0 && c.clicks !== null && c.clicks !== undefined
+    );
+    let averageCtr = 0;
+    if (creativesWithCtr.length > 0) {
+      const totalCtr = creativesWithCtr.reduce((sum, c) => {
+        const ctr = (c.clicks || 0) / (c.impressions || 1) * 100;
+        return sum + ctr;
+      }, 0);
+      averageCtr = totalCtr / creativesWithCtr.length;
+    }
+    
     res.json({
       activeCampaigns: campaigns.filter(c => c.status === 'Ativo' || c.status === 'active' || c.status === 'Em veiculação').length,
-      totalCreatives: creatives.length,
+      averageCtr,
       compliant: compliantAudits,
       nonCompliant: nonCompliantAudits,
     });
