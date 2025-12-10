@@ -751,11 +751,16 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
                                     Palavras Obrigatórias Encontradas
                                   </p>
                                   <div className="flex flex-wrap gap-1">
-                                    {viewingAudit.aiAnalysis.compliance.analysis.keywordAnalysis.requiredKeywordsFound.map((keyword: string, idx: number) => (
-                                      <Badge key={idx} variant="outline" className="text-[10px] bg-green-100 text-green-800 border-green-300">
-                                        ✓ {keyword}
-                                      </Badge>
-                                    ))}
+                                    {viewingAudit.aiAnalysis.compliance.analysis.keywordAnalysis.requiredKeywordsFound.map((item: any, idx: number) => {
+                                      const keyword = typeof item === 'string' ? item : item.keyword;
+                                      const source = typeof item === 'string' ? null : item.source;
+                                      const sourceLabel = source === 'imagem' ? '📷' : source === 'texto' ? '📝' : source === 'ambos' ? '📷📝' : '';
+                                      return (
+                                        <Badge key={idx} variant="outline" className="text-[10px] bg-green-100 text-green-800 border-green-300" title={source ? `Encontrado em: ${source}` : undefined}>
+                                          ✓ {keyword} {sourceLabel}
+                                        </Badge>
+                                      );
+                                    })}
                                   </div>
                                 </div>
                               )}
@@ -783,11 +788,16 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
                                     Palavras Proibidas Encontradas
                                   </p>
                                   <div className="flex flex-wrap gap-1">
-                                    {viewingAudit.aiAnalysis.compliance.analysis.keywordAnalysis.prohibitedKeywordsFound.map((keyword: string, idx: number) => (
-                                      <Badge key={idx} variant="destructive" className="text-[10px]">
-                                        ⚠ {keyword}
-                                      </Badge>
-                                    ))}
+                                    {viewingAudit.aiAnalysis.compliance.analysis.keywordAnalysis.prohibitedKeywordsFound.map((item: any, idx: number) => {
+                                      const keyword = typeof item === 'string' ? item : item.keyword;
+                                      const source = typeof item === 'string' ? null : item.source;
+                                      const sourceLabel = source === 'imagem' ? '📷' : source === 'texto' ? '📝' : source === 'ambos' ? '📷📝' : '';
+                                      return (
+                                        <Badge key={idx} variant="destructive" className="text-[10px]" title={source ? `Encontrado em: ${source}` : undefined}>
+                                          ⚠ {keyword} {sourceLabel}
+                                        </Badge>
+                                      );
+                                    })}
                                   </div>
                                 </div>
                               )}
