@@ -3,6 +3,9 @@ import { Router } from 'express';
 import { authenticateToken } from '../middlewares/auth.middleware';
 import type { Request, Response, NextFunction } from 'express';
 import { storage } from '../../shared/services/storage.service.js';
+import { db } from '../../infrastructure/database';
+import { oauthSessions } from '../../../drizzle/schema';
+import { eq, lt } from 'drizzle-orm';
 
 const router = Router();
 
@@ -217,26 +220,31 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
       };
     });
 
-    // Store OAuth data in memory for retrieval by the frontend
+    // Store OAuth data in database for retrieval by the frontend (works across workers)
     const oauthSessionId = `oauth_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    (global as any).pendingOAuthSessions = (global as any).pendingOAuthSessions || {};
-    (global as any).pendingOAuthSessions[oauthSessionId] = {
-      accessToken,
-      accounts: accountsForSelection,
-      userId,
-      createdAt: Date.now()
-    };
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes expiry
     
     // Clean up old sessions (older than 5 minutes)
-    const now = Date.now();
-    for (const key of Object.keys((global as any).pendingOAuthSessions)) {
-      if (now - (global as any).pendingOAuthSessions[key].createdAt > 300000) {
-        delete (global as any).pendingOAuthSessions[key];
-      }
-    }
+    await db.delete(oauthSessions).where(lt(oauthSessions.expiresAt, new Date()));
+    
+    // Store new session in database
+    await db.insert(oauthSessions).values({
+      id: oauthSessionId,
+      userId,
+      accessToken,
+      accounts: accountsForSelection,
+      expiresAt,
+    });
 
     console.log(`📦 Created OAuth session: ${oauthSessionId} with ${accountsForSelection.length} accounts`);
     
+    // In production, redirect directly to the integrations page with session ID
+    // This avoids issues with popup communication across multiple workers
+    const baseUrl = process.env.REPL_URL || process.env.REPLIT_DEV_DOMAIN 
+      ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
+      : 'http://localhost:5000';
+    
+    // Check if this is a popup or direct navigation
     const html = `
       <!DOCTYPE html>
       <html>
@@ -276,12 +284,18 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
             }
             h2 { color: #1a1a1a; margin: 0 0 8px; }
             p { color: #666; margin: 0; }
-            .session-id { 
-              font-family: monospace; 
-              font-size: 10px; 
-              color: #999; 
-              margin-top: 20px;
-              word-break: break-all;
+            .loader {
+              border: 3px solid #f3f3f3;
+              border-top: 3px solid #667eea;
+              border-radius: 50%;
+              width: 24px;
+              height: 24px;
+              animation: spin 1s linear infinite;
+              margin: 20px auto 0;
+            }
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
             }
           </style>
         </head>
@@ -292,29 +306,35 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
             </div>
             <h2>Autenticação concluída!</h2>
             <p>Encontramos ${accountsForSelection.length} conta(s) de anúncios.</p>
-            <p style="margin-top: 10px; font-size: 14px;">Volte para a aba principal para selecionar as contas.</p>
-            <p class="session-id">ID: ${oauthSessionId}</p>
+            <p style="margin-top: 10px; font-size: 14px;">Redirecionando...</p>
+            <div class="loader"></div>
           </div>
           <script>
-            // Store session ID in localStorage for the main window to retrieve
+            // Store session ID in localStorage as backup
             localStorage.setItem('meta_oauth_session', '${oauthSessionId}');
             
-            // Try to notify opener window
+            // First try to communicate with opener (for popup mode)
+            let handled = false;
             if (window.opener && !window.opener.closed) {
               try {
                 window.opener.postMessage({
                   type: 'META_OAUTH_ACCOUNTS',
                   sessionId: '${oauthSessionId}'
                 }, '*');
+                handled = true;
+                // Close popup after brief delay
+                setTimeout(() => window.close(), 1000);
               } catch(e) {
                 console.log('postMessage failed:', e);
               }
             }
             
-            // Auto-close after a delay
-            setTimeout(() => {
-              window.close();
-            }, 2000);
+            // If not handled by popup, redirect directly (for production or when popup fails)
+            if (!handled) {
+              setTimeout(() => {
+                window.location.href = '/integrations/meta?oauth_session=${oauthSessionId}';
+              }, 1500);
+            }
           </script>
         </body>
       </html>
@@ -358,21 +378,30 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
 router.get('/oauth-session/:sessionId', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { sessionId } = req.params;
-    const sessions = (global as any).pendingOAuthSessions || {};
     
-    console.log(`📦 Fetching OAuth session: ${sessionId}`);
-    console.log(`📦 Available sessions:`, Object.keys(sessions));
+    console.log(`📦 Fetching OAuth session from database: ${sessionId}`);
     
-    if (!sessions[sessionId]) {
-      console.log(`❌ Session not found: ${sessionId}`);
+    // Fetch session from database
+    const sessions = await db.select().from(oauthSessions).where(eq(oauthSessions.id, sessionId));
+    
+    if (sessions.length === 0) {
+      console.log(`❌ Session not found in database: ${sessionId}`);
       return res.status(404).json({ error: 'Session not found or expired' });
     }
     
-    const sessionData = sessions[sessionId];
-    console.log(`✅ Session found with ${sessionData.accounts?.length || 0} accounts`);
+    const sessionData = sessions[0];
+    
+    // Check if session is expired
+    if (new Date(sessionData.expiresAt) < new Date()) {
+      console.log(`❌ Session expired: ${sessionId}`);
+      await db.delete(oauthSessions).where(eq(oauthSessions.id, sessionId));
+      return res.status(404).json({ error: 'Session expired' });
+    }
+    
+    console.log(`✅ Session found with ${(sessionData.accounts as any[])?.length || 0} accounts`);
     
     // Delete session after retrieval (one-time use)
-    delete sessions[sessionId];
+    await db.delete(oauthSessions).where(eq(oauthSessions.id, sessionId));
     
     res.json({
       accessToken: sessionData.accessToken,

@@ -41,6 +41,16 @@ export const platformSettings = pgTable("platform_settings", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// OAuth Sessions (Temporary storage for OAuth flow - persists across workers)
+export const oauthSessions = pgTable("oauth_sessions", {
+  id: varchar("id", { length: 100 }).primaryKey(),
+  userId: uuid("user_id").notNull(),
+  accessToken: text("access_token").notNull(),
+  accounts: jsonb("accounts").notNull(), // Array of available ad accounts
+  createdAt: timestamp("created_at").defaultNow(),
+  expiresAt: timestamp("expires_at").notNull(),
+});
+
 // Subscription plan enum
 export const subscriptionPlanEnum = pgEnum('subscription_plan', ['free', 'starter', 'professional', 'enterprise']);
 
