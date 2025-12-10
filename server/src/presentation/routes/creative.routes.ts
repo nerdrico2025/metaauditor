@@ -125,6 +125,66 @@ router.put('/:id', authenticateToken, async (req: Request, res: Response, next: 
   }
 });
 
+// Helper function to merge keyword analysis from previous and new analysis
+function mergeKeywordAnalysis(
+  previous: any,
+  current: any
+): any {
+  if (!previous && !current) return undefined;
+  if (!previous) return current;
+  if (!current) return previous;
+  
+  // Helper to merge keyword arrays, avoiding duplicates
+  const mergeKeywords = (prev: any[], curr: any[]) => {
+    const merged = new Map<string, { keyword: string; source: string }>();
+    
+    // Add previous keywords
+    (prev || []).forEach((item: any) => {
+      const keyword = typeof item === 'string' ? item : item.keyword;
+      const source = typeof item === 'string' ? 'texto' : item.source;
+      merged.set(keyword.toLowerCase(), { keyword, source });
+    });
+    
+    // Add current keywords, updating source to 'ambos' if found in both
+    (curr || []).forEach((item: any) => {
+      const keyword = typeof item === 'string' ? item : item.keyword;
+      const source = typeof item === 'string' ? 'texto' : item.source;
+      const existing = merged.get(keyword.toLowerCase());
+      if (existing) {
+        // If sources differ, mark as 'ambos'
+        if (existing.source !== source) {
+          merged.set(keyword.toLowerCase(), { keyword, source: 'ambos' });
+        }
+      } else {
+        merged.set(keyword.toLowerCase(), { keyword, source });
+      }
+    });
+    
+    return Array.from(merged.values());
+  };
+  
+  // Merge missing keywords (simple string arrays - union)
+  const mergeMissing = (prev: string[], curr: string[]) => {
+    const set = new Set([...(prev || []), ...(curr || [])]);
+    return Array.from(set);
+  };
+  
+  return {
+    requiredKeywordsFound: mergeKeywords(
+      previous.requiredKeywordsFound,
+      current.requiredKeywordsFound
+    ),
+    requiredKeywordsMissing: mergeMissing(
+      previous.requiredKeywordsMissing,
+      current.requiredKeywordsMissing
+    ),
+    prohibitedKeywordsFound: mergeKeywords(
+      previous.prohibitedKeywordsFound,
+      current.prohibitedKeywordsFound
+    ),
+  };
+}
+
 // Analyze creative with AI
 router.post('/:id/analyze', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -143,6 +203,11 @@ router.post('/:id/analyze', authenticateToken, async (req: Request, res: Respons
         details: 'Para analisar um criativo, ele precisa ter uma imagem válida. Importe criativos do Meta Ads ou Google Ads, ou adicione uma imagem manualmente.'
       });
     }
+
+    // Get previous audit for this creative (for incremental analysis)
+    const previousAudits = await storage.getAuditsByCreative(creative.id);
+    const previousAudit = previousAudits.length > 0 ? previousAudits[0] : null;
+    const previousKeywordAnalysis = previousAudit?.aiAnalysis?.compliance?.analysis?.keywordAnalysis;
 
     // Get applicable policy for this creative
     const policies = await storage.getPoliciesByUser(userId);
@@ -177,6 +242,17 @@ router.post('/:id/analyze', authenticateToken, async (req: Request, res: Respons
       creative,
       applicablePolicy
     );
+
+    // Merge keyword analysis with previous audit (incremental analysis)
+    const mergedKeywordAnalysis = mergeKeywordAnalysis(
+      previousKeywordAnalysis,
+      complianceAnalysis.analysis.keywordAnalysis
+    );
+    
+    // Update compliance analysis with merged keywords
+    if (mergedKeywordAnalysis) {
+      complianceAnalysis.analysis.keywordAnalysis = mergedKeywordAnalysis;
+    }
 
     // Calculate overall compliance status
     const complianceStatus = complianceAnalysis.score >= 80 ? 'conforme' : 
