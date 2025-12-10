@@ -727,68 +727,87 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
                           </p>
                         </div>
 
-                        {/* Texto e Palavras-chave - Separado */}
-                        <div className={`p-3 rounded-lg border ${viewingAudit.aiAnalysis.compliance.analysis?.textCompliance ? 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800'}`}>
-                          <div className="flex items-center gap-2 mb-2">
-                            {viewingAudit.aiAnalysis.compliance.analysis?.textCompliance ? (
-                              <CheckCircle className="h-4 w-4 text-green-600" />
-                            ) : (
-                              <XCircle className="h-4 w-4 text-red-600" />
-                            )}
-                            <span className="text-sm font-semibold">Texto e Palavras-chave</span>
-                          </div>
-                          <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
-                            {viewingAudit.aiAnalysis.compliance.analysis?.textJustification || 'Análise de texto realizada.'}
-                          </p>
-                          
-                          {/* Detalhamento de Palavras-chave */}
-                          {viewingAudit.aiAnalysis.compliance.analysis?.keywordAnalysis && (
-                            <div className="space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                              {/* Palavras Obrigatórias Encontradas */}
-                              {viewingAudit.aiAnalysis.compliance.analysis.keywordAnalysis.requiredKeywordsFound?.length > 0 && (
-                                <div>
-                                  <p className="text-[10px] font-semibold text-green-700 dark:text-green-400 uppercase mb-1">
-                                    Palavras Obrigatórias Encontradas
-                                  </p>
-                                  <div className="flex flex-wrap gap-1">
-                                    {viewingAudit.aiAnalysis.compliance.analysis.keywordAnalysis.requiredKeywordsFound.map((item: any, idx: number) => {
-                                      const keyword = typeof item === 'string' ? item : item.keyword;
-                                      const source = typeof item === 'string' ? null : item.source;
-                                      const sourceLabel = source === 'imagem' ? '📷' : source === 'texto' ? '📝' : source === 'ambos' ? '📷📝' : '';
-                                      return (
-                                        <Badge key={idx} variant="outline" className="text-[10px] bg-green-100 text-green-800 border-green-300" title={source ? `Encontrado em: ${source}` : undefined}>
-                                          ✓ {keyword} {sourceLabel}
-                                        </Badge>
-                                      );
-                                    })}
-                                  </div>
+                        {/* Palavras Obrigatórias - Card Separado */}
+                        {viewingAudit.aiAnalysis.compliance.analysis?.keywordAnalysis && (
+                          (() => {
+                            const found = viewingAudit.aiAnalysis.compliance.analysis.keywordAnalysis.requiredKeywordsFound || [];
+                            const missing = viewingAudit.aiAnalysis.compliance.analysis.keywordAnalysis.requiredKeywordsMissing || [];
+                            const hasRequired = found.length > 0 || missing.length > 0;
+                            const allFound = missing.length === 0 && found.length > 0;
+                            
+                            if (!hasRequired) return null;
+                            
+                            return (
+                              <div className={`p-3 rounded-lg border ${allFound ? 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800'}`}>
+                                <div className="flex items-center gap-2 mb-2">
+                                  {allFound ? (
+                                    <CheckCircle className="h-4 w-4 text-green-600" />
+                                  ) : (
+                                    <XCircle className="h-4 w-4 text-red-600" />
+                                  )}
+                                  <span className="text-sm font-semibold">Palavras Obrigatórias</span>
                                 </div>
-                              )}
-                              
-                              {/* Palavras Obrigatórias Ausentes */}
-                              {viewingAudit.aiAnalysis.compliance.analysis.keywordAnalysis.requiredKeywordsMissing?.length > 0 && (
-                                <div>
-                                  <p className="text-[10px] font-semibold text-red-700 dark:text-red-400 uppercase mb-1">
-                                    Palavras Obrigatórias Ausentes
-                                  </p>
-                                  <div className="flex flex-wrap gap-1">
-                                    {viewingAudit.aiAnalysis.compliance.analysis.keywordAnalysis.requiredKeywordsMissing.map((keyword: string, idx: number) => (
-                                      <Badge key={idx} variant="outline" className="text-[10px] bg-red-100 text-red-800 border-red-300">
-                                        ✗ {keyword}
-                                      </Badge>
-                                    ))}
-                                  </div>
+                                <div className="space-y-2">
+                                  {found.length > 0 && (
+                                    <div>
+                                      <p className="text-[10px] font-semibold text-green-700 dark:text-green-400 uppercase mb-1">
+                                        Encontradas
+                                      </p>
+                                      <div className="flex flex-wrap gap-1">
+                                        {found.map((item: any, idx: number) => {
+                                          const keyword = typeof item === 'string' ? item : item.keyword;
+                                          const source = typeof item === 'string' ? null : item.source;
+                                          const sourceLabel = source === 'imagem' ? '📷' : source === 'texto' ? '📝' : source === 'ambos' ? '📷📝' : '';
+                                          return (
+                                            <Badge key={idx} variant="outline" className="text-[10px] bg-green-100 text-green-800 border-green-300" title={source ? `Encontrado em: ${source}` : undefined}>
+                                              ✓ {keyword} {sourceLabel}
+                                            </Badge>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  )}
+                                  {missing.length > 0 && (
+                                    <div>
+                                      <p className="text-[10px] font-semibold text-red-700 dark:text-red-400 uppercase mb-1">
+                                        Ausentes
+                                      </p>
+                                      <div className="flex flex-wrap gap-1">
+                                        {missing.map((keyword: string, idx: number) => (
+                                          <Badge key={idx} variant="outline" className="text-[10px] bg-red-100 text-red-800 border-red-300">
+                                            ✗ {keyword}
+                                          </Badge>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
-                              )}
-                              
-                              {/* Palavras Proibidas Encontradas */}
-                              {viewingAudit.aiAnalysis.compliance.analysis.keywordAnalysis.prohibitedKeywordsFound?.length > 0 && (
-                                <div>
-                                  <p className="text-[10px] font-semibold text-orange-700 dark:text-orange-400 uppercase mb-1">
-                                    Palavras Proibidas Encontradas
-                                  </p>
+                              </div>
+                            );
+                          })()
+                        )}
+
+                        {/* Palavras Proibidas - Card Separado */}
+                        {viewingAudit.aiAnalysis.compliance.analysis?.keywordAnalysis && (
+                          (() => {
+                            const prohibited = viewingAudit.aiAnalysis.compliance.analysis.keywordAnalysis.prohibitedKeywordsFound || [];
+                            const noneFound = prohibited.length === 0;
+                            
+                            return (
+                              <div className={`p-3 rounded-lg border ${noneFound ? 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800' : 'bg-orange-50 dark:bg-orange-950 border-orange-200 dark:border-orange-800'}`}>
+                                <div className="flex items-center gap-2 mb-2">
+                                  {noneFound ? (
+                                    <CheckCircle className="h-4 w-4 text-green-600" />
+                                  ) : (
+                                    <AlertTriangle className="h-4 w-4 text-orange-600" />
+                                  )}
+                                  <span className="text-sm font-semibold">Palavras Proibidas</span>
+                                </div>
+                                {noneFound ? (
+                                  <p className="text-xs text-green-600">Nenhuma palavra proibida encontrada</p>
+                                ) : (
                                   <div className="flex flex-wrap gap-1">
-                                    {viewingAudit.aiAnalysis.compliance.analysis.keywordAnalysis.prohibitedKeywordsFound.map((item: any, idx: number) => {
+                                    {prohibited.map((item: any, idx: number) => {
                                       const keyword = typeof item === 'string' ? item : item.keyword;
                                       const source = typeof item === 'string' ? null : item.source;
                                       const sourceLabel = source === 'imagem' ? '📷' : source === 'texto' ? '📝' : source === 'ambos' ? '📷📝' : '';
@@ -799,21 +818,11 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
                                       );
                                     })}
                                   </div>
-                                </div>
-                              )}
-                              
-                              {/* Nenhuma palavra proibida */}
-                              {viewingAudit.aiAnalysis.compliance.analysis.keywordAnalysis.prohibitedKeywordsFound?.length === 0 && (
-                                <div>
-                                  <p className="text-[10px] font-semibold text-gray-500 uppercase mb-1">
-                                    Palavras Proibidas
-                                  </p>
-                                  <p className="text-[10px] text-green-600">Nenhuma palavra proibida encontrada</p>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
+                                )}
+                              </div>
+                            );
+                          })()
+                        )}
                       </div>
                     )}
 
