@@ -69,7 +69,7 @@ export default function AdminLayout({ children, title, description }: AdminLayou
         <div className="relative z-10 flex-shrink-0 flex h-16 bg-white dark:bg-white shadow-sm border-b border-slate-200">
           <div className="flex-1 px-4 flex justify-between sm:px-6 lg:px-8">
             <div className="flex items-center">
-              <h1 className="text-2xl font-semibold text-slate-900">Super Admin</h1>
+              <h1 className="text-2xl font-semibold text-slate-900">{title}</h1>
             </div>
 
             <div className="ml-4 flex items-center md:ml-6">

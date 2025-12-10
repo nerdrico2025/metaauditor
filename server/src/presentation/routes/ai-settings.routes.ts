@@ -7,6 +7,7 @@ import { z } from 'zod';
 const router = Router();
 
 const aiSettingsSchema = z.object({
+  apiKey: z.string().optional(),
   model: z.string().min(1, 'Modelo é obrigatório'),
   maxTokens: z.number().int().min(100).max(8000),
   temperature: z.string().optional(),
@@ -33,6 +34,8 @@ router.get('/', authenticateToken, requireSuperAdmin, async (req: Request, res: 
     
     if (!settings) {
       return res.json({
+        apiKey: null,
+        hasApiKey: !!process.env.OPENAI_API_KEY,
         model: 'gpt-4o',
         maxTokens: 1500,
         temperature: '0.7',
@@ -43,7 +46,14 @@ router.get('/', authenticateToken, requireSuperAdmin, async (req: Request, res: 
       });
     }
 
-    res.json(settings);
+    // Don't send full API key to frontend, just indicate if one is set
+    const responseData = {
+      ...settings,
+      apiKey: settings.apiKey ? '••••••••' + settings.apiKey.slice(-4) : null,
+      hasApiKey: !!(settings.apiKey || process.env.OPENAI_API_KEY),
+    };
+
+    res.json(responseData);
   } catch (error) {
     next(error);
   }

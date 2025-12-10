@@ -54,6 +54,7 @@ export const oauthSessions = pgTable("oauth_sessions", {
 // AI Settings (Global configuration for AI/OpenAI)
 export const aiSettings = pgTable("ai_settings", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  apiKey: text("api_key"), // OpenAI API Key (encrypted in DB, overrides env var)
   model: varchar("model", { length: 50 }).notNull().default('gpt-4o'),
   maxTokens: integer("max_tokens").notNull().default(1500),
   temperature: decimal("temperature", { precision: 2, scale: 1 }).default('0.7'),
