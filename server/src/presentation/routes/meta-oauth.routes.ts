@@ -198,6 +198,8 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
     const connectedAccountIds = existingIntegrations
       .filter(i => i.platform === 'meta')
       .map(i => i.accountId);
+    
+    console.log('🔗 Already connected account IDs:', connectedAccountIds);
 
     // Send accounts list and token back to parent window for selection
     const accountsForSelection = adAccountsData.data.map(acc => ({
