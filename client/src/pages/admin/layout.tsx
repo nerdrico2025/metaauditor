@@ -105,12 +105,6 @@ export default function AdminLayout({ children, title, description }: AdminLayou
         <main className="flex-1 overflow-y-auto">
           <div className="py-6">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="mb-6">
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{title}</h1>
-                {description && (
-                  <p className="text-gray-600 dark:text-gray-300">{description}</p>
-                )}
-              </div>
               {children}
             </div>
           </div>

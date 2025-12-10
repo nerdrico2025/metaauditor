@@ -44,6 +44,7 @@ interface MetaAd {
     id: string;
     name: string;
     image_url?: string;
+    thumbnail_url?: string;
     video_url?: string;
     title?: string;
     body?: string;
@@ -627,7 +628,8 @@ export class MetaAdsService {
       
       // Fetch ALL ads from the entire account in one call
       // CRITICAL: Keep fields minimal to avoid "too much data" error from Meta API
-      const url = `${this.baseUrl}/${this.apiVersion}/${integration.accountId}/ads?fields=id,name,status,effective_status,adset_id,creative{image_url,body,title}&limit=100&access_token=${integration.accessToken}`;
+      // Note: thumbnail_url is used when image_url is not available (Dynamic Creative, carousel, etc.)
+      const url = `${this.baseUrl}/${this.apiVersion}/${integration.accountId}/ads?fields=id,name,status,effective_status,adset_id,creative{image_url,thumbnail_url,body,title}&limit=100&access_token=${integration.accessToken}`;
       const ads = await this.fetchAllPages<MetaAd>(url, progressCallback);
       
       console.log(`✅ Found ${ads.length} total ads from Meta API`);
@@ -660,13 +662,17 @@ export class MetaAdsService {
           // Creative already has a valid Object Storage image - skip download
           imageUrl = existingImageUrl;
           console.log(`⏭️  Skipping image download for ad ${ad.id} (already exists: ${existingImageUrl})`);
-        } else if (ad.creative?.image_url && companyId && integrationId) {
-          // Download and save new image to Object Storage
-          console.log(`🖼️  Downloading image for ad ${ad.id}...`);
-          const objectUrl = await imageStorageService.downloadAndSaveImage(ad.creative.image_url, companyId, integrationId, adSetInfo.dbId);
-          if (objectUrl) {
-            imageUrl = objectUrl;
-            console.log(`✅ Image saved to Object Storage: ${objectUrl}`);
+        } else {
+          // Try image_url first, fallback to thumbnail_url (for Dynamic Creative, carousel, etc.)
+          const sourceImageUrl = ad.creative?.image_url || ad.creative?.thumbnail_url;
+          if (sourceImageUrl && companyId && integrationId) {
+            // Download and save new image to Object Storage
+            console.log(`🖼️  Downloading image for ad ${ad.id} from ${ad.creative?.image_url ? 'image_url' : 'thumbnail_url'}...`);
+            const objectUrl = await imageStorageService.downloadAndSaveImage(sourceImageUrl, companyId, integrationId, adSetInfo.dbId);
+            if (objectUrl) {
+              imageUrl = objectUrl;
+              console.log(`✅ Image saved to Object Storage: ${objectUrl}`);
+            }
           }
         }
         
@@ -720,7 +726,7 @@ export class MetaAdsService {
     }
 
     try {
-      const url = `${this.baseUrl}/${this.apiVersion}/${adSetExternalId}/ads?fields=id,name,status,creative{id,name,image_url,body,title,call_to_action_type}&limit=100&access_token=${integration.accessToken}`;
+      const url = `${this.baseUrl}/${this.apiVersion}/${adSetExternalId}/ads?fields=id,name,status,creative{id,name,image_url,thumbnail_url,body,title,call_to_action_type}&limit=100&access_token=${integration.accessToken}`;
       const ads = await this.fetchAllPages<MetaAd>(url);
 
       // Get insights for ALL ads in ONE batch request instead of individual calls
@@ -733,9 +739,10 @@ export class MetaAdsService {
           const insights = insightsMap.get(ad.id) || {};
           
           // Download and save image to Object Storage
-          let imageUrl = ad.creative?.image_url || null;
+          // Try image_url first, fallback to thumbnail_url (for Dynamic Creative, carousel, etc.)
+          let imageUrl = ad.creative?.image_url || ad.creative?.thumbnail_url || null;
           if (imageUrl && companyId && integrationId) {
-            console.log(`🖼️  Downloading image for ad ${ad.id}...`);
+            console.log(`🖼️  Downloading image for ad ${ad.id} from ${ad.creative?.image_url ? 'image_url' : 'thumbnail_url'}...`);
             const objectUrl = await imageStorageService.downloadAndSaveImage(imageUrl, companyId, integrationId, adSetId);
             if (objectUrl) {
               imageUrl = objectUrl;
