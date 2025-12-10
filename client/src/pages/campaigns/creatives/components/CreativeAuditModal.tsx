@@ -473,8 +473,18 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
             </div>
 
             {/* LINHA 2: Resultados da Auditoria */}
-            <div>
-              <h4 className="text-sm font-medium text-slate-900 mb-4">Resultados da Auditoria</h4>
+            <div className="border-t border-slate-200 pt-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                  Resultados da Auditoria
+                </h3>
+                {policy && (
+                  <Badge variant="outline" className="text-xs">
+                    Política: {policy.name}
+                  </Badge>
+                )}
+              </div>
               
               {auditsLoading ? (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -483,52 +493,57 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
                 </div>
               ) : viewingAudit ? (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Coluna 1: Principais Indicadores */}
+                  {/* Coluna 1: Principais Indicadores (formato linha) */}
                   <div className="bg-gradient-to-br from-primary/5 to-primary/10 dark:from-primary/10 dark:to-primary/20 rounded-xl p-4 border-2 border-primary/20">
-                    <h3 className="text-base font-bold text-gray-900 dark:text-white mb-4 text-center flex items-center justify-center gap-2">
-                      <BarChart3 className="h-5 w-5 text-primary" />
+                    <h4 className="text-base font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                      <Shield className="h-5 w-5 text-primary" />
                       Principais Indicadores
-                    </h3>
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center shadow-sm border border-primary/20">
-                        <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 dark:bg-primary/20 mb-2">
-                          <Shield className="h-5 w-5 text-primary" />
+                    </h4>
+                    <div className="space-y-2">
+                      {/* Conformidade */}
+                      <div className="grid grid-cols-3 gap-2 items-center p-2 bg-white dark:bg-gray-800 rounded-lg border border-primary/20">
+                        <div className="text-left flex items-center gap-2">
+                          <Shield className="h-4 w-4 text-primary" />
+                          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Conformidade</p>
                         </div>
-                        <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
-                          Conformidade
-                        </p>
-                        <p className="text-2xl font-bold text-primary mb-2">
-                          {viewingAudit.complianceScore ?? 0}%
-                        </p>
-                        <Badge className="text-xs px-2 py-0.5" variant={(viewingAudit.complianceScore ?? 0) >= 80 ? 'default' : 'destructive'}>
-                          {(viewingAudit.complianceScore ?? 0) >= 80 ? 'Aprovado' : 'Reprovado'}
-                        </Badge>
+                        <div className="text-center">
+                          <p className="text-xl font-bold text-primary">
+                            {viewingAudit.complianceScore ?? 0}%
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <Badge className="text-xs" variant={(viewingAudit.complianceScore ?? 0) >= 80 ? 'default' : 'destructive'}>
+                            {(viewingAudit.complianceScore ?? 0) >= 80 ? 'Aprovado' : 'Reprovado'}
+                          </Badge>
+                        </div>
                       </div>
 
-                      <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center shadow-sm border border-primary/20">
-                        <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 dark:bg-primary/20 mb-2">
-                          <TrendingUp className="h-5 w-5 text-primary" />
+                      {/* Performance */}
+                      <div className="grid grid-cols-3 gap-2 items-center p-2 bg-white dark:bg-gray-800 rounded-lg border border-primary/20">
+                        <div className="text-left flex items-center gap-2">
+                          <TrendingUp className="h-4 w-4 text-primary" />
+                          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Performance</p>
                         </div>
-                        <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
-                          Performance
-                        </p>
-                        <p className="text-2xl font-bold text-primary mb-2">
-                          {viewingAudit.performanceScore ?? 0}%
-                        </p>
-                        <Badge className="text-xs px-2 py-0.5" variant={(viewingAudit.performanceScore ?? 0) >= 60 ? 'default' : 'destructive'}>
-                          {(viewingAudit.performanceScore ?? 0) >= 80 ? 'Alta' : (viewingAudit.performanceScore ?? 0) >= 60 ? 'Média' : 'Baixa'}
-                        </Badge>
+                        <div className="text-center">
+                          <p className="text-xl font-bold text-primary">
+                            {viewingAudit.performanceScore ?? 0}%
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <Badge className="text-xs" variant={(viewingAudit.performanceScore ?? 0) >= 60 ? 'default' : 'destructive'}>
+                            {(viewingAudit.performanceScore ?? 0) >= 80 ? 'Alta' : (viewingAudit.performanceScore ?? 0) >= 60 ? 'Média' : 'Baixa'}
+                          </Badge>
+                        </div>
                       </div>
 
-                      <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center shadow-sm border border-primary/20">
-                        <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 dark:bg-primary/20 mb-2">
-                          <CheckCircle className="h-5 w-5 text-primary" />
+                      {/* Status */}
+                      <div className="grid grid-cols-3 gap-2 items-center p-2 bg-white dark:bg-gray-800 rounded-lg border border-primary/20">
+                        <div className="text-left flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4 text-primary" />
+                          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Status</p>
                         </div>
-                        <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
-                          Status
-                        </p>
-                        <div className="h-12 flex items-center justify-center">
-                          <Badge className="text-xs px-2 py-1" variant={viewingAudit.status === 'conforme' ? 'default' : 'destructive'}>
+                        <div className="text-center col-span-2 flex justify-end">
+                          <Badge className="text-xs" variant={viewingAudit.status === 'conforme' ? 'default' : 'destructive'}>
                             {viewingAudit.status === 'conforme' ? 'Conforme' :
                              viewingAudit.status === 'parcialmente_conforme' ? 'Parcial' :
                              'Não Conforme'}
@@ -540,109 +555,104 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
 
                   {/* Coluna 2: Comparação Encontrado vs Política */}
                   {policy ? (
-                    <Card className="border-2 border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/30">
-                      <CardContent className="pt-4">
-                        <h3 className="font-bold text-base flex items-center gap-2 mb-3 text-amber-800 dark:text-amber-300">
-                          <Target className="h-5 w-5" />
-                          Comparação: Encontrado vs Política
-                        </h3>
-                        <p className="text-xs text-amber-700 dark:text-amber-400 mb-3">
-                          Política aplicada: <strong>{policy.name}</strong>
-                        </p>
-                        
-                        <div className="space-y-2">
-                          {/* CTR Comparison */}
-                          <div className="grid grid-cols-3 gap-2 items-center p-2 bg-white dark:bg-gray-800 rounded-lg border">
-                            <div className="text-left">
-                              <p className="text-[10px] font-medium text-gray-500">CTR</p>
-                              <p className="text-sm font-bold text-gray-900 dark:text-white">
-                                {creative.ctr || '0'}%
-                              </p>
-                            </div>
-                            <div className="text-center flex justify-center">
-                              <ArrowRight className="h-4 w-4 text-gray-400" />
-                            </div>
-                            <div className="text-right">
-                              <p className="text-[10px] font-medium text-gray-500">
-                                Meta: {policy.ctrMin ? `≥${policy.ctrMin}%` : 'N/D'}
-                              </p>
-                              <Badge 
-                                variant={
-                                  policy.ctrMin && parseFloat(creative.ctr || '0') >= policy.ctrMin 
-                                    ? 'default' 
-                                    : 'destructive'
-                                }
-                                className="text-xs"
-                              >
-                                {policy.ctrMin && parseFloat(creative.ctr || '0') >= policy.ctrMin 
-                                  ? '✓ Atingiu' 
-                                  : '✗ Abaixo'}
-                              </Badge>
-                            </div>
+                    <div className="bg-amber-50/50 dark:bg-amber-950/30 rounded-xl p-4 border-2 border-amber-200 dark:border-amber-800">
+                      <h4 className="font-bold text-base flex items-center gap-2 mb-4 text-amber-800 dark:text-amber-300">
+                        <Target className="h-5 w-5" />
+                        Comparação: Encontrado vs Política
+                      </h4>
+                      
+                      <div className="space-y-2">
+                        {/* CTR Comparison */}
+                        <div className="grid grid-cols-3 gap-2 items-center p-2 bg-white dark:bg-gray-800 rounded-lg border">
+                          <div className="text-left">
+                            <p className="text-[10px] font-medium text-gray-500">CTR</p>
+                            <p className="text-sm font-bold text-gray-900 dark:text-white">
+                              {creative.ctr || '0'}%
+                            </p>
                           </div>
-
-                          {/* CPC Comparison */}
-                          <div className="grid grid-cols-3 gap-2 items-center p-2 bg-white dark:bg-gray-800 rounded-lg border">
-                            <div className="text-left">
-                              <p className="text-[10px] font-medium text-gray-500">CPC</p>
-                              <p className="text-sm font-bold text-gray-900 dark:text-white">
-                                R$ {creative.cpc || '0'}
-                              </p>
-                            </div>
-                            <div className="text-center flex justify-center">
-                              <ArrowRight className="h-4 w-4 text-gray-400" />
-                            </div>
-                            <div className="text-right">
-                              <p className="text-[10px] font-medium text-gray-500">
-                                Meta: {policy.cpcMax ? `≤R$${policy.cpcMax}` : 'N/D'}
-                              </p>
-                              <Badge 
-                                variant={
-                                  policy.cpcMax && parseFloat(creative.cpc || '999') <= policy.cpcMax 
-                                    ? 'default' 
-                                    : 'destructive'
-                                }
-                                className="text-xs"
-                              >
-                                {policy.cpcMax && parseFloat(creative.cpc || '999') <= policy.cpcMax 
-                                  ? '✓ Dentro' 
-                                  : '✗ Acima'}
-                              </Badge>
-                            </div>
+                          <div className="text-center flex justify-center">
+                            <ArrowRight className="h-4 w-4 text-gray-400" />
                           </div>
-
-                          {/* Conversions Comparison */}
-                          <div className="grid grid-cols-3 gap-2 items-center p-2 bg-white dark:bg-gray-800 rounded-lg border">
-                            <div className="text-left">
-                              <p className="text-[10px] font-medium text-gray-500">Conversões</p>
-                              <p className="text-sm font-bold text-gray-900 dark:text-white">
-                                {creative.conversions || 0}
-                              </p>
-                            </div>
-                            <div className="text-center flex justify-center">
-                              <ArrowRight className="h-4 w-4 text-gray-400" />
-                            </div>
-                            <div className="text-right">
-                              <p className="text-[10px] font-medium text-gray-500">
-                                Meta: {policy.conversionsMin ? `≥${policy.conversionsMin}` : 'N/D'}
-                              </p>
-                              <Badge 
-                                variant={
-                                  policy.conversionsMin && (creative.conversions || 0) >= policy.conversionsMin 
-                                    ? 'default' 
-                                    : 'destructive'
-                                }
-                                className="text-xs"
-                              >
-                                {policy.conversionsMin && (creative.conversions || 0) >= policy.conversionsMin 
-                                  ? '✓ Atingiu' 
-                                  : '✗ Abaixo'}
-                              </Badge>
-                            </div>
+                          <div className="text-right">
+                            <p className="text-[10px] font-medium text-gray-500">
+                              Meta: {policy.ctrMin ? `≥${policy.ctrMin}%` : 'N/D'}
+                            </p>
+                            <Badge 
+                              variant={
+                                policy.ctrMin && parseFloat(creative.ctr || '0') >= policy.ctrMin 
+                                  ? 'default' 
+                                  : 'destructive'
+                              }
+                              className="text-xs"
+                            >
+                              {policy.ctrMin && parseFloat(creative.ctr || '0') >= policy.ctrMin 
+                                ? '✓ Atingiu' 
+                                : '✗ Abaixo'}
+                            </Badge>
                           </div>
                         </div>
-                      </CardContent>
-                    </Card>
+
+                        {/* CPC Comparison */}
+                        <div className="grid grid-cols-3 gap-2 items-center p-2 bg-white dark:bg-gray-800 rounded-lg border">
+                          <div className="text-left">
+                            <p className="text-[10px] font-medium text-gray-500">CPC</p>
+                            <p className="text-sm font-bold text-gray-900 dark:text-white">
+                              R$ {creative.cpc || '0'}
+                            </p>
+                          </div>
+                          <div className="text-center flex justify-center">
+                            <ArrowRight className="h-4 w-4 text-gray-400" />
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[10px] font-medium text-gray-500">
+                              Meta: {policy.cpcMax ? `≤R$${policy.cpcMax}` : 'N/D'}
+                            </p>
+                            <Badge 
+                              variant={
+                                policy.cpcMax && parseFloat(creative.cpc || '999') <= policy.cpcMax 
+                                  ? 'default' 
+                                  : 'destructive'
+                              }
+                              className="text-xs"
+                            >
+                              {policy.cpcMax && parseFloat(creative.cpc || '999') <= policy.cpcMax 
+                                ? '✓ Dentro' 
+                                : '✗ Acima'}
+                            </Badge>
+                          </div>
+                        </div>
+
+                        {/* Conversions Comparison */}
+                        <div className="grid grid-cols-3 gap-2 items-center p-2 bg-white dark:bg-gray-800 rounded-lg border">
+                          <div className="text-left">
+                            <p className="text-[10px] font-medium text-gray-500">Conversões</p>
+                            <p className="text-sm font-bold text-gray-900 dark:text-white">
+                              {creative.conversions || 0}
+                            </p>
+                          </div>
+                          <div className="text-center flex justify-center">
+                            <ArrowRight className="h-4 w-4 text-gray-400" />
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[10px] font-medium text-gray-500">
+                              Meta: {policy.conversionsMin ? `≥${policy.conversionsMin}` : 'N/D'}
+                            </p>
+                            <Badge 
+                              variant={
+                                policy.conversionsMin && (creative.conversions || 0) >= policy.conversionsMin 
+                                  ? 'default' 
+                                  : 'destructive'
+                              }
+                              className="text-xs"
+                            >
+                              {policy.conversionsMin && (creative.conversions || 0) >= policy.conversionsMin 
+                                ? '✓ Atingiu' 
+                                : '✗ Abaixo'}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   ) : (
                     <div className="border border-slate-200 rounded-lg p-6 flex items-center justify-center">
                       <p className="text-sm text-slate-500">Nenhuma política associada</p>
