@@ -125,12 +125,14 @@ export default function Creatives() {
   const getInitialFilters = () => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
+      const status = params.get('status');
       return {
         campaignFilter: params.get('campaignFilter') || 'all',
         adSetFilter: params.get('adSetFilter') || 'all',
+        complianceFilter: status === 'non_compliant' ? 'non_compliant' : 'all',
       };
     }
-    return { campaignFilter: 'all', adSetFilter: 'all' };
+    return { campaignFilter: 'all', adSetFilter: 'all', complianceFilter: 'all' };
   };
   
   const urlFilters = getInitialFilters();
@@ -140,6 +142,7 @@ export default function Creatives() {
     ...defaultFilters,
     campaignFilter: urlFilters.campaignFilter,
     adSetFilter: urlFilters.adSetFilter,
+    complianceFilter: urlFilters.complianceFilter,
   });
   const [selectedCreatives, setSelectedCreatives] = useState<string[]>([]);
   const [showPolicySelectionDialog, setShowPolicySelectionDialog] = useState(false);
@@ -174,12 +177,14 @@ export default function Creatives() {
     const params = new URLSearchParams(location.split('?')[1] || '');
     const campaignFilter = params.get('campaignFilter');
     const adSetFilter = params.get('adSetFilter');
+    const status = params.get('status');
     
-    if (campaignFilter || adSetFilter) {
+    if (campaignFilter || adSetFilter || status) {
       setFilters(prev => ({
         ...prev,
         ...(campaignFilter && { campaignFilter }),
         ...(adSetFilter && { adSetFilter }),
+        ...(status === 'non_compliant' && { complianceFilter: 'non_compliant' }),
       }));
     }
   }, [location]);

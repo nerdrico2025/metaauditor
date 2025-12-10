@@ -88,7 +88,7 @@ export default function ProblemCreatives() {
           <Button 
             variant="link" 
             className="text-primary hover:text-primary/80 text-sm font-medium p-0"
-            onClick={() => setLocation("/creatives?status=problem")}
+            onClick={() => setLocation("/creatives?status=non_compliant")}
             data-testid="button-view-all-problems"
           >
             Ver todos

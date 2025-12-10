@@ -108,9 +108,22 @@ router.get('/problem-creatives', authenticateToken, async (req: Request, res: Re
       problemAudits = problemAudits.filter(a => creativeIds.has(a.creativeId));
     }
     
+    // Remove duplicates - keep only the most recent audit per creative
+    const uniqueAuditsMap = new Map<string, typeof problemAudits[0]>();
+    for (const audit of problemAudits) {
+      const existing = uniqueAuditsMap.get(audit.creativeId);
+      if (!existing || new Date(audit.createdAt) > new Date(existing.createdAt)) {
+        uniqueAuditsMap.set(audit.creativeId, audit);
+      }
+    }
+    const uniqueAudits = Array.from(uniqueAuditsMap.values());
+    
+    // Limit to 5 results
+    const limitedAudits = uniqueAudits.slice(0, 5);
+    
     // Get creative details for problem audits
     const problemCreatives = await Promise.all(
-      problemAudits.map(async (audit) => {
+      limitedAudits.map(async (audit) => {
         const creative = await storage.getCreativeById(audit.creativeId);
         return creative ? { ...creative, audit } : null;
       })
