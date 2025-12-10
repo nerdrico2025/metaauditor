@@ -715,6 +715,8 @@ export class DatabaseStorage implements IStorage {
   ): Promise<number> {
     if (creativesData.length === 0) return 0;
     
+    console.log(`📦 Starting batchUpsertCreatives with ${creativesData.length} creatives...`);
+    
     // Build existing map for quick lookup
     const existingMap = new Map(existingCreatives.map(c => [c.externalId, c]));
     
@@ -731,22 +733,27 @@ export class DatabaseStorage implements IStorage {
       }
     }
     
-    // Batch insert new creatives (in chunks to avoid query size limits)
-    const CHUNK_SIZE = 100;
-    for (let i = 0; i < toInsert.length; i += CHUNK_SIZE) {
-      const chunk = toInsert.slice(i, i + CHUNK_SIZE);
+    console.log(`📦 Separated: ${toInsert.length} to insert, ${toUpdate.length} to update`);
+    
+    // Batch insert new creatives (in smaller chunks for Neon DB performance)
+    const INSERT_CHUNK_SIZE = 25; // Smaller chunks for faster response
+    for (let i = 0; i < toInsert.length; i += INSERT_CHUNK_SIZE) {
+      const chunk = toInsert.slice(i, i + INSERT_CHUNK_SIZE);
+      console.log(`📥 Inserting chunk ${Math.floor(i / INSERT_CHUNK_SIZE) + 1}/${Math.ceil(toInsert.length / INSERT_CHUNK_SIZE)} (${chunk.length} creatives)...`);
       await db.insert(creatives).values(chunk);
     }
     
-    // Batch update existing (in chunks of 50 for safety)
-    for (let i = 0; i < toUpdate.length; i += CHUNK_SIZE) {
-      const chunk = toUpdate.slice(i, i + CHUNK_SIZE);
+    // Batch update existing (in chunks)
+    const UPDATE_CHUNK_SIZE = 25;
+    for (let i = 0; i < toUpdate.length; i += UPDATE_CHUNK_SIZE) {
+      const chunk = toUpdate.slice(i, i + UPDATE_CHUNK_SIZE);
+      console.log(`📝 Updating chunk ${Math.floor(i / UPDATE_CHUNK_SIZE) + 1}/${Math.ceil(toUpdate.length / UPDATE_CHUNK_SIZE)} (${chunk.length} creatives)...`);
       await Promise.all(chunk.map(({ id, data }) => 
         db.update(creatives).set({ ...data, updatedAt: new Date() }).where(eq(creatives.id, id))
       ));
     }
     
-    console.log(`📦 Batch upsert creatives: ${toInsert.length} inserted, ${toUpdate.length} updated`);
+    console.log(`✅ Batch upsert creatives completed: ${toInsert.length} inserted, ${toUpdate.length} updated`);
     return toInsert.length + toUpdate.length;
   }
 
