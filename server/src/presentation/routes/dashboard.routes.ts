@@ -10,10 +10,20 @@ const router = Router();
 router.get('/metrics', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user?.userId;
+    const integrationId = req.query.integrationId as string | undefined;
     
-    const campaigns = await storage.getCampaignsByUser(userId);
-    const creatives = await storage.getCreativesByUser(userId);
-    const audits = await storage.getAuditsByUser(userId);
+    let campaigns = await storage.getCampaignsByUser(userId);
+    let creatives = await storage.getCreativesByUser(userId);
+    let audits = await storage.getAuditsByUser(userId);
+    
+    // Filter by integrationId if provided
+    if (integrationId) {
+      campaigns = campaigns.filter(c => c.integrationId === integrationId);
+      const campaignIds = new Set(campaigns.map(c => c.id));
+      creatives = creatives.filter(c => campaignIds.has(c.campaignId));
+      const creativeIds = new Set(creatives.map(c => c.id));
+      audits = audits.filter(a => creativeIds.has(a.creativeId));
+    }
     
     // Count compliant and non-compliant from audits
     // conforme = fully compliant
@@ -40,8 +50,24 @@ router.get('/metrics', authenticateToken, async (req: Request, res: Response, ne
 router.get('/recent-audits', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user?.userId;
-    const audits = await storage.getRecentAudits(userId, 10);
-    res.json(audits);
+    const integrationId = req.query.integrationId as string | undefined;
+    
+    let audits = await storage.getRecentAudits(userId, 50); // Get more initially for filtering
+    
+    // Filter by integrationId if provided
+    if (integrationId) {
+      const campaigns = await storage.getCampaignsByUser(userId);
+      const filteredCampaigns = campaigns.filter(c => c.integrationId === integrationId);
+      const campaignIds = new Set(filteredCampaigns.map(c => c.id));
+      
+      const creatives = await storage.getCreativesByUser(userId);
+      const filteredCreatives = creatives.filter(c => campaignIds.has(c.campaignId));
+      const creativeIds = new Set(filteredCreatives.map(c => c.id));
+      
+      audits = audits.filter(a => creativeIds.has(a.creativeId));
+    }
+    
+    res.json(audits.slice(0, 10)); // Return only 10 after filtering
   } catch (error) {
     next(error);
   }
@@ -51,8 +77,23 @@ router.get('/recent-audits', authenticateToken, async (req: Request, res: Respon
 router.get('/problem-creatives', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user?.userId;
-    const audits = await storage.getAuditsByUser(userId);
-    const problemAudits = audits.filter(a => a.status === 'non_compliant' || a.status === 'nao_conforme');
+    const integrationId = req.query.integrationId as string | undefined;
+    
+    let audits = await storage.getAuditsByUser(userId);
+    let problemAudits = audits.filter(a => a.status === 'non_compliant' || a.status === 'nao_conforme');
+    
+    // Filter by integrationId if provided
+    if (integrationId) {
+      const campaigns = await storage.getCampaignsByUser(userId);
+      const filteredCampaigns = campaigns.filter(c => c.integrationId === integrationId);
+      const campaignIds = new Set(filteredCampaigns.map(c => c.id));
+      
+      const creatives = await storage.getCreativesByUser(userId);
+      const filteredCreatives = creatives.filter(c => campaignIds.has(c.campaignId));
+      const creativeIds = new Set(filteredCreatives.map(c => c.id));
+      
+      problemAudits = problemAudits.filter(a => creativeIds.has(a.creativeId));
+    }
     
     // Get creative details for problem audits
     const problemCreatives = await Promise.all(

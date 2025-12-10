@@ -10,6 +10,7 @@ import { CreativeImage } from "../../campaigns/creatives/components/CreativeImag
 import { Image, AlertTriangle, TrendingDown, Palette } from "lucide-react";
 import type { Creative, Audit } from "@shared/schema";
 import { useTranslation } from 'react-i18next';
+import { useMetaAccount } from "@/contexts/MetaAccountContext";
 
 type ProblemCreative = Creative & { audit: Audit };
 
@@ -17,9 +18,21 @@ export default function ProblemCreatives() {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const [selectedCreative, setSelectedCreative] = useState<Creative | null>(null);
+  const { selectedAccountId } = useMetaAccount();
 
   const { data: problemCreatives, isLoading } = useQuery<ProblemCreative[]>({
-    queryKey: ["/api/dashboard/problem-creatives"],
+    queryKey: ["/api/dashboard/problem-creatives", { integrationId: selectedAccountId }],
+    queryFn: async () => {
+      const token = localStorage.getItem('auth_token');
+      const url = selectedAccountId 
+        ? `/api/dashboard/problem-creatives?integrationId=${selectedAccountId}`
+        : '/api/dashboard/problem-creatives';
+      const res = await fetch(url, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error('Falha ao carregar criativos com problemas');
+      return res.json();
+    },
   });
 
   const getIssueIcon = (issueType: string) => {

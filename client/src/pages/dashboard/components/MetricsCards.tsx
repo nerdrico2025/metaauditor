@@ -3,9 +3,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BellRing, Image, CheckCircle, XCircle } from "lucide-react";
 import { useTranslation } from 'react-i18next';
+import { useMetaAccount } from "@/contexts/MetaAccountContext";
 
 export default function MetricsCards() {
   const { t } = useTranslation();
+  const { selectedAccountId } = useMetaAccount();
   
   const { data: metrics, isLoading } = useQuery<{
     activeCampaigns: number;
@@ -13,7 +15,18 @@ export default function MetricsCards() {
     compliant: number;
     nonCompliant: number;
   }>({
-    queryKey: ["/api/dashboard/metrics"],
+    queryKey: ["/api/dashboard/metrics", { integrationId: selectedAccountId }],
+    queryFn: async () => {
+      const token = localStorage.getItem('auth_token');
+      const url = selectedAccountId 
+        ? `/api/dashboard/metrics?integrationId=${selectedAccountId}`
+        : '/api/dashboard/metrics';
+      const res = await fetch(url, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error('Falha ao carregar métricas');
+      return res.json();
+    },
   });
 
   const cards = [

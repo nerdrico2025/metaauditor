@@ -3,12 +3,25 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CheckCircle, AlertTriangle, Pause, Clock } from "lucide-react";
 import { useTranslation } from 'react-i18next';
+import { useMetaAccount } from "@/contexts/MetaAccountContext";
 
 export default function RecentAudits() {
   const { t } = useTranslation();
+  const { selectedAccountId } = useMetaAccount();
   
   const { data: audits, isLoading } = useQuery<any[]>({
-    queryKey: ["/api/dashboard/recent-audits"],
+    queryKey: ["/api/dashboard/recent-audits", { integrationId: selectedAccountId }],
+    queryFn: async () => {
+      const token = localStorage.getItem('auth_token');
+      const url = selectedAccountId 
+        ? `/api/dashboard/recent-audits?integrationId=${selectedAccountId}`
+        : '/api/dashboard/recent-audits';
+      const res = await fetch(url, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error('Falha ao carregar auditorias recentes');
+      return res.json();
+    },
   });
 
   const getStatusIcon = (status: string) => {
