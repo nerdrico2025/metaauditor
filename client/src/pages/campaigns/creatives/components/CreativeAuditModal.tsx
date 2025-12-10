@@ -646,14 +646,6 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
                             )}
                             <span className="text-sm">Texto e Palavras-chave</span>
                           </div>
-                          <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded">
-                            {viewingAudit.aiAnalysis.compliance.analysis?.brandGuidelines ? (
-                              <CheckCircle className="h-4 w-4 text-green-500" />
-                            ) : (
-                              <XCircle className="h-4 w-4 text-red-500" />
-                            )}
-                            <span className="text-sm">Diretrizes da Marca</span>
-                          </div>
                         </div>
                       </div>
                     )}

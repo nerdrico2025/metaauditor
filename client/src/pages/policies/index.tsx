@@ -705,16 +705,6 @@ export default function Policies() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="brandGuidelines">Diretrizes de Marca</Label>
-                <Textarea 
-                  id="brandGuidelines" 
-                  placeholder="Descreva as diretrizes da marca..."
-                  {...form.register('brandGuidelines')} 
-                  rows={3}
-                  data-testid="input-brand-guidelines"
-                />
-              </div>
             </div>
 
             {/* Content Criteria */}

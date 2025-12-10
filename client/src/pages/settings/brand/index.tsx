@@ -414,17 +414,6 @@ export default function BrandSettings() {
                           )}
                         </div>
 
-                        <div>
-                          <Label htmlFor="brandGuidelines">Diretrizes da Marca</Label>
-                          <Textarea
-                            id="brandGuidelines"
-                            {...form.register("brandGuidelines")}
-                            placeholder="Descreva as diretrizes visuais da sua marca..."
-                            className="min-h-24"
-                            data-testid="textarea-brand-guidelines"
-                          />
-                        </div>
-
                         <div className="flex justify-end space-x-2 pt-4">
                           <Button 
                             type="button" 
@@ -525,12 +514,6 @@ export default function BrandSettings() {
                                     </div>
                                   )}
                                 </div>
-
-                                {config.brandGuidelines && (
-                                  <p className="text-sm text-slate-600 line-clamp-2 mb-2">
-                                    {config.brandGuidelines}
-                                  </p>
-                                )}
 
                                 {config.fontFamily && (
                                   <p className="text-xs text-slate-500" style={{ fontFamily: config.fontFamily }}>
