@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Eye, CheckCircle, AlertTriangle, BarChart3, Palette, Sparkles, ChevronRight, Shield, TrendingUp, MousePointer, XCircle, ArrowRight, Target, Loader2, FileText } from "lucide-react";
+import { Eye, CheckCircle, AlertTriangle, BarChart3, Palette, Sparkles, ChevronRight, Shield, TrendingUp, MousePointer, XCircle, ArrowRight, Target, Loader2, FileText, PenLine, Image, Type } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { CreativeImage } from "./CreativeImage";
 
@@ -757,10 +757,13 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
                                         {found.map((item: any, idx: number) => {
                                           const keyword = typeof item === 'string' ? item : item.keyword;
                                           const source = typeof item === 'string' ? null : item.source;
-                                          const sourceLabel = source === 'imagem' ? '📷' : source === 'texto' ? '📝' : source === 'ambos' ? '📷📝' : '';
                                           return (
-                                            <Badge key={idx} variant="outline" className="text-[10px] bg-green-100 text-green-800 border-green-300" title={source ? `Encontrado em: ${source}` : undefined}>
-                                              ✓ {keyword} {sourceLabel}
+                                            <Badge key={idx} variant="outline" className="text-[10px] bg-green-100 text-green-800 border-green-300 flex items-center gap-1" title={source ? `Encontrado em: ${source}` : undefined}>
+                                              <CheckCircle className="h-3 w-3" />
+                                              {keyword}
+                                              {source === 'imagem' && <Image className="h-3 w-3 ml-1 text-blue-600" />}
+                                              {source === 'texto' && <Type className="h-3 w-3 ml-1 text-purple-600" />}
+                                              {source === 'ambos' && <><Image className="h-3 w-3 ml-1 text-blue-600" /><Type className="h-3 w-3 text-purple-600" /></>}
                                             </Badge>
                                           );
                                         })}
@@ -810,10 +813,13 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
                                     {prohibited.map((item: any, idx: number) => {
                                       const keyword = typeof item === 'string' ? item : item.keyword;
                                       const source = typeof item === 'string' ? null : item.source;
-                                      const sourceLabel = source === 'imagem' ? '📷' : source === 'texto' ? '📝' : source === 'ambos' ? '📷📝' : '';
                                       return (
-                                        <Badge key={idx} variant="destructive" className="text-[10px]" title={source ? `Encontrado em: ${source}` : undefined}>
-                                          ⚠ {keyword} {sourceLabel}
+                                        <Badge key={idx} variant="destructive" className="text-[10px] flex items-center gap-1" title={source ? `Encontrado em: ${source}` : undefined}>
+                                          <AlertTriangle className="h-3 w-3" />
+                                          {keyword}
+                                          {source === 'imagem' && <Image className="h-3 w-3 ml-1 text-blue-200" />}
+                                          {source === 'texto' && <Type className="h-3 w-3 ml-1 text-purple-200" />}
+                                          {source === 'ambos' && <><Image className="h-3 w-3 ml-1 text-blue-200" /><Type className="h-3 w-3 text-purple-200" /></>}
                                         </Badge>
                                       );
                                     })}
@@ -822,6 +828,45 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
                               </div>
                             );
                           })()
+                        )}
+
+                        {/* Copywriting Analysis - Card Separado */}
+                        {viewingAudit.aiAnalysis.compliance.analysis?.copywritingAnalysis && (
+                          <div className="p-3 rounded-lg border bg-indigo-50 dark:bg-indigo-950 border-indigo-200 dark:border-indigo-800">
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-2">
+                                <PenLine className="h-4 w-4 text-indigo-600" />
+                                <span className="text-sm font-semibold">Análise de Copywriting</span>
+                              </div>
+                              <Badge variant="outline" className="text-[10px] bg-indigo-100 text-indigo-800 border-indigo-300">
+                                Score: {viewingAudit.aiAnalysis.compliance.analysis.copywritingAnalysis.score}/100
+                              </Badge>
+                            </div>
+                            <div className="space-y-2 text-xs">
+                              <div>
+                                <p className="font-semibold text-indigo-700 dark:text-indigo-300">Clareza</p>
+                                <p className="text-gray-600 dark:text-gray-400">{viewingAudit.aiAnalysis.compliance.analysis.copywritingAnalysis.clarity}</p>
+                              </div>
+                              <div>
+                                <p className="font-semibold text-indigo-700 dark:text-indigo-300">Persuasão</p>
+                                <p className="text-gray-600 dark:text-gray-400">{viewingAudit.aiAnalysis.compliance.analysis.copywritingAnalysis.persuasion}</p>
+                              </div>
+                              <div>
+                                <p className="font-semibold text-indigo-700 dark:text-indigo-300">Call to Action</p>
+                                <p className="text-gray-600 dark:text-gray-400">{viewingAudit.aiAnalysis.compliance.analysis.copywritingAnalysis.callToAction}</p>
+                              </div>
+                              {viewingAudit.aiAnalysis.compliance.analysis.copywritingAnalysis.suggestions?.length > 0 && (
+                                <div>
+                                  <p className="font-semibold text-indigo-700 dark:text-indigo-300">Sugestões de Melhoria</p>
+                                  <ul className="list-disc list-inside text-gray-600 dark:text-gray-400">
+                                    {viewingAudit.aiAnalysis.compliance.analysis.copywritingAnalysis.suggestions.map((suggestion: string, idx: number) => (
+                                      <li key={idx}>{suggestion}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         )}
                       </div>
                     )}

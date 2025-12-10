@@ -88,6 +88,13 @@ export interface ComplianceAnalysis {
       requiredKeywordsMissing: string[];
       prohibitedKeywordsFound: Array<{ keyword: string; source: 'imagem' | 'texto' | 'ambos' }>;
     };
+    copywritingAnalysis?: {
+      score: number;
+      clarity: string;
+      persuasion: string;
+      callToAction: string;
+      suggestions: string[];
+    };
   };
 }
 
@@ -247,6 +254,12 @@ ${contentRequirements}
 - Seja SENSÍVEL a variações: "grátis", "GRÁTIS", "Gratis" são a mesma palavra
 - Palavras proibidas: SOMENTE reporte se REALMENTE viu a palavra
 
+✍️ COPYWRITING (analise a qualidade do texto do anúncio):
+- Avalie clareza: O texto é fácil de entender?
+- Avalie persuasão: O texto convence o leitor a agir?
+- Avalie CTA: O call-to-action é efetivo e claro?
+- Dê uma nota de 0-100 para o copywriting
+
 📊 PONTUAÇÃO:
 - Score 100: Tudo conforme
 - Score 80-99: Conformidade alta, pequenos ajustes
@@ -268,6 +281,13 @@ Responda em JSON (PORTUGUÊS-BR):
     "requiredKeywordsFound": [{"keyword": "palavra", "source": "imagem|texto|ambos"}],
     "requiredKeywordsMissing": ["palavras não encontradas"],
     "prohibitedKeywordsFound": [{"keyword": "palavra proibida", "source": "imagem|texto|ambos"}]
+  },
+  "copywritingAnalysis": {
+    "score": number (0-100),
+    "clarity": "Avaliação da clareza do texto (ex: 'Texto claro e objetivo' ou 'Texto confuso e prolixo')",
+    "persuasion": "Avaliação do poder de persuasão (ex: 'Usa gatilhos mentais eficazes' ou 'Falta urgência e benefícios claros')",
+    "callToAction": "Avaliação do CTA (ex: 'CTA forte e direto' ou 'CTA fraco, não incentiva ação')",
+    "suggestions": ["sugestão de melhoria 1", "sugestão de melhoria 2"]
   }
 }`;
 
@@ -329,6 +349,13 @@ Responda em JSON (PORTUGUÊS-BR):
                     : { keyword: item.keyword || item, source: (item.source || 'texto') as 'imagem' | 'texto' | 'ambos' }
                 )
               : [],
+          } : undefined,
+          copywritingAnalysis: result.copywritingAnalysis ? {
+            score: Math.max(0, Math.min(100, Math.round(parseFloat(result.copywritingAnalysis.score) || 0))),
+            clarity: result.copywritingAnalysis.clarity || '',
+            persuasion: result.copywritingAnalysis.persuasion || '',
+            callToAction: result.copywritingAnalysis.callToAction || '',
+            suggestions: Array.isArray(result.copywritingAnalysis.suggestions) ? result.copywritingAnalysis.suggestions : [],
           } : undefined,
         }
       };
