@@ -195,21 +195,27 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
 
     // Get already connected accounts for this user
     const existingIntegrations = await storage.getIntegrationsByUser(userId);
+    // Normalize IDs: remove 'act_' prefix for consistent comparison
     const connectedAccountIds = existingIntegrations
       .filter(i => i.platform === 'meta')
-      .map(i => i.accountId);
+      .map(i => i.accountId?.replace(/^act_/, '') || '');
     
-    console.log('🔗 Already connected account IDs:', connectedAccountIds);
+    console.log('🔗 Already connected account IDs (normalized):', connectedAccountIds);
 
     // Send accounts list and token back to parent window for selection
-    const accountsForSelection = adAccountsData.data.map(acc => ({
-      id: acc.id,
-      name: acc.name,
-      account_status: acc.account_status,
-      business_id: acc.business_id || null,
-      business_name: acc.business_name || 'Conta Pessoal',
-      is_connected: connectedAccountIds.includes(acc.id)
-    }));
+    const accountsForSelection = adAccountsData.data.map(acc => {
+      // Normalize incoming ID for comparison
+      const normalizedId = acc.id?.replace(/^act_/, '') || '';
+      const isConnected = connectedAccountIds.includes(normalizedId);
+      return {
+        id: acc.id,
+        name: acc.name,
+        account_status: acc.account_status,
+        business_id: acc.business_id || null,
+        business_name: acc.business_name || 'Conta Pessoal',
+        is_connected: isConnected
+      };
+    });
 
     // Store OAuth data in memory for retrieval by the frontend
     const oauthSessionId = `oauth_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
