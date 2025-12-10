@@ -685,36 +685,124 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
                   <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Compliance Details */}
                     {viewingAudit.aiAnalysis?.compliance && (
-                      <div>
-                        <h4 className="font-semibold text-md mb-3 flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                      <div className="space-y-4">
+                        <h4 className="font-semibold text-md flex items-center gap-2 text-gray-700 dark:text-gray-300">
                           <Palette className="h-4 w-4" />
                           Conformidade de Marca
                         </h4>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                        
+                        {/* Logo da Marca */}
+                        <div className={`p-3 rounded-lg border ${viewingAudit.aiAnalysis.compliance.analysis?.logoCompliance ? 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800'}`}>
+                          <div className="flex items-center gap-2 mb-2">
                             {viewingAudit.aiAnalysis.compliance.analysis?.logoCompliance ? (
-                              <CheckCircle className="h-4 w-4 text-green-500" />
+                              <CheckCircle className="h-4 w-4 text-green-600" />
                             ) : (
-                              <XCircle className="h-4 w-4 text-red-500" />
+                              <XCircle className="h-4 w-4 text-red-600" />
                             )}
-                            <span className="text-sm">Logo da Marca</span>
+                            <span className="text-sm font-semibold">Logo da Marca</span>
                           </div>
-                          <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                          <p className="text-xs text-gray-600 dark:text-gray-400">
+                            {viewingAudit.aiAnalysis.compliance.analysis?.logoJustification || 
+                              (viewingAudit.aiAnalysis.compliance.analysis?.logoCompliance 
+                                ? 'Logo identificado conforme a política.' 
+                                : 'Logo não identificado ou não conforme.')}
+                          </p>
+                        </div>
+
+                        {/* Cores da Marca */}
+                        <div className={`p-3 rounded-lg border ${viewingAudit.aiAnalysis.compliance.analysis?.colorCompliance ? 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800'}`}>
+                          <div className="flex items-center gap-2 mb-2">
                             {viewingAudit.aiAnalysis.compliance.analysis?.colorCompliance ? (
-                              <CheckCircle className="h-4 w-4 text-green-500" />
+                              <CheckCircle className="h-4 w-4 text-green-600" />
                             ) : (
-                              <XCircle className="h-4 w-4 text-red-500" />
+                              <XCircle className="h-4 w-4 text-red-600" />
                             )}
-                            <span className="text-sm">Cores da Marca</span>
+                            <span className="text-sm font-semibold">Cores da Marca</span>
                           </div>
-                          <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                          <p className="text-xs text-gray-600 dark:text-gray-400">
+                            {viewingAudit.aiAnalysis.compliance.analysis?.colorJustification || 
+                              (viewingAudit.aiAnalysis.compliance.analysis?.colorCompliance 
+                                ? 'Cores da marca identificadas corretamente.' 
+                                : 'Cores não correspondem à paleta da marca.')}
+                          </p>
+                        </div>
+
+                        {/* Texto e Palavras-chave - Separado */}
+                        <div className={`p-3 rounded-lg border ${viewingAudit.aiAnalysis.compliance.analysis?.textCompliance ? 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800'}`}>
+                          <div className="flex items-center gap-2 mb-2">
                             {viewingAudit.aiAnalysis.compliance.analysis?.textCompliance ? (
-                              <CheckCircle className="h-4 w-4 text-green-500" />
+                              <CheckCircle className="h-4 w-4 text-green-600" />
                             ) : (
-                              <XCircle className="h-4 w-4 text-red-500" />
+                              <XCircle className="h-4 w-4 text-red-600" />
                             )}
-                            <span className="text-sm">Texto e Palavras-chave</span>
+                            <span className="text-sm font-semibold">Texto e Palavras-chave</span>
                           </div>
+                          <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                            {viewingAudit.aiAnalysis.compliance.analysis?.textJustification || 'Análise de texto realizada.'}
+                          </p>
+                          
+                          {/* Detalhamento de Palavras-chave */}
+                          {viewingAudit.aiAnalysis.compliance.analysis?.keywordAnalysis && (
+                            <div className="space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                              {/* Palavras Obrigatórias Encontradas */}
+                              {viewingAudit.aiAnalysis.compliance.analysis.keywordAnalysis.requiredKeywordsFound?.length > 0 && (
+                                <div>
+                                  <p className="text-[10px] font-semibold text-green-700 dark:text-green-400 uppercase mb-1">
+                                    Palavras Obrigatórias Encontradas
+                                  </p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {viewingAudit.aiAnalysis.compliance.analysis.keywordAnalysis.requiredKeywordsFound.map((keyword: string, idx: number) => (
+                                      <Badge key={idx} variant="outline" className="text-[10px] bg-green-100 text-green-800 border-green-300">
+                                        ✓ {keyword}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {/* Palavras Obrigatórias Ausentes */}
+                              {viewingAudit.aiAnalysis.compliance.analysis.keywordAnalysis.requiredKeywordsMissing?.length > 0 && (
+                                <div>
+                                  <p className="text-[10px] font-semibold text-red-700 dark:text-red-400 uppercase mb-1">
+                                    Palavras Obrigatórias Ausentes
+                                  </p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {viewingAudit.aiAnalysis.compliance.analysis.keywordAnalysis.requiredKeywordsMissing.map((keyword: string, idx: number) => (
+                                      <Badge key={idx} variant="outline" className="text-[10px] bg-red-100 text-red-800 border-red-300">
+                                        ✗ {keyword}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {/* Palavras Proibidas Encontradas */}
+                              {viewingAudit.aiAnalysis.compliance.analysis.keywordAnalysis.prohibitedKeywordsFound?.length > 0 && (
+                                <div>
+                                  <p className="text-[10px] font-semibold text-orange-700 dark:text-orange-400 uppercase mb-1">
+                                    Palavras Proibidas Encontradas
+                                  </p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {viewingAudit.aiAnalysis.compliance.analysis.keywordAnalysis.prohibitedKeywordsFound.map((keyword: string, idx: number) => (
+                                      <Badge key={idx} variant="destructive" className="text-[10px]">
+                                        ⚠ {keyword}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {/* Nenhuma palavra proibida */}
+                              {viewingAudit.aiAnalysis.compliance.analysis.keywordAnalysis.prohibitedKeywordsFound?.length === 0 && (
+                                <div>
+                                  <p className="text-[10px] font-semibold text-gray-500 uppercase mb-1">
+                                    Palavras Proibidas
+                                  </p>
+                                  <p className="text-[10px] text-green-600">Nenhuma palavra proibida encontrada</p>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}

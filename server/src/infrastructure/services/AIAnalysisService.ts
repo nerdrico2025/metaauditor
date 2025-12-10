@@ -34,8 +34,16 @@ export interface ComplianceAnalysis {
   recommendations: string[];
   analysis: {
     logoCompliance: boolean;
+    logoJustification?: string;
     colorCompliance: boolean;
+    colorJustification?: string;
     textCompliance: boolean;
+    textJustification?: string;
+    keywordAnalysis?: {
+      requiredKeywordsFound: string[];
+      requiredKeywordsMissing: string[];
+      prohibitedKeywordsFound: string[];
+    };
   };
 }
 
@@ -156,8 +164,11 @@ RESPONDA OBRIGATORIAMENTE EM PORTUGUÊS-BR. Responda com JSON neste formato: {
   "issues": ["problema1", "problema2"],
   "recommendations": ["recomendação1", "recomendação2"],
   "logoCompliance": boolean,
+  "logoJustification": "Justificativa detalhada sobre a presença/ausência do logo. Ex: 'Logo presente no canto superior direito' ou 'Logo ausente - não foi identificado nenhum logo na imagem'",
   "colorCompliance": boolean,
+  "colorJustification": "Justificativa detalhada sobre as cores. Ex: 'Cores da marca identificadas: azul e branco predominantes' ou 'Cores não correspondem - encontradas cores vermelhas que não fazem parte da paleta da marca'",
   "textCompliance": boolean,
+  "textJustification": "Justificativa detalhada sobre o texto e palavras-chave",
   "keywordAnalysis": {
     "requiredKeywordsFound": ["lista de palavras obrigatórias que FORAM encontradas"],
     "requiredKeywordsMissing": ["lista de palavras obrigatórias que NÃO foram encontradas"],
@@ -202,8 +213,16 @@ RESPONDA OBRIGATORIAMENTE EM PORTUGUÊS-BR. Responda com JSON neste formato: {
         recommendations: Array.isArray(result.recommendations) ? result.recommendations : [],
         analysis: {
           logoCompliance: result.logoCompliance || false,
+          logoJustification: result.logoJustification || '',
           colorCompliance: result.colorCompliance || false,
+          colorJustification: result.colorJustification || '',
           textCompliance: result.textCompliance || false,
+          textJustification: result.textJustification || '',
+          keywordAnalysis: result.keywordAnalysis ? {
+            requiredKeywordsFound: Array.isArray(result.keywordAnalysis.requiredKeywordsFound) ? result.keywordAnalysis.requiredKeywordsFound : [],
+            requiredKeywordsMissing: Array.isArray(result.keywordAnalysis.requiredKeywordsMissing) ? result.keywordAnalysis.requiredKeywordsMissing : [],
+            prohibitedKeywordsFound: Array.isArray(result.keywordAnalysis.prohibitedKeywordsFound) ? result.keywordAnalysis.prohibitedKeywordsFound : [],
+          } : undefined,
         }
       };
     } catch (error) {
@@ -214,8 +233,11 @@ RESPONDA OBRIGATORIAMENTE EM PORTUGUÊS-BR. Responda com JSON neste formato: {
         recommendations: ["Configure uma chave válida da OpenAI"],
         analysis: {
           logoCompliance: false,
+          logoJustification: 'Análise não disponível',
           colorCompliance: false,
+          colorJustification: 'Análise não disponível',
           textCompliance: false,
+          textJustification: 'Análise não disponível',
         }
       };
     }
