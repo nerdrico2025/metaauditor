@@ -18,6 +18,8 @@ interface Creative {
   type?: string;
   text?: string;
   headline?: string;
+  description?: string;
+  callToAction?: string;
   imageUrl?: string | null;
   thumbnailUrl?: string | null;
   campaignId?: string;
@@ -369,272 +371,291 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
             </div>
           ) : (
           <>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Creative Preview */}
-            <div className="space-y-4">
-              <div className="border border-slate-200 rounded-lg p-4 bg-slate-50">
-                <div className="relative cursor-pointer" onClick={() => setImageZoomed(true)}>
-                  <CreativeImage 
-                    creative={creative}
-                    className="w-full h-auto rounded-lg hover:opacity-90 transition-opacity"
-                    size="large"
-                  />
-                </div>
-              </div>
-
-              {/* Ad Text Content */}
-              {(creative.text || creative.headline || creative.description || creative.callToAction) && (
-                <div className="border border-slate-200 rounded-lg p-4 bg-white space-y-3">
-                  <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    Texto do Anúncio
-                  </h4>
-                  
-                  {creative.headline && (
-                    <div>
-                      <p className="text-xs text-slate-500 mb-1">Título</p>
-                      <p className="text-sm font-medium text-slate-900">{creative.headline}</p>
-                    </div>
-                  )}
-                  
-                  {creative.text && (
-                    <div>
-                      <p className="text-xs text-slate-500 mb-1">Texto Principal</p>
-                      <p className="text-sm text-slate-700 whitespace-pre-wrap">{creative.text}</p>
-                    </div>
-                  )}
-                  
-                  {creative.description && (
-                    <div>
-                      <p className="text-xs text-slate-500 mb-1">Descrição</p>
-                      <p className="text-sm text-slate-600">{creative.description}</p>
-                    </div>
-                  )}
-                  
-                  {creative.callToAction && (
-                    <div>
-                      <p className="text-xs text-slate-500 mb-1">Chamada para Ação</p>
-                      <Badge variant="outline" className="text-xs">{creative.callToAction}</Badge>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Creative Metrics */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-slate-50 p-3 rounded-lg">
-                  <p className="text-xs text-slate-500">Impressões</p>
-                  <p className="text-lg font-semibold text-slate-900">
-                    {creative.impressions?.toLocaleString() || 0}
-                  </p>
-                </div>
-                <div className="bg-slate-50 p-3 rounded-lg">
-                  <p className="text-xs text-slate-500">CTR</p>
-                  <p className="text-lg font-semibold text-slate-900">
-                    {creative.ctr || '0'}%
-                  </p>
-                </div>
-                <div className="bg-slate-50 p-3 rounded-lg">
-                  <p className="text-xs text-slate-500">Cliques</p>
-                  <p className="text-lg font-semibold text-slate-900">
-                    {creative.clicks || 0}
-                  </p>
-                </div>
-                <div className="bg-slate-50 p-3 rounded-lg">
-                  <p className="text-xs text-slate-500">Conversões</p>
-                  <p className="text-lg font-semibold text-slate-900">
-                    {creative.conversions || 0}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Audit Results */}
-            <div className="space-y-4">
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-medium text-slate-900">Resultados da Auditoria</h4>
-                </div>
-
-                {auditsLoading ? (
-                  <div className="space-y-3">
-                    <Skeleton className="h-16 w-full" />
-                    <Skeleton className="h-16 w-full" />
+          <div className="space-y-6">
+            {/* LINHA 1: Imagem + Métricas | Texto do Anúncio */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Coluna 1: Imagem e Métricas */}
+              <div className="space-y-4">
+                <div className="border border-slate-200 rounded-lg p-4 bg-slate-50">
+                  <div className="relative cursor-pointer" onClick={() => setImageZoomed(true)}>
+                    <CreativeImage 
+                      creative={creative}
+                      className="w-full h-auto rounded-lg hover:opacity-90 transition-opacity"
+                      size="large"
+                    />
                   </div>
-                ) : viewingAudit ? (
-                  <div className="space-y-6">
-                    {/* KPIs Principais - Destaque Máximo */}
-                    <div className="bg-gradient-to-br from-primary/5 to-primary/10 dark:from-primary/10 dark:to-primary/20 rounded-xl p-4 border-2 border-primary/20">
-                      <h3 className="text-base font-bold text-gray-900 dark:text-white mb-4 text-center flex items-center justify-center gap-2">
-                        <BarChart3 className="h-5 w-5 text-primary" />
-                        Principais Indicadores
-                      </h3>
-                      <div className="grid grid-cols-3 gap-3">
-                        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center shadow-sm border border-primary/20">
-                          <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 dark:bg-primary/20 mb-2">
-                            <Shield className="h-5 w-5 text-primary" />
-                          </div>
-                          <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
-                            Conformidade
-                          </p>
-                          <p className="text-2xl font-bold text-primary mb-2">
-                            {viewingAudit.complianceScore ?? 0}%
-                          </p>
-                          <Badge className="text-xs px-2 py-0.5" variant={(viewingAudit.complianceScore ?? 0) >= 80 ? 'default' : 'destructive'}>
-                            {(viewingAudit.complianceScore ?? 0) >= 80 ? 'Aprovado' : 'Reprovado'}
-                          </Badge>
-                        </div>
+                </div>
 
-                        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center shadow-sm border border-primary/20">
-                          <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 dark:bg-primary/20 mb-2">
-                            <TrendingUp className="h-5 w-5 text-primary" />
-                          </div>
-                          <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
-                            Performance
-                          </p>
-                          <p className="text-2xl font-bold text-primary mb-2">
-                            {viewingAudit.performanceScore ?? 0}%
-                          </p>
-                          <Badge className="text-xs px-2 py-0.5" variant={(viewingAudit.performanceScore ?? 0) >= 60 ? 'default' : 'destructive'}>
-                            {(viewingAudit.performanceScore ?? 0) >= 80 ? 'Alta' : (viewingAudit.performanceScore ?? 0) >= 60 ? 'Média' : 'Baixa'}
-                          </Badge>
-                        </div>
+                {/* Métricas do Criativo */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-slate-50 p-3 rounded-lg">
+                    <p className="text-xs text-slate-500">Impressões</p>
+                    <p className="text-lg font-semibold text-slate-900">
+                      {creative.impressions?.toLocaleString() || 0}
+                    </p>
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-lg">
+                    <p className="text-xs text-slate-500">CTR</p>
+                    <p className="text-lg font-semibold text-slate-900">
+                      {creative.ctr || '0'}%
+                    </p>
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-lg">
+                    <p className="text-xs text-slate-500">Cliques</p>
+                    <p className="text-lg font-semibold text-slate-900">
+                      {creative.clicks || 0}
+                    </p>
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-lg">
+                    <p className="text-xs text-slate-500">Conversões</p>
+                    <p className="text-lg font-semibold text-slate-900">
+                      {creative.conversions || 0}
+                    </p>
+                  </div>
+                </div>
+              </div>
 
-                        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center shadow-sm border border-primary/20">
-                          <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 dark:bg-primary/20 mb-2">
-                            <CheckCircle className="h-5 w-5 text-primary" />
-                          </div>
-                          <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
-                            Status
-                          </p>
-                          <div className="h-12 flex items-center justify-center">
-                            <Badge className="text-xs px-2 py-1" variant={viewingAudit.status === 'conforme' ? 'default' : 'destructive'}>
-                              {viewingAudit.status === 'conforme' ? 'Conforme' :
-                               viewingAudit.status === 'parcialmente_conforme' ? 'Parcial' :
-                               'Não Conforme'}
-                            </Badge>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Comparison Section: Found vs Policy */}
-                    {policy && (
-                      <Card className="border-2 border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/30">
-                        <CardContent className="pt-6">
-                          <h3 className="font-bold text-lg flex items-center gap-2 mb-4 text-amber-800 dark:text-amber-300">
-                            <Target className="h-5 w-5" />
-                            Comparação: Encontrado vs Política
-                          </h3>
-                          <p className="text-xs text-amber-700 dark:text-amber-400 mb-4">
-                            Política aplicada: <strong>{policy.name}</strong>
-                          </p>
-                          
-                          <div className="space-y-3">
-                            {/* CTR Comparison */}
-                            <div className="grid grid-cols-3 gap-2 items-center p-3 bg-white dark:bg-gray-800 rounded-lg border">
-                              <div className="text-left">
-                                <p className="text-xs font-medium text-gray-500 mb-1">CTR Encontrado</p>
-                                <p className="text-lg font-bold text-gray-900 dark:text-white">
-                                  {creative.ctr || '0'}%
-                                </p>
-                              </div>
-                              <div className="text-center flex justify-center">
-                                <ArrowRight className="h-5 w-5 text-gray-400" />
-                              </div>
-                              <div className="text-right">
-                                <p className="text-xs font-medium text-gray-500 mb-1">
-                                  Meta: {policy.ctrMin ? `≥${policy.ctrMin}%` : 'N/D'}
-                                </p>
-                                <Badge 
-                                  variant={
-                                    policy.ctrMin && parseFloat(creative.ctr || '0') >= policy.ctrMin 
-                                      ? 'default' 
-                                      : 'destructive'
-                                  }
-                                  className="text-sm"
-                                >
-                                  {policy.ctrMin && parseFloat(creative.ctr || '0') >= policy.ctrMin 
-                                    ? '✓ Atingiu' 
-                                    : '✗ Abaixo'}
-                                </Badge>
-                              </div>
-                            </div>
-
-                            {/* CPC Comparison */}
-                            <div className="grid grid-cols-3 gap-2 items-center p-3 bg-white dark:bg-gray-800 rounded-lg border">
-                              <div className="text-left">
-                                <p className="text-xs font-medium text-gray-500 mb-1">CPC Encontrado</p>
-                                <p className="text-lg font-bold text-gray-900 dark:text-white">
-                                  R$ {creative.cpc || '0'}
-                                </p>
-                              </div>
-                              <div className="text-center flex justify-center">
-                                <ArrowRight className="h-5 w-5 text-gray-400" />
-                              </div>
-                              <div className="text-right">
-                                <p className="text-xs font-medium text-gray-500 mb-1">
-                                  Meta: {policy.cpcMax ? `≤R$${policy.cpcMax}` : 'N/D'}
-                                </p>
-                                <Badge 
-                                  variant={
-                                    policy.cpcMax && parseFloat(creative.cpc || '999') <= policy.cpcMax 
-                                      ? 'default' 
-                                      : 'destructive'
-                                  }
-                                  className="text-sm"
-                                >
-                                  {policy.cpcMax && parseFloat(creative.cpc || '999') <= policy.cpcMax 
-                                    ? '✓ Dentro' 
-                                    : '✗ Acima'}
-                                </Badge>
-                              </div>
-                            </div>
-
-                            {/* Conversions Comparison */}
-                            <div className="grid grid-cols-3 gap-2 items-center p-3 bg-white dark:bg-gray-800 rounded-lg border">
-                              <div className="text-left">
-                                <p className="text-xs font-medium text-gray-500 mb-1">Conversões</p>
-                                <p className="text-lg font-bold text-gray-900 dark:text-white">
-                                  {creative.conversions || 0}
-                                </p>
-                              </div>
-                              <div className="text-center flex justify-center">
-                                <ArrowRight className="h-5 w-5 text-gray-400" />
-                              </div>
-                              <div className="text-right">
-                                <p className="text-xs font-medium text-gray-500 mb-1">
-                                  Meta: {policy.conversionsMin ? `≥${policy.conversionsMin}` : 'N/D'}
-                                </p>
-                                <Badge 
-                                  variant={
-                                    policy.conversionsMin && (creative.conversions || 0) >= policy.conversionsMin 
-                                      ? 'default' 
-                                      : 'destructive'
-                                  }
-                                  className="text-sm"
-                                >
-                                  {policy.conversionsMin && (creative.conversions || 0) >= policy.conversionsMin 
-                                    ? '✓ Atingiu' 
-                                    : '✗ Abaixo'}
-                                </Badge>
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
-
+              {/* Coluna 2: Texto do Anúncio */}
+              <div className="border border-slate-200 rounded-lg p-4 bg-white space-y-4 h-fit">
+                <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Texto do Anúncio
+                </h4>
+                
+                {creative.headline ? (
+                  <div>
+                    <p className="text-xs text-slate-500 mb-1">Título</p>
+                    <p className="text-sm font-medium text-slate-900">{creative.headline}</p>
                   </div>
                 ) : (
-                  <div className="text-center py-6 border border-slate-200 rounded-lg">
-                    <Eye className="h-8 w-8 text-slate-400 mx-auto mb-2" />
-                    <p className="text-sm text-slate-600">Nenhuma auditoria disponível</p>
-                    <p className="text-xs text-slate-500">Clique em "Analisar" para auditar este criativo</p>
+                  <div>
+                    <p className="text-xs text-slate-500 mb-1">Título</p>
+                    <p className="text-sm text-slate-400 italic">Não disponível</p>
+                  </div>
+                )}
+                
+                {creative.text ? (
+                  <div>
+                    <p className="text-xs text-slate-500 mb-1">Texto Principal</p>
+                    <p className="text-sm text-slate-700 whitespace-pre-wrap">{creative.text}</p>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="text-xs text-slate-500 mb-1">Texto Principal</p>
+                    <p className="text-sm text-slate-400 italic">Não disponível</p>
+                  </div>
+                )}
+                
+                {creative.description ? (
+                  <div>
+                    <p className="text-xs text-slate-500 mb-1">Descrição</p>
+                    <p className="text-sm text-slate-600">{creative.description}</p>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="text-xs text-slate-500 mb-1">Descrição</p>
+                    <p className="text-sm text-slate-400 italic">Não disponível</p>
+                  </div>
+                )}
+                
+                {creative.callToAction ? (
+                  <div>
+                    <p className="text-xs text-slate-500 mb-1">Chamada para Ação</p>
+                    <Badge variant="outline" className="text-xs">{creative.callToAction}</Badge>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="text-xs text-slate-500 mb-1">Chamada para Ação</p>
+                    <p className="text-sm text-slate-400 italic">Não disponível</p>
                   </div>
                 )}
               </div>
+            </div>
 
+            {/* LINHA 2: Resultados da Auditoria */}
+            <div>
+              <h4 className="text-sm font-medium text-slate-900 mb-4">Resultados da Auditoria</h4>
+              
+              {auditsLoading ? (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <Skeleton className="h-48 w-full" />
+                  <Skeleton className="h-48 w-full" />
+                </div>
+              ) : viewingAudit ? (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Coluna 1: Principais Indicadores */}
+                  <div className="bg-gradient-to-br from-primary/5 to-primary/10 dark:from-primary/10 dark:to-primary/20 rounded-xl p-4 border-2 border-primary/20">
+                    <h3 className="text-base font-bold text-gray-900 dark:text-white mb-4 text-center flex items-center justify-center gap-2">
+                      <BarChart3 className="h-5 w-5 text-primary" />
+                      Principais Indicadores
+                    </h3>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center shadow-sm border border-primary/20">
+                        <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 dark:bg-primary/20 mb-2">
+                          <Shield className="h-5 w-5 text-primary" />
+                        </div>
+                        <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
+                          Conformidade
+                        </p>
+                        <p className="text-2xl font-bold text-primary mb-2">
+                          {viewingAudit.complianceScore ?? 0}%
+                        </p>
+                        <Badge className="text-xs px-2 py-0.5" variant={(viewingAudit.complianceScore ?? 0) >= 80 ? 'default' : 'destructive'}>
+                          {(viewingAudit.complianceScore ?? 0) >= 80 ? 'Aprovado' : 'Reprovado'}
+                        </Badge>
+                      </div>
+
+                      <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center shadow-sm border border-primary/20">
+                        <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 dark:bg-primary/20 mb-2">
+                          <TrendingUp className="h-5 w-5 text-primary" />
+                        </div>
+                        <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
+                          Performance
+                        </p>
+                        <p className="text-2xl font-bold text-primary mb-2">
+                          {viewingAudit.performanceScore ?? 0}%
+                        </p>
+                        <Badge className="text-xs px-2 py-0.5" variant={(viewingAudit.performanceScore ?? 0) >= 60 ? 'default' : 'destructive'}>
+                          {(viewingAudit.performanceScore ?? 0) >= 80 ? 'Alta' : (viewingAudit.performanceScore ?? 0) >= 60 ? 'Média' : 'Baixa'}
+                        </Badge>
+                      </div>
+
+                      <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center shadow-sm border border-primary/20">
+                        <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 dark:bg-primary/20 mb-2">
+                          <CheckCircle className="h-5 w-5 text-primary" />
+                        </div>
+                        <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
+                          Status
+                        </p>
+                        <div className="h-12 flex items-center justify-center">
+                          <Badge className="text-xs px-2 py-1" variant={viewingAudit.status === 'conforme' ? 'default' : 'destructive'}>
+                            {viewingAudit.status === 'conforme' ? 'Conforme' :
+                             viewingAudit.status === 'parcialmente_conforme' ? 'Parcial' :
+                             'Não Conforme'}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Coluna 2: Comparação Encontrado vs Política */}
+                  {policy ? (
+                    <Card className="border-2 border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/30">
+                      <CardContent className="pt-4">
+                        <h3 className="font-bold text-base flex items-center gap-2 mb-3 text-amber-800 dark:text-amber-300">
+                          <Target className="h-5 w-5" />
+                          Comparação: Encontrado vs Política
+                        </h3>
+                        <p className="text-xs text-amber-700 dark:text-amber-400 mb-3">
+                          Política aplicada: <strong>{policy.name}</strong>
+                        </p>
+                        
+                        <div className="space-y-2">
+                          {/* CTR Comparison */}
+                          <div className="grid grid-cols-3 gap-2 items-center p-2 bg-white dark:bg-gray-800 rounded-lg border">
+                            <div className="text-left">
+                              <p className="text-[10px] font-medium text-gray-500">CTR</p>
+                              <p className="text-sm font-bold text-gray-900 dark:text-white">
+                                {creative.ctr || '0'}%
+                              </p>
+                            </div>
+                            <div className="text-center flex justify-center">
+                              <ArrowRight className="h-4 w-4 text-gray-400" />
+                            </div>
+                            <div className="text-right">
+                              <p className="text-[10px] font-medium text-gray-500">
+                                Meta: {policy.ctrMin ? `≥${policy.ctrMin}%` : 'N/D'}
+                              </p>
+                              <Badge 
+                                variant={
+                                  policy.ctrMin && parseFloat(creative.ctr || '0') >= policy.ctrMin 
+                                    ? 'default' 
+                                    : 'destructive'
+                                }
+                                className="text-xs"
+                              >
+                                {policy.ctrMin && parseFloat(creative.ctr || '0') >= policy.ctrMin 
+                                  ? '✓ Atingiu' 
+                                  : '✗ Abaixo'}
+                              </Badge>
+                            </div>
+                          </div>
+
+                          {/* CPC Comparison */}
+                          <div className="grid grid-cols-3 gap-2 items-center p-2 bg-white dark:bg-gray-800 rounded-lg border">
+                            <div className="text-left">
+                              <p className="text-[10px] font-medium text-gray-500">CPC</p>
+                              <p className="text-sm font-bold text-gray-900 dark:text-white">
+                                R$ {creative.cpc || '0'}
+                              </p>
+                            </div>
+                            <div className="text-center flex justify-center">
+                              <ArrowRight className="h-4 w-4 text-gray-400" />
+                            </div>
+                            <div className="text-right">
+                              <p className="text-[10px] font-medium text-gray-500">
+                                Meta: {policy.cpcMax ? `≤R$${policy.cpcMax}` : 'N/D'}
+                              </p>
+                              <Badge 
+                                variant={
+                                  policy.cpcMax && parseFloat(creative.cpc || '999') <= policy.cpcMax 
+                                    ? 'default' 
+                                    : 'destructive'
+                                }
+                                className="text-xs"
+                              >
+                                {policy.cpcMax && parseFloat(creative.cpc || '999') <= policy.cpcMax 
+                                  ? '✓ Dentro' 
+                                  : '✗ Acima'}
+                              </Badge>
+                            </div>
+                          </div>
+
+                          {/* Conversions Comparison */}
+                          <div className="grid grid-cols-3 gap-2 items-center p-2 bg-white dark:bg-gray-800 rounded-lg border">
+                            <div className="text-left">
+                              <p className="text-[10px] font-medium text-gray-500">Conversões</p>
+                              <p className="text-sm font-bold text-gray-900 dark:text-white">
+                                {creative.conversions || 0}
+                              </p>
+                            </div>
+                            <div className="text-center flex justify-center">
+                              <ArrowRight className="h-4 w-4 text-gray-400" />
+                            </div>
+                            <div className="text-right">
+                              <p className="text-[10px] font-medium text-gray-500">
+                                Meta: {policy.conversionsMin ? `≥${policy.conversionsMin}` : 'N/D'}
+                              </p>
+                              <Badge 
+                                variant={
+                                  policy.conversionsMin && (creative.conversions || 0) >= policy.conversionsMin 
+                                    ? 'default' 
+                                    : 'destructive'
+                                }
+                                className="text-xs"
+                              >
+                                {policy.conversionsMin && (creative.conversions || 0) >= policy.conversionsMin 
+                                  ? '✓ Atingiu' 
+                                  : '✗ Abaixo'}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <div className="border border-slate-200 rounded-lg p-6 flex items-center justify-center">
+                      <p className="text-sm text-slate-500">Nenhuma política associada</p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-6 border border-slate-200 rounded-lg">
+                  <Eye className="h-8 w-8 text-slate-400 mx-auto mb-2" />
+                  <p className="text-sm text-slate-600">Nenhuma auditoria disponível</p>
+                  <p className="text-xs text-slate-500">Clique em "Analisar" para auditar este criativo</p>
+                </div>
+              )}
             </div>
           </div>
 
