@@ -55,6 +55,19 @@ function getImageMimeTypeFromBuffer(buffer: Buffer): string {
     return 'image/webp';
   }
   
+  // AVIF/HEIC: ftyp box (00 00 00 XX 66 74 79 70)
+  // Check for "ftyp" at position 4
+  if (header[4] === 0x66 && header[5] === 0x74 && header[6] === 0x79 && header[7] === 0x70) {
+    // Check brand after ftyp - avif, heic, heif, mif1
+    const brand = buffer.slice(8, 12).toString('ascii');
+    if (brand === 'avif' || brand === 'avis') {
+      return 'image/avif'; // NOT supported by OpenAI
+    }
+    if (brand === 'heic' || brand === 'heif' || brand === 'mif1') {
+      return 'image/heic'; // NOT supported by OpenAI
+    }
+  }
+  
   return '';
 }
 
