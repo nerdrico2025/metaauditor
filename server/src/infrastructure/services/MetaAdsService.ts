@@ -49,6 +49,7 @@ interface MetaAd {
     title?: string;
     body?: string;
     call_to_action_type?: string;
+    effective_object_story_id?: string;
   };
   status: string;
   effective_status?: string;
@@ -629,7 +630,8 @@ export class MetaAdsService {
       // Fetch ALL ads from the entire account in one call
       // CRITICAL: Keep fields minimal to avoid "too much data" error from Meta API
       // Note: thumbnail_url is used when image_url is not available (Dynamic Creative, carousel, etc.)
-      const url = `${this.baseUrl}/${this.apiVersion}/${integration.accountId}/ads?fields=id,name,status,effective_status,adset_id,creative{image_url,thumbnail_url,body,title}&limit=100&access_token=${integration.accessToken}`;
+      // effective_object_story_id allows us to fetch thumbnails for DCO ads
+      const url = `${this.baseUrl}/${this.apiVersion}/${integration.accountId}/ads?fields=id,name,status,effective_status,adset_id,creative{id,image_url,thumbnail_url,body,title,effective_object_story_id}&limit=100&access_token=${integration.accessToken}`;
       const ads = await this.fetchAllPages<MetaAd>(url, progressCallback);
       
       console.log(`✅ Found ${ads.length} total ads from Meta API`);
@@ -664,10 +666,29 @@ export class MetaAdsService {
           console.log(`⏭️  Skipping image download for ad ${ad.id} (already exists: ${existingImageUrl})`);
         } else {
           // Try image_url first, fallback to thumbnail_url (for Dynamic Creative, carousel, etc.)
-          const sourceImageUrl = ad.creative?.image_url || ad.creative?.thumbnail_url;
+          let sourceImageUrl = ad.creative?.image_url || ad.creative?.thumbnail_url;
+          
+          // If no direct image, try to get thumbnail from effective_object_story_id (for DCO ads)
+          if (!sourceImageUrl && ad.creative?.effective_object_story_id && ad.creative?.id) {
+            console.log(`🔍 Ad ${ad.id} has no direct image, trying to fetch from creative ${ad.creative.id}...`);
+            try {
+              const creativeUrl = `${this.baseUrl}/${this.apiVersion}/${ad.creative.id}?fields=thumbnail_url,image_url&access_token=${integration.accessToken}`;
+              const creativeResponse = await fetch(creativeUrl);
+              if (creativeResponse.ok) {
+                const creativeData = await creativeResponse.json() as { image_url?: string; thumbnail_url?: string };
+                sourceImageUrl = creativeData.image_url || creativeData.thumbnail_url;
+                if (sourceImageUrl) {
+                  console.log(`✅ Found image from creative endpoint: ${sourceImageUrl.substring(0, 50)}...`);
+                }
+              }
+            } catch (e) {
+              console.warn(`⚠️  Failed to fetch creative ${ad.creative.id}:`, e);
+            }
+          }
+          
           if (sourceImageUrl && companyId && integrationId) {
             // Download and save new image to Object Storage
-            console.log(`🖼️  Downloading image for ad ${ad.id} from ${ad.creative?.image_url ? 'image_url' : 'thumbnail_url'}...`);
+            console.log(`🖼️  Downloading image for ad ${ad.id} from ${ad.creative?.image_url ? 'image_url' : 'thumbnail_url/creative'}...`);
             const objectUrl = await imageStorageService.downloadAndSaveImage(sourceImageUrl, companyId, integrationId, adSetInfo.dbId);
             if (objectUrl) {
               imageUrl = objectUrl;
