@@ -443,15 +443,28 @@ export default function MetaIntegrations() {
           `popup=yes,width=${width},height=${height},left=${left},top=${top},toolbar=no,scrollbars=yes,status=no,resizable=yes,location=yes,menubar=no`
         );
         
+        // Function to fetch OAuth session data
+        const fetchOAuthSession = async (sessionId: string) => {
+          try {
+            const res = await fetch(`/api/auth/meta/oauth-session/${sessionId}`);
+            const data = await res.json();
+            if (data.accounts && data.accessToken) {
+              setOauthAccounts(data.accounts);
+              setOauthToken(data.accessToken);
+              setShowOAuthModal(false);
+              setShowAccountSelectionModal(true);
+              setIsConnecting(false);
+              localStorage.removeItem('meta_oauth_session');
+            }
+          } catch (err) {
+            console.error('Error fetching OAuth session:', err);
+          }
+        };
+        
         // Listen for OAuth callback message
         const handleMessage = (event: MessageEvent) => {
-          if (event.data.type === 'META_OAUTH_ACCOUNTS') {
-            // Received accounts list from OAuth - show selection modal
-            setOauthAccounts(event.data.accounts || []);
-            setOauthToken(event.data.accessToken);
-            setShowOAuthModal(false);
-            setShowAccountSelectionModal(true);
-            setIsConnecting(false);
+          if (event.data.type === 'META_OAUTH_ACCOUNTS' && event.data.sessionId) {
+            fetchOAuthSession(event.data.sessionId);
             window.removeEventListener('message', handleMessage);
           } else if (event.data.type === 'META_OAUTH_SUCCESS') {
             toast({
@@ -479,19 +492,23 @@ export default function MetaIntegrations() {
 
         window.addEventListener('message', handleMessage);
         
-        // Check if popup was closed without completing
+        // Check if popup was closed and look for session in localStorage
         const checkClosed = setInterval(() => {
           if (popup?.closed) {
             clearInterval(checkClosed);
-            // Don't close everything if we got accounts
-            if (!showAccountSelectionModal) {
+            window.removeEventListener('message', handleMessage);
+            
+            // Check localStorage for session ID (fallback when postMessage doesn't work)
+            const sessionId = localStorage.getItem('meta_oauth_session');
+            if (sessionId) {
+              fetchOAuthSession(sessionId);
+            } else {
               setShowOAuthModal(false);
               setOauthUrl(null);
               setIsConnecting(false);
             }
-            window.removeEventListener('message', handleMessage);
           }
-        }, 1000);
+        }, 500);
       } else {
         toast({
           title: 'Erro ao conectar',

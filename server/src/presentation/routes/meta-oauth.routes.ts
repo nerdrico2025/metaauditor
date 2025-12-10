@@ -227,36 +227,87 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
       }
     }
 
+    console.log(`📦 Created OAuth session: ${oauthSessionId} with ${accountsForSelection.length} accounts`);
+    
     const html = `
       <!DOCTYPE html>
       <html>
         <head>
           <title>OAuth Callback</title>
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              min-height: 100vh;
+              margin: 0;
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            }
+            .container {
+              background: white;
+              padding: 40px;
+              border-radius: 16px;
+              text-align: center;
+              box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            }
+            .success-icon {
+              width: 64px;
+              height: 64px;
+              background: #22c55e;
+              border-radius: 50%;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              margin: 0 auto 20px;
+            }
+            .success-icon svg {
+              width: 32px;
+              height: 32px;
+              fill: white;
+            }
+            h2 { color: #1a1a1a; margin: 0 0 8px; }
+            p { color: #666; margin: 0; }
+            .session-id { 
+              font-family: monospace; 
+              font-size: 10px; 
+              color: #999; 
+              margin-top: 20px;
+              word-break: break-all;
+            }
+          </style>
         </head>
         <body>
+          <div class="container">
+            <div class="success-icon">
+              <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+            </div>
+            <h2>Autenticação concluída!</h2>
+            <p>Encontramos ${accountsForSelection.length} conta(s) de anúncios.</p>
+            <p style="margin-top: 10px; font-size: 14px;">Volte para a aba principal para selecionar as contas.</p>
+            <p class="session-id">ID: ${oauthSessionId}</p>
+          </div>
           <script>
-            // Try postMessage first (works when same-origin)
+            // Store session ID in localStorage for the main window to retrieve
+            localStorage.setItem('meta_oauth_session', '${oauthSessionId}');
+            
+            // Try to notify opener window
             if (window.opener && !window.opener.closed) {
               try {
                 window.opener.postMessage({
                   type: 'META_OAUTH_ACCOUNTS',
                   sessionId: '${oauthSessionId}'
                 }, '*');
-                setTimeout(() => window.close(), 300);
               } catch(e) {
-                // Fallback: redirect to integrations page with session ID
-                window.location.href = '/integrations/meta?oauth_session=${oauthSessionId}';
+                console.log('postMessage failed:', e);
               }
-            } else {
-              // No opener, redirect directly
-              window.location.href = '/integrations/meta?oauth_session=${oauthSessionId}';
             }
+            
+            // Auto-close after a delay
+            setTimeout(() => {
+              window.close();
+            }, 2000);
           </script>
-          <p style="text-align: center; font-family: sans-serif; margin-top: 50px;">
-            ✅ Autenticação concluída!
-            <br><br>
-            Redirecionando...
-          </p>
         </body>
       </html>
     `;
