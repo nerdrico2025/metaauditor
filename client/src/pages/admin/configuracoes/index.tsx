@@ -16,6 +16,7 @@ import { Eye, EyeOff, Facebook } from 'lucide-react';
 const platformSettingsSchema = z.object({
   appId: z.string().min(1, 'App ID é obrigatório'),
   appSecret: z.string().min(1, 'App Secret é obrigatório'),
+  redirectUri: z.string().optional(),
 });
 
 type PlatformSettingsData = z.infer<typeof platformSettingsSchema>;
@@ -23,6 +24,7 @@ type PlatformSettingsData = z.infer<typeof platformSettingsSchema>;
 interface PlatformSettings {
   appId: string;
   appSecret: string;
+  redirectUri: string;
   isConfigured: boolean;
 }
 
@@ -45,6 +47,7 @@ export default function AdminConfiguracoes() {
       platformForm.reset({
         appId: platformSettings.appId || '',
         appSecret: platformSettings.appSecret || '',
+        redirectUri: platformSettings.redirectUri || 'https://app.clickauditor.com.br/api/auth/meta/callback',
       });
     }
   }, [platformSettings, platformForm]);
@@ -129,6 +132,19 @@ export default function AdminConfiguracoes() {
                       {platformForm.formState.errors.appSecret.message}
                     </p>
                   )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="redirectUri">URL de Redirecionamento (Callback)</Label>
+                  <Input
+                    id="redirectUri"
+                    {...platformForm.register('redirectUri')}
+                    placeholder="https://app.clickauditor.com.br/api/auth/meta/callback"
+                    data-testid="input-redirect-uri"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Configure esta URL nas configurações do seu app Meta em "Valid OAuth Redirect URIs"
+                  </p>
                 </div>
 
                 {platformSettings?.isConfigured && (

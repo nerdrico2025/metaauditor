@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Menu, Database, ChevronDown } from "lucide-react";
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { Button } from '@/components/ui/button';
@@ -166,9 +166,6 @@ export default function Header({ title }: HeaderProps) {
     if (user?.firstName) {
       return user.firstName;
     }
-    if (user?.name) {
-      return user.name;
-    }
     return user?.email || 'Usuário';
   };
 
@@ -178,9 +175,6 @@ export default function Header({ title }: HeaderProps) {
     }
     if (user?.firstName) {
       return user.firstName.charAt(0).toUpperCase();
-    }
-    if (user?.name) {
-      return user.name.charAt(0).toUpperCase();
     }
     return 'U';
   };
