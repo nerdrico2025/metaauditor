@@ -84,9 +84,9 @@ export interface ComplianceAnalysis {
     textCompliance: boolean;
     textJustification?: string;
     keywordAnalysis?: {
-      requiredKeywordsFound: string[];
+      requiredKeywordsFound: Array<{ keyword: string; source: 'imagem' | 'texto' | 'ambos' }>;
       requiredKeywordsMissing: string[];
-      prohibitedKeywordsFound: string[];
+      prohibitedKeywordsFound: Array<{ keyword: string; source: 'imagem' | 'texto' | 'ambos' }>;
     };
   };
 }
@@ -264,9 +264,9 @@ RESPONDA OBRIGATORIAMENTE EM PORTUGUÊS-BR. Responda com JSON neste formato: {
   "textCompliance": boolean,
   "textJustification": "Justificativa detalhada sobre o texto e palavras-chave",
   "keywordAnalysis": {
-    "requiredKeywordsFound": ["lista de palavras obrigatórias que FORAM encontradas"],
+    "requiredKeywordsFound": [{"keyword": "palavra encontrada", "source": "imagem ou texto ou ambos"}],
     "requiredKeywordsMissing": ["lista de palavras obrigatórias que NÃO foram encontradas"],
-    "prohibitedKeywordsFound": ["lista de palavras proibidas que FORAM encontradas - vazio se nenhuma"]
+    "prohibitedKeywordsFound": [{"keyword": "palavra proibida encontrada", "source": "imagem ou texto ou ambos"}]
   }
 }`;
 
@@ -313,9 +313,21 @@ RESPONDA OBRIGATORIAMENTE EM PORTUGUÊS-BR. Responda com JSON neste formato: {
           textCompliance: result.textCompliance || false,
           textJustification: result.textJustification || '',
           keywordAnalysis: result.keywordAnalysis ? {
-            requiredKeywordsFound: Array.isArray(result.keywordAnalysis.requiredKeywordsFound) ? result.keywordAnalysis.requiredKeywordsFound : [],
+            requiredKeywordsFound: Array.isArray(result.keywordAnalysis.requiredKeywordsFound) 
+              ? result.keywordAnalysis.requiredKeywordsFound.map((item: any) => 
+                  typeof item === 'string' 
+                    ? { keyword: item, source: 'texto' as const }
+                    : { keyword: item.keyword || item, source: (item.source || 'texto') as 'imagem' | 'texto' | 'ambos' }
+                )
+              : [],
             requiredKeywordsMissing: Array.isArray(result.keywordAnalysis.requiredKeywordsMissing) ? result.keywordAnalysis.requiredKeywordsMissing : [],
-            prohibitedKeywordsFound: Array.isArray(result.keywordAnalysis.prohibitedKeywordsFound) ? result.keywordAnalysis.prohibitedKeywordsFound : [],
+            prohibitedKeywordsFound: Array.isArray(result.keywordAnalysis.prohibitedKeywordsFound) 
+              ? result.keywordAnalysis.prohibitedKeywordsFound.map((item: any) => 
+                  typeof item === 'string' 
+                    ? { keyword: item, source: 'texto' as const }
+                    : { keyword: item.keyword || item, source: (item.source || 'texto') as 'imagem' | 'texto' | 'ambos' }
+                )
+              : [],
           } : undefined,
         }
       };
