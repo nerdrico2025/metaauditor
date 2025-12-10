@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CheckCircle2, AlertCircle, RefreshCw, Trash2, Clock, ShieldCheck, ShieldX, Calendar } from 'lucide-react';
+import { CheckCircle2, AlertCircle, RefreshCw, Trash2, Clock, ShieldCheck, ShieldX, Calendar, BarChart3 } from 'lucide-react';
 
 interface Integration {
   id: string;
@@ -45,6 +45,12 @@ interface IntegrationCardProps {
   isSyncing: boolean;
 }
 
+interface IntegrationStats {
+  campaigns: number;
+  adSets: number;
+  creatives: number;
+}
+
 export function IntegrationCard({
   integration,
   syncHistory,
@@ -65,6 +71,19 @@ export function IntegrationCard({
     },
     enabled: integration.platform === 'meta',
     staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  const { data: stats, isLoading: statsLoading } = useQuery<IntegrationStats>({
+    queryKey: ['/api/integrations', integration.id, 'stats'],
+    queryFn: async () => {
+      const token = localStorage.getItem('auth_token');
+      const res = await fetch(`/api/integrations/${integration.id}/stats`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error('Falha ao buscar estatísticas');
+      return res.json();
+    },
+    staleTime: 30 * 1000, // 30 seconds - refresh more often during syncs
   });
 
   const formatDate = (date: Date | null | string | undefined) => {
@@ -117,10 +136,29 @@ export function IntegrationCard({
             </Badge>
           </div>
           
+          {/* Stats row - prominently displayed */}
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-lg p-3 mb-3">
+            <div className="flex items-center gap-2 mb-2">
+              <BarChart3 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Dados Sincronizados</span>
+            </div>
+            {statsLoading ? (
+              <Skeleton className="h-5 w-64" />
+            ) : stats && (stats.campaigns > 0 || stats.adSets > 0 || stats.creatives > 0) ? (
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                {stats.campaigns} campanhas, {stats.adSets} grupos de anúncios e {stats.creatives} anúncios
+              </p>
+            ) : (
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Nenhum dado sincronizado ainda. Clique em "Sincronizar" para importar os dados.
+              </p>
+            )}
+          </div>
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <div>
               <span className="text-gray-500">Account ID:</span>
-              <p className="font-mono text-gray-900 dark:text-white">{integration.accountId}</p>
+              <p className="font-mono text-gray-900 dark:text-white text-xs">{integration.accountId}</p>
             </div>
             <div>
               <span className="text-gray-500">Última Sincronização:</span>

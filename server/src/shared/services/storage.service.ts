@@ -69,6 +69,7 @@ export interface IStorage {
   getIntegrationById(id: string): Promise<Integration | undefined>;
   updateIntegration(id: string, data: Partial<InsertIntegration>): Promise<Integration | undefined>;
   deleteIntegration(integrationId: string, userId: string): Promise<void>;
+  getIntegrationStats(integrationId: string): Promise<{ campaigns: number; adSets: number; creatives: number }>;
   getSyncHistoryByUser(userId: string): Promise<any[]>;
   createSyncHistory(data: { integrationId: string; userId: string; status: string; type: string; metadata?: any }): Promise<any>;
   updateSyncHistory(id: string, data: { status?: string; completedAt?: Date; campaignsSynced?: number; adSetsSynced?: number; creativeSynced?: number; errorMessage?: string; metadata?: any }): Promise<any>;
@@ -252,6 +253,47 @@ export class DatabaseStorage implements IStorage {
       .where(eq(integrations.id, id))
       .returning();
     return updated;
+  }
+
+  async getIntegrationStats(integrationId: string): Promise<{ campaigns: number; adSets: number; creatives: number }> {
+    // Count campaigns for this integration
+    const campaignsResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(campaigns)
+      .where(eq(campaigns.integrationId, integrationId));
+    
+    // Get campaign IDs for this integration
+    const integrationCampaigns = await db
+      .select({ id: campaigns.id })
+      .from(campaigns)
+      .where(eq(campaigns.integrationId, integrationId));
+    
+    const campaignIds = integrationCampaigns.map(c => c.id);
+    
+    let adSetsCount = 0;
+    let creativesCount = 0;
+    
+    if (campaignIds.length > 0) {
+      // Count ad sets for these campaigns
+      const adSetsResult = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(adSets)
+        .where(inArray(adSets.campaignId, campaignIds));
+      adSetsCount = Number(adSetsResult[0]?.count || 0);
+      
+      // Count creatives for these campaigns
+      const creativesResult = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(creatives)
+        .where(inArray(creatives.campaignId, campaignIds));
+      creativesCount = Number(creativesResult[0]?.count || 0);
+    }
+    
+    return {
+      campaigns: Number(campaignsResult[0]?.count || 0),
+      adSets: adSetsCount,
+      creatives: creativesCount
+    };
   }
 
   async getSyncHistoryByUser(userId: string): Promise<any[]> {

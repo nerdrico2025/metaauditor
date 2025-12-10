@@ -34,6 +34,17 @@ router.get('/sync-history', authenticateToken, async (req: Request, res: Respons
   }
 });
 
+// Get stats for a specific integration (campaigns, adsets, creatives count)
+router.get('/:id/stats', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const stats = await storage.getIntegrationStats(id);
+    res.json(stats);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Delete all sync history for user
 router.delete('/sync-history/bulk/all', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
