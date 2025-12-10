@@ -499,18 +499,19 @@ export default function SettingsPolicies() {
                             </Select>
                           </div>
 
-                          {/* Visual Guidelines */}
-                          <div>
-                            <Label htmlFor="visualGuidelines">Diretrizes Visuais</Label>
+                          {/* Visual Guidelines - DISABLED */}
+                          <div className="opacity-50">
+                            <Label htmlFor="visualGuidelines">Diretrizes Visuais (Em breve)</Label>
                             <Textarea
                               id="visualGuidelines"
                               {...brandForm.register("visualGuidelines")}
-                              placeholder="Descreva as diretrizes visuais da sua marca..."
-                              className="min-h-24 mt-1"
+                              placeholder="Funcionalidade em desenvolvimento..."
+                              className="min-h-24 mt-1 cursor-not-allowed"
                               data-testid="textarea-visual-guidelines"
+                              disabled
                             />
-                            <div className="text-xs text-slate-500 mt-1">
-                              {brandForm.watch("visualGuidelines")?.length || 0} caracteres
+                            <div className="text-xs text-slate-400 mt-1">
+                              Esta funcionalidade estará disponível em breve
                             </div>
                           </div>
 

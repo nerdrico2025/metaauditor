@@ -36,7 +36,6 @@ export interface ComplianceAnalysis {
     logoCompliance: boolean;
     colorCompliance: boolean;
     textCompliance: boolean;
-    brandGuidelines: boolean;
   };
 }
 
@@ -81,7 +80,6 @@ Brand Requirements:
 - Primary Color: ${policy.primaryColor || 'Not specified'}
 - Secondary Color: ${policy.secondaryColor || 'Not specified'}
 - Accent Color: ${policy.accentColor || 'Not specified'}
-- Brand Guidelines: ${policy.brandGuidelines || 'Not specified'}
 - Logo URL: ${policy.logoUrl ? 'Logo provided' : 'No logo provided'}` : '\nNo brand configuration found.';
 
       const requiredKeywordsList = policy?.requiredKeywords && policy.requiredKeywords.length > 0
@@ -151,8 +149,7 @@ Por favor, analise:
 3. Presença de palavras-chave/frases obrigatórias (verificar CADA uma da lista)
 4. Ausência de palavras-chave/frases proibidas (verificar se ALGUMA aparece)
 5. Conformidade do comprimento do texto
-6. Consistência geral da marca
-7. Linguagem profissional e adequação
+6. Linguagem profissional e adequação
 
 RESPONDA OBRIGATORIAMENTE EM PORTUGUÊS-BR. Responda com JSON neste formato: {
   "score": number (0-100),
@@ -161,7 +158,6 @@ RESPONDA OBRIGATORIAMENTE EM PORTUGUÊS-BR. Responda com JSON neste formato: {
   "logoCompliance": boolean,
   "colorCompliance": boolean,
   "textCompliance": boolean,
-  "brandGuidelines": boolean,
   "keywordAnalysis": {
     "requiredKeywordsFound": ["lista de palavras obrigatórias que FORAM encontradas"],
     "requiredKeywordsMissing": ["lista de palavras obrigatórias que NÃO foram encontradas"],
@@ -208,7 +204,6 @@ RESPONDA OBRIGATORIAMENTE EM PORTUGUÊS-BR. Responda com JSON neste formato: {
           logoCompliance: result.logoCompliance || false,
           colorCompliance: result.colorCompliance || false,
           textCompliance: result.textCompliance || false,
-          brandGuidelines: result.brandGuidelines || false,
         }
       };
     } catch (error) {
@@ -221,7 +216,6 @@ RESPONDA OBRIGATORIAMENTE EM PORTUGUÊS-BR. Responda com JSON neste formato: {
           logoCompliance: false,
           colorCompliance: false,
           textCompliance: false,
-          brandGuidelines: false,
         }
       };
     }

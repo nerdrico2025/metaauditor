@@ -476,7 +476,6 @@ export default function AdSets() {
                                 <TableCell>
                                   {adSet.dailyBudget || adSet.lifetimeBudget ? (
                                     <div className="flex items-center space-x-1 text-sm text-gray-600 dark:text-gray-400">
-                                      <DollarSign className="h-3 w-3" />
                                       <span>
                                         {formatCurrency(parseFloat(adSet.dailyBudget || adSet.lifetimeBudget || '0'))}
                                         {adSet.dailyBudget && <span className="text-xs text-gray-400">/dia</span>}
