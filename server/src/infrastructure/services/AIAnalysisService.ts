@@ -16,7 +16,7 @@ function getOpenAI(): OpenAI {
   return openai;
 }
 
-function getImageMimeType(url: string): string {
+function getImageMimeTypeFromExtension(url: string): string {
   const ext = url.split('.').pop()?.toLowerCase() || '';
   const mimeTypes: Record<string, string> = {
     'jpg': 'image/jpeg',
@@ -25,7 +25,37 @@ function getImageMimeType(url: string): string {
     'gif': 'image/gif',
     'webp': 'image/webp',
   };
-  return mimeTypes[ext] || 'image/jpeg';
+  return mimeTypes[ext] || '';
+}
+
+function getImageMimeTypeFromBuffer(buffer: Buffer): string {
+  if (buffer.length < 12) return '';
+  
+  // Check magic bytes
+  const header = buffer.slice(0, 12);
+  
+  // PNG: 89 50 4E 47
+  if (header[0] === 0x89 && header[1] === 0x50 && header[2] === 0x4E && header[3] === 0x47) {
+    return 'image/png';
+  }
+  
+  // JPEG: FF D8 FF
+  if (header[0] === 0xFF && header[1] === 0xD8 && header[2] === 0xFF) {
+    return 'image/jpeg';
+  }
+  
+  // GIF: 47 49 46 38
+  if (header[0] === 0x47 && header[1] === 0x49 && header[2] === 0x46 && header[3] === 0x38) {
+    return 'image/gif';
+  }
+  
+  // WebP: 52 49 46 46 ... 57 45 42 50
+  if (header[0] === 0x52 && header[1] === 0x49 && header[2] === 0x46 && header[3] === 0x46 &&
+      header[8] === 0x57 && header[9] === 0x45 && header[10] === 0x42 && header[11] === 0x50) {
+    return 'image/webp';
+  }
+  
+  return '';
 }
 
 export interface ComplianceAnalysis {
@@ -66,7 +96,25 @@ export class AIAnalysisService {
       if (imageUrl.startsWith('/objects/')) {
         const buffer = await objectStorageService.downloadAsBuffer(imageUrl);
         if (buffer) {
-          const mimeType = getImageMimeType(imageUrl);
+          // Try to detect from buffer first, then fall back to extension
+          let mimeType = getImageMimeTypeFromBuffer(buffer);
+          if (!mimeType) {
+            mimeType = getImageMimeTypeFromExtension(imageUrl);
+          }
+          
+          // If still can't detect, skip the image
+          if (!mimeType) {
+            console.warn("AIAnalysisService: Could not detect image format for:", imageUrl);
+            return null;
+          }
+          
+          // Only return if it's a supported format
+          const supportedFormats = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+          if (!supportedFormats.includes(mimeType)) {
+            console.warn("AIAnalysisService: Unsupported image format:", mimeType);
+            return null;
+          }
+          
           return `data:${mimeType};base64,${buffer.toString('base64')}`;
         }
       }
