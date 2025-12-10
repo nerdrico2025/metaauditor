@@ -193,14 +193,8 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
       return sendResultAndClose(false, 'Nenhuma conta encontrada nos Business Managers autorizados. Verifique se você tem contas de anúncios nos BMs que autorizou.');
     }
 
-    // Get user's companyId
-    const user = await storage.getUser(userId);
-    if (!user) {
-      return sendResultAndClose(false, 'Usuário não encontrado');
-    }
-
-    // Get already connected accounts for this company
-    const existingIntegrations = await storage.getIntegrationsByCompanyId(user.companyId);
+    // Get already connected accounts for this user
+    const existingIntegrations = await storage.getIntegrationsByUser(userId);
     const connectedAccountIds = existingIntegrations
       .filter(i => i.platform === 'meta')
       .map(i => i.accountId);
