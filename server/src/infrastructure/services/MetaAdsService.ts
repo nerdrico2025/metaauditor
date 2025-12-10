@@ -119,6 +119,52 @@ export class MetaAdsService {
   }
 
   /**
+   * Fetch image URL from asset_feed_spec hash via Meta API
+   * Dynamic Creative ads store images as hashes, not URLs
+   * We need to query /{ad_account_id}/adimages?hashes=[hash]&fields=url to get the actual URL
+   */
+  private async getImageUrlFromHash(accessToken: string, accountId: string, imageHash: string): Promise<string | null> {
+    try {
+      const encodedHashes = encodeURIComponent(JSON.stringify([imageHash]));
+      const url = `${this.baseUrl}/${this.apiVersion}/${accountId}/adimages?hashes=${encodedHashes}&fields=hash,url&access_token=${accessToken}`;
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        console.warn(`⚠️  Failed to fetch image hash ${imageHash}: ${response.status}`);
+        return null;
+      }
+      
+      const data = await response.json() as { data: Array<{ hash: string; url: string }> };
+      if (data.data && data.data.length > 0) {
+        return data.data[0].url;
+      }
+      return null;
+    } catch (error) {
+      console.warn(`⚠️  Error fetching image from hash ${imageHash}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Fetch asset_feed_spec for a creative to get image hashes (for Dynamic Creative ads)
+   */
+  private async getCreativeAssetFeedSpec(accessToken: string, creativeId: string): Promise<{ images?: Array<{ hash: string }> } | null> {
+    try {
+      const url = `${this.baseUrl}/${this.apiVersion}/${creativeId}?fields=asset_feed_spec&access_token=${accessToken}`;
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        return null;
+      }
+      
+      const data = await response.json() as { asset_feed_spec?: { images?: Array<{ hash: string }> } };
+      return data.asset_feed_spec || null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  /**
    * Execute batch request to Meta API (up to 50 requests in one call)
    * This significantly reduces rate limiting issues
    */
@@ -683,6 +729,25 @@ export class MetaAdsService {
               }
             } catch (e) {
               console.warn(`⚠️  Failed to fetch creative ${ad.creative.id}:`, e);
+            }
+          }
+          
+          // If still no image, try asset_feed_spec for Dynamic Creative ads (images stored as hashes)
+          if (!sourceImageUrl && ad.creative?.id && integration.accessToken && integration.accountId) {
+            console.log(`🔍 Ad ${ad.id} still has no image, checking asset_feed_spec for Dynamic Creative...`);
+            try {
+              const assetFeedSpec = await this.getCreativeAssetFeedSpec(integration.accessToken, ad.creative.id);
+              if (assetFeedSpec?.images && assetFeedSpec.images.length > 0) {
+                const firstImageHash = assetFeedSpec.images[0].hash;
+                console.log(`🔑 Found image hash in asset_feed_spec: ${firstImageHash}`);
+                const imageUrlFromHash = await this.getImageUrlFromHash(integration.accessToken, integration.accountId, firstImageHash);
+                if (imageUrlFromHash) {
+                  sourceImageUrl = imageUrlFromHash;
+                  console.log(`✅ Found image URL from hash: ${imageUrlFromHash.substring(0, 60)}...`);
+                }
+              }
+            } catch (e) {
+              console.warn(`⚠️  Failed to fetch asset_feed_spec for creative ${ad.creative.id}:`, e);
             }
           }
           

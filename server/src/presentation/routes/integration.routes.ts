@@ -56,6 +56,73 @@ router.delete('/sync-history/bulk/all', authenticateToken, async (req: Request, 
   }
 });
 
+// DEBUG: Get raw Meta API data for a specific ad
+router.get('/debug/meta-ad/:adId', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { adId } = req.params;
+    const { accountId } = req.query;
+    const userId = (req as any).user?.userId;
+    
+    // Find integration with this account
+    const integrations = await storage.getIntegrationsByUser(userId);
+    const integration = integrations.find(i => 
+      i.platform === 'meta' && 
+      (accountId ? i.accountId === accountId : true)
+    );
+    
+    if (!integration || !integration.accessToken) {
+      return res.status(404).json({ error: 'Integração Meta não encontrada' });
+    }
+    
+    // Fetch raw ad data from Meta API with ALL available fields
+    const fields = [
+      'id', 'name', 'status', 'effective_status',
+      'creative{id,name,title,body,image_url,thumbnail_url,object_story_spec,asset_feed_spec,effective_object_story_id}',
+      'adcreatives{id,name,title,body,image_url,thumbnail_url,object_story_spec,asset_feed_spec,effective_object_story_id}'
+    ].join(',');
+    
+    const url = `https://graph.facebook.com/v21.0/${adId}?fields=${fields}&access_token=${integration.accessToken}`;
+    const response = await fetch(url);
+    const rawData = await response.json();
+    
+    // If there's an effective_object_story_id, fetch that too
+    let storyData = null;
+    const effectiveStoryId = rawData.creative?.effective_object_story_id;
+    if (effectiveStoryId) {
+      try {
+        const storyUrl = `https://graph.facebook.com/v21.0/${effectiveStoryId}?fields=full_picture,picture,message,attachments{media,subattachments}&access_token=${integration.accessToken}`;
+        const storyResponse = await fetch(storyUrl);
+        storyData = await storyResponse.json();
+      } catch (e) {
+        storyData = { error: String(e) };
+      }
+    }
+    
+    // Also try fetching asset_feed_spec images if present
+    let assetFeedImages: any[] = [];
+    const assetFeedSpec = rawData.creative?.asset_feed_spec;
+    if (assetFeedSpec?.images) {
+      assetFeedImages = assetFeedSpec.images;
+    }
+    
+    res.json({
+      adId,
+      rawData,
+      storyData,
+      assetFeedImages,
+      extractedUrls: {
+        image_url: rawData.creative?.image_url,
+        thumbnail_url: rawData.creative?.thumbnail_url,
+        story_full_picture: storyData?.full_picture,
+        story_picture: storyData?.picture,
+      }
+    });
+  } catch (error) {
+    console.error('Debug Meta Ad error:', error);
+    res.status(500).json({ error: String(error) });
+  }
+});
+
 // Reset sync status for all user integrations (used when deleting all data)
 router.post('/reset-sync', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
