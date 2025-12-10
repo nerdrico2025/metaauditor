@@ -121,39 +121,41 @@
             // Global error handler
             app.use(errorHandler);
 
-            // Serve client in both development and production
-            const possiblePaths = [
-              path.resolve(process.cwd(), "client/dist"),
-              path.resolve(process.cwd(), "dist/public"),
-              path.resolve(process.cwd(), "../client/dist"),
-            ];
-            
-            const clientDist = possiblePaths.find(p => fs.existsSync(p));
+            // Serve client - in development, use Vite proxy; in production, serve static files
+            if (process.env.NODE_ENV !== "production") {
+              // Development mode: proxy to Vite dev server on port 5173
+              console.log("✅ Development mode: proxying to Vite dev server at http://localhost:5173");
+              const { createProxyMiddleware } = await import("http-proxy-middleware");
+              app.use(
+                createProxyMiddleware({
+                  target: "http://localhost:5173",
+                  changeOrigin: true,
+                  ws: true,
+                })
+              );
+            } else {
+              // Production mode: serve static files from client/dist
+              const possiblePaths = [
+                path.resolve(process.cwd(), "client/dist"),
+                path.resolve(process.cwd(), "dist/public"),
+                path.resolve(process.cwd(), "../client/dist"),
+              ];
+              
+              const clientDist = possiblePaths.find(p => fs.existsSync(p));
 
-            if (clientDist) {
-              console.log("✅ Serving client from:", clientDist);
-              app.use(express.static(clientDist));
-              app.get("*", (req, res) => {
-                res.sendFile(path.join(clientDist, "index.html"));
-              });
-            } else if (process.env.NODE_ENV === "development") {
-              // In development, redirect non-API routes to Vite dev server
-              const clientIndexPath = path.resolve(process.cwd(), "client/index.html");
-              if (fs.existsSync(clientIndexPath)) {
-                console.log("✅ Development mode: serving client from source");
-                app.use(express.static(path.resolve(process.cwd(), "client")));
+              if (clientDist) {
+                console.log("✅ Production mode: serving client from:", clientDist);
+                app.use(express.static(clientDist));
                 app.get("*", (req, res) => {
-                  res.sendFile(clientIndexPath);
+                  res.sendFile(path.join(clientDist, "index.html"));
                 });
               } else {
-                console.warn("⚠️ Client index.html not found at:", clientIndexPath);
+                console.warn(
+                  "⚠️ Client build not found. Searched:",
+                  possiblePaths.join(", "),
+                  "\nRun: npm run build:client"
+                );
               }
-            } else {
-              console.warn(
-                "⚠️ Client build not found. Searched:",
-                possiblePaths.join(", "),
-                "\nRun: npm run build:client"
-              );
             }
 
             const PORT = parseInt(process.env.PORT || "5000", 10);
