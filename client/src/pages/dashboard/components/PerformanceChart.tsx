@@ -20,6 +20,7 @@ interface DailyMetric {
 }
 
 type PeriodOption = 7 | 14 | 30 | 60 | 90 | 'custom';
+type DateMode = 'single' | 'range';
 
 const periodLabels: Record<number, string> = {
   7: '7 dias',
@@ -32,7 +33,9 @@ const periodLabels: Record<number, string> = {
 export default function PerformanceChart() {
   const { selectedAccountId } = useMetaAccount();
   const [period, setPeriod] = useState<PeriodOption>(7);
+  const [dateMode, setDateMode] = useState<DateMode>('range');
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [singleDate, setSingleDate] = useState<Date | undefined>(undefined);
   const [showCalendar, setShowCalendar] = useState(false);
   
   const buildQueryUrl = () => {
@@ -43,9 +46,14 @@ export default function PerformanceChart() {
       params.set('integrationId', selectedAccountId);
     }
     
-    if (period === 'custom' && dateRange?.from && dateRange?.to) {
-      params.set('startDate', format(dateRange.from, 'yyyy-MM-dd'));
-      params.set('endDate', format(dateRange.to, 'yyyy-MM-dd'));
+    if (period === 'custom') {
+      if (dateMode === 'single' && singleDate) {
+        params.set('startDate', format(singleDate, 'yyyy-MM-dd'));
+        params.set('endDate', format(singleDate, 'yyyy-MM-dd'));
+      } else if (dateMode === 'range' && dateRange?.from && dateRange?.to) {
+        params.set('startDate', format(dateRange.from, 'yyyy-MM-dd'));
+        params.set('endDate', format(dateRange.to, 'yyyy-MM-dd'));
+      }
     } else if (typeof period === 'number') {
       params.set('period', period.toString());
     }
@@ -54,7 +62,7 @@ export default function PerformanceChart() {
   };
   
   const { data: metrics, isLoading } = useQuery<DailyMetric[]>({
-    queryKey: ["/api/dashboard/daily-metrics", { integrationId: selectedAccountId, period, dateRange }],
+    queryKey: ["/api/dashboard/daily-metrics", { integrationId: selectedAccountId, period, dateRange, singleDate, dateMode }],
     queryFn: async () => {
       const token = localStorage.getItem('auth_token');
       const url = buildQueryUrl();
@@ -87,9 +95,14 @@ export default function PerformanceChart() {
   };
 
   const getPeriodLabel = () => {
-    if (period === 'custom' && dateRange?.from && dateRange?.to) {
-      const days = differenceInDays(dateRange.to, dateRange.from) + 1;
-      return `${format(dateRange.from, 'dd/MM', { locale: ptBR })} - ${format(dateRange.to, 'dd/MM', { locale: ptBR })} (${days}d)`;
+    if (period === 'custom') {
+      if (dateMode === 'single' && singleDate) {
+        return format(singleDate, 'dd/MM/yyyy', { locale: ptBR });
+      }
+      if (dateMode === 'range' && dateRange?.from && dateRange?.to) {
+        const days = differenceInDays(dateRange.to, dateRange.from) + 1;
+        return `${format(dateRange.from, 'dd/MM', { locale: ptBR })} - ${format(dateRange.to, 'dd/MM', { locale: ptBR })} (${days}d)`;
+      }
     }
     return periodLabels[period as number] || '7 dias';
   };
@@ -98,6 +111,7 @@ export default function PerformanceChart() {
     setPeriod(newPeriod);
     if (newPeriod !== 'custom') {
       setDateRange(undefined);
+      setSingleDate(undefined);
       setShowCalendar(false);
     } else {
       setShowCalendar(true);
@@ -106,9 +120,35 @@ export default function PerformanceChart() {
 
   const handleDateSelect = (range: DateRange | undefined) => {
     setDateRange(range);
-    if (range?.from && range?.to) {
-      setShowCalendar(false);
+  };
+
+  const handleSingleDateSelect = (date: Date | undefined) => {
+    setSingleDate(date);
+  };
+
+  const handleModeChange = (mode: DateMode) => {
+    setDateMode(mode);
+    setDateRange(undefined);
+    setSingleDate(undefined);
+  };
+
+  const canApply = () => {
+    if (dateMode === 'single') return !!singleDate;
+    return dateRange?.from && dateRange?.to;
+  };
+
+  const getInstructions = () => {
+    if (dateMode === 'single') {
+      return singleDate 
+        ? format(singleDate, "dd/MM/yyyy", { locale: ptBR })
+        : "Clique em uma data";
     }
+    if (dateRange?.from) {
+      return dateRange.to 
+        ? `${format(dateRange.from, "dd/MM/yyyy", { locale: ptBR })} até ${format(dateRange.to, "dd/MM/yyyy", { locale: ptBR })}`
+        : "Agora selecione a data final";
+    }
+    return "Clique na data inicial";
   };
 
   return (
@@ -145,38 +185,61 @@ export default function PerformanceChart() {
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="end" sideOffset={8}>
-                <div className="p-3 border-b">
-                  <p className="text-sm font-medium text-slate-700">Selecione o período</p>
-                  <p className="text-xs text-slate-500 mt-1">
-                    {dateRange?.from ? (
-                      dateRange.to ? (
-                        <>
-                          {format(dateRange.from, "dd/MM/yyyy", { locale: ptBR })} até{" "}
-                          {format(dateRange.to, "dd/MM/yyyy", { locale: ptBR })}
-                        </>
-                      ) : (
-                        <>Selecione a data final</>
-                      )
-                    ) : (
-                      <>Clique na data inicial</>
-                    )}
+                <div className="p-3 border-b space-y-3">
+                  <div className="flex gap-1 p-1 bg-slate-100 rounded-lg">
+                    <button
+                      className={`flex-1 px-3 py-1.5 text-sm rounded-md transition-colors ${
+                        dateMode === 'single' 
+                          ? 'bg-white shadow-sm text-slate-900 font-medium' 
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                      onClick={() => handleModeChange('single')}
+                    >
+                      Data específica
+                    </button>
+                    <button
+                      className={`flex-1 px-3 py-1.5 text-sm rounded-md transition-colors ${
+                        dateMode === 'range' 
+                          ? 'bg-white shadow-sm text-slate-900 font-medium' 
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                      onClick={() => handleModeChange('range')}
+                    >
+                      Intervalo de datas
+                    </button>
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    {getInstructions()}
                   </p>
                 </div>
-                <Calendar
-                  mode="range"
-                  selected={dateRange}
-                  onSelect={handleDateSelect}
-                  numberOfMonths={2}
-                  locale={ptBR}
-                  disabled={(date: Date) => date > new Date()}
-                  defaultMonth={new Date(new Date().setMonth(new Date().getMonth() - 1))}
-                />
+                
+                {dateMode === 'single' ? (
+                  <Calendar
+                    mode="single"
+                    selected={singleDate}
+                    onSelect={handleSingleDateSelect}
+                    locale={ptBR}
+                    disabled={(date: Date) => date > new Date()}
+                  />
+                ) : (
+                  <Calendar
+                    mode="range"
+                    selected={dateRange}
+                    onSelect={handleDateSelect}
+                    numberOfMonths={2}
+                    locale={ptBR}
+                    disabled={(date: Date) => date > new Date()}
+                    defaultMonth={new Date(new Date().setMonth(new Date().getMonth() - 1))}
+                  />
+                )}
+                
                 <div className="p-3 border-t flex justify-end gap-2">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => {
                       setDateRange(undefined);
+                      setSingleDate(undefined);
                       setShowCalendar(false);
                       setPeriod(7);
                     }}
@@ -185,7 +248,7 @@ export default function PerformanceChart() {
                   </Button>
                   <Button
                     size="sm"
-                    disabled={!dateRange?.from || !dateRange?.to}
+                    disabled={!canApply()}
                     onClick={() => setShowCalendar(false)}
                   >
                     Aplicar
