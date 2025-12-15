@@ -71,7 +71,7 @@ export default function PerformanceChart() {
           <>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <div className="text-center p-3 bg-blue-50 rounded-lg">
-                <p className="text-xs text-slate-500 mb-1">Gasto Total</p>
+                <p className="text-xs text-slate-500 mb-1">Investimento Total</p>
                 <p className="text-lg font-semibold text-blue-600">{formatCurrency(totalSpend)}</p>
               </div>
               <div className="text-center p-3 bg-purple-50 rounded-lg">
@@ -89,7 +89,7 @@ export default function PerformanceChart() {
             </div>
 
             <div className="space-y-2">
-              <p className="text-xs text-slate-500 mb-3">Gastos por dia</p>
+              <p className="text-xs text-slate-500 mb-3">Investimento por dia</p>
               <div className="flex items-end justify-between h-24 gap-1">
                 {metrics.map((day, index) => {
                   const height = maxSpend > 0 ? (day.spend / maxSpend) * 100 : 0;

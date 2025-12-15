@@ -155,8 +155,8 @@ router.get('/daily-metrics', authenticateToken, async (req: Request, res: Respon
     const days = [];
     const today = new Date();
     
-    // Calculate totals from creatives
-    const totalSpend = creatives.reduce((sum, c) => sum + (Number(c.spend) || 0), 0);
+    // Calculate totals from creatives (spend = clicks * cpc)
+    const totalSpend = creatives.reduce((sum, c) => sum + ((c.clicks || 0) * (Number(c.cpc) || 0)), 0);
     const totalImpressions = creatives.reduce((sum, c) => sum + (c.impressions || 0), 0);
     const totalClicks = creatives.reduce((sum, c) => sum + (c.clicks || 0), 0);
     
@@ -203,10 +203,10 @@ router.get('/top-campaigns', authenticateToken, async (req: Request, res: Respon
       creatives = creatives.filter(c => campaignIds.has(c.campaignId));
     }
     
-    // Calculate metrics per campaign from creatives
+    // Calculate metrics per campaign from creatives (spend = clicks * cpc)
     const campaignMetrics = campaigns.map(campaign => {
       const campaignCreatives = creatives.filter(c => c.campaignId === campaign.id);
-      const spend = campaignCreatives.reduce((sum, c) => sum + (Number(c.spend) || 0), 0);
+      const spend = campaignCreatives.reduce((sum, c) => sum + ((c.clicks || 0) * (Number(c.cpc) || 0)), 0);
       const impressions = campaignCreatives.reduce((sum, c) => sum + (c.impressions || 0), 0);
       const clicks = campaignCreatives.reduce((sum, c) => sum + (c.clicks || 0), 0);
       const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
