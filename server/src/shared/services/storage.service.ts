@@ -806,16 +806,30 @@ export class DatabaseStorage implements IStorage {
 
   async createPolicy(policy: InsertPolicy): Promise<Policy> {
     // If setting as default, unset default from all other policies in the same company
-    if (policy.isDefault && policy.companyId) {
-      await db
-        .update(policies)
-        .set({ isDefault: false, updatedAt: new Date() })
-        .where(
-          and(
-            eq(policies.companyId, policy.companyId),
-            eq(policies.isDefault, true)
-          )
-        );
+    if (policy.isDefault) {
+      if (policy.companyId) {
+        // Company-based isolation
+        await db
+          .update(policies)
+          .set({ isDefault: false, updatedAt: new Date() })
+          .where(
+            and(
+              eq(policies.companyId, policy.companyId),
+              eq(policies.isDefault, true)
+            )
+          );
+      } else {
+        // Fallback: unset all policies without companyId that are marked as default
+        await db
+          .update(policies)
+          .set({ isDefault: false, updatedAt: new Date() })
+          .where(
+            and(
+              sql`${policies.companyId} IS NULL`,
+              eq(policies.isDefault, true)
+            )
+          );
+      }
     }
     
     const [newPolicy] = await db.insert(policies).values(policy).returning();
@@ -847,12 +861,25 @@ export class DatabaseStorage implements IStorage {
     if (data.isDefault) {
       const policy = await this.getPolicyById(id);
       if (policy?.companyId) {
+        // Company-based isolation
         await db
           .update(policies)
           .set({ isDefault: false, updatedAt: new Date() })
           .where(
             and(
               eq(policies.companyId, policy.companyId),
+              not(eq(policies.id, id))
+            )
+          );
+      } else {
+        // Fallback: unset all policies without companyId that are marked as default (except current)
+        await db
+          .update(policies)
+          .set({ isDefault: false, updatedAt: new Date() })
+          .where(
+            and(
+              sql`${policies.companyId} IS NULL`,
+              eq(policies.isDefault, true),
               not(eq(policies.id, id))
             )
           );
