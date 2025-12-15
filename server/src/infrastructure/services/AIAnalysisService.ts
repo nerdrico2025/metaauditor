@@ -1,18 +1,58 @@
 
 import OpenAI from "openai";
 import sharp from "sharp";
-import type { Creative, Policy } from "../../shared/schema.js";
+import type { Creative, Policy, AiSettings } from "../../shared/schema.js";
 import { objectStorageService } from "./ObjectStorageService.js";
+import { storage } from "../../shared/services/storage.service.js";
 
 let openai: OpenAI | null = null;
+let cachedApiKey: string | null = null;
 
-function getOpenAI(): OpenAI {
-  if (!openai) {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      throw new Error('OPENAI_API_KEY is required for AI analysis features');
+interface AIConfig {
+  model: string;
+  maxTokens: number;
+  temperature: number;
+  complianceSystemPrompt: string | null;
+  performanceSystemPrompt: string | null;
+}
+
+const DEFAULT_AI_CONFIG: AIConfig = {
+  model: 'gpt-4o',
+  maxTokens: 1500,
+  temperature: 0.7,
+  complianceSystemPrompt: null,
+  performanceSystemPrompt: null,
+};
+
+async function getAIConfig(): Promise<AIConfig> {
+  try {
+    const settings = await storage.getAiSettings();
+    if (settings) {
+      return {
+        model: settings.model || DEFAULT_AI_CONFIG.model,
+        maxTokens: settings.maxTokens || DEFAULT_AI_CONFIG.maxTokens,
+        temperature: parseFloat(settings.temperature?.toString() || '0.7'),
+        complianceSystemPrompt: settings.complianceSystemPrompt || null,
+        performanceSystemPrompt: settings.performanceSystemPrompt || null,
+      };
     }
+  } catch (error) {
+    console.warn('Failed to load AI settings from database, using defaults:', error);
+  }
+  return DEFAULT_AI_CONFIG;
+}
+
+async function getOpenAI(): Promise<OpenAI> {
+  const settings = await storage.getAiSettings();
+  const apiKey = settings?.apiKey || process.env.OPENAI_API_KEY;
+  
+  if (!apiKey) {
+    throw new Error('OPENAI_API_KEY is required for AI analysis features');
+  }
+  
+  if (!openai || cachedApiKey !== apiKey) {
     openai = new OpenAI({ apiKey });
+    cachedApiKey = apiKey;
   }
   return openai;
 }
@@ -338,12 +378,17 @@ Responda em JSON (PORTUGUÊS-BR):
           ]
         : prompt;
 
-      const response = await getOpenAI().chat.completions.create({
-        model: "gpt-4o",
+      const aiConfig = await getAIConfig();
+      const openaiClient = await getOpenAI();
+      
+      const defaultSystemPrompt = "Você é um especialista em conformidade de marca. Analise criativos publicitários para problemas de conformidade e forneça recomendações acionáveis. SEMPRE responda em Português-BR. Quando uma imagem for fornecida, analise-a visualmente e seja PRECISO sobre o que você vê - nunca invente informações que não estão na imagem.";
+      
+      const response = await openaiClient.chat.completions.create({
+        model: aiConfig.model,
         messages: [
           {
             role: "system",
-            content: "Você é um especialista em conformidade de marca. Analise criativos publicitários para problemas de conformidade e forneça recomendações acionáveis. SEMPRE responda em Português-BR. Quando uma imagem for fornecida, analise-a visualmente e seja PRECISO sobre o que você vê - nunca invente informações que não estão na imagem."
+            content: aiConfig.complianceSystemPrompt || defaultSystemPrompt
           },
           {
             role: "user",
@@ -351,7 +396,7 @@ Responda em JSON (PORTUGUÊS-BR):
           }
         ],
         response_format: { type: "json_object" },
-        max_tokens: 1500,
+        max_tokens: aiConfig.maxTokens,
       }, {
         timeout: 60000,
       });
@@ -486,12 +531,17 @@ RESPONDA OBRIGATORIAMENTE EM PORTUGUÊS-BR. Responda com JSON neste formato: {
   "costEfficiency": "texto da análise"
 }`;
 
-      const response = await getOpenAI().chat.completions.create({
-        model: "gpt-4o",
+      const aiConfig = await getAIConfig();
+      const openaiClient = await getOpenAI();
+      
+      const defaultPerformancePrompt = "Você é um analista de performance de marketing digital. Analise métricas de performance de anúncios e forneça recomendações de otimização acionáveis. SEMPRE responda em Português-BR.";
+      
+      const response = await openaiClient.chat.completions.create({
+        model: aiConfig.model,
         messages: [
           {
             role: "system",
-            content: "Você é um analista de performance de marketing digital. Analise métricas de performance de anúncios e forneça recomendações de otimização acionáveis. SEMPRE responda em Português-BR."
+            content: aiConfig.performanceSystemPrompt || defaultPerformancePrompt
           },
           {
             role: "user",
@@ -499,6 +549,7 @@ RESPONDA OBRIGATORIAMENTE EM PORTUGUÊS-BR. Responda com JSON neste formato: {
           }
         ],
         response_format: { type: "json_object" },
+        max_tokens: aiConfig.maxTokens,
       }, {
         timeout: 30000,
       });
