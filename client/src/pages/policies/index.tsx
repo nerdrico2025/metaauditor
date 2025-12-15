@@ -242,10 +242,11 @@ export default function Policies() {
   };
 
   const handleSubmit = async (data: PolicyFormData) => {
-    // Validation: Ensure only one default policy per company
+    // Validation: Ensure only one default policy per company (applies to both create and edit)
     if (data.isDefault) {
+      const currentPolicyId = editingPolicy?.id;
       const hasOtherDefault = policies.some(
-        p => p.isDefault && p.id !== editingPolicy?.id
+        p => p.isDefault && p.id !== currentPolicyId
       );
       if (hasOtherDefault) {
         toast({
