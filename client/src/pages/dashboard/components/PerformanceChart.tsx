@@ -7,8 +7,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Minus, CalendarIcon } from "lucide-react";
 import { useMetaAccount } from "@/contexts/MetaAccountContext";
-import { format } from "date-fns";
+import { format, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import type { DateRange } from "react-day-picker";
 
 interface DailyMetric {
   date: string;
@@ -31,7 +32,7 @@ const periodLabels: Record<number, string> = {
 export default function PerformanceChart() {
   const { selectedAccountId } = useMetaAccount();
   const [period, setPeriod] = useState<PeriodOption>(7);
-  const [customDateRange, setCustomDateRange] = useState<{ from?: Date; to?: Date }>({});
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [showCalendar, setShowCalendar] = useState(false);
   
   const buildQueryUrl = () => {
@@ -42,9 +43,9 @@ export default function PerformanceChart() {
       params.set('integrationId', selectedAccountId);
     }
     
-    if (period === 'custom' && customDateRange.from && customDateRange.to) {
-      params.set('startDate', format(customDateRange.from, 'yyyy-MM-dd'));
-      params.set('endDate', format(customDateRange.to, 'yyyy-MM-dd'));
+    if (period === 'custom' && dateRange?.from && dateRange?.to) {
+      params.set('startDate', format(dateRange.from, 'yyyy-MM-dd'));
+      params.set('endDate', format(dateRange.to, 'yyyy-MM-dd'));
     } else if (typeof period === 'number') {
       params.set('period', period.toString());
     }
@@ -53,7 +54,7 @@ export default function PerformanceChart() {
   };
   
   const { data: metrics, isLoading } = useQuery<DailyMetric[]>({
-    queryKey: ["/api/dashboard/daily-metrics", { integrationId: selectedAccountId, period, customDateRange }],
+    queryKey: ["/api/dashboard/daily-metrics", { integrationId: selectedAccountId, period, dateRange }],
     queryFn: async () => {
       const token = localStorage.getItem('auth_token');
       const url = buildQueryUrl();
@@ -86,8 +87,9 @@ export default function PerformanceChart() {
   };
 
   const getPeriodLabel = () => {
-    if (period === 'custom' && customDateRange.from && customDateRange.to) {
-      return `${format(customDateRange.from, 'dd/MM', { locale: ptBR })} - ${format(customDateRange.to, 'dd/MM', { locale: ptBR })}`;
+    if (period === 'custom' && dateRange?.from && dateRange?.to) {
+      const days = differenceInDays(dateRange.to, dateRange.from) + 1;
+      return `${format(dateRange.from, 'dd/MM', { locale: ptBR })} - ${format(dateRange.to, 'dd/MM', { locale: ptBR })} (${days}d)`;
     }
     return periodLabels[period as number] || '7 dias';
   };
@@ -95,30 +97,28 @@ export default function PerformanceChart() {
   const handlePeriodChange = (newPeriod: PeriodOption) => {
     setPeriod(newPeriod);
     if (newPeriod !== 'custom') {
-      setCustomDateRange({});
+      setDateRange(undefined);
       setShowCalendar(false);
     } else {
       setShowCalendar(true);
     }
   };
 
-  const handleDateRangeSelect = (range: { from?: Date; to?: Date } | undefined) => {
-    if (range) {
-      setCustomDateRange(range);
-      if (range.from && range.to) {
-        setShowCalendar(false);
-      }
+  const handleDateSelect = (range: DateRange | undefined) => {
+    setDateRange(range);
+    if (range?.from && range?.to) {
+      setShowCalendar(false);
     }
   };
 
   return (
     <Card className="bg-white dark:bg-white shadow-sm border border-slate-200">
       <CardHeader className="px-6 py-4 border-b border-slate-200 bg-white dark:bg-white">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <CardTitle className="text-lg font-medium text-slate-900">
             Performance - {getPeriodLabel()}
           </CardTitle>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 flex-wrap">
             {[7, 14, 30, 60, 90].map((days) => (
               <Button
                 key={days}
@@ -136,22 +136,61 @@ export default function PerformanceChart() {
                 <Button
                   variant={period === 'custom' ? "default" : "ghost"}
                   size="sm"
-                  className="h-7 px-2 text-xs"
+                  className="h-7 px-2 text-xs gap-1"
                   onClick={() => handlePeriodChange('custom')}
                   data-testid="period-custom"
                 >
                   <CalendarIcon className="h-3 w-3" />
+                  <span className="hidden sm:inline">Período</span>
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
+              <PopoverContent className="w-auto p-0" align="end" sideOffset={8}>
+                <div className="p-3 border-b">
+                  <p className="text-sm font-medium text-slate-700">Selecione o período</p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    {dateRange?.from ? (
+                      dateRange.to ? (
+                        <>
+                          {format(dateRange.from, "dd/MM/yyyy", { locale: ptBR })} até{" "}
+                          {format(dateRange.to, "dd/MM/yyyy", { locale: ptBR })}
+                        </>
+                      ) : (
+                        <>Selecione a data final</>
+                      )
+                    ) : (
+                      <>Clique na data inicial</>
+                    )}
+                  </p>
+                </div>
                 <Calendar
                   mode="range"
-                  selected={customDateRange as any}
-                  onSelect={handleDateRangeSelect as any}
+                  selected={dateRange}
+                  onSelect={handleDateSelect}
                   numberOfMonths={2}
                   locale={ptBR}
                   disabled={(date: Date) => date > new Date()}
+                  defaultMonth={new Date(new Date().setMonth(new Date().getMonth() - 1))}
                 />
+                <div className="p-3 border-t flex justify-end gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setDateRange(undefined);
+                      setShowCalendar(false);
+                      setPeriod(7);
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    size="sm"
+                    disabled={!dateRange?.from || !dateRange?.to}
+                    onClick={() => setShowCalendar(false)}
+                  >
+                    Aplicar
+                  </Button>
+                </div>
               </PopoverContent>
             </Popover>
           </div>
