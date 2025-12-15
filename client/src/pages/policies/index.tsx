@@ -242,6 +242,19 @@ export default function Policies() {
   };
 
   const handleSubmit = async (data: PolicyFormData) => {
+    // Validation: Ensure only one default policy per company
+    if (data.isDefault) {
+      const hasOtherDefault = policies.some(
+        p => p.isDefault && p.id !== editingPolicy?.id
+      );
+      if (hasOtherDefault) {
+        toast({
+          title: 'Atenção',
+          description: 'Ao marcar esta política como padrão, a política padrão anterior será desmarcada automaticamente.',
+        });
+      }
+    }
+    
     let logoUrl = data.logoUrl;
     
     if (pendingLogoFile) {

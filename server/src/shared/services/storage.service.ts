@@ -805,6 +805,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createPolicy(policy: InsertPolicy): Promise<Policy> {
+    // If setting as default, unset default from all other policies in the same company
+    if (policy.isDefault && policy.companyId) {
+      await db
+        .update(policies)
+        .set({ isDefault: false, updatedAt: new Date() })
+        .where(
+          and(
+            eq(policies.companyId, policy.companyId),
+            eq(policies.isDefault, true)
+          )
+        );
+    }
+    
     const [newPolicy] = await db.insert(policies).values(policy).returning();
     return newPolicy;
   }
@@ -830,6 +843,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updatePolicy(id: string, data: Partial<InsertPolicy>): Promise<Policy | undefined> {
+    // If setting as default, unset default from all other policies in the same company
+    if (data.isDefault) {
+      const policy = await this.getPolicyById(id);
+      if (policy?.companyId) {
+        await db
+          .update(policies)
+          .set({ isDefault: false, updatedAt: new Date() })
+          .where(
+            and(
+              eq(policies.companyId, policy.companyId),
+              not(eq(policies.id, id))
+            )
+          );
+      }
+    }
+    
     const [updated] = await db
       .update(policies)
       .set({ ...data, updatedAt: new Date() })
