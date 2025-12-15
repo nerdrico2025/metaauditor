@@ -242,20 +242,6 @@ export default function Policies() {
   };
 
   const handleSubmit = async (data: PolicyFormData) => {
-    // Validation: Ensure only one default policy per company (applies to both create and edit)
-    if (data.isDefault) {
-      const currentPolicyId = editingPolicy?.id;
-      const hasOtherDefault = policies.some(
-        p => p.isDefault && p.id !== currentPolicyId
-      );
-      if (hasOtherDefault) {
-        toast({
-          title: 'Atenção',
-          description: 'Ao marcar esta política como padrão, a política padrão anterior será desmarcada automaticamente.',
-        });
-      }
-    }
-    
     let logoUrl = data.logoUrl;
     
     if (pendingLogoFile) {
@@ -548,14 +534,35 @@ export default function Policies() {
               )}
 
               {scope === 'global' && (
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="isDefault"
-                    checked={form.watch('isDefault')}
-                    onCheckedChange={(checked) => form.setValue('isDefault', checked)}
-                    data-testid="switch-is-default"
-                  />
-                  <Label htmlFor="isDefault">Definir como política padrão</Label>
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="isDefault"
+                      checked={form.watch('isDefault')}
+                      onCheckedChange={(checked) => {
+                        form.setValue('isDefault', checked);
+                        if (checked) {
+                          const currentPolicyId = editingPolicy?.id;
+                          const existingDefault = policies.find(
+                            p => p.isDefault && p.id !== currentPolicyId
+                          );
+                          if (existingDefault) {
+                            toast({
+                              title: 'Atenção',
+                              description: `A política "${existingDefault.name}" será desmarcada como padrão ao salvar.`,
+                            });
+                          }
+                        }
+                      }}
+                      data-testid="switch-is-default"
+                    />
+                    <Label htmlFor="isDefault">Definir como política padrão</Label>
+                  </div>
+                  {form.watch('isDefault') && policies.some(p => p.isDefault && p.id !== editingPolicy?.id) && (
+                    <p className="text-sm text-amber-600 dark:text-amber-400">
+                      ⚠️ Ao salvar, a política padrão atual será desmarcada automaticamente.
+                    </p>
+                  )}
                 </div>
               )}
             </div>
