@@ -135,11 +135,14 @@ router.get('/problem-creatives', authenticateToken, async (req: Request, res: Re
   }
 });
 
-// Get daily metrics for the last 7 days
+// Get daily metrics - supports period filter (7, 14, 30, 60, 90 days or custom range)
 router.get('/daily-metrics', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user?.userId;
     const integrationId = req.query.integrationId as string | undefined;
+    const period = parseInt(req.query.period as string) || 7;
+    const startDate = req.query.startDate as string | undefined;
+    const endDate = req.query.endDate as string | undefined;
     
     let campaigns = await storage.getCampaignsByUser(userId);
     let creatives = await storage.getCreativesByUser(userId);
@@ -151,25 +154,35 @@ router.get('/daily-metrics', authenticateToken, async (req: Request, res: Respon
       creatives = creatives.filter(c => campaignIds.has(c.campaignId));
     }
     
-    // Generate last 7 days metrics (aggregate from creatives)
+    // Calculate number of days to show
+    let numDays = period;
+    let customStart: Date | null = null;
+    let customEnd: Date | null = null;
+    
+    if (startDate && endDate) {
+      customStart = new Date(startDate);
+      customEnd = new Date(endDate);
+      numDays = Math.ceil((customEnd.getTime() - customStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    }
+    
+    // Generate metrics for the period
     const days = [];
-    const today = new Date();
+    const today = customEnd || new Date();
     
     // Calculate totals from creatives (spend = clicks * cpc)
     const totalSpend = creatives.reduce((sum, c) => sum + ((c.clicks || 0) * (Number(c.cpc) || 0)), 0);
     const totalImpressions = creatives.reduce((sum, c) => sum + (c.impressions || 0), 0);
     const totalClicks = creatives.reduce((sum, c) => sum + (c.clicks || 0), 0);
     
-    // Distribute across 7 days with some variation
-    for (let i = 6; i >= 0; i--) {
+    // Distribute across the period with some variation
+    for (let i = numDays - 1; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(date.getDate() - i);
       
-      // Add some daily variation (10-20% of total per day)
-      const dayFactor = (0.1 + Math.random() * 0.1) * (i === 0 ? 0.8 : 1);
-      const daySpend = (totalSpend / 7) * (0.7 + Math.random() * 0.6);
-      const dayImpressions = Math.floor((totalImpressions / 7) * (0.7 + Math.random() * 0.6));
-      const dayClicks = Math.floor((totalClicks / 7) * (0.7 + Math.random() * 0.6));
+      // Add some daily variation
+      const daySpend = (totalSpend / numDays) * (0.7 + Math.random() * 0.6);
+      const dayImpressions = Math.floor((totalImpressions / numDays) * (0.7 + Math.random() * 0.6));
+      const dayClicks = Math.floor((totalClicks / numDays) * (0.7 + Math.random() * 0.6));
       const dayCtr = dayImpressions > 0 ? (dayClicks / dayImpressions) * 100 : 0;
       
       days.push({

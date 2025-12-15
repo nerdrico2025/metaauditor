@@ -1,8 +1,14 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Minus, CalendarIcon } from "lucide-react";
 import { useMetaAccount } from "@/contexts/MetaAccountContext";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface DailyMetric {
   date: string;
@@ -12,16 +18,45 @@ interface DailyMetric {
   ctr: number;
 }
 
+type PeriodOption = 7 | 14 | 30 | 60 | 90 | 'custom';
+
+const periodLabels: Record<number, string> = {
+  7: '7 dias',
+  14: '14 dias',
+  30: '30 dias',
+  60: '60 dias',
+  90: '90 dias',
+};
+
 export default function PerformanceChart() {
   const { selectedAccountId } = useMetaAccount();
+  const [period, setPeriod] = useState<PeriodOption>(7);
+  const [customDateRange, setCustomDateRange] = useState<{ from?: Date; to?: Date }>({});
+  const [showCalendar, setShowCalendar] = useState(false);
+  
+  const buildQueryUrl = () => {
+    let url = '/api/dashboard/daily-metrics';
+    const params = new URLSearchParams();
+    
+    if (selectedAccountId) {
+      params.set('integrationId', selectedAccountId);
+    }
+    
+    if (period === 'custom' && customDateRange.from && customDateRange.to) {
+      params.set('startDate', format(customDateRange.from, 'yyyy-MM-dd'));
+      params.set('endDate', format(customDateRange.to, 'yyyy-MM-dd'));
+    } else if (typeof period === 'number') {
+      params.set('period', period.toString());
+    }
+    
+    return params.toString() ? `${url}?${params.toString()}` : url;
+  };
   
   const { data: metrics, isLoading } = useQuery<DailyMetric[]>({
-    queryKey: ["/api/dashboard/daily-metrics", { integrationId: selectedAccountId }],
+    queryKey: ["/api/dashboard/daily-metrics", { integrationId: selectedAccountId, period, customDateRange }],
     queryFn: async () => {
       const token = localStorage.getItem('auth_token');
-      const url = selectedAccountId 
-        ? `/api/dashboard/daily-metrics?integrationId=${selectedAccountId}`
-        : '/api/dashboard/daily-metrics';
+      const url = buildQueryUrl();
       const res = await fetch(url, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
@@ -50,12 +85,77 @@ export default function PerformanceChart() {
     return value.toFixed(0);
   };
 
+  const getPeriodLabel = () => {
+    if (period === 'custom' && customDateRange.from && customDateRange.to) {
+      return `${format(customDateRange.from, 'dd/MM', { locale: ptBR })} - ${format(customDateRange.to, 'dd/MM', { locale: ptBR })}`;
+    }
+    return periodLabels[period as number] || '7 dias';
+  };
+
+  const handlePeriodChange = (newPeriod: PeriodOption) => {
+    setPeriod(newPeriod);
+    if (newPeriod !== 'custom') {
+      setCustomDateRange({});
+      setShowCalendar(false);
+    } else {
+      setShowCalendar(true);
+    }
+  };
+
+  const handleDateRangeSelect = (range: { from?: Date; to?: Date } | undefined) => {
+    if (range) {
+      setCustomDateRange(range);
+      if (range.from && range.to) {
+        setShowCalendar(false);
+      }
+    }
+  };
+
   return (
     <Card className="bg-white dark:bg-white shadow-sm border border-slate-200">
       <CardHeader className="px-6 py-4 border-b border-slate-200 bg-white dark:bg-white">
-        <CardTitle className="text-lg font-medium text-slate-900">
-          Performance dos Últimos 7 Dias
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg font-medium text-slate-900">
+            Performance - {getPeriodLabel()}
+          </CardTitle>
+          <div className="flex items-center gap-1">
+            {[7, 14, 30, 60, 90].map((days) => (
+              <Button
+                key={days}
+                variant={period === days ? "default" : "ghost"}
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => handlePeriodChange(days as PeriodOption)}
+                data-testid={`period-${days}d`}
+              >
+                {days}d
+              </Button>
+            ))}
+            <Popover open={showCalendar} onOpenChange={setShowCalendar}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={period === 'custom' ? "default" : "ghost"}
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => handlePeriodChange('custom')}
+                  data-testid="period-custom"
+                >
+                  <CalendarIcon className="h-3 w-3" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="range"
+                  selected={customDateRange as any}
+                  onSelect={handleDateRangeSelect as any}
+                  numberOfMonths={2}
+                  locale={ptBR}
+                  disabled={(date: Date) => date > new Date()}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+        </div>
       </CardHeader>
       <CardContent className="p-6">
         {isLoading ? (
@@ -94,16 +194,22 @@ export default function PerformanceChart() {
                 {metrics.map((day, index) => {
                   const height = maxSpend > 0 ? (day.spend / maxSpend) * 100 : 0;
                   const date = new Date(day.date);
-                  const dayName = date.toLocaleDateString('pt-BR', { weekday: 'short' });
+                  const dayLabel = metrics.length <= 14 
+                    ? date.toLocaleDateString('pt-BR', { weekday: 'short' })
+                    : date.toLocaleDateString('pt-BR', { day: '2-digit' });
                   
                   return (
                     <div key={index} className="flex flex-col items-center flex-1">
                       <div 
                         className="w-full bg-blue-500 rounded-t transition-all hover:bg-blue-600"
                         style={{ height: `${Math.max(height, 4)}%` }}
-                        title={`${formatCurrency(day.spend)}`}
+                        title={`${format(date, 'dd/MM/yyyy')}: ${formatCurrency(day.spend)}`}
                       />
-                      <span className="text-xs text-slate-400 mt-1 capitalize">{dayName}</span>
+                      {metrics.length <= 31 && (
+                        <span className="text-xs text-slate-400 mt-1 capitalize truncate w-full text-center">
+                          {dayLabel}
+                        </span>
+                      )}
                     </div>
                   );
                 })}

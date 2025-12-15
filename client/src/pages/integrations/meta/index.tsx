@@ -205,17 +205,27 @@ export default function MetaIntegrations() {
           const stepIndex = data.step - 1;
           
           // Update step status and description
-          setSyncSteps(prev => prev.map((step, idx) => {
-            if (idx === stepIndex) {
-              return {
-                ...step,
-                name: data.name,
-                status: 'loading' as const,
-                total: data.total || step.total
-              };
+          setSyncSteps(prev => {
+            const newSteps = prev.map((step, idx) => {
+              if (idx === stepIndex) {
+                return {
+                  ...step,
+                  name: data.name,
+                  status: 'loading' as const,
+                  total: data.total || step.total
+                };
+              }
+              return step;
+            });
+            
+            // Update total items from all steps
+            if (data.total) {
+              const allTotal = newSteps.reduce((sum, s) => sum + (s.total || 0), 0);
+              setTotalItems(allTotal);
             }
-            return step;
-          }));
+            
+            return newSteps;
+          });
           
           setCurrentSyncStep(stepIndex);
         });
@@ -225,17 +235,32 @@ export default function MetaIntegrations() {
           const stepIndex = data.step - 1;
           
           // Update progress for specific step
-          setSyncSteps(prev => prev.map((step, idx) => {
-            if (idx === stepIndex) {
-              return {
-                ...step,
-                count: data.current,
-                total: data.total,
-                status: 'loading' as const
-              };
-            }
-            return step;
-          }));
+          setSyncSteps(prev => {
+            const newSteps = prev.map((step, idx) => {
+              if (idx === stepIndex) {
+                return {
+                  ...step,
+                  count: data.current,
+                  total: data.total,
+                  status: 'loading' as const
+                };
+              }
+              return step;
+            });
+            
+            // Calculate and update total/synced items from all steps
+            const allTotal = newSteps.reduce((sum, s) => sum + (s.total || 0), 0);
+            const allSynced = newSteps.reduce((sum, s) => {
+              if (s.status === 'success') return sum + (s.count || 0);
+              if (s.status === 'loading') return sum + (s.count || 0);
+              return sum;
+            }, 0);
+            
+            setTotalItems(allTotal);
+            setSyncedItems(allSynced);
+            
+            return newSteps;
+          });
         });
 
         eventSource.addEventListener('step-complete', (e: MessageEvent) => {
@@ -243,21 +268,29 @@ export default function MetaIntegrations() {
           const stepIndex = data.step - 1;
           
           // Mark step as complete
-          setSyncSteps(prev => prev.map((step, idx) => {
-            if (idx === stepIndex) {
-              return {
-                ...step,
-                name: data.name,
-                status: 'success' as const,
-                count: data.count
-              };
-            }
-            return step;
-          }));
-          
-          // Update both total and synced items when step completes
-          setTotalItems(prev => prev + data.count);
-          setSyncedItems(prev => prev + data.count);
+          setSyncSteps(prev => {
+            const newSteps = prev.map((step, idx) => {
+              if (idx === stepIndex) {
+                return {
+                  ...step,
+                  name: data.name,
+                  status: 'success' as const,
+                  count: data.count,
+                  total: data.count
+                };
+              }
+              return step;
+            });
+            
+            // Recalculate totals from completed steps
+            const allTotal = newSteps.reduce((sum, s) => sum + (s.total || s.count || 0), 0);
+            const allSynced = newSteps.reduce((sum, s) => sum + (s.count || 0), 0);
+            
+            setTotalItems(allTotal);
+            setSyncedItems(allSynced);
+            
+            return newSteps;
+          });
         });
 
         eventSource.addEventListener('complete', (e: MessageEvent) => {
