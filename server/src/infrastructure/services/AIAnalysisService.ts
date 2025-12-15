@@ -72,9 +72,15 @@ function getImageMimeTypeFromBuffer(buffer: Buffer): string {
   return '';
 }
 
+export interface ComplianceIssue {
+  category: 'logo' | 'cores' | 'texto' | 'palavras_proibidas' | 'palavras_obrigatorias' | 'copywriting' | 'outro';
+  description: string;
+  severity: 'critical' | 'warning' | 'info';
+}
+
 export interface ComplianceAnalysis {
   score: number;
-  issues: string[];
+  issues: ComplianceIssue[];
   recommendations: string[];
   analysis: {
     logoCompliance: boolean;
@@ -110,6 +116,31 @@ export interface PerformanceAnalysis {
 }
 
 export class AIAnalysisService {
+  private categorizeIssue(issueText: string): ComplianceIssue['category'] {
+    const lowerText = issueText.toLowerCase();
+    
+    if (lowerText.includes('logo') || lowerText.includes('marca') || lowerText.includes('logotipo')) {
+      return 'logo';
+    }
+    if (lowerText.includes('cor') || lowerText.includes('paleta') || lowerText.includes('hex') || lowerText.includes('color')) {
+      return 'cores';
+    }
+    if (lowerText.includes('proibid') || lowerText.includes('não permitid') || lowerText.includes('banned') || lowerText.includes('forbidden')) {
+      return 'palavras_proibidas';
+    }
+    if (lowerText.includes('obrigatór') || lowerText.includes('faltando') || lowerText.includes('ausente') || lowerText.includes('required') || lowerText.includes('missing')) {
+      return 'palavras_obrigatorias';
+    }
+    if (lowerText.includes('copy') || lowerText.includes('texto') || lowerText.includes('headline') || lowerText.includes('título') || lowerText.includes('descrição') || lowerText.includes('cta')) {
+      return 'copywriting';
+    }
+    if (lowerText.includes('fonte') || lowerText.includes('tipografia') || lowerText.includes('font')) {
+      return 'texto';
+    }
+    
+    return 'outro';
+  }
+
   private async getImageBase64(imageUrl: string): Promise<string | null> {
     if (!imageUrl) return null;
     
@@ -191,12 +222,14 @@ Brand Requirements:
 - Accent Color: ${policy.accentColor || 'Not specified'}
 - Logo URL: ${policy.logoUrl ? 'Logo provided' : 'No logo provided'}` : '\nNo brand configuration found.';
 
-      const requiredKeywordsList = policy?.requiredKeywords && policy.requiredKeywords.length > 0
-        ? policy.requiredKeywords.map((kw, i) => `  ${i + 1}. "${kw}"`).join('\n')
+      const requiredKeywords = Array.isArray(policy?.requiredKeywords) ? policy.requiredKeywords : [];
+      const requiredKeywordsList = requiredKeywords.length > 0
+        ? requiredKeywords.map((kw: string, i: number) => `  ${i + 1}. "${kw}"`).join('\n')
         : '  Nenhuma palavra obrigatória definida';
       
-      const prohibitedKeywordsList = policy?.prohibitedKeywords && policy.prohibitedKeywords.length > 0
-        ? policy.prohibitedKeywords.map((kw, i) => `  ${i + 1}. "${kw}"`).join('\n')
+      const prohibitedKeywords = Array.isArray(policy?.prohibitedKeywords) ? policy.prohibitedKeywords : [];
+      const prohibitedKeywordsList = prohibitedKeywords.length > 0
+        ? prohibitedKeywords.map((kw: string, i: number) => `  ${i + 1}. "${kw}"`).join('\n')
         : '  Nenhuma palavra proibida definida';
 
       const contentRequirements = policy ? `
@@ -269,7 +302,10 @@ ${contentRequirements}
 Responda em JSON (PORTUGUÊS-BR):
 {
   "score": number (0-100),
-  "issues": ["problema específico 1", "problema específico 2"],
+  "issues": [
+    {"category": "logo|cores|texto|palavras_proibidas|palavras_obrigatorias|copywriting|outro", "description": "descrição do problema", "severity": "critical|warning|info"},
+    ...
+  ],
   "recommendations": ["recomendação acionável 1", "recomendação acionável 2"],
   "logoCompliance": boolean,
   "logoJustification": "Ex: 'Logo da marca presente no canto superior direito da imagem' ou 'Nenhum logo identificado na imagem'",
@@ -322,9 +358,33 @@ Responda em JSON (PORTUGUÊS-BR):
 
       const result = JSON.parse(response.choices[0].message.content || '{}');
 
+      // Process issues - handle both string and object formats
+      const processedIssues: ComplianceIssue[] = [];
+      if (Array.isArray(result.issues)) {
+        for (const issue of result.issues) {
+          if (typeof issue === 'string') {
+            // Legacy string format - try to categorize
+            processedIssues.push({
+              category: this.categorizeIssue(issue),
+              description: issue,
+              severity: 'warning'
+            });
+          } else if (issue && typeof issue === 'object') {
+            // New object format
+            const validCategories = ['logo', 'cores', 'texto', 'palavras_proibidas', 'palavras_obrigatorias', 'copywriting', 'outro'];
+            const category = validCategories.includes(issue.category) ? issue.category : 'outro';
+            processedIssues.push({
+              category: category as ComplianceIssue['category'],
+              description: issue.description || issue.message || String(issue),
+              severity: issue.severity || 'warning'
+            });
+          }
+        }
+      }
+
       return {
         score: Math.max(0, Math.min(100, Math.round(parseFloat(result.score) || 0))),
-        issues: Array.isArray(result.issues) ? result.issues : [],
+        issues: processedIssues,
         recommendations: Array.isArray(result.recommendations) ? result.recommendations : [],
         analysis: {
           logoCompliance: result.logoCompliance || false,
@@ -363,7 +423,11 @@ Responda em JSON (PORTUGUÊS-BR):
       console.error("AI compliance analysis failed:", error);
       return {
         score: 0,
-        issues: ["Análise falhou - configuração da OpenAI necessária"],
+        issues: [{
+          category: 'outro',
+          description: 'Análise falhou - configuração da OpenAI necessária',
+          severity: 'critical'
+        }],
         recommendations: ["Configure uma chave válida da OpenAI"],
         analysis: {
           logoCompliance: false,

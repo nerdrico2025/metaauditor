@@ -67,13 +67,49 @@ router.get('/rejection-reasons', authenticateToken, async (req: Request, res: Re
     
     const reasonsMap: Record<string, { count: number; creativeIds: string[]; examples: string[] }> = {};
     
+    // Category display names
+    const categoryDisplayNames: Record<string, string> = {
+      'logo': 'Logo/Marca',
+      'cores': 'Cores da Marca',
+      'texto': 'Texto/Tipografia',
+      'palavras_proibidas': 'Palavras Proibidas',
+      'palavras_obrigatorias': 'Palavras Obrigatórias',
+      'copywriting': 'Copywriting',
+      'outro': 'Outros'
+    };
+
     for (const audit of nonCompliantAudits) {
       const issues = audit.issues as any[] || [];
       const aiAnalysis = audit.aiAnalysis as any || {};
       
       for (const issue of issues) {
-        const category = issue.category || issue.type || 'Outro';
-        const description = issue.description || issue.message || '';
+        // Handle both string (legacy) and object formats
+        let category: string;
+        let description: string;
+        
+        if (typeof issue === 'string') {
+          // Legacy string format - try to categorize
+          description = issue;
+          const lowerText = issue.toLowerCase();
+          if (lowerText.includes('logo') || lowerText.includes('marca')) {
+            category = 'Logo/Marca';
+          } else if (lowerText.includes('cor') || lowerText.includes('paleta')) {
+            category = 'Cores da Marca';
+          } else if (lowerText.includes('proibid')) {
+            category = 'Palavras Proibidas';
+          } else if (lowerText.includes('obrigatór') || lowerText.includes('faltando') || lowerText.includes('ausente')) {
+            category = 'Palavras Obrigatórias';
+          } else if (lowerText.includes('copy') || lowerText.includes('texto') || lowerText.includes('título') || lowerText.includes('cta')) {
+            category = 'Copywriting';
+          } else {
+            category = 'Outros';
+          }
+        } else {
+          // New object format
+          const rawCategory = issue.category || issue.type || 'outro';
+          category = categoryDisplayNames[rawCategory] || rawCategory;
+          description = issue.description || issue.message || '';
+        }
         
         if (!reasonsMap[category]) {
           reasonsMap[category] = { count: 0, creativeIds: [], examples: [] };
