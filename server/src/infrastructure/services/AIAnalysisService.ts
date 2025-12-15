@@ -19,7 +19,7 @@ interface AIConfig {
 const DEFAULT_AI_CONFIG: AIConfig = {
   model: 'gpt-4o',
   maxTokens: 1500,
-  temperature: 0.7,
+  temperature: 0.3,
   complianceSystemPrompt: null,
   performanceSystemPrompt: null,
 };

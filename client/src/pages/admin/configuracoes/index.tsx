@@ -81,7 +81,7 @@ export default function AdminConfiguracoes() {
     defaultValues: {
       model: 'gpt-4o',
       maxTokens: 1500,
-      temperature: '0.7',
+      temperature: '0.3',
     },
   });
 
@@ -101,7 +101,7 @@ export default function AdminConfiguracoes() {
         apiKey: '',
         model: aiSettings.model || 'gpt-4o',
         maxTokens: aiSettings.maxTokens || 1500,
-        temperature: aiSettings.temperature || '0.7',
+        temperature: aiSettings.temperature || '0.3',
         complianceSystemPrompt: aiSettings.complianceSystemPrompt || '',
         performanceSystemPrompt: aiSettings.performanceSystemPrompt || '',
       });
@@ -267,7 +267,7 @@ export default function AdminConfiguracoes() {
                     <div className="space-y-2">
                       <Label htmlFor="temperature">Temperatura</Label>
                       <Select
-                        value={aiForm.watch('temperature') || '0.7'}
+                        value={aiForm.watch('temperature') || '0.3'}
                         onValueChange={(value) => aiForm.setValue('temperature', value)}
                       >
                         <SelectTrigger data-testid="select-temperature">
