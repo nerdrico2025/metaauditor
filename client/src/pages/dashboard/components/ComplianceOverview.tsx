@@ -91,7 +91,7 @@ export default function ComplianceOverview() {
                 </div>
               </div>
               <p className="text-sm text-slate-600 mt-2">
-                {stats.total} criativos analisados
+                Total de Criativos: {stats.total}
               </p>
             </div>
 
