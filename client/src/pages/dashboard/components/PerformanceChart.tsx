@@ -33,10 +33,17 @@ const periodLabels: Record<number, string> = {
 export default function PerformanceChart() {
   const { selectedAccountId } = useMetaAccount();
   const [period, setPeriod] = useState<PeriodOption>(7);
-  const [dateMode, setDateMode] = useState<DateMode>('range');
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
-  const [singleDate, setSingleDate] = useState<Date | undefined>(undefined);
   const [showCalendar, setShowCalendar] = useState(false);
+  
+  // Applied values (used for query)
+  const [appliedDateMode, setAppliedDateMode] = useState<DateMode>('range');
+  const [appliedDateRange, setAppliedDateRange] = useState<DateRange | undefined>(undefined);
+  const [appliedSingleDate, setAppliedSingleDate] = useState<Date | undefined>(undefined);
+  
+  // Temporary values (used in calendar picker before applying)
+  const [tempDateMode, setTempDateMode] = useState<DateMode>('range');
+  const [tempDateRange, setTempDateRange] = useState<DateRange | undefined>(undefined);
+  const [tempSingleDate, setTempSingleDate] = useState<Date | undefined>(undefined);
   
   const buildQueryUrl = () => {
     let url = '/api/dashboard/daily-metrics';
@@ -47,12 +54,12 @@ export default function PerformanceChart() {
     }
     
     if (period === 'custom') {
-      if (dateMode === 'single' && singleDate) {
-        params.set('startDate', format(singleDate, 'yyyy-MM-dd'));
-        params.set('endDate', format(singleDate, 'yyyy-MM-dd'));
-      } else if (dateMode === 'range' && dateRange?.from && dateRange?.to) {
-        params.set('startDate', format(dateRange.from, 'yyyy-MM-dd'));
-        params.set('endDate', format(dateRange.to, 'yyyy-MM-dd'));
+      if (appliedDateMode === 'single' && appliedSingleDate) {
+        params.set('startDate', format(appliedSingleDate, 'yyyy-MM-dd'));
+        params.set('endDate', format(appliedSingleDate, 'yyyy-MM-dd'));
+      } else if (appliedDateMode === 'range' && appliedDateRange?.from && appliedDateRange?.to) {
+        params.set('startDate', format(appliedDateRange.from, 'yyyy-MM-dd'));
+        params.set('endDate', format(appliedDateRange.to, 'yyyy-MM-dd'));
       }
     } else if (typeof period === 'number') {
       params.set('period', period.toString());
@@ -62,7 +69,7 @@ export default function PerformanceChart() {
   };
   
   const { data: metrics, isLoading } = useQuery<DailyMetric[]>({
-    queryKey: ["/api/dashboard/daily-metrics", { integrationId: selectedAccountId, period, dateRange, singleDate, dateMode }],
+    queryKey: ["/api/dashboard/daily-metrics", { integrationId: selectedAccountId, period, appliedDateRange, appliedSingleDate, appliedDateMode }],
     queryFn: async () => {
       const token = localStorage.getItem('auth_token');
       const url = buildQueryUrl();
@@ -96,12 +103,12 @@ export default function PerformanceChart() {
 
   const getPeriodLabel = () => {
     if (period === 'custom') {
-      if (dateMode === 'single' && singleDate) {
-        return format(singleDate, 'dd/MM/yyyy', { locale: ptBR });
+      if (appliedDateMode === 'single' && appliedSingleDate) {
+        return format(appliedSingleDate, 'dd/MM/yyyy', { locale: ptBR });
       }
-      if (dateMode === 'range' && dateRange?.from && dateRange?.to) {
-        const days = differenceInDays(dateRange.to, dateRange.from) + 1;
-        return `${format(dateRange.from, 'dd/MM', { locale: ptBR })} - ${format(dateRange.to, 'dd/MM', { locale: ptBR })} (${days}d)`;
+      if (appliedDateMode === 'range' && appliedDateRange?.from && appliedDateRange?.to) {
+        const days = differenceInDays(appliedDateRange.to, appliedDateRange.from) + 1;
+        return `${format(appliedDateRange.from, 'dd/MM', { locale: ptBR })} - ${format(appliedDateRange.to, 'dd/MM', { locale: ptBR })} (${days}d)`;
       }
     }
     return periodLabels[period as number] || '7 dias';
@@ -110,42 +117,66 @@ export default function PerformanceChart() {
   const handlePeriodChange = (newPeriod: PeriodOption) => {
     setPeriod(newPeriod);
     if (newPeriod !== 'custom') {
-      setDateRange(undefined);
-      setSingleDate(undefined);
+      setAppliedDateRange(undefined);
+      setAppliedSingleDate(undefined);
       setShowCalendar(false);
     } else {
+      // Initialize temp values from applied values
+      setTempDateMode(appliedDateMode);
+      setTempDateRange(appliedDateRange);
+      setTempSingleDate(appliedSingleDate);
       setShowCalendar(true);
     }
   };
 
-  const handleDateSelect = (range: DateRange | undefined) => {
-    setDateRange(range);
-  };
-
-  const handleSingleDateSelect = (date: Date | undefined) => {
-    setSingleDate(date);
+  const handleCalendarOpen = (open: boolean) => {
+    if (open) {
+      // Reset temp values when opening
+      setTempDateMode(appliedDateMode);
+      setTempDateRange(appliedDateRange);
+      setTempSingleDate(appliedSingleDate);
+    }
+    setShowCalendar(open);
   };
 
   const handleModeChange = (mode: DateMode) => {
-    setDateMode(mode);
-    setDateRange(undefined);
-    setSingleDate(undefined);
+    setTempDateMode(mode);
+    setTempDateRange(undefined);
+    setTempSingleDate(undefined);
+  };
+
+  const handleApply = () => {
+    setAppliedDateMode(tempDateMode);
+    setAppliedDateRange(tempDateRange);
+    setAppliedSingleDate(tempSingleDate);
+    setPeriod('custom');
+    setShowCalendar(false);
+  };
+
+  const handleCancel = () => {
+    setTempDateMode(appliedDateMode);
+    setTempDateRange(appliedDateRange);
+    setTempSingleDate(appliedSingleDate);
+    setShowCalendar(false);
+    if (!appliedDateRange && !appliedSingleDate) {
+      setPeriod(7);
+    }
   };
 
   const canApply = () => {
-    if (dateMode === 'single') return !!singleDate;
-    return dateRange?.from && dateRange?.to;
+    if (tempDateMode === 'single') return !!tempSingleDate;
+    return tempDateRange?.from && tempDateRange?.to;
   };
 
   const getInstructions = () => {
-    if (dateMode === 'single') {
-      return singleDate 
-        ? format(singleDate, "dd/MM/yyyy", { locale: ptBR })
+    if (tempDateMode === 'single') {
+      return tempSingleDate 
+        ? format(tempSingleDate, "dd/MM/yyyy", { locale: ptBR })
         : "Clique em uma data";
     }
-    if (dateRange?.from) {
-      return dateRange.to 
-        ? `${format(dateRange.from, "dd/MM/yyyy", { locale: ptBR })} até ${format(dateRange.to, "dd/MM/yyyy", { locale: ptBR })}`
+    if (tempDateRange?.from) {
+      return tempDateRange.to 
+        ? `${format(tempDateRange.from, "dd/MM/yyyy", { locale: ptBR })} até ${format(tempDateRange.to, "dd/MM/yyyy", { locale: ptBR })}`
         : "Agora selecione a data final";
     }
     return "Clique na data inicial";
@@ -171,7 +202,7 @@ export default function PerformanceChart() {
                 {days}d
               </Button>
             ))}
-            <Popover open={showCalendar} onOpenChange={setShowCalendar}>
+            <Popover open={showCalendar} onOpenChange={handleCalendarOpen}>
               <PopoverTrigger asChild>
                 <Button
                   variant={period === 'custom' ? "default" : "ghost"}
@@ -189,7 +220,7 @@ export default function PerformanceChart() {
                   <div className="flex gap-1 p-1 bg-slate-100 rounded-lg">
                     <button
                       className={`flex-1 px-3 py-1.5 text-sm rounded-md transition-colors ${
-                        dateMode === 'single' 
+                        tempDateMode === 'single' 
                           ? 'bg-white shadow-sm text-slate-900 font-medium' 
                           : 'text-slate-600 hover:text-slate-900'
                       }`}
@@ -199,7 +230,7 @@ export default function PerformanceChart() {
                     </button>
                     <button
                       className={`flex-1 px-3 py-1.5 text-sm rounded-md transition-colors ${
-                        dateMode === 'range' 
+                        tempDateMode === 'range' 
                           ? 'bg-white shadow-sm text-slate-900 font-medium' 
                           : 'text-slate-600 hover:text-slate-900'
                       }`}
@@ -213,19 +244,19 @@ export default function PerformanceChart() {
                   </p>
                 </div>
                 
-                {dateMode === 'single' ? (
+                {tempDateMode === 'single' ? (
                   <Calendar
                     mode="single"
-                    selected={singleDate}
-                    onSelect={handleSingleDateSelect}
+                    selected={tempSingleDate}
+                    onSelect={setTempSingleDate}
                     locale={ptBR}
                     disabled={(date: Date) => date > new Date()}
                   />
                 ) : (
                   <Calendar
                     mode="range"
-                    selected={dateRange}
-                    onSelect={handleDateSelect}
+                    selected={tempDateRange}
+                    onSelect={setTempDateRange}
                     numberOfMonths={2}
                     locale={ptBR}
                     disabled={(date: Date) => date > new Date()}
@@ -237,19 +268,14 @@ export default function PerformanceChart() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => {
-                      setDateRange(undefined);
-                      setSingleDate(undefined);
-                      setShowCalendar(false);
-                      setPeriod(7);
-                    }}
+                    onClick={handleCancel}
                   >
                     Cancelar
                   </Button>
                   <Button
                     size="sm"
                     disabled={!canApply()}
-                    onClick={() => setShowCalendar(false)}
+                    onClick={handleApply}
                   >
                     Aplicar
                   </Button>
