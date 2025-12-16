@@ -51,8 +51,9 @@ export function SyncLoadingModal({
   const totalSteps = steps.length;
   const completedSteps = steps.filter(s => s.status === 'success').length;
   const hasErrors = steps.some(s => s.status === 'error');
-  const isCompleted = completedSteps === totalSteps || hasErrors;
-  const isRunning = !isCompleted && completedSteps > 0;
+  const isLoading = steps.some(s => s.status === 'loading');
+  const isCompleted = totalSteps > 0 && (completedSteps === totalSteps || hasErrors);
+  const isRunning = isLoading || (completedSteps > 0 && !isCompleted);
   
   // Update elapsed time every second
   useEffect(() => {
@@ -272,13 +273,13 @@ export function SyncLoadingModal({
             </div>
           )}
 
-          {/* Cancel Button - only show when sync is running */}
+          {/* Cancel Button - show when sync is running or not yet completed */}
           {!isCompleted && onCancel && (
             <div className="pt-4 border-t">
               <Button 
                 onClick={onCancel}
-                variant="destructive"
-                className="w-full"
+                variant="outline"
+                className="w-full border-red-300 text-red-600 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-950"
                 data-testid="sync-modal-cancel-button"
               >
                 <X className="w-4 h-4 mr-2" />
