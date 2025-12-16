@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Loader2, AlertCircle, AlertTriangle, Clock } from "lucide-react";
+import { CheckCircle, Loader2, AlertCircle, AlertTriangle, Clock, X } from "lucide-react";
 
 interface SyncStep {
   name: string;
@@ -21,6 +21,7 @@ interface SyncLoadingModalProps {
   startTime?: number;
   endTime?: number;
   onClose?: () => void;
+  onCancel?: () => void;
 }
 
 function formatTime(seconds: number): string {
@@ -42,7 +43,8 @@ export function SyncLoadingModal({
   syncedItems = 0,
   startTime,
   endTime,
-  onClose 
+  onClose,
+  onCancel
 }: SyncLoadingModalProps) {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   
@@ -270,8 +272,23 @@ export function SyncLoadingModal({
             </div>
           )}
 
+          {/* Cancel Button - only show when sync is running */}
+          {!isCompleted && onCancel && (
+            <div className="pt-4 border-t">
+              <Button 
+                onClick={onCancel}
+                variant="destructive"
+                className="w-full"
+                data-testid="sync-modal-cancel-button"
+              >
+                <X className="w-4 h-4 mr-2" />
+                Cancelar Sincronização
+              </Button>
+            </div>
+          )}
+
           {/* Loading Message */}
-          {isRunning && (
+          {isRunning && !onCancel && (
             <div className="pt-2 text-center">
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 A sincronização pode levar alguns minutos. Por favor, aguarde...

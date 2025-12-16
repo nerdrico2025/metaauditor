@@ -14,6 +14,13 @@ interface AccountSyncResult {
   error?: string;
 }
 
+interface SyncStep {
+  name: string;
+  status: 'pending' | 'loading' | 'success' | 'error';
+  count?: number;
+  total?: number;
+}
+
 interface BulkSyncModalProps {
   open: boolean;
   accounts: AccountSyncResult[];
@@ -22,6 +29,7 @@ interface BulkSyncModalProps {
   isComplete: boolean;
   isCancelled: boolean;
   totalDuration?: number;
+  currentSyncSteps?: SyncStep[];
   onCancel: () => void;
   onClose: () => void;
 }
@@ -34,6 +42,7 @@ export function BulkSyncModal({
   isComplete,
   isCancelled,
   totalDuration,
+  currentSyncSteps = [],
   onCancel,
   onClose,
 }: BulkSyncModalProps) {
@@ -78,7 +87,7 @@ export function BulkSyncModal({
 
         <div className="space-y-4">
           {!isComplete && currentAccount && (
-            <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-4">
+            <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-4 space-y-3">
               <div className="flex items-center gap-3">
                 <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
                 <div>
@@ -90,6 +99,31 @@ export function BulkSyncModal({
                   </p>
                 </div>
               </div>
+              
+              {/* Current sync steps */}
+              {currentSyncSteps.length > 0 && (
+                <div className="flex gap-2 mt-2">
+                  {currentSyncSteps.map((step, idx) => (
+                    <div 
+                      key={idx} 
+                      className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${
+                        step.status === 'success' 
+                          ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300' 
+                          : step.status === 'loading'
+                          ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                      }`}
+                    >
+                      {step.status === 'success' && <CheckCircle2 className="w-3 h-3" />}
+                      {step.status === 'loading' && <Loader2 className="w-3 h-3 animate-spin" />}
+                      <span>{step.name}</span>
+                      {step.count !== undefined && step.count > 0 && (
+                        <span className="font-bold">({step.count})</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

@@ -209,10 +209,8 @@ export default function MetaIntegrations() {
           // Connect to SSE endpoint with token
           const eventSource = new EventSource(`/api/integrations/${id}/sync-stream?token=${tokenResponse.token}`);
           
-          // Store in ref so we can close it if cancelled
-          if (isBulkSyncRef.current) {
-            currentEventSourceRef.current = eventSource;
-          }
+          // Store in ref so we can close it if cancelled (works for both bulk and individual sync)
+          currentEventSourceRef.current = eventSource;
           
           let finalResult: any = null;
           let hasError = false;
@@ -893,6 +891,19 @@ export default function MetaIntegrations() {
     isBulkSyncRef.current = false; // Ensure bulk sync mode is reset
   };
 
+  const handleCancelIndividualSync = () => {
+    // Close the active EventSource connection
+    if (currentEventSourceRef.current) {
+      currentEventSourceRef.current.close();
+      currentEventSourceRef.current = null;
+    }
+    setShowSyncModal(false);
+    toast({
+      title: 'Sincronização cancelada',
+      description: 'A sincronização foi interrompida.',
+    });
+  };
+
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />
@@ -906,6 +917,7 @@ export default function MetaIntegrations() {
         startTime={syncStartTime}
         endTime={syncEndTime}
         onClose={() => setShowSyncModal(false)}
+        onCancel={handleCancelIndividualSync}
       />
       
       <BulkSyncModal
@@ -916,6 +928,7 @@ export default function MetaIntegrations() {
         isComplete={bulkSyncComplete}
         isCancelled={bulkSyncCancelled}
         totalDuration={bulkSyncTotalDuration}
+        currentSyncSteps={syncSteps}
         onCancel={handleCancelBulkSync}
         onClose={handleCloseBulkSyncModal}
       />
