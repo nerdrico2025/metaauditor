@@ -95,6 +95,7 @@ export default function MetaIntegrations() {
   const [bulkSyncCancelled, setBulkSyncCancelled] = useState(false);
   const [bulkSyncTotalDuration, setBulkSyncTotalDuration] = useState<number | undefined>();
   const cancelBulkSyncRef = useRef(false);
+  const isBulkSyncRef = useRef(false);
   const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
   const [selectedBusinessName, setSelectedBusinessName] = useState<string>('');
   const [showOAuthModal, setShowOAuthModal] = useState(false);
@@ -187,7 +188,11 @@ export default function MetaIntegrations() {
       setTotalItems(0);
       setSyncStartTime(Date.now());
       setSyncEndTime(undefined);
-      setShowSyncModal(true);
+      
+      // Only show the individual sync modal if NOT in bulk sync mode
+      if (!isBulkSyncRef.current) {
+        setShowSyncModal(true);
+      }
       
       return new Promise(async (resolve, reject) => {
         try {
@@ -755,6 +760,7 @@ export default function MetaIntegrations() {
     
     const startTime = Date.now();
     cancelBulkSyncRef.current = false;
+    isBulkSyncRef.current = true; // Mark that we're in bulk sync mode
     
     const initialAccounts: AccountSyncResult[] = metaIntegrations.map(i => ({
       id: i.id,
@@ -837,10 +843,12 @@ export default function MetaIntegrations() {
     setBulkSyncComplete(true);
     setBulkSyncCancelled(cancelled);
     setSyncingAll(false);
+    isBulkSyncRef.current = false; // Reset bulk sync mode
   };
 
   const handleCancelBulkSync = () => {
     cancelBulkSyncRef.current = true;
+    isBulkSyncRef.current = false; // Reset bulk sync mode when cancelling
   };
 
   const handleCloseBulkSyncModal = () => {
@@ -850,6 +858,7 @@ export default function MetaIntegrations() {
     setBulkSyncComplete(false);
     setBulkSyncCancelled(false);
     setBulkSyncTotalDuration(undefined);
+    isBulkSyncRef.current = false; // Ensure bulk sync mode is reset
   };
 
   return (
