@@ -272,10 +272,27 @@ router.get('/:id/sync-stream', async (req: Request, res: Response) => {
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders();
 
+  // Track if client disconnected
+  let clientDisconnected = false;
+  
+  res.on('close', () => {
+    console.log('🔴 Client disconnected - cancelling sync');
+    clientDisconnected = true;
+  });
+
   const sendEvent = (event: string, data: any) => {
-    res.write(`event: ${event}\n`);
-    res.write(`data: ${JSON.stringify(data)}\n\n`);
+    if (clientDisconnected) return;
+    try {
+      res.write(`event: ${event}\n`);
+      res.write(`data: ${JSON.stringify(data)}\n\n`);
+    } catch (e) {
+      // Client may have disconnected
+      clientDisconnected = true;
+    }
   };
+  
+  // Helper to check if we should stop processing
+  const shouldStop = () => clientDisconnected;
 
   try {
     const user = await storage.getUserById(userId);
@@ -304,6 +321,12 @@ router.get('/:id/sync-stream', async (req: Request, res: Response) => {
         // ===============================
         // STEP 1: Sync Campaigns
         // ===============================
+        if (shouldStop()) {
+          sendEvent('cancelled', { message: 'Sincronização cancelada pelo usuário' });
+          await storage.updateSyncHistory(syncHistoryRecord.id, { status: 'cancelled', completedAt: new Date() });
+          return res.end();
+        }
+        
         sendEvent('step', { 
           step: 1, 
           totalSteps: 3,
@@ -312,6 +335,12 @@ router.get('/:id/sync-stream', async (req: Request, res: Response) => {
         });
         
         const campaigns = await metaAdsService.syncCampaigns(integration, userId, companyId);
+        
+        if (shouldStop()) {
+          sendEvent('cancelled', { message: 'Sincronização cancelada pelo usuário' });
+          await storage.updateSyncHistory(syncHistoryRecord.id, { status: 'cancelled', completedAt: new Date() });
+          return res.end();
+        }
         
         sendEvent('step', { 
           step: 1, 
@@ -346,6 +375,12 @@ router.get('/:id/sync-stream', async (req: Request, res: Response) => {
         // ===============================
         // STEP 2: Sync Ad Sets
         // ===============================
+        if (shouldStop()) {
+          sendEvent('cancelled', { message: 'Sincronização cancelada pelo usuário' });
+          await storage.updateSyncHistory(syncHistoryRecord.id, { status: 'cancelled', completedAt: new Date() });
+          return res.end();
+        }
+        
         sendEvent('step', { 
           step: 2, 
           totalSteps: 3,
@@ -359,6 +394,12 @@ router.get('/:id/sync-stream', async (req: Request, res: Response) => {
           companyId,
           campaignMap
         );
+        
+        if (shouldStop()) {
+          sendEvent('cancelled', { message: 'Sincronização cancelada pelo usuário' });
+          await storage.updateSyncHistory(syncHistoryRecord.id, { status: 'cancelled', completedAt: new Date() });
+          return res.end();
+        }
         
         sendEvent('step', { 
           step: 2, 
@@ -393,6 +434,12 @@ router.get('/:id/sync-stream', async (req: Request, res: Response) => {
         // ===============================
         // STEP 3: Sync Ads (Creatives)
         // ===============================
+        if (shouldStop()) {
+          sendEvent('cancelled', { message: 'Sincronização cancelada pelo usuário' });
+          await storage.updateSyncHistory(syncHistoryRecord.id, { status: 'cancelled', completedAt: new Date() });
+          return res.end();
+        }
+        
         sendEvent('step', { 
           step: 3, 
           totalSteps: 3,
