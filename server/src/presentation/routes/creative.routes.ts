@@ -190,6 +190,7 @@ router.post('/:id/analyze', authenticateToken, async (req: Request, res: Respons
   try {
     const userId = (req as any).user?.userId;
     const userCompanyId = (req as any).user?.companyId;
+    const requestedPolicyId = req.body?.policyId as string | undefined;
     const creative = await storage.getCreativeById(req.params.id);
     
     if (!creative) {
@@ -212,13 +213,22 @@ router.post('/:id/analyze', authenticateToken, async (req: Request, res: Respons
     // Get applicable policy for this creative
     const policies = await storage.getPoliciesByUser(userId);
     
-    // Find policy: first try campaign-specific, then use default or first global
-    let applicablePolicy = policies.find(p => 
-      p.scope === 'campaign' && 
-      p.campaignIds && 
-      Array.isArray(p.campaignIds) &&
-      p.campaignIds.includes(creative.campaignId)
-    );
+    let applicablePolicy;
+    
+    // If a specific policyId was requested, use that
+    if (requestedPolicyId) {
+      applicablePolicy = policies.find(p => p.id === requestedPolicyId);
+    }
+    
+    // Otherwise, find policy automatically: first try campaign-specific, then use default or first global
+    if (!applicablePolicy) {
+      applicablePolicy = policies.find(p => 
+        p.scope === 'campaign' && 
+        p.campaignIds && 
+        Array.isArray(p.campaignIds) &&
+        p.campaignIds.includes(creative.campaignId)
+      );
+    }
     
     if (!applicablePolicy) {
       applicablePolicy = policies.find(p => p.isDefault && p.scope === 'global');

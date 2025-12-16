@@ -3,12 +3,15 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Eye, CheckCircle, AlertTriangle, BarChart3, Palette, Sparkles, ChevronRight, Shield, TrendingUp, MousePointer, XCircle, ArrowRight, Target, Loader2, FileText, PenLine, Image, Type } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Eye, CheckCircle, AlertTriangle, BarChart3, Palette, Sparkles, ChevronRight, Shield, TrendingUp, MousePointer, XCircle, ArrowRight, Target, Loader2, FileText, PenLine, Image, Type, RefreshCw } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { CreativeImage } from "./CreativeImage";
 
@@ -117,10 +120,18 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
   const [imageZoomed, setImageZoomed] = useState(false);
   const [viewingAudit, setViewingAudit] = useState<ExtendedAudit | null>(null);
   const [isReanalyzing, setIsReanalyzing] = useState(false);
+  const [showPolicyDialog, setShowPolicyDialog] = useState(false);
+  const [policyChoice, setPolicyChoice] = useState<'same' | 'different'>('same');
+  const [selectedPolicyId, setSelectedPolicyId] = useState<string | null>(null);
 
   // Fetch audit data for this creative
   const { data: audits, isLoading: auditsLoading } = useQuery<ExtendedAudit[]>({
     queryKey: [`/api/creatives/${creative.id}/audits`],
+  });
+  
+  // Fetch available policies
+  const { data: policies } = useQuery<Policy[]>({
+    queryKey: ['/api/policies'],
   });
 
   // Update viewingAudit when audits data changes
@@ -144,8 +155,9 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
 
   // Create audit analysis mutation
   const analyzeMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", `/api/creatives/${creative.id}/analyze`);
+    mutationFn: async (policyId?: string | null) => {
+      const body = policyId ? { policyId } : undefined;
+      const response = await apiRequest("POST", `/api/creatives/${creative.id}/analyze`, body);
       return response;
     },
     onSuccess: (newAudit) => {
@@ -257,11 +269,25 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
   });
 
   const handleAnalyze = () => {
-    analyzeMutation.mutate();
+    analyzeMutation.mutate(undefined);
   };
 
-  const handleReanalyze = async () => {
+  // Opens the policy choice dialog before reanalyzing
+  const handleReanalyze = () => {
+    // Initialize with the current audit's policy
+    setPolicyChoice('same');
+    setSelectedPolicyId(viewingAudit?.policyId || null);
+    setShowPolicyDialog(true);
+  };
+
+  // Confirms and executes the reanalysis with chosen policy
+  const handleConfirmReanalyze = async () => {
+    setShowPolicyDialog(false);
     setIsReanalyzing(true);
+    
+    const policyIdToUse = policyChoice === 'same' 
+      ? viewingAudit?.policyId 
+      : selectedPolicyId;
     
     try {
       // Try to delete existing audit if it exists
@@ -279,8 +305,8 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
       // Clear local state
       setViewingAudit(null);
 
-      // Create new analysis
-      analyzeMutation.mutate();
+      // Create new analysis with the chosen policy
+      analyzeMutation.mutate(policyIdToUse);
     } catch (error) {
       setIsReanalyzing(false);
       console.error("Error during reanalysis:", error);
@@ -295,7 +321,7 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
   // Auto-analyze when modal opens if autoAnalyze is true
   useEffect(() => {
     if (autoAnalyze && !viewingAudit && !analyzeMutation.isPending && !auditsLoading) {
-      analyzeMutation.mutate();
+      analyzeMutation.mutate(undefined);
     }
   }, [autoAnalyze, viewingAudit, analyzeMutation, auditsLoading]);
 
@@ -1053,6 +1079,87 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Policy Choice Dialog for Reanalysis */}
+      <Dialog open={showPolicyDialog} onOpenChange={setShowPolicyDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RefreshCw className="h-5 w-5 text-primary" />
+              Refazer Análise
+            </DialogTitle>
+            <DialogDescription>
+              Escolha qual política usar para a nova análise do criativo.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <RadioGroup 
+              value={policyChoice} 
+              onValueChange={(value: string) => setPolicyChoice(value as 'same' | 'different')}
+              className="space-y-3"
+            >
+              <div className="flex items-start space-x-3 p-3 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                <RadioGroupItem value="same" id="same-policy" className="mt-0.5" />
+                <Label htmlFor="same-policy" className="cursor-pointer flex-1">
+                  <p className="font-medium text-slate-900">Manter mesma política</p>
+                  <p className="text-sm text-slate-500 mt-0.5">
+                    {policy?.name || 'Política padrão'}
+                  </p>
+                </Label>
+              </div>
+              
+              <div className="flex items-start space-x-3 p-3 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                <RadioGroupItem value="different" id="different-policy" className="mt-0.5" />
+                <Label htmlFor="different-policy" className="cursor-pointer flex-1">
+                  <p className="font-medium text-slate-900">Usar política diferente</p>
+                  <p className="text-sm text-slate-500 mt-0.5">
+                    Selecione outra política de análise
+                  </p>
+                </Label>
+              </div>
+            </RadioGroup>
+
+            {policyChoice === 'different' && (
+              <div className="space-y-2 pt-2">
+                <Label>Selecionar política</Label>
+                <Select 
+                  value={selectedPolicyId || ''} 
+                  onValueChange={setSelectedPolicyId}
+                >
+                  <SelectTrigger data-testid="select-policy">
+                    <SelectValue placeholder="Escolha uma política..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {policies?.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name} {p.id === viewingAudit?.policyId && '(atual)'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowPolicyDialog(false)}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleConfirmReanalyze}
+              disabled={policyChoice === 'different' && !selectedPolicyId}
+              className="bg-primary"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refazer Análise
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
