@@ -751,7 +751,7 @@ export default function MetaIntegrations() {
   };
 
   const handleSyncAll = async () => {
-    console.log('handleSyncAll called, metaIntegrations:', metaIntegrations.length);
+    alert('handleSyncAll foi chamado! Abrindo modal...');
     if (metaIntegrations.length === 0) return;
     
     const startTime = Date.now();
