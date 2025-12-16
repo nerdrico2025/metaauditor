@@ -96,6 +96,7 @@ export default function MetaIntegrations() {
   const [bulkSyncTotalDuration, setBulkSyncTotalDuration] = useState<number | undefined>();
   const cancelBulkSyncRef = useRef(false);
   const isBulkSyncRef = useRef(false);
+  const currentEventSourceRef = useRef<EventSource | null>(null);
   const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
   const [selectedBusinessName, setSelectedBusinessName] = useState<string>('');
   const [showOAuthModal, setShowOAuthModal] = useState(false);
@@ -207,6 +208,11 @@ export default function MetaIntegrations() {
           
           // Connect to SSE endpoint with token
           const eventSource = new EventSource(`/api/integrations/${id}/sync-stream?token=${tokenResponse.token}`);
+          
+          // Store in ref so we can close it if cancelled
+          if (isBulkSyncRef.current) {
+            currentEventSourceRef.current = eventSource;
+          }
           
           let finalResult: any = null;
           let hasError = false;
@@ -361,6 +367,14 @@ export default function MetaIntegrations() {
         });
 
           eventSource.onerror = (error) => {
+            // Check if this is a cancellation
+            if (cancelBulkSyncRef.current) {
+              eventSource.close();
+              currentEventSourceRef.current = null;
+              reject(new Error('CANCELLED'));
+              return;
+            }
+            
             // Only log and handle if we haven't already completed successfully
             if (!finalResult && !hasError) {
               console.error('❌ EventSource connection error:', error);
@@ -369,6 +383,14 @@ export default function MetaIntegrations() {
               // This handles race conditions where complete fires just before the connection closes
               setTimeout(() => {
                 if (!finalResult && !hasError) {
+                  // Check again for cancellation
+                  if (cancelBulkSyncRef.current) {
+                    eventSource.close();
+                    currentEventSourceRef.current = null;
+                    reject(new Error('CANCELLED'));
+                    return;
+                  }
+                  
                   // Mark current step as error
                   setSyncSteps(prev => prev.map((step, idx) => {
                     if (idx === currentSyncStep) {
@@ -819,10 +841,13 @@ export default function MetaIntegrations() {
           } : acc
         ));
       } catch (error: any) {
-        if (cancelBulkSyncRef.current) {
+        // Check if this is a cancellation (either from ref or from error message)
+        if (cancelBulkSyncRef.current || error.message === 'CANCELLED') {
           cancelled = true;
+          const accountDuration = Date.now() - accountStartTime;
           setBulkSyncAccounts(prev => prev.map((acc, idx) => 
-            idx >= i ? { ...acc, status: 'cancelled' as const } : acc
+            idx === i ? { ...acc, status: 'cancelled' as const, duration: accountDuration } :
+            idx > i ? { ...acc, status: 'cancelled' as const } : acc
           ));
           break;
         }
@@ -848,6 +873,13 @@ export default function MetaIntegrations() {
 
   const handleCancelBulkSync = () => {
     cancelBulkSyncRef.current = true;
+    
+    // Close the active EventSource connection immediately
+    if (currentEventSourceRef.current) {
+      currentEventSourceRef.current.close();
+      currentEventSourceRef.current = null;
+    }
+    
     isBulkSyncRef.current = false; // Reset bulk sync mode when cancelling
   };
 
