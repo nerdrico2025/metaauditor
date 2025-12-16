@@ -75,6 +75,7 @@ export default function MetaIntegrations() {
   const [connectedAccountIds, setConnectedAccountIds] = useState<string[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(false);
   const [renewingTokens, setRenewingTokens] = useState(false);
+  const [syncingAll, setSyncingAll] = useState(false);
   const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
   const [selectedBusinessName, setSelectedBusinessName] = useState<string>('');
   const [showOAuthModal, setShowOAuthModal] = useState(false);
@@ -673,8 +674,8 @@ export default function MetaIntegrations() {
         
         if (data.tokenExpired || data.error) {
           toast({
-            title: 'Token expirado',
-            description: 'O token expirou. Por favor, reconecte ao Meta.',
+            title: 'Conexão expirada',
+            description: 'A conexão expirou. Por favor, reconecte ao Meta.',
             variant: 'destructive',
           });
           handleConnectOAuth();
@@ -706,14 +707,14 @@ export default function MetaIntegrations() {
       
       if (response.failed > 0) {
         toast({
-          title: `${response.renewed} tokens renovados`,
-          description: `${response.failed} tokens expiraram e precisam de nova autenticação`,
+          title: `${response.renewed} conexões renovadas`,
+          description: `${response.failed} conexões expiraram e precisam de nova autenticação`,
           variant: 'destructive',
         });
       } else {
         toast({
-          title: 'Tokens renovados!',
-          description: `${response.renewed} tokens renovados com sucesso por mais 60 dias`,
+          title: 'Conexões renovadas!',
+          description: `${response.renewed} conexões renovadas com sucesso por mais 60 dias`,
         });
       }
       
@@ -721,12 +722,44 @@ export default function MetaIntegrations() {
       queryClient.invalidateQueries({ queryKey: ['/api/auth/meta/check-token'] });
     } catch (error: any) {
       toast({
-        title: 'Erro ao renovar tokens',
+        title: 'Erro ao renovar conexões',
         description: error.message,
         variant: 'destructive',
       });
     } finally {
       setRenewingTokens(false);
+    }
+  };
+
+  const handleSyncAll = async () => {
+    if (metaIntegrations.length === 0) return;
+    
+    setSyncingAll(true);
+    let successCount = 0;
+    let failCount = 0;
+    
+    for (const integration of metaIntegrations) {
+      try {
+        await syncMutation.mutateAsync(integration.id);
+        successCount++;
+      } catch (error) {
+        failCount++;
+      }
+    }
+    
+    setSyncingAll(false);
+    
+    if (failCount > 0) {
+      toast({
+        title: `${successCount} contas sincronizadas`,
+        description: `${failCount} contas falharam na sincronização`,
+        variant: 'destructive',
+      });
+    } else {
+      toast({
+        title: 'Todas as contas sincronizadas!',
+        description: `${successCount} contas sincronizadas com sucesso`,
+      });
     }
   };
 
@@ -829,6 +862,20 @@ export default function MetaIntegrations() {
                                 <Button 
                                   variant="outline"
                                   size="sm"
+                                  onClick={handleSyncAll}
+                                  disabled={syncingAll || syncMutation.isPending}
+                                  data-testid={`button-sync-all-${group.businessId}`}
+                                >
+                                  {syncingAll ? (
+                                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                                  ) : (
+                                    <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+                                  )}
+                                  Sincronizar Tudo
+                                </Button>
+                                <Button 
+                                  variant="outline"
+                                  size="sm"
                                   onClick={handleRenewAllTokens}
                                   disabled={renewingTokens}
                                   data-testid={`button-renew-tokens-${group.businessId}`}
@@ -838,7 +885,7 @@ export default function MetaIntegrations() {
                                   ) : (
                                     <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
                                   )}
-                                  Renovar Tokens
+                                  Renovar Conexões
                                 </Button>
                                 <Button 
                                   variant="outline"

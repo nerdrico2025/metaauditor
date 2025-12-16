@@ -169,13 +169,13 @@ export function IntegrationCard({
               <p className="text-gray-900 dark:text-white">{formatDate(integration.createdAt)}</p>
             </div>
             <div>
-              <span className="text-gray-500">Status do Token:</span>
+              <span className="text-gray-500">Status da Conexão:</span>
               {tokenLoading ? (
                 <Skeleton className="h-5 w-20 mt-1" />
               ) : tokenInfo?.valid ? (
                 <div className="flex items-center gap-1 text-green-600 dark:text-green-400">
                   <ShieldCheck className="w-4 h-4" />
-                  <span>Válido</span>
+                  <span>Ativa</span>
                   {tokenInfo.expiresAt && (
                     <span className="text-xs text-gray-500 ml-1">
                       (até {formatDate(tokenInfo.expiresAt)})
@@ -186,7 +186,7 @@ export function IntegrationCard({
                 <div className="flex flex-col items-start gap-1">
                   <div className="flex items-center gap-1 text-red-600 dark:text-red-400">
                     <ShieldX className="w-4 h-4" />
-                    <span>Inválido</span>
+                    <span>Inativa</span>
                   </div>
                   {onRenewToken && (
                     <Button 
@@ -195,7 +195,7 @@ export function IntegrationCard({
                       className="h-auto p-0 text-xs text-blue-600"
                       onClick={onRenewToken}
                     >
-                      Renovar token
+                      Reconectar
                     </Button>
                   )}
                 </div>
