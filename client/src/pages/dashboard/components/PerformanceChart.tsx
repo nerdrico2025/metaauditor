@@ -5,7 +5,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Minus, CalendarIcon, DollarSign, Eye, MousePointer, Percent } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Minus, CalendarIcon } from "lucide-react";
 import { useMetaAccount } from "@/contexts/MetaAccountContext";
 import { format, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -380,39 +381,61 @@ export default function PerformanceChart() {
 
             <div className="space-y-2">
               <p className="text-xs text-slate-500 mb-3">{chartMetricConfig[selectedChartMetric].label} por dia</p>
-              <div className="flex items-end justify-between gap-1" style={{ height: '120px' }}>
-                {(() => {
-                  const values = metrics.map(m => m[selectedChartMetric]);
-                  const maxValue = Math.max(...values, 1);
-                  const config = chartMetricConfig[selectedChartMetric];
-                  const chartHeight = 100; // pixels for the chart bars area
-                  
-                  return metrics.map((day, index) => {
-                    const value = day[selectedChartMetric];
-                    const heightPercent = maxValue > 0 ? (value / maxValue) * 100 : 0;
-                    const barHeight = Math.max((heightPercent / 100) * chartHeight, 4); // At least 4px
-                    const date = new Date(day.date);
-                    const dayLabel = metrics.length <= 14 
-                      ? date.toLocaleDateString('pt-BR', { weekday: 'short' })
-                      : date.toLocaleDateString('pt-BR', { day: '2-digit' });
+              <TooltipProvider delayDuration={0}>
+                <div className="flex items-end justify-between gap-1" style={{ height: '120px' }}>
+                  {(() => {
+                    const values = metrics.map(m => m[selectedChartMetric]);
+                    const maxValue = Math.max(...values, 1);
+                    const config = chartMetricConfig[selectedChartMetric];
+                    const chartHeight = 100;
                     
-                    return (
-                      <div key={index} className="flex flex-col items-center justify-end flex-1" style={{ height: '120px' }}>
-                        <div 
-                          className={`w-full ${config.color} rounded-t transition-all hover:opacity-80`}
-                          style={{ height: `${barHeight}px`, minHeight: '4px' }}
-                          title={`${format(date, 'dd/MM/yyyy')}: ${config.format(value)}`}
-                        />
-                        {metrics.length <= 31 && (
-                          <span className="text-xs text-slate-400 mt-1 capitalize truncate w-full text-center">
-                            {dayLabel}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  });
-                })()}
-              </div>
+                    return metrics.map((day, index) => {
+                      const value = day[selectedChartMetric];
+                      const heightPercent = maxValue > 0 ? (value / maxValue) * 100 : 0;
+                      const barHeight = Math.max((heightPercent / 100) * chartHeight, 4);
+                      const date = new Date(day.date);
+                      const dayLabel = metrics.length <= 14 
+                        ? date.toLocaleDateString('pt-BR', { weekday: 'short' })
+                        : date.toLocaleDateString('pt-BR', { day: '2-digit' });
+                      
+                      return (
+                        <div key={index} className="flex flex-col items-center justify-end flex-1" style={{ height: '120px' }}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div 
+                                className={`w-full ${config.color} rounded-t transition-all hover:opacity-80 cursor-pointer`}
+                                style={{ height: `${barHeight}px`, minHeight: '4px' }}
+                              />
+                            </TooltipTrigger>
+                            <TooltipContent className="bg-slate-900 text-white p-3 rounded-lg shadow-xl border-0">
+                              <div className="space-y-1.5">
+                                <p className="font-semibold text-sm border-b border-slate-700 pb-1.5">
+                                  {format(date, "EEEE, dd 'de' MMMM", { locale: ptBR })}
+                                </p>
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                                  <span className="text-blue-400">Investimento:</span>
+                                  <span className="text-right font-medium">{formatCurrency(day.spend)}</span>
+                                  <span className="text-purple-400">Impressões:</span>
+                                  <span className="text-right font-medium">{day.impressions.toLocaleString('pt-BR')}</span>
+                                  <span className="text-green-400">Cliques:</span>
+                                  <span className="text-right font-medium">{day.clicks.toLocaleString('pt-BR')}</span>
+                                  <span className="text-orange-400">CTR:</span>
+                                  <span className="text-right font-medium">{day.ctr.toFixed(2)}%</span>
+                                </div>
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                          {metrics.length <= 31 && (
+                            <span className="text-xs text-slate-400 mt-1 capitalize truncate w-full text-center">
+                              {dayLabel}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              </TooltipProvider>
             </div>
           </>
         ) : (
