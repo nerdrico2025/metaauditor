@@ -751,25 +751,24 @@ export default function MetaIntegrations() {
   };
 
   const handleSyncAll = async () => {
-    alert('handleSyncAll foi chamado! Abrindo modal...');
     if (metaIntegrations.length === 0) return;
     
     const startTime = Date.now();
     cancelBulkSyncRef.current = false;
-    setSyncingAll(true);
-    setBulkSyncComplete(false);
-    setBulkSyncCancelled(false);
-    setBulkSyncTotalDuration(undefined);
-    setBulkSyncCurrentIndex(0);
-    setShowBulkSyncModal(true);
-    console.log('BulkSyncModal should open now');
     
     const initialAccounts: AccountSyncResult[] = metaIntegrations.map(i => ({
       id: i.id,
       name: i.accountName || 'Conta de Anúncios',
       status: 'pending' as const,
     }));
+    
     setBulkSyncAccounts(initialAccounts);
+    setBulkSyncCurrentIndex(0);
+    setBulkSyncComplete(false);
+    setBulkSyncCancelled(false);
+    setBulkSyncTotalDuration(undefined);
+    setSyncingAll(true);
+    setShowBulkSyncModal(true);
     
     let cancelled = false;
     

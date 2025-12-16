@@ -56,9 +56,11 @@ export function BulkSyncModal({
 
   const currentAccount = accounts[currentIndex];
 
+  if (!open) return null;
+  
   return (
     <Dialog open={open} onOpenChange={() => {}}>
-      <DialogContent className="max-w-lg" onPointerDownOutside={(e) => e.preventDefault()}>
+      <DialogContent className="max-w-lg" onPointerDownOutside={(e) => e.preventDefault()} hideCloseButton>
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <span>
