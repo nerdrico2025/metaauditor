@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Link, useLocation } from 'wouter';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,6 +16,18 @@ import { DeleteConfirmationDialog } from '../components/DeleteConfirmationDialog
 import { IntegrationCard } from '../components/IntegrationCard';
 import { DeleteAllDataDialog } from '../components/DeleteAllDataDialog';
 import { SyncLoadingModal } from '../components/SyncLoadingModal';
+import { BulkSyncModal } from '../components/BulkSyncModal';
+
+interface AccountSyncResult {
+  id: string;
+  name: string;
+  status: 'pending' | 'syncing' | 'success' | 'error' | 'cancelled';
+  campaigns?: number;
+  adSets?: number;
+  creatives?: number;
+  duration?: number;
+  error?: string;
+}
 
 interface AdAccount {
   id: string;
@@ -76,6 +88,13 @@ export default function MetaIntegrations() {
   const [loadingAccounts, setLoadingAccounts] = useState(false);
   const [renewingTokens, setRenewingTokens] = useState(false);
   const [syncingAll, setSyncingAll] = useState(false);
+  const [bulkSyncAccounts, setBulkSyncAccounts] = useState<AccountSyncResult[]>([]);
+  const [bulkSyncCurrentIndex, setBulkSyncCurrentIndex] = useState(0);
+  const [showBulkSyncModal, setShowBulkSyncModal] = useState(false);
+  const [bulkSyncComplete, setBulkSyncComplete] = useState(false);
+  const [bulkSyncCancelled, setBulkSyncCancelled] = useState(false);
+  const [bulkSyncTotalDuration, setBulkSyncTotalDuration] = useState<number | undefined>();
+  const cancelBulkSyncRef = useRef(false);
   const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
   const [selectedBusinessName, setSelectedBusinessName] = useState<string>('');
   const [showOAuthModal, setShowOAuthModal] = useState(false);
@@ -734,33 +753,102 @@ export default function MetaIntegrations() {
   const handleSyncAll = async () => {
     if (metaIntegrations.length === 0) return;
     
+    const startTime = Date.now();
+    cancelBulkSyncRef.current = false;
     setSyncingAll(true);
-    let successCount = 0;
-    let failCount = 0;
+    setBulkSyncComplete(false);
+    setBulkSyncCancelled(false);
+    setBulkSyncTotalDuration(undefined);
+    setBulkSyncCurrentIndex(0);
+    setShowBulkSyncModal(true);
     
-    for (const integration of metaIntegrations) {
+    const initialAccounts: AccountSyncResult[] = metaIntegrations.map(i => ({
+      id: i.id,
+      name: i.accountName || 'Conta de Anúncios',
+      status: 'pending' as const,
+    }));
+    setBulkSyncAccounts(initialAccounts);
+    
+    let cancelled = false;
+    
+    for (let i = 0; i < metaIntegrations.length; i++) {
+      if (cancelled || cancelBulkSyncRef.current) {
+        setBulkSyncAccounts(prev => prev.map((acc, idx) => 
+          idx >= i ? { ...acc, status: 'cancelled' as const } : acc
+        ));
+        cancelled = true;
+        break;
+      }
+      
+      const integration = metaIntegrations[i];
+      const accountStartTime = Date.now();
+      
+      setBulkSyncCurrentIndex(i);
+      setBulkSyncAccounts(prev => prev.map((acc, idx) => 
+        idx === i ? { ...acc, status: 'syncing' as const } : acc
+      ));
+      
       try {
-        await syncMutation.mutateAsync(integration.id);
-        successCount++;
-      } catch (error) {
-        failCount++;
+        const result = await syncMutation.mutateAsync(integration.id) as any;
+        
+        if (cancelBulkSyncRef.current) {
+          cancelled = true;
+          setBulkSyncAccounts(prev => prev.map((acc, idx) => 
+            idx >= i ? { ...acc, status: 'cancelled' as const } : acc
+          ));
+          break;
+        }
+        
+        const accountDuration = Date.now() - accountStartTime;
+        
+        setBulkSyncAccounts(prev => prev.map((acc, idx) => 
+          idx === i ? { 
+            ...acc, 
+            status: 'success' as const,
+            campaigns: result?.data?.campaigns || 0,
+            adSets: result?.data?.adSets || 0,
+            creatives: result?.data?.creatives || 0,
+            duration: accountDuration,
+          } : acc
+        ));
+      } catch (error: any) {
+        if (cancelBulkSyncRef.current) {
+          cancelled = true;
+          setBulkSyncAccounts(prev => prev.map((acc, idx) => 
+            idx >= i ? { ...acc, status: 'cancelled' as const } : acc
+          ));
+          break;
+        }
+        
+        setBulkSyncAccounts(prev => prev.map((acc, idx) => 
+          idx === i ? { 
+            ...acc, 
+            status: 'error' as const,
+            error: error.message || 'Erro desconhecido',
+            duration: Date.now() - accountStartTime,
+          } : acc
+        ));
       }
     }
     
+    const totalDuration = Date.now() - startTime;
+    setBulkSyncTotalDuration(totalDuration);
+    setBulkSyncComplete(true);
+    setBulkSyncCancelled(cancelled);
     setSyncingAll(false);
-    
-    if (failCount > 0) {
-      toast({
-        title: `${successCount} contas sincronizadas`,
-        description: `${failCount} contas falharam na sincronização`,
-        variant: 'destructive',
-      });
-    } else {
-      toast({
-        title: 'Todas as contas sincronizadas!',
-        description: `${successCount} contas sincronizadas com sucesso`,
-      });
-    }
+  };
+
+  const handleCancelBulkSync = () => {
+    cancelBulkSyncRef.current = true;
+  };
+
+  const handleCloseBulkSyncModal = () => {
+    setShowBulkSyncModal(false);
+    setBulkSyncAccounts([]);
+    setBulkSyncCurrentIndex(0);
+    setBulkSyncComplete(false);
+    setBulkSyncCancelled(false);
+    setBulkSyncTotalDuration(undefined);
   };
 
   return (
@@ -776,6 +864,18 @@ export default function MetaIntegrations() {
         startTime={syncStartTime}
         endTime={syncEndTime}
         onClose={() => setShowSyncModal(false)}
+      />
+      
+      <BulkSyncModal
+        open={showBulkSyncModal}
+        accounts={bulkSyncAccounts}
+        currentIndex={bulkSyncCurrentIndex}
+        totalAccounts={bulkSyncAccounts.length}
+        isComplete={bulkSyncComplete}
+        isCancelled={bulkSyncCancelled}
+        totalDuration={bulkSyncTotalDuration}
+        onCancel={handleCancelBulkSync}
+        onClose={handleCloseBulkSyncModal}
       />
       
       <div className="flex flex-col flex-1 overflow-hidden">
