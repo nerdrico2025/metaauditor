@@ -5,7 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Minus, CalendarIcon } from "lucide-react";
+import { Minus, CalendarIcon, DollarSign, Eye, MousePointer, Percent } from "lucide-react";
 import { useMetaAccount } from "@/contexts/MetaAccountContext";
 import { format, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -21,6 +21,7 @@ interface DailyMetric {
 
 type PeriodOption = 7 | 14 | 30 | 60 | 90 | 'custom';
 type DateMode = 'single' | 'range';
+type ChartMetric = 'spend' | 'impressions' | 'clicks' | 'ctr';
 
 const periodLabels: Record<number, string> = {
   7: '7 dias',
@@ -30,10 +31,38 @@ const periodLabels: Record<number, string> = {
   90: '90 dias',
 };
 
+const chartMetricConfig: Record<ChartMetric, { label: string; color: string; bgColor: string; format: (v: number) => string }> = {
+  spend: { 
+    label: 'Investimento', 
+    color: 'bg-blue-500', 
+    bgColor: 'bg-blue-50',
+    format: (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
+  },
+  impressions: { 
+    label: 'Impressões', 
+    color: 'bg-purple-500', 
+    bgColor: 'bg-purple-50',
+    format: (v) => v >= 1000000 ? `${(v / 1000000).toFixed(1)}M` : v >= 1000 ? `${(v / 1000).toFixed(1)}K` : v.toFixed(0)
+  },
+  clicks: { 
+    label: 'Cliques', 
+    color: 'bg-green-500', 
+    bgColor: 'bg-green-50',
+    format: (v) => v >= 1000000 ? `${(v / 1000000).toFixed(1)}M` : v >= 1000 ? `${(v / 1000).toFixed(1)}K` : v.toFixed(0)
+  },
+  ctr: { 
+    label: 'CTR', 
+    color: 'bg-orange-500', 
+    bgColor: 'bg-orange-50',
+    format: (v) => `${v.toFixed(2)}%`
+  },
+};
+
 export default function PerformanceChart() {
   const { selectedAccountId } = useMetaAccount();
   const [period, setPeriod] = useState<PeriodOption>(7);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [selectedChartMetric, setSelectedChartMetric] = useState<ChartMetric>('spend');
   
   // Applied values (used for query)
   const [appliedDateMode, setAppliedDateMode] = useState<DateMode>('range');
@@ -251,6 +280,7 @@ export default function PerformanceChart() {
                     onSelect={setTempSingleDate}
                     locale={ptBR}
                     disabled={(date: Date) => date > new Date()}
+                    defaultMonth={new Date()}
                   />
                 ) : (
                   <Calendar
@@ -260,7 +290,7 @@ export default function PerformanceChart() {
                     numberOfMonths={2}
                     locale={ptBR}
                     disabled={(date: Date) => date > new Date()}
-                    defaultMonth={new Date(new Date().setMonth(new Date().getMonth() - 1))}
+                    defaultMonth={new Date()}
                   />
                 )}
                 
@@ -298,49 +328,88 @@ export default function PerformanceChart() {
         ) : metrics && metrics.length > 0 ? (
           <>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-              <div className="text-center p-3 bg-blue-50 rounded-lg">
+              <button 
+                onClick={() => setSelectedChartMetric('spend')}
+                className={`text-center p-3 rounded-lg transition-all cursor-pointer ${
+                  selectedChartMetric === 'spend' 
+                    ? 'bg-blue-100 ring-2 ring-blue-500' 
+                    : 'bg-blue-50 hover:bg-blue-100'
+                }`}
+                data-testid="metric-spend"
+              >
                 <p className="text-xs text-slate-500 mb-1">Investimento Total</p>
                 <p className="text-lg font-semibold text-blue-600">{formatCurrency(totalSpend)}</p>
-              </div>
-              <div className="text-center p-3 bg-purple-50 rounded-lg">
+              </button>
+              <button 
+                onClick={() => setSelectedChartMetric('impressions')}
+                className={`text-center p-3 rounded-lg transition-all cursor-pointer ${
+                  selectedChartMetric === 'impressions' 
+                    ? 'bg-purple-100 ring-2 ring-purple-500' 
+                    : 'bg-purple-50 hover:bg-purple-100'
+                }`}
+                data-testid="metric-impressions"
+              >
                 <p className="text-xs text-slate-500 mb-1">Impressões</p>
                 <p className="text-lg font-semibold text-purple-600">{formatNumber(totalImpressions)}</p>
-              </div>
-              <div className="text-center p-3 bg-green-50 rounded-lg">
+              </button>
+              <button 
+                onClick={() => setSelectedChartMetric('clicks')}
+                className={`text-center p-3 rounded-lg transition-all cursor-pointer ${
+                  selectedChartMetric === 'clicks' 
+                    ? 'bg-green-100 ring-2 ring-green-500' 
+                    : 'bg-green-50 hover:bg-green-100'
+                }`}
+                data-testid="metric-clicks"
+              >
                 <p className="text-xs text-slate-500 mb-1">Cliques</p>
                 <p className="text-lg font-semibold text-green-600">{formatNumber(totalClicks)}</p>
-              </div>
-              <div className="text-center p-3 bg-orange-50 rounded-lg">
+              </button>
+              <button 
+                onClick={() => setSelectedChartMetric('ctr')}
+                className={`text-center p-3 rounded-lg transition-all cursor-pointer ${
+                  selectedChartMetric === 'ctr' 
+                    ? 'bg-orange-100 ring-2 ring-orange-500' 
+                    : 'bg-orange-50 hover:bg-orange-100'
+                }`}
+                data-testid="metric-ctr"
+              >
                 <p className="text-xs text-slate-500 mb-1">CTR Médio</p>
                 <p className="text-lg font-semibold text-orange-600">{avgCtr.toFixed(2)}%</p>
-              </div>
+              </button>
             </div>
 
             <div className="space-y-2">
-              <p className="text-xs text-slate-500 mb-3">Investimento por dia</p>
+              <p className="text-xs text-slate-500 mb-3">{chartMetricConfig[selectedChartMetric].label} por dia</p>
               <div className="flex items-end justify-between h-24 gap-1">
-                {metrics.map((day, index) => {
-                  const height = maxSpend > 0 ? (day.spend / maxSpend) * 100 : 0;
-                  const date = new Date(day.date);
-                  const dayLabel = metrics.length <= 14 
-                    ? date.toLocaleDateString('pt-BR', { weekday: 'short' })
-                    : date.toLocaleDateString('pt-BR', { day: '2-digit' });
+                {(() => {
+                  const values = metrics.map(m => m[selectedChartMetric]);
+                  const maxValue = Math.max(...values, 1);
+                  const config = chartMetricConfig[selectedChartMetric];
                   
-                  return (
-                    <div key={index} className="flex flex-col items-center flex-1">
-                      <div 
-                        className="w-full bg-blue-500 rounded-t transition-all hover:bg-blue-600"
-                        style={{ height: `${Math.max(height, 4)}%` }}
-                        title={`${format(date, 'dd/MM/yyyy')}: ${formatCurrency(day.spend)}`}
-                      />
-                      {metrics.length <= 31 && (
-                        <span className="text-xs text-slate-400 mt-1 capitalize truncate w-full text-center">
-                          {dayLabel}
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
+                  return metrics.map((day, index) => {
+                    const value = day[selectedChartMetric];
+                    const height = maxValue > 0 ? (value / maxValue) * 100 : 0;
+                    const date = new Date(day.date);
+                    const dayLabel = metrics.length <= 14 
+                      ? date.toLocaleDateString('pt-BR', { weekday: 'short' })
+                      : date.toLocaleDateString('pt-BR', { day: '2-digit' });
+                    
+                    return (
+                      <div key={index} className="flex flex-col items-center flex-1">
+                        <div 
+                          className={`w-full ${config.color} rounded-t transition-all hover:opacity-80`}
+                          style={{ height: `${Math.max(height, 4)}%` }}
+                          title={`${format(date, 'dd/MM/yyyy')}: ${config.format(value)}`}
+                        />
+                        {metrics.length <= 31 && (
+                          <span className="text-xs text-slate-400 mt-1 capitalize truncate w-full text-center">
+                            {dayLabel}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  });
+                })()}
               </div>
             </div>
           </>
