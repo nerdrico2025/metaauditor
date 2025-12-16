@@ -751,6 +751,7 @@ export default function MetaIntegrations() {
   };
 
   const handleSyncAll = async () => {
+    console.log('handleSyncAll called, metaIntegrations:', metaIntegrations.length);
     if (metaIntegrations.length === 0) return;
     
     const startTime = Date.now();
@@ -761,6 +762,7 @@ export default function MetaIntegrations() {
     setBulkSyncTotalDuration(undefined);
     setBulkSyncCurrentIndex(0);
     setShowBulkSyncModal(true);
+    console.log('BulkSyncModal should open now');
     
     const initialAccounts: AccountSyncResult[] = metaIntegrations.map(i => ({
       id: i.id,
