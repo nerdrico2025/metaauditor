@@ -380,25 +380,27 @@ export default function PerformanceChart() {
 
             <div className="space-y-2">
               <p className="text-xs text-slate-500 mb-3">{chartMetricConfig[selectedChartMetric].label} por dia</p>
-              <div className="flex items-end justify-between h-24 gap-1">
+              <div className="flex items-end justify-between gap-1" style={{ height: '120px' }}>
                 {(() => {
                   const values = metrics.map(m => m[selectedChartMetric]);
                   const maxValue = Math.max(...values, 1);
                   const config = chartMetricConfig[selectedChartMetric];
+                  const chartHeight = 100; // pixels for the chart bars area
                   
                   return metrics.map((day, index) => {
                     const value = day[selectedChartMetric];
-                    const height = maxValue > 0 ? (value / maxValue) * 100 : 0;
+                    const heightPercent = maxValue > 0 ? (value / maxValue) * 100 : 0;
+                    const barHeight = Math.max((heightPercent / 100) * chartHeight, 4); // At least 4px
                     const date = new Date(day.date);
                     const dayLabel = metrics.length <= 14 
                       ? date.toLocaleDateString('pt-BR', { weekday: 'short' })
                       : date.toLocaleDateString('pt-BR', { day: '2-digit' });
                     
                     return (
-                      <div key={index} className="flex flex-col items-center flex-1">
+                      <div key={index} className="flex flex-col items-center justify-end flex-1" style={{ height: '120px' }}>
                         <div 
                           className={`w-full ${config.color} rounded-t transition-all hover:opacity-80`}
-                          style={{ height: `${Math.max(height, 4)}%` }}
+                          style={{ height: `${barHeight}px`, minHeight: '4px' }}
                           title={`${format(date, 'dd/MM/yyyy')}: ${config.format(value)}`}
                         />
                         {metrics.length <= 31 && (
