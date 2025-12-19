@@ -119,14 +119,16 @@ export class MetaAdsService {
   }
 
   /**
-   * Fetch image URL from asset_feed_spec hash via Meta API
+   * Fetch HIGH RESOLUTION image URL from hash via Meta API
    * Dynamic Creative ads store images as hashes, not URLs
-   * We need to query /{ad_account_id}/adimages?hashes=[hash]&fields=url to get the actual URL
+   * We query /{ad_account_id}/adimages?hashes=[hash]&fields=url,url_128,permalink_url to get full-size image
+   * The 'url' field returns the full resolution original image!
    */
   private async getImageUrlFromHash(accessToken: string, accountId: string, imageHash: string): Promise<string | null> {
     try {
       const encodedHashes = encodeURIComponent(JSON.stringify([imageHash]));
-      const url = `${this.baseUrl}/${this.apiVersion}/${accountId}/adimages?hashes=${encodedHashes}&fields=hash,url&access_token=${accessToken}`;
+      // Request url (full-size) and permalink_url (full-size backup)
+      const url = `${this.baseUrl}/${this.apiVersion}/${accountId}/adimages?hashes=${encodedHashes}&fields=hash,url,permalink_url&access_token=${accessToken}`;
       const response = await fetch(url);
       
       if (!response.ok) {
@@ -134,13 +136,50 @@ export class MetaAdsService {
         return null;
       }
       
-      const data = await response.json() as { data: Array<{ hash: string; url: string }> };
+      const data = await response.json() as { data: Array<{ hash: string; url: string; permalink_url?: string }> };
       if (data.data && data.data.length > 0) {
-        return data.data[0].url;
+        // Prefer url (original full-size), fallback to permalink_url
+        const imageData = data.data[0];
+        const fullSizeUrl = imageData.url || imageData.permalink_url;
+        if (fullSizeUrl) {
+          console.log(`🖼️  Got FULL-SIZE image URL from hash (vs thumbnail)`);
+        }
+        return fullSizeUrl || null;
       }
       return null;
     } catch (error) {
       console.warn(`⚠️  Error fetching image from hash ${imageHash}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Get image hash from creative's object_story_spec (link_data or video_data)
+   * This is the most reliable way to get the original high-resolution image
+   */
+  private async getCreativeImageHash(accessToken: string, creativeId: string): Promise<string | null> {
+    try {
+      const url = `${this.baseUrl}/${this.apiVersion}/${creativeId}?fields=object_story_spec&access_token=${accessToken}`;
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        return null;
+      }
+      
+      const data = await response.json() as { 
+        object_story_spec?: { 
+          link_data?: { image_hash?: string };
+          photo_data?: { image_hash?: string };
+          video_data?: { image_hash?: string };
+        } 
+      };
+      
+      const spec = data.object_story_spec;
+      if (!spec) return null;
+      
+      // Try to get image_hash from any of the possible locations
+      return spec.link_data?.image_hash || spec.photo_data?.image_hash || spec.video_data?.image_hash || null;
+    } catch (error) {
       return null;
     }
   }
@@ -711,39 +750,54 @@ export class MetaAdsService {
           imageUrl = existingImageUrl;
           console.log(`⏭️  Skipping image download for ad ${ad.id} (already exists: ${existingImageUrl})`);
         } else {
-          // Try image_url first, fallback to thumbnail_url (for Dynamic Creative, carousel, etc.)
-          let sourceImageUrl = ad.creative?.image_url || ad.creative?.thumbnail_url;
+          // PRIORITY ORDER FOR HIGH-RESOLUTION IMAGES:
+          // 1. Get image_hash from object_story_spec -> fetch full-size URL from /adimages
+          // 2. Use image_url (usually full-size)
+          // 3. Try asset_feed_spec for Dynamic Creative ads -> fetch full-size from /adimages
+          // 4. Last resort: thumbnail_url (LOW QUALITY - avoid if possible!)
           
-          // If no direct image, try to get thumbnail from effective_object_story_id (for DCO ads)
-          if (!sourceImageUrl && ad.creative?.effective_object_story_id && ad.creative?.id) {
-            console.log(`🔍 Ad ${ad.id} has no direct image, trying to fetch from creative ${ad.creative.id}...`);
+          let sourceImageUrl: string | null = null;
+          let imageSource = 'unknown';
+          
+          // STEP 1: Try to get image_hash from object_story_spec (BEST - original full resolution)
+          if (ad.creative?.id && integration.accessToken && integration.accountId) {
+            console.log(`🔍 Ad ${ad.id}: Checking object_story_spec for image_hash (high-res)...`);
             try {
-              const creativeUrl = `${this.baseUrl}/${this.apiVersion}/${ad.creative.id}?fields=thumbnail_url,image_url&access_token=${integration.accessToken}`;
-              const creativeResponse = await fetch(creativeUrl);
-              if (creativeResponse.ok) {
-                const creativeData = await creativeResponse.json() as { image_url?: string; thumbnail_url?: string };
-                sourceImageUrl = creativeData.image_url || creativeData.thumbnail_url;
-                if (sourceImageUrl) {
-                  console.log(`✅ Found image from creative endpoint: ${sourceImageUrl.substring(0, 50)}...`);
+              const imageHash = await this.getCreativeImageHash(integration.accessToken, ad.creative.id);
+              if (imageHash) {
+                console.log(`🔑 Found image_hash in object_story_spec: ${imageHash}`);
+                const fullSizeUrl = await this.getImageUrlFromHash(integration.accessToken, integration.accountId, imageHash);
+                if (fullSizeUrl) {
+                  sourceImageUrl = fullSizeUrl;
+                  imageSource = 'object_story_spec (FULL-SIZE)';
+                  console.log(`✅ Got FULL-SIZE image from object_story_spec hash`);
                 }
               }
             } catch (e) {
-              console.warn(`⚠️  Failed to fetch creative ${ad.creative.id}:`, e);
+              console.warn(`⚠️  Failed to fetch object_story_spec for creative ${ad.creative.id}:`, e);
             }
           }
           
-          // If still no image, try asset_feed_spec for Dynamic Creative ads (images stored as hashes)
+          // STEP 2: Try image_url from ad creative (usually full-size)
+          if (!sourceImageUrl && ad.creative?.image_url) {
+            sourceImageUrl = ad.creative.image_url;
+            imageSource = 'image_url';
+            console.log(`📷 Using image_url for ad ${ad.id}`);
+          }
+          
+          // STEP 3: Try asset_feed_spec for Dynamic Creative ads (get hash -> full-size URL)
           if (!sourceImageUrl && ad.creative?.id && integration.accessToken && integration.accountId) {
-            console.log(`🔍 Ad ${ad.id} still has no image, checking asset_feed_spec for Dynamic Creative...`);
+            console.log(`🔍 Ad ${ad.id}: Checking asset_feed_spec for Dynamic Creative...`);
             try {
               const assetFeedSpec = await this.getCreativeAssetFeedSpec(integration.accessToken, ad.creative.id);
               if (assetFeedSpec?.images && assetFeedSpec.images.length > 0) {
                 const firstImageHash = assetFeedSpec.images[0].hash;
                 console.log(`🔑 Found image hash in asset_feed_spec: ${firstImageHash}`);
-                const imageUrlFromHash = await this.getImageUrlFromHash(integration.accessToken, integration.accountId, firstImageHash);
-                if (imageUrlFromHash) {
-                  sourceImageUrl = imageUrlFromHash;
-                  console.log(`✅ Found image URL from hash: ${imageUrlFromHash.substring(0, 60)}...`);
+                const fullSizeUrl = await this.getImageUrlFromHash(integration.accessToken, integration.accountId, firstImageHash);
+                if (fullSizeUrl) {
+                  sourceImageUrl = fullSizeUrl;
+                  imageSource = 'asset_feed_spec (FULL-SIZE)';
+                  console.log(`✅ Got FULL-SIZE image from asset_feed_spec hash`);
                 }
               }
             } catch (e) {
@@ -751,14 +805,45 @@ export class MetaAdsService {
             }
           }
           
+          // STEP 4: Try effective_object_story_id endpoint (may have image_url)
+          if (!sourceImageUrl && ad.creative?.effective_object_story_id && ad.creative?.id) {
+            console.log(`🔍 Ad ${ad.id}: Checking effective_object_story_id endpoint...`);
+            try {
+              const creativeUrl = `${this.baseUrl}/${this.apiVersion}/${ad.creative.id}?fields=image_url,thumbnail_url&access_token=${integration.accessToken}`;
+              const creativeResponse = await fetch(creativeUrl);
+              if (creativeResponse.ok) {
+                const creativeData = await creativeResponse.json() as { image_url?: string; thumbnail_url?: string };
+                // Prefer image_url over thumbnail_url
+                if (creativeData.image_url) {
+                  sourceImageUrl = creativeData.image_url;
+                  imageSource = 'creative_endpoint image_url';
+                } else if (creativeData.thumbnail_url) {
+                  sourceImageUrl = creativeData.thumbnail_url;
+                  imageSource = 'creative_endpoint thumbnail_url (LOW QUALITY)';
+                  console.warn(`⚠️  Ad ${ad.id}: Using thumbnail_url (low quality) from creative endpoint`);
+                }
+              }
+            } catch (e) {
+              console.warn(`⚠️  Failed to fetch creative ${ad.creative.id}:`, e);
+            }
+          }
+          
+          // STEP 5: LAST RESORT - thumbnail_url (LOW QUALITY!)
+          if (!sourceImageUrl && ad.creative?.thumbnail_url) {
+            sourceImageUrl = ad.creative.thumbnail_url;
+            imageSource = 'thumbnail_url (LOW QUALITY)';
+            console.warn(`⚠️  Ad ${ad.id}: Using thumbnail_url as LAST RESORT - image will be low quality!`);
+          }
+          
           if (sourceImageUrl && companyId && integrationId) {
-            // Download and save new image to Object Storage
-            console.log(`🖼️  Downloading image for ad ${ad.id} from ${ad.creative?.image_url ? 'image_url' : 'thumbnail_url/creative'}...`);
+            console.log(`🖼️  Downloading image for ad ${ad.id} from: ${imageSource}`);
             const objectUrl = await imageStorageService.downloadAndSaveImage(sourceImageUrl, companyId, integrationId, adSetInfo.dbId);
             if (objectUrl) {
               imageUrl = objectUrl;
               console.log(`✅ Image saved to Object Storage: ${objectUrl}`);
             }
+          } else if (!sourceImageUrl) {
+            console.warn(`⚠️  Ad ${ad.id}: NO IMAGE SOURCE FOUND - creative will have no image`);
           }
         }
         
