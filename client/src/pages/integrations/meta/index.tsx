@@ -535,10 +535,49 @@ export default function MetaIntegrations() {
             const res = await fetch(`/api/auth/meta/oauth-session/${sessionId}`);
             const data = await res.json();
             if (data.accounts && data.accessToken) {
-              setOauthAccounts(data.accounts);
-              setOauthToken(data.accessToken);
-              setShowOAuthModal(false);
-              setShowAccountSelectionModal(true);
+              // Check if there are already connected accounts that need token update
+              const connectedAccounts = data.accounts.filter((acc: AdAccount) => acc.is_connected);
+              
+              if (connectedAccounts.length > 0) {
+                // Update tokens for all connected accounts automatically
+                try {
+                  const updateRes = await apiRequest('/api/auth/meta/update-connected-tokens', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                      userId: user?.id,
+                      accessToken: data.accessToken,
+                      connectedAccountIds: connectedAccounts.map((acc: AdAccount) => acc.id),
+                    }),
+                  });
+                  
+                  if (updateRes.updated > 0) {
+                    toast({
+                      title: 'Conexões atualizadas!',
+                      description: `${updateRes.updated} conta(s) tiveram suas conexões renovadas.`,
+                    });
+                    queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
+                    queryClient.invalidateQueries({ queryKey: ['/api/auth/meta/check-token'] });
+                  }
+                } catch (updateError) {
+                  console.error('Error updating connected tokens:', updateError);
+                }
+              }
+              
+              // Check if there are new accounts to connect
+              const newAccounts = data.accounts.filter((acc: AdAccount) => !acc.is_connected);
+              
+              if (newAccounts.length > 0) {
+                // Show account selection modal for new accounts
+                setOauthAccounts(data.accounts);
+                setOauthToken(data.accessToken);
+                setShowOAuthModal(false);
+                setShowAccountSelectionModal(true);
+              } else {
+                // All accounts already connected, just close the modal
+                setShowOAuthModal(false);
+                setShowAccountSelectionModal(false);
+              }
+              
               setIsConnecting(false);
               localStorage.removeItem('meta_oauth_session');
             }

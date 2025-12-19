@@ -499,6 +499,48 @@ router.post('/select-account', async (req: Request, res: Response, next: NextFun
   }
 });
 
+// Update tokens for all already-connected accounts after OAuth re-authentication
+router.post('/update-connected-tokens', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { userId, accessToken, connectedAccountIds } = req.body;
+
+    if (!userId || !accessToken || !connectedAccountIds || !Array.isArray(connectedAccountIds)) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    console.log(`🔄 Updating tokens for ${connectedAccountIds.length} connected accounts`);
+
+    // Get all user's integrations
+    const existingIntegrations = await storage.getIntegrationsByUser(userId);
+    const metaIntegrations = existingIntegrations.filter(i => i.platform === 'meta');
+
+    let updated = 0;
+    for (const integration of metaIntegrations) {
+      // Normalize accountId for comparison (remove 'act_' prefix if present)
+      const normalizedIntegrationAccountId = integration.accountId?.replace(/^act_/, '');
+      const isConnected = connectedAccountIds.some(id => {
+        const normalizedId = id.replace(/^act_/, '');
+        return normalizedId === normalizedIntegrationAccountId;
+      });
+
+      if (isConnected) {
+        console.log(`  ✅ Updating token for account: ${integration.accountName} (${integration.accountId})`);
+        await storage.updateIntegration(integration.id, {
+          accessToken,
+          status: 'active',
+        });
+        updated++;
+      }
+    }
+
+    console.log(`✅ Updated ${updated} integration tokens`);
+    res.json({ success: true, updated });
+  } catch (error) {
+    console.error('Error updating connected tokens:', error);
+    next(error);
+  }
+});
+
 // Check token validity
 router.get('/check-token/:integrationId', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {

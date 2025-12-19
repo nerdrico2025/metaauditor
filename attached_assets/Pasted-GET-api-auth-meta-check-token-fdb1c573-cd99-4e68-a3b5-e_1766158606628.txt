@@ -1,0 +1,55 @@
+GET /api/auth/meta/check-token/fdb1c573-cd99-4e68-a3b5-e296a1c22e83 304 in 373m…
+🔗 Meta OAuth URL generated with scopes: ads_management,ads_read,business_management,read_insights
+GET /api/auth/meta/connect 304 in 24ms :: {"authUrl":"https://www.facebook.com/…
+🔐 Business Managers AUTHORIZED in OAuth: 1
+📋 Authorized Businesses: [ { id: '142800855586767', name: 'BM Oi - Together 02' } ]
+🔍 Fetching ad accounts from authorized BM: BM Oi - Together 02 (142800855586767)
+  ✅ Found 6 ad accounts in authorized BM "BM Oi - Together 02"
+📊 Total unique AUTHORIZED ad accounts found: 6
+📋 Authorized Ad Accounts: [
+  {
+    id: 'act_530642006802455',
+    name: 'CA - ASSINE NIO FIBRA 6',
+    bm: 'BM Oi - Together 02'
+  },
+  {
+    id: 'act_1050265956544200',
+    name: 'CA - ASSINE NIO FIBRA 4',
+    bm: 'BM Oi - Together 02'
+  },
+  {
+    id: 'act_2423798154672316',
+    name: 'CA - ASSINE NIO FIBRA 5',
+    bm: 'BM Oi - Together 02'
+  },
+  {
+    id: 'act_1106848610874805',
+    name: 'CA - FENIX 1',
+    bm: 'BM Oi - Together 02'
+  },
+  {
+    id: 'act_755266266038712',
+    name: 'CA - ASSINE NIO FIBRA 2',
+    bm: 'BM Oi - Together 02'
+  },
+  {
+    id: 'act_1488383658394603',
+    name: 'CA - ASSINE NIO FIBRA 1',
+    bm: 'BM Oi - Together 02'
+  }
+]
+🔗 Already connected account IDs (normalized): [
+  '1050265956544200',
+  '2423798154672316',
+  '1106848610874805',
+  '755266266038712',
+  '1488383658394603',
+  '530642006802455'
+]
+🧹 Cleaned up old OAuth sessions
+📦 Created OAuth session in DB: oauth_1766158550069_nox8ndonw with 6 accounts
+📦 Insert result: [{"id":"oauth_1766158550069_nox8ndonw","userId":"855a8c2b-3eb6-4bc6-8c16-d29d28ffbd7c","accessToken":"EAAWlfNY9UtcBQI9GumCj9xjGNQUVwPezxwY47fA5VJHZBSFaVBZCBPi8WRDWUJDxVh0Wgxc5yduN7bHpWas7uxSJwrWGj2ZBSATN4EFvMGx4t0bvOQXeZBkeZBFQZACdJ38KWbCzIT7YKUXptq9kzAUhoP6muSgfbAJQ7ASj0EsZCP6oTp5vYjHwDMxrp9O","accounts":[{"id":"act_530642006802455","name":"CA - ASSINE NIO FIBRA 6","business_id":"142800855586767","is_connected":true,"business_name":"BM Oi - Together 02","account_status":1},{"id":"act_1050265956544200","name":"CA - ASSINE NIO FIBRA 4","business_id":"142800855586767","is_connected":true,"business_name":"BM Oi - Together 02","account_status":1},{"id":"act_2423798154672316","name":"CA - ASSINE NIO FIBRA 5","business_id":"142800855586767","is_connected":true,"business_name":"BM Oi - Together 02","account_status":1},{"id":"act_1106848610874805","name":"CA - FENIX 1","business_id":"142800855586767","is_connected":true,"business_name":"BM Oi - Together 02","account_status":1},{"id":"act_755266266038712","name":"CA - ASSINE NIO FIBRA 2","business_id":"142800855586767","is_connected":true,"business_name":"BM Oi - Together 02","account_status":1},{"id":"act_1488383658394603","name":"CA - ASSINE NIO FIBRA 1","business_id":"142800855586767","is_connected":true,"business_name":"BM Oi - Together 02","account_status":1}],"createdAt":"2025-12-19T15:35:50.101Z","expiresAt":"2025-12-19T15:40:50.069Z"}]
+📦 Verified session exists: true
+GET /api/auth/meta/callback 200 in 2317ms
+📦 Fetching OAuth session from database: oauth_1766158550069_nox8ndonw
+✅ Session found with 6 accounts
