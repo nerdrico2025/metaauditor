@@ -464,6 +464,9 @@ router.post('/select-account', async (req: Request, res: Response, next: NextFun
       i => i.platform === 'meta' && i.accountId === accountId
     );
 
+    // Get user name for display
+    const userName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email : null;
+
     if (existingAccountIntegration) {
       // Same account already connected - just update the token
       console.log(`🔄 Updating existing integration for account ${accountId}`);
@@ -474,6 +477,8 @@ router.post('/select-account', async (req: Request, res: Response, next: NextFun
         businessId: businessId || null,
         businessName: businessName || null,
         status: 'active',
+        connectedByUserId: userId,
+        connectedByUserName: userName,
       });
     } else {
       // Different account or no Meta integration yet - CREATE NEW
@@ -488,6 +493,8 @@ router.post('/select-account', async (req: Request, res: Response, next: NextFun
         businessId: businessId || null,
         businessName: businessName || null,
         status: 'active',
+        connectedByUserId: userId,
+        connectedByUserName: userName,
       });
     }
 
@@ -510,6 +517,10 @@ router.post('/update-connected-tokens', async (req: Request, res: Response, next
 
     console.log(`🔄 Updating tokens for ${connectedAccountIds.length} connected accounts`);
 
+    // Get user details for tracking who renewed the connection
+    const user = await storage.getUserById(userId);
+    const userName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email : null;
+
     // Get all user's integrations
     const existingIntegrations = await storage.getIntegrationsByUser(userId);
     const metaIntegrations = existingIntegrations.filter(i => i.platform === 'meta');
@@ -528,6 +539,8 @@ router.post('/update-connected-tokens', async (req: Request, res: Response, next
         await storage.updateIntegration(integration.id, {
           accessToken,
           status: 'active',
+          connectedByUserId: userId,
+          connectedByUserName: userName,
         });
         updated++;
       }

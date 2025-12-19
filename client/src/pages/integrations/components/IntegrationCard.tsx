@@ -14,6 +14,7 @@ interface Integration {
   lastSync: Date | null;
   lastFullSync: Date | null;
   createdAt: Date;
+  connectedByUserName: string | null;
 }
 
 interface TokenInfo {
@@ -155,7 +156,7 @@ export function IntegrationCard({
             )}
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
             <div>
               <span className="text-gray-500">Account ID:</span>
               <p className="font-mono text-gray-900 dark:text-white text-xs">{integration.accountId}</p>
@@ -167,6 +168,10 @@ export function IntegrationCard({
             <div>
               <span className="text-gray-500">Conectada em:</span>
               <p className="text-gray-900 dark:text-white">{formatDate(integration.createdAt)}</p>
+            </div>
+            <div>
+              <span className="text-gray-500">Conectado por:</span>
+              <p className="text-gray-900 dark:text-white">{integration.connectedByUserName || '-'}</p>
             </div>
             <div>
               <span className="text-gray-500">Status da Conexão:</span>
