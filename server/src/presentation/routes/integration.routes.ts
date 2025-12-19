@@ -976,9 +976,26 @@ router.post('/:id/redownload-images', authenticateToken, async (req: Request, re
       return res.status(400).json({ message: 'Apenas integrações Meta suportam re-download de imagens' });
     }
 
-    // Get all creatives for this user
+    // Get campaigns for this integration, then get their creatives
     const userId = (req as any).user?.id;
-    const allCreatives = await storage.getCreativesByUser(userId);
+    const integrationCampaigns = await storage.getCampaignsByUser(userId, integration.id);
+    
+    if (integrationCampaigns.length === 0) {
+      return res.json({ 
+        message: 'Nenhuma campanha encontrada para esta integração',
+        updated: 0,
+        failed: 0,
+        skipped: 0,
+        noImage: 0
+      });
+    }
+
+    // Get all creatives from these campaigns
+    const allCreatives: any[] = [];
+    for (const campaign of integrationCampaigns) {
+      const campaignCreatives = await storage.getCreativesByCampaign(campaign.id);
+      allCreatives.push(...campaignCreatives);
+    }
     
     // Filter creatives that need image update (no image or low quality thumbnails)
     const creativesToUpdate = allCreatives.filter((c: any) => 
