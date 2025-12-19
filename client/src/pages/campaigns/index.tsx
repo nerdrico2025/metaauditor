@@ -205,7 +205,20 @@ export default function Campaigns() {
     
     const matchesSearch = campaign.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          campaign.externalId.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || campaign.status === statusFilter;
+    
+    // Handle status filter - "desativadas" groups multiple inactive statuses
+    let matchesStatus = false;
+    if (statusFilter === "all") {
+      matchesStatus = true;
+    } else if (statusFilter === "desativadas") {
+      // Group all inactive/disabled statuses
+      matchesStatus = campaign.status === 'Não está em veiculação' || 
+                     campaign.status === 'Campanha Desativada' ||
+                     campaign.status === 'PAUSED';
+    } else {
+      matchesStatus = campaign.status === statusFilter;
+    }
+    
     const matchesPlatform = platformFilter === "all" || campaign.platform === platformFilter;
     
     return matchesSearch && matchesStatus && matchesPlatform;
@@ -344,14 +357,13 @@ export default function Campaigns() {
 
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
                       <SelectTrigger className="w-full sm:w-[180px] bg-white dark:bg-gray-800" data-testid="select-status-filter">
-                        <SelectValue placeholder="Veiculação" />
+                        <SelectValue placeholder="Status" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">Todas Veiculações</SelectItem>
-                        <SelectItem value="Ativo">Ativo</SelectItem>
-                        <SelectItem value="Não está em veiculação">Não está em veiculação</SelectItem>
-                        <SelectItem value="Campanha Desativada">Campanha Desativada</SelectItem>
-                        <SelectItem value="Arquivado">Arquivado</SelectItem>
+                        <SelectItem value="all">Todas as Campanhas</SelectItem>
+                        <SelectItem value="Ativo">Campanhas Ativas</SelectItem>
+                        <SelectItem value="desativadas">Campanhas Desativadas</SelectItem>
+                        <SelectItem value="Excluído">Campanhas Excluídas</SelectItem>
                       </SelectContent>
                     </Select>
 
