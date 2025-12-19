@@ -35,7 +35,9 @@ import {
   Square,
   Shield,
   Palette,
-  Loader2
+  Loader2,
+  Play,
+  LayoutGrid
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { SiGoogle } from 'react-icons/si';
@@ -873,6 +875,23 @@ export default function Creatives() {
                                     className="w-20 h-20 object-cover rounded-lg hover:opacity-80 transition-opacity border border-gray-200 dark:border-gray-700"
                                     size="small"
                                   />
+                                  {/* Format badge (top-left) */}
+                                  <div className={`absolute top-1 left-1 px-1.5 py-0.5 rounded text-[10px] font-medium flex items-center gap-0.5 shadow-sm ${
+                                    creative.creativeFormat === 'video' 
+                                      ? 'bg-purple-500 text-white' 
+                                      : creative.creativeFormat === 'carousel'
+                                        ? 'bg-orange-500 text-white'
+                                        : 'bg-blue-500 text-white'
+                                  }`}>
+                                    {creative.creativeFormat === 'video' ? (
+                                      <><Play className="h-2.5 w-2.5" />Vídeo</>
+                                    ) : creative.creativeFormat === 'carousel' ? (
+                                      <><LayoutGrid className="h-2.5 w-2.5" />{(creative.carouselImages as string[] || []).length || ''}+</>
+                                    ) : (
+                                      <><ImageIcon className="h-2.5 w-2.5" />Imagem</>
+                                    )}
+                                  </div>
+                                  {/* Platform badge (bottom-right) */}
                                   <div className="absolute bottom-1 right-1 bg-white dark:bg-gray-800 rounded-full p-0.5 shadow-sm border border-gray-200 dark:border-gray-600">
                                     {getPlatformIcon(creative.platform)}
                                   </div>
