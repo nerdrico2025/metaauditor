@@ -121,6 +121,9 @@ export default function MetaIntegrations() {
   const [deleteSteps, setDeleteSteps] = useState<Array<{name: string; status: 'pending' | 'loading' | 'success' | 'error'; error?: string}>>([]);
   const [deleteStartTime, setDeleteStartTime] = useState<number | undefined>(undefined);
   const [deleteEndTime, setDeleteEndTime] = useState<number | undefined>(undefined);
+  
+  // Re-download images state
+  const [redownloadingImagesId, setRedownloadingImagesId] = useState<string | null>(null);
 
   // Check for OAuth session in URL on page load
   useEffect(() => {
@@ -518,6 +521,32 @@ export default function MetaIntegrations() {
         description: error.message,
         variant: 'destructive'
       });
+    }
+  };
+
+  const handleRedownloadImages = async (integrationId: string) => {
+    setRedownloadingImagesId(integrationId);
+    try {
+      const result = await apiRequest(`/api/integrations/${integrationId}/redownload-images`, {
+        method: 'POST'
+      });
+      
+      const data = result as any;
+      toast({
+        title: '🖼️ Re-download de imagens concluído',
+        description: data.message || `${data.updated} atualizadas, ${data.failed} falhas, ${data.noImage} sem imagem`,
+      });
+      
+      // Invalidate queries to refresh the creatives
+      queryClient.invalidateQueries({ queryKey: ['/api/creatives'] });
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao re-baixar imagens',
+        description: error.message,
+        variant: 'destructive'
+      });
+    } finally {
+      setRedownloadingImagesId(null);
     }
   };
 
@@ -1292,7 +1321,9 @@ export default function MetaIntegrations() {
                                       setDeleteDialogOpen(true);
                                     }}
                                     onRenewToken={handleConnectOAuth}
+                                    onRedownloadImages={() => handleRedownloadImages(integration.id)}
                                     isSyncing={syncMutation.isPending}
+                                    isRedownloadingImages={redownloadingImagesId === integration.id}
                                   />
                                 );
                               })}

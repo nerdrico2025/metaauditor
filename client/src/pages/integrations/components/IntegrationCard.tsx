@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CheckCircle2, AlertCircle, RefreshCw, Trash2, Clock, ShieldCheck, ShieldX, Calendar, BarChart3 } from 'lucide-react';
+import { CheckCircle2, AlertCircle, RefreshCw, Trash2, Clock, ShieldCheck, ShieldX, Calendar, BarChart3, ImageIcon } from 'lucide-react';
 
 interface Integration {
   id: string;
@@ -43,7 +43,9 @@ interface IntegrationCardProps {
   onSync: () => void;
   onDelete: () => void;
   onRenewToken?: () => void;
+  onRedownloadImages?: () => void;
   isSyncing: boolean;
+  isRedownloadingImages?: boolean;
 }
 
 interface IntegrationStats {
@@ -58,7 +60,9 @@ export function IntegrationCard({
   onSync,
   onDelete,
   onRenewToken,
-  isSyncing
+  onRedownloadImages,
+  isSyncing,
+  isRedownloadingImages = false
 }: IntegrationCardProps) {
   const { data: tokenInfo, isLoading: tokenLoading } = useQuery<TokenInfo>({
     queryKey: ['/api/auth/meta/check-token', integration.id],
@@ -209,17 +213,30 @@ export function IntegrationCard({
           </div>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button
             variant="outline"
             size="sm"
             onClick={onSync}
-            disabled={isSyncing}
+            disabled={isSyncing || isRedownloadingImages}
             data-testid={`button-sync-${integration.id}`}
           >
             <RefreshCw className={`w-4 h-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
             Sincronizar
           </Button>
+          {onRedownloadImages && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onRedownloadImages}
+              disabled={isSyncing || isRedownloadingImages}
+              data-testid={`button-redownload-${integration.id}`}
+              title="Re-baixar imagens em alta resolução para criativos sem imagem ou com baixa qualidade"
+            >
+              <ImageIcon className={`w-4 h-4 mr-2 ${isRedownloadingImages ? 'animate-pulse' : ''}`} />
+              {isRedownloadingImages ? 'Baixando...' : 'Re-baixar Imagens'}
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"

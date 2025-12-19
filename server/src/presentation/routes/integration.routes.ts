@@ -954,4 +954,69 @@ router.get('/google/accounts', authenticateToken, async (req: Request, res: Resp
   }
 });
 
+// Re-download images in high resolution for an integration
+router.post('/:id/redownload-images', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userCompanyId = (req as any).user?.companyId;
+    const integration = await storage.getIntegrationById(req.params.id);
+    
+    if (!integration) {
+      return res.status(404).json({ message: 'Integração não encontrada' });
+    }
+
+    if (integration.companyId !== userCompanyId) {
+      return res.status(403).json({ message: 'Sem permissão para acessar esta integração' });
+    }
+
+    if (!integration.accessToken) {
+      return res.status(400).json({ message: 'Token de acesso não configurado' });
+    }
+
+    if (integration.platform !== 'meta') {
+      return res.status(400).json({ message: 'Apenas integrações Meta suportam re-download de imagens' });
+    }
+
+    // Get all creatives for this company
+    const allCreatives = await storage.getCreativesByCompany(userCompanyId);
+    
+    // Filter creatives that need image update (no image or low quality thumbnails)
+    const creativesToUpdate = allCreatives.filter((c: any) => 
+      !c.imageUrl || // No image
+      !c.imageUrl.startsWith('/objects/') // Not in object storage (includes thumbnails)
+    );
+
+    console.log(`🖼️  Re-downloading images for ${creativesToUpdate.length} creatives (${allCreatives.length} total)`);
+
+    if (creativesToUpdate.length === 0) {
+      return res.json({ 
+        message: 'Todas as imagens já estão em alta resolução',
+        updated: 0,
+        failed: 0,
+        skipped: allCreatives.length,
+        noImage: 0
+      });
+    }
+
+    // Re-download images
+    const result = await metaAdsService.redownloadImagesHighRes(
+      integration,
+      creativesToUpdate.map((c: any) => ({
+        id: c.id,
+        externalId: c.externalId || '',
+        name: c.name,
+        imageUrl: c.imageUrl
+      })),
+      userCompanyId
+    );
+
+    res.json({
+      message: `Re-download concluído: ${result.updated} atualizadas, ${result.failed} falhas, ${result.noImage} sem imagem disponível`,
+      ...result,
+      total: creativesToUpdate.length
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

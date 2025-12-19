@@ -1115,4 +1115,135 @@ export class MetaAdsService {
       throw error;
     }
   }
+
+  /**
+   * Re-download images in high resolution for existing creatives
+   * This fetches high-res images via image_hash from Meta API
+   */
+  async redownloadImagesHighRes(
+    integration: Integration,
+    creatives: Array<{ id: string; externalId: string; name: string; imageUrl: string | null }>,
+    companyId: string,
+    progressCallback?: (current: number, total: number, creativeName: string) => void
+  ): Promise<{ updated: number; failed: number; skipped: number; noImage: number }> {
+    if (!integration.accessToken || !integration.accountId) {
+      throw new Error('Missing access token or account ID');
+    }
+
+    let updated = 0;
+    let failed = 0;
+    let skipped = 0;
+    let noImage = 0;
+
+    for (let i = 0; i < creatives.length; i++) {
+      const creative = creatives[i];
+      
+      if (progressCallback) {
+        progressCallback(i + 1, creatives.length, creative.name);
+      }
+
+      // Skip creatives that already have high-quality images
+      if (creative.imageUrl?.startsWith('/objects/') && !creative.imageUrl.includes('thumbnail')) {
+        // Check if it's a recent high-quality download (skip)
+        skipped++;
+        console.log(`⏭️  Skipping ${creative.name} - already has Object Storage image`);
+        continue;
+      }
+
+      try {
+        let newImageUrl: string | null = null;
+
+        // STEP 1: Try to get image_hash from object_story_spec (BEST - original full resolution)
+        console.log(`🔍 Creative ${creative.externalId}: Fetching high-res image...`);
+        
+        // First, get the creative details to find the creative ID
+        const adUrl = `${this.baseUrl}/${this.apiVersion}/${creative.externalId}?fields=creative{id}&access_token=${integration.accessToken}`;
+        const adResponse = await fetch(adUrl);
+        
+        if (!adResponse.ok) {
+          console.warn(`⚠️  Failed to fetch ad ${creative.externalId}: ${adResponse.status}`);
+          failed++;
+          continue;
+        }
+
+        const adData = await adResponse.json() as { creative?: { id: string } };
+        const creativeId = adData.creative?.id;
+
+        if (!creativeId) {
+          console.warn(`⚠️  No creative ID found for ad ${creative.externalId}`);
+          noImage++;
+          continue;
+        }
+
+        // Try to get image_hash from object_story_spec
+        const imageHash = await this.getCreativeImageHash(integration.accessToken, creativeId);
+        
+        if (imageHash) {
+          console.log(`🔑 Found image_hash: ${imageHash}`);
+          const fullSizeUrl = await this.getImageUrlFromHash(integration.accessToken, integration.accountId, imageHash);
+          if (fullSizeUrl) {
+            newImageUrl = fullSizeUrl;
+            console.log(`✅ Got FULL-SIZE image from hash`);
+          }
+        }
+
+        // Try asset_feed_spec if no hash found
+        if (!newImageUrl) {
+          const assetFeedSpec = await this.getCreativeAssetFeedSpec(integration.accessToken, creativeId);
+          if (assetFeedSpec?.images && assetFeedSpec.images.length > 0) {
+            const firstImageHash = assetFeedSpec.images[0].hash;
+            console.log(`🔑 Found hash in asset_feed_spec: ${firstImageHash}`);
+            const fullSizeUrl = await this.getImageUrlFromHash(integration.accessToken, integration.accountId, firstImageHash);
+            if (fullSizeUrl) {
+              newImageUrl = fullSizeUrl;
+              console.log(`✅ Got FULL-SIZE image from asset_feed_spec`);
+            }
+          }
+        }
+
+        // Try image_url from creative endpoint
+        if (!newImageUrl) {
+          const creativeUrl = `${this.baseUrl}/${this.apiVersion}/${creativeId}?fields=image_url&access_token=${integration.accessToken}`;
+          const creativeResponse = await fetch(creativeUrl);
+          if (creativeResponse.ok) {
+            const creativeData = await creativeResponse.json() as { image_url?: string };
+            if (creativeData.image_url) {
+              newImageUrl = creativeData.image_url;
+              console.log(`📷 Using image_url from creative endpoint`);
+            }
+          }
+        }
+
+        if (newImageUrl) {
+          // Download and save to Object Storage
+          const objectUrl = await imageStorageService.downloadAndSaveImage(
+            newImageUrl, 
+            companyId, 
+            integration.id, 
+            creative.id // Using creative.id as adSetId for organization
+          );
+          
+          if (objectUrl) {
+            updated++;
+            console.log(`✅ Updated image for ${creative.name}: ${objectUrl}`);
+            // Return the new URL - caller will update the database
+          } else {
+            failed++;
+          }
+        } else {
+          noImage++;
+          console.warn(`⚠️  No image source found for ${creative.name}`);
+        }
+
+        // Small delay to avoid rate limiting
+        await this.sleep(100);
+        
+      } catch (error: any) {
+        console.error(`❌ Error processing ${creative.name}:`, error.message);
+        failed++;
+      }
+    }
+
+    return { updated, failed, skipped, noImage };
+  }
 }
