@@ -19,7 +19,7 @@ interface AIConfig {
 const DEFAULT_AI_CONFIG: AIConfig = {
   model: 'gpt-4o',
   maxTokens: 1500,
-  temperature: 0.3,
+  temperature: 0, // Zero temperature for maximum precision and consistency
   complianceSystemPrompt: null,
   performanceSystemPrompt: null,
 };
@@ -31,7 +31,7 @@ async function getAIConfig(): Promise<AIConfig> {
       return {
         model: settings.model || DEFAULT_AI_CONFIG.model,
         maxTokens: settings.maxTokens || DEFAULT_AI_CONFIG.maxTokens,
-        temperature: parseFloat(settings.temperature?.toString() || '0.7'),
+        temperature: 0, // Always use 0 for maximum precision - ignore database setting
         complianceSystemPrompt: settings.complianceSystemPrompt || null,
         performanceSystemPrompt: settings.performanceSystemPrompt || null,
       };
@@ -40,6 +40,24 @@ async function getAIConfig(): Promise<AIConfig> {
     console.warn('Failed to load AI settings from database, using defaults:', error);
   }
   return DEFAULT_AI_CONFIG;
+}
+
+// Pre-validate keywords in text content to prevent AI hallucinations
+function findKeywordsInText(text: string, keywords: string[]): { found: string[], notFound: string[] } {
+  const normalizedText = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const found: string[] = [];
+  const notFound: string[] = [];
+  
+  for (const keyword of keywords) {
+    const normalizedKeyword = keyword.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (normalizedText.includes(normalizedKeyword)) {
+      found.push(keyword);
+    } else {
+      notFound.push(keyword);
+    }
+  }
+  
+  return { found, notFound };
 }
 
 async function getOpenAI(): Promise<OpenAI> {
@@ -403,6 +421,28 @@ Responda em JSON (PORTUGUÊS-BR):
 
       const result = JSON.parse(response.choices[0].message.content || '{}');
 
+      // ============================================
+      // PROGRAMMATIC VALIDATION TO PREVENT HALLUCINATIONS
+      // ============================================
+      // Combine all text content from creative for validation
+      const allTextContent = [
+        creative.text || '',
+        creative.headline || '',
+        creative.description || '',
+        creative.callToAction || '',
+        creative.name || ''
+      ].join(' ');
+
+      // Validate prohibited keywords - only keep those actually found in TEXT
+      // (AI may still report image-based keywords, but we validate text ones)
+      const textProhibitedCheck = findKeywordsInText(allTextContent, prohibitedKeywords);
+      const textRequiredCheck = findKeywordsInText(allTextContent, requiredKeywords);
+      
+      console.log('[AIAnalysisService] Text validation results:');
+      console.log('  - Prohibited in text:', textProhibitedCheck.found);
+      console.log('  - Required in text:', textRequiredCheck.found);
+      console.log('  - Required missing from text:', textRequiredCheck.notFound);
+
       // Process issues - handle both string and object formats
       const processedIssues: ComplianceIssue[] = [];
       if (Array.isArray(result.issues)) {
@@ -418,6 +458,28 @@ Responda em JSON (PORTUGUÊS-BR):
             // New object format
             const validCategories = ['logo', 'cores', 'texto', 'palavras_proibidas', 'palavras_obrigatorias', 'copywriting', 'outro'];
             const category = validCategories.includes(issue.category) ? issue.category : 'outro';
+            
+            // VALIDATION: Filter out hallucinated prohibited keyword issues
+            if (category === 'palavras_proibidas') {
+              // Check if any prohibited keyword is mentioned in the issue description
+              const mentionedProhibited = prohibitedKeywords.some(kw => 
+                issue.description?.toLowerCase().includes(kw.toLowerCase())
+              );
+              // If AI claims a prohibited word but it's not in our validated list, skip it
+              if (mentionedProhibited) {
+                const actuallyProhibited = prohibitedKeywords.filter(kw => 
+                  issue.description?.toLowerCase().includes(kw.toLowerCase()) &&
+                  (textProhibitedCheck.found.includes(kw) || 
+                   // Allow if source is "imagem" - we can't validate image content
+                   issue.description?.toLowerCase().includes('imagem'))
+                );
+                if (actuallyProhibited.length === 0 && !issue.description?.toLowerCase().includes('imagem')) {
+                  console.log('[AIAnalysisService] FILTERED HALLUCINATION - prohibited word issue:', issue.description);
+                  continue; // Skip this hallucinated issue
+                }
+              }
+            }
+            
             processedIssues.push({
               category: category as ComplianceIssue['category'],
               description: issue.description || issue.message || String(issue),
@@ -425,6 +487,69 @@ Responda em JSON (PORTUGUÊS-BR):
             });
           }
         }
+      }
+
+      // Validate and correct keyword analysis from AI
+      let validatedKeywordAnalysis = undefined;
+      if (result.keywordAnalysis) {
+        // Get AI's claims
+        const aiProhibitedFound = Array.isArray(result.keywordAnalysis.prohibitedKeywordsFound) 
+          ? result.keywordAnalysis.prohibitedKeywordsFound : [];
+        const aiRequiredFound = Array.isArray(result.keywordAnalysis.requiredKeywordsFound)
+          ? result.keywordAnalysis.requiredKeywordsFound : [];
+        const aiRequiredMissing = Array.isArray(result.keywordAnalysis.requiredKeywordsMissing)
+          ? result.keywordAnalysis.requiredKeywordsMissing : [];
+
+        // Validate prohibited keywords found
+        const validatedProhibitedFound: Array<{ keyword: string; source: 'imagem' | 'texto' | 'ambos' }> = [];
+        for (const item of aiProhibitedFound) {
+          const keyword = typeof item === 'string' ? item : (item.keyword || item);
+          const source = typeof item === 'object' ? item.source : 'texto';
+          
+          // If source is "texto" or "ambos", verify it's actually in the text
+          if (source === 'imagem') {
+            // Trust AI for image analysis (we can't validate)
+            validatedProhibitedFound.push({ keyword, source: 'imagem' });
+          } else if (textProhibitedCheck.found.some(f => f.toLowerCase() === keyword.toLowerCase())) {
+            // Verified in text
+            validatedProhibitedFound.push({ keyword, source: source === 'ambos' ? 'ambos' : 'texto' });
+          } else {
+            console.log('[AIAnalysisService] FILTERED HALLUCINATION - prohibited keyword not in text:', keyword);
+          }
+        }
+
+        // Validate required keywords found
+        const validatedRequiredFound: Array<{ keyword: string; source: 'imagem' | 'texto' | 'ambos' }> = [];
+        for (const item of aiRequiredFound) {
+          const keyword = typeof item === 'string' ? item : (item.keyword || item);
+          const source = typeof item === 'object' ? item.source : 'texto';
+          
+          if (source === 'imagem') {
+            // Trust AI for image analysis
+            validatedRequiredFound.push({ keyword, source: 'imagem' });
+          } else if (textRequiredCheck.found.some(f => f.toLowerCase() === keyword.toLowerCase())) {
+            // Verified in text
+            validatedRequiredFound.push({ keyword, source: source === 'ambos' ? 'ambos' : 'texto' });
+          } else {
+            console.log('[AIAnalysisService] FILTERED HALLUCINATION - required keyword not in text:', keyword);
+          }
+        }
+
+        // Calculate missing required keywords (use programmatic check as ground truth for text)
+        const validatedRequiredMissing = requiredKeywords.filter(kw => {
+          // Missing if: not in text AND not found in image by AI
+          const inText = textRequiredCheck.found.some(f => f.toLowerCase() === kw.toLowerCase());
+          const inImage = validatedRequiredFound.some(f => f.keyword.toLowerCase() === kw.toLowerCase() && f.source === 'imagem');
+          return !inText && !inImage;
+        });
+
+        validatedKeywordAnalysis = {
+          requiredKeywordsFound: validatedRequiredFound,
+          requiredKeywordsMissing: validatedRequiredMissing,
+          prohibitedKeywordsFound: validatedProhibitedFound,
+        };
+        
+        console.log('[AIAnalysisService] Validated keyword analysis:', JSON.stringify(validatedKeywordAnalysis));
       }
 
       return {
@@ -438,23 +563,7 @@ Responda em JSON (PORTUGUÊS-BR):
           colorJustification: result.colorJustification || '',
           textCompliance: result.textCompliance || false,
           textJustification: result.textJustification || '',
-          keywordAnalysis: result.keywordAnalysis ? {
-            requiredKeywordsFound: Array.isArray(result.keywordAnalysis.requiredKeywordsFound) 
-              ? result.keywordAnalysis.requiredKeywordsFound.map((item: any) => 
-                  typeof item === 'string' 
-                    ? { keyword: item, source: 'texto' as const }
-                    : { keyword: item.keyword || item, source: (item.source || 'texto') as 'imagem' | 'texto' | 'ambos' }
-                )
-              : [],
-            requiredKeywordsMissing: Array.isArray(result.keywordAnalysis.requiredKeywordsMissing) ? result.keywordAnalysis.requiredKeywordsMissing : [],
-            prohibitedKeywordsFound: Array.isArray(result.keywordAnalysis.prohibitedKeywordsFound) 
-              ? result.keywordAnalysis.prohibitedKeywordsFound.map((item: any) => 
-                  typeof item === 'string' 
-                    ? { keyword: item, source: 'texto' as const }
-                    : { keyword: item.keyword || item, source: (item.source || 'texto') as 'imagem' | 'texto' | 'ambos' }
-                )
-              : [],
-          } : undefined,
+          keywordAnalysis: validatedKeywordAnalysis,
           copywritingAnalysis: result.copywritingAnalysis ? {
             score: Math.max(0, Math.min(100, Math.round(parseFloat(result.copywritingAnalysis.score) || 0))),
             clarity: result.copywritingAnalysis.clarity || '',
