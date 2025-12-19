@@ -1118,7 +1118,7 @@ export class MetaAdsService {
 
   /**
    * Re-download images in high resolution for existing creatives
-   * This fetches high-res images via image_hash from Meta API
+   * Detects creative format (image/video/carousel) and downloads all images for carousels
    */
   async redownloadImagesHighRes(
     integration: Integration,
@@ -1142,19 +1142,12 @@ export class MetaAdsService {
         progressCallback(i + 1, creatives.length, creative.name);
       }
 
-      // Skip creatives that already have high-quality images
-      if (creative.imageUrl?.startsWith('/objects/') && !creative.imageUrl.includes('thumbnail')) {
-        // Check if it's a recent high-quality download (skip)
-        skipped++;
-        console.log(`⏭️  Skipping ${creative.name} - already has Object Storage image`);
-        continue;
-      }
-
       try {
         let newImageUrl: string | null = null;
+        let creativeFormat: 'image' | 'video' | 'carousel' = 'image';
+        let carouselImages: string[] = [];
 
-        // STEP 1: Try to get image_hash from object_story_spec (BEST - original full resolution)
-        console.log(`🔍 Creative ${creative.externalId}: Fetching high-res image...`);
+        console.log(`🔍 Creative ${creative.externalId}: Detecting format and fetching images...`);
         
         // First, get the creative details to find the creative ID
         const adUrl = `${this.baseUrl}/${this.apiVersion}/${creative.externalId}?fields=creative{id}&access_token=${integration.accessToken}`;
@@ -1175,54 +1168,68 @@ export class MetaAdsService {
           continue;
         }
 
-        // Try to get image_hash from object_story_spec
-        const imageHash = await this.getCreativeImageHash(integration.accessToken, creativeId);
-        
-        if (imageHash) {
-          console.log(`🔑 Found image_hash: ${imageHash}`);
-          const fullSizeUrl = await this.getImageUrlFromHash(integration.accessToken, integration.accountId, imageHash);
-          if (fullSizeUrl) {
-            newImageUrl = fullSizeUrl;
-            console.log(`✅ Got FULL-SIZE image from hash`);
-          }
-        }
-
-        // Try asset_feed_spec if no hash found
-        if (!newImageUrl) {
-          const assetFeedSpec = await this.getCreativeAssetFeedSpec(integration.accessToken, creativeId);
-          if (assetFeedSpec?.images && assetFeedSpec.images.length > 0) {
-            const firstImageHash = assetFeedSpec.images[0].hash;
-            console.log(`🔑 Found hash in asset_feed_spec: ${firstImageHash}`);
-            const fullSizeUrl = await this.getImageUrlFromHash(integration.accessToken, integration.accountId, firstImageHash);
-            if (fullSizeUrl) {
-              newImageUrl = fullSizeUrl;
-              console.log(`✅ Got FULL-SIZE image from asset_feed_spec`);
+        // STEP 1: Check if it's a CAROUSEL (has child_attachments)
+        const carouselUrl = `${this.baseUrl}/${this.apiVersion}/${creativeId}?fields=object_story_spec{link_data{child_attachments{image_hash,picture}}}&access_token=${integration.accessToken}`;
+        const carouselResponse = await fetch(carouselUrl);
+        if (carouselResponse.ok) {
+          const carouselData = await carouselResponse.json() as any;
+          const childAttachments = carouselData.object_story_spec?.link_data?.child_attachments;
+          if (childAttachments && childAttachments.length > 1) {
+            creativeFormat = 'carousel';
+            console.log(`🎠 CAROUSEL detected with ${childAttachments.length} images`);
+            
+            // Download ALL carousel images
+            for (let j = 0; j < childAttachments.length; j++) {
+              const child = childAttachments[j];
+              let childImageUrl: string | null = null;
+              
+              // Try to get full-size from hash first
+              if (child.image_hash) {
+                const fullSizeUrl = await this.getImageUrlFromHash(integration.accessToken, integration.accountId, child.image_hash);
+                if (fullSizeUrl) {
+                  childImageUrl = fullSizeUrl;
+                }
+              }
+              // Fallback to picture URL
+              if (!childImageUrl && child.picture) {
+                childImageUrl = child.picture;
+              }
+              
+              if (childImageUrl) {
+                // Download and save each carousel image
+                const objectUrl = await imageStorageService.downloadAndSaveImage(
+                  childImageUrl, 
+                  companyId, 
+                  integration.id, 
+                  `${creative.id}-carousel-${j}`
+                );
+                if (objectUrl) {
+                  carouselImages.push(objectUrl);
+                  console.log(`✅ Carousel image ${j + 1}/${childAttachments.length} saved: ${objectUrl}`);
+                }
+              }
+              await this.sleep(50); // Small delay between carousel images
+            }
+            
+            // Use first carousel image as main image
+            if (carouselImages.length > 0) {
+              newImageUrl = carouselImages[0];
             }
           }
         }
 
-        // Try image_url from creative endpoint
-        if (!newImageUrl) {
-          const creativeUrl = `${this.baseUrl}/${this.apiVersion}/${creativeId}?fields=image_url&access_token=${integration.accessToken}`;
-          const creativeResponse = await fetch(creativeUrl);
-          if (creativeResponse.ok) {
-            const creativeData = await creativeResponse.json() as { image_url?: string };
-            if (creativeData.image_url) {
-              newImageUrl = creativeData.image_url;
-              console.log(`📷 Using image_url from creative endpoint`);
-            }
-          }
-        }
-
-        // Try video thumbnail for VIDEO creatives
-        if (!newImageUrl) {
+        // STEP 2: Check if it's a VIDEO (has video_id or video_data)
+        if (creativeFormat === 'image' && !newImageUrl) {
           const videoUrl = `${this.baseUrl}/${this.apiVersion}/${creativeId}?fields=object_story_spec{video_data{video_id}},video_id&access_token=${integration.accessToken}`;
           const videoResponse = await fetch(videoUrl);
           if (videoResponse.ok) {
             const videoData = await videoResponse.json() as any;
             const videoId = videoData.video_id || videoData.object_story_spec?.video_data?.video_id;
             if (videoId) {
-              console.log(`🎬 Found video ID: ${videoId}, fetching thumbnail...`);
+              creativeFormat = 'video';
+              console.log(`🎬 VIDEO detected with ID: ${videoId}`);
+              
+              // Fetch video thumbnail
               const thumbUrl = `${this.baseUrl}/${this.apiVersion}/${videoId}?fields=thumbnails{uri}&access_token=${integration.accessToken}`;
               const thumbResponse = await fetch(thumbUrl);
               if (thumbResponse.ok) {
@@ -1238,51 +1245,75 @@ export class MetaAdsService {
           }
         }
 
-        // Try carousel/slideshow - get first image from child attachments
-        if (!newImageUrl) {
-          const carouselUrl = `${this.baseUrl}/${this.apiVersion}/${creativeId}?fields=object_story_spec{link_data{child_attachments{image_hash,picture}}}&access_token=${integration.accessToken}`;
-          const carouselResponse = await fetch(carouselUrl);
-          if (carouselResponse.ok) {
-            const carouselData = await carouselResponse.json() as any;
-            const childAttachments = carouselData.object_story_spec?.link_data?.child_attachments;
-            if (childAttachments && childAttachments.length > 0) {
-              // Try to get full-size image from hash first
-              const firstChild = childAttachments[0];
-              if (firstChild.image_hash) {
-                console.log(`🎠 Found carousel image_hash: ${firstChild.image_hash}`);
-                const fullSizeUrl = await this.getImageUrlFromHash(integration.accessToken, integration.accountId, firstChild.image_hash);
-                if (fullSizeUrl) {
-                  newImageUrl = fullSizeUrl;
-                  console.log(`🎠 Got CAROUSEL image from hash`);
-                }
+        // STEP 3: IMAGE - Try various methods to get high-res image
+        if (creativeFormat === 'image' && !newImageUrl) {
+          // Try to get image_hash from object_story_spec
+          const imageHash = await this.getCreativeImageHash(integration.accessToken, creativeId);
+          if (imageHash) {
+            const fullSizeUrl = await this.getImageUrlFromHash(integration.accessToken, integration.accountId, imageHash);
+            if (fullSizeUrl) {
+              newImageUrl = fullSizeUrl;
+              console.log(`✅ Got FULL-SIZE image from hash`);
+            }
+          }
+
+          // Try asset_feed_spec if no hash found
+          if (!newImageUrl) {
+            const assetFeedSpec = await this.getCreativeAssetFeedSpec(integration.accessToken, creativeId);
+            if (assetFeedSpec?.images && assetFeedSpec.images.length > 0) {
+              const firstImageHash = assetFeedSpec.images[0].hash;
+              const fullSizeUrl = await this.getImageUrlFromHash(integration.accessToken, integration.accountId, firstImageHash);
+              if (fullSizeUrl) {
+                newImageUrl = fullSizeUrl;
+                console.log(`✅ Got FULL-SIZE image from asset_feed_spec`);
               }
-              // Fallback to picture URL
-              if (!newImageUrl && firstChild.picture) {
-                newImageUrl = firstChild.picture;
-                console.log(`🎠 Using carousel picture URL`);
+            }
+          }
+
+          // Try image_url from creative endpoint
+          if (!newImageUrl) {
+            const creativeUrl = `${this.baseUrl}/${this.apiVersion}/${creativeId}?fields=image_url&access_token=${integration.accessToken}`;
+            const creativeResponse = await fetch(creativeUrl);
+            if (creativeResponse.ok) {
+              const creativeData = await creativeResponse.json() as { image_url?: string };
+              if (creativeData.image_url) {
+                newImageUrl = creativeData.image_url;
+                console.log(`📷 Using image_url from creative endpoint`);
               }
             }
           }
         }
 
-        if (newImageUrl) {
-          // Download and save to Object Storage
-          const objectUrl = await imageStorageService.downloadAndSaveImage(
-            newImageUrl, 
-            companyId, 
-            integration.id, 
-            creative.id // Using creative.id as adSetId for organization
-          );
+        // Save the image(s) and update database
+        if (newImageUrl || carouselImages.length > 0) {
+          const { storage } = await import('../../shared/services/storage.service.js');
           
-          if (objectUrl) {
-            // Update database with new image URL
-            const { storage } = await import('../../shared/services/storage.service.js');
-            await storage.updateCreative(creative.id, { imageUrl: objectUrl });
-            updated++;
-            console.log(`✅ Updated image for ${creative.name}: ${objectUrl}`);
-          } else {
-            failed++;
+          // For non-carousel, download and save the main image
+          let finalImageUrl = newImageUrl;
+          if (creativeFormat !== 'carousel' && newImageUrl) {
+            const objectUrl = await imageStorageService.downloadAndSaveImage(
+              newImageUrl, 
+              companyId, 
+              integration.id, 
+              creative.id
+            );
+            if (objectUrl) {
+              finalImageUrl = objectUrl;
+            }
           }
+          
+          // Update database with format and images
+          const updateData: any = { creativeFormat };
+          if (finalImageUrl) {
+            updateData.imageUrl = finalImageUrl;
+          }
+          if (carouselImages.length > 0) {
+            updateData.carouselImages = carouselImages;
+          }
+          
+          await storage.updateCreative(creative.id, updateData);
+          updated++;
+          console.log(`✅ Updated ${creative.name}: format=${creativeFormat}, images=${carouselImages.length || 1}`);
         } else {
           noImage++;
           console.warn(`⚠️  No image source found for ${creative.name}`);
