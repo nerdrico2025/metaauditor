@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Image } from "lucide-react";
+import { Image, Video } from "lucide-react";
 import type { Creative } from "@shared/schema";
 
 interface CreativeImageProps {
@@ -74,6 +74,35 @@ export const CreativeImage = ({
 
   const config = sizeConfig[size];
   const colors = variantConfig[variant];
+  
+  // Video without thumbnail from Meta
+  if (creative.imageUrl === 'VIDEO_NO_THUMBNAIL' || (creative.creativeFormat === 'video' && !creative.imageUrl)) {
+    return (
+      <div className={`${config.container} bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/30 rounded-lg flex flex-col items-center justify-center border-2 border-dashed border-purple-200 dark:border-purple-700`}>
+        <Video className={`${config.icon} text-purple-400 dark:text-purple-300 ${config.spacing}`} />
+        {size === 'small' ? (
+          <span className={`${config.text} text-purple-600 dark:text-purple-300`}>Vídeo</span>
+        ) : (
+          <span className={`${config.text} text-purple-600 dark:text-purple-300 text-center px-2`}>
+            {size === 'large' ? (
+              <>
+                <span className="font-medium">{creative.name}</span><br/>
+                <span className="text-purple-400 dark:text-purple-400 mt-2 block text-xs">
+                  Este criativo é um vídeo e não possui thumbnail gerado pela Meta
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="text-purple-400 dark:text-purple-400 text-xs">
+                  Vídeo sem thumbnail
+                </span>
+              </>
+            )}
+          </span>
+        )}
+      </div>
+    );
+  }
   
   // No image URL
   if (!creative.imageUrl) {

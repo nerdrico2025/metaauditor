@@ -633,10 +633,10 @@ export default function Creatives() {
     else if (filters.clicksFilter === "medium") matchesClicks = clicks >= 50 && clicks <= 500;
     else if (filters.clicksFilter === "high") matchesClicks = clicks > 500;
     
-    // No image filter
+    // No image filter (VIDEO_NO_THUMBNAIL is a valid placeholder, not "no image")
     let matchesNoImage = true;
     if (filters.noImageFilter) {
-      matchesNoImage = !creative.imageUrl || creative.imageUrl === '';
+      matchesNoImage = (!creative.imageUrl || creative.imageUrl === '') && creative.imageUrl !== 'VIDEO_NO_THUMBNAIL';
     }
     
     return matchesSearch && matchesStatus && matchesCampaign && matchesAdSet && matchesPlatform && matchesCreativeType &&

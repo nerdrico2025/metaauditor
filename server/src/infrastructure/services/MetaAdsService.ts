@@ -1218,8 +1218,8 @@ export class MetaAdsService {
           }
         }
 
-        // STEP 2: Check if it's a VIDEO (has video_id or video_data)
-        if (creativeFormat === 'image' && !newImageUrl) {
+        // STEP 2: Check if it's a VIDEO (has video_id or video_data) - Check BEFORE image detection
+        if (creativeFormat === 'image') {
           const videoUrl = `${this.baseUrl}/${this.apiVersion}/${creativeId}?fields=object_story_spec{video_data{video_id}},video_id&access_token=${integration.accessToken}`;
           const videoResponse = await fetch(videoUrl);
           if (videoResponse.ok) {
@@ -1240,6 +1240,12 @@ export class MetaAdsService {
                   newImageUrl = bestThumb.uri;
                   console.log(`🎬 Got VIDEO thumbnail`);
                 }
+              }
+              
+              // If no thumbnail from Meta, use placeholder indicator
+              if (!newImageUrl) {
+                newImageUrl = 'VIDEO_NO_THUMBNAIL';
+                console.log(`🎬 VIDEO without Meta thumbnail - will use placeholder`);
               }
             }
           }
@@ -1285,12 +1291,12 @@ export class MetaAdsService {
         }
 
         // Save the image(s) and update database
-        if (newImageUrl || carouselImages.length > 0) {
+        if (newImageUrl || carouselImages.length > 0 || creativeFormat === 'video') {
           const { storage } = await import('../../shared/services/storage.service.js');
           
-          // For non-carousel, download and save the main image
+          // For non-carousel and non-placeholder, download and save the main image
           let finalImageUrl = newImageUrl;
-          if (creativeFormat !== 'carousel' && newImageUrl) {
+          if (creativeFormat !== 'carousel' && newImageUrl && newImageUrl !== 'VIDEO_NO_THUMBNAIL') {
             const objectUrl = await imageStorageService.downloadAndSaveImage(
               newImageUrl, 
               companyId, 
@@ -1300,6 +1306,11 @@ export class MetaAdsService {
             if (objectUrl) {
               finalImageUrl = objectUrl;
             }
+          }
+          
+          // For videos without thumbnail, set the placeholder marker
+          if (creativeFormat === 'video' && newImageUrl === 'VIDEO_NO_THUMBNAIL') {
+            finalImageUrl = 'VIDEO_NO_THUMBNAIL';
           }
           
           // Update database with format and images
