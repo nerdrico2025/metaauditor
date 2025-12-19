@@ -933,6 +933,46 @@ export default function MetaIntegrations() {
     });
   };
 
+  // Wrapper function for single sync with token validation
+  const handleSyncSingle = async (integration: Integration) => {
+    try {
+      // Check if connection has valid token
+      const token = localStorage.getItem('auth_token');
+      const res = await fetch(`/api/auth/meta/check-token/${integration.id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      
+      if (!res.ok) {
+        toast({
+          title: 'Erro ao verificar conexão',
+          description: 'Não foi possível verificar o status da conexão.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      const data = await res.json();
+      
+      if (!data.valid) {
+        toast({
+          title: 'Conexão inativa',
+          description: `A conta "${integration.accountName || 'Conta de Anúncios'}" está com a conexão inativa. Clique em "Reconectar" para renovar a conexão.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      // Token is valid, proceed with sync
+      syncMutation.mutate(integration.id);
+    } catch (error) {
+      toast({
+        title: 'Erro ao verificar conexão',
+        description: 'Ocorreu um erro ao verificar o status da conexão.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />
@@ -1096,7 +1136,7 @@ export default function MetaIntegrations() {
                                     key={integration.id}
                                     integration={integration}
                                     syncHistory={integrationHistory}
-                                    onSync={() => syncMutation.mutate(integration.id)}
+                                    onSync={() => handleSyncSingle(integration)}
                                     onDelete={() => {
                                       setIntegrationToDelete(integration);
                                       setDeleteDialogOpen(true);
