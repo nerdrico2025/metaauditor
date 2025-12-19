@@ -955,8 +955,8 @@ router.get('/google/accounts', authenticateToken, async (req: Request, res: Resp
   }
 });
 
-// Re-download images in high resolution for an integration (delete all from bucket + re-download all)
-router.post('/:id/redownload-images', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
+// Re-download images in high resolution for an integration (SSE with progress)
+router.get('/:id/redownload-images-stream', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userCompanyId = (req as any).user?.companyId;
     const integration = await storage.getIntegrationById(req.params.id);
@@ -977,51 +977,107 @@ router.post('/:id/redownload-images', authenticateToken, async (req: Request, re
       return res.status(400).json({ message: 'Apenas integrações Meta suportam re-download de imagens' });
     }
 
-    // Step 1: Delete all images from Object Storage for this integration
+    // Setup SSE
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    });
+
+    const sendEvent = (event: string, data: any) => {
+      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+
+    // Step 1: Delete all images from Object Storage
+    sendEvent('progress', { step: 'delete', status: 'loading', message: 'Excluindo imagens do bucket...' });
     console.log(`🗑️  Deleting all images from Object Storage for integration ${integration.id}...`);
     const deletedCount = await objectStorageService.deleteIntegrationFolder(userCompanyId, integration.id);
     console.log(`🗑️  Deleted ${deletedCount} images from Object Storage`);
+    sendEvent('progress', { step: 'delete', status: 'success', message: `${deletedCount} imagens excluídas do bucket`, count: deletedCount });
 
-    // Step 2: Get ALL creatives for this integration (via campaigns)
+    // Step 2: Get ALL creatives for this integration
+    sendEvent('progress', { step: 'fetch', status: 'loading', message: 'Buscando criativos...' });
     const allCreatives = await storage.getCreativesByIntegration(integration.id);
     
     if (allCreatives.length === 0) {
-      return res.json({ 
+      sendEvent('complete', { 
         message: `Excluídas ${deletedCount} imagens do bucket. Nenhum criativo encontrado para re-baixar.`,
         deleted: deletedCount,
         updated: 0,
         failed: 0,
         noImage: 0
       });
+      res.end();
+      return;
     }
 
-    console.log(`🖼️  Re-downloading images for ALL ${allCreatives.length} creatives...`);
+    sendEvent('progress', { step: 'fetch', status: 'success', message: `${allCreatives.length} criativos encontrados`, count: allCreatives.length });
 
-    // Step 3: Clear imageUrl from all creatives (so they get re-downloaded)
+    // Step 3: Clear imageUrl from all creatives
+    sendEvent('progress', { step: 'clear', status: 'loading', message: 'Limpando URLs antigas...' });
     for (const creative of allCreatives) {
       await storage.updateCreative(creative.id, { imageUrl: null });
     }
+    sendEvent('progress', { step: 'clear', status: 'success', message: 'URLs limpas' });
 
-    // Step 4: Re-download all images
-    const result = await metaAdsService.redownloadImagesHighRes(
-      integration,
-      allCreatives.map((c: any) => ({
-        id: c.id,
-        externalId: c.externalId || '',
-        name: c.name,
-        imageUrl: null // Force re-download
-      })),
-      userCompanyId
-    );
+    // Step 4: Re-download all images with progress
+    sendEvent('progress', { step: 'download', status: 'loading', message: 'Baixando imagens em alta resolução...', current: 0, total: allCreatives.length });
+    
+    let updated = 0;
+    let failed = 0;
+    let noImage = 0;
 
-    res.json({
-      message: `Re-download concluído: ${deletedCount} excluídas do bucket, ${result.updated} atualizadas, ${result.failed} falhas, ${result.noImage} sem imagem disponível`,
+    for (let i = 0; i < allCreatives.length; i++) {
+      const creative = allCreatives[i];
+      
+      sendEvent('progress', { 
+        step: 'download', 
+        status: 'loading', 
+        message: `Baixando: ${creative.name}`, 
+        current: i + 1, 
+        total: allCreatives.length,
+        creativeName: creative.name
+      });
+
+      try {
+        // Use the single creative download method
+        const result = await metaAdsService.redownloadImagesHighRes(
+          integration,
+          [{ id: creative.id, externalId: creative.externalId || '', name: creative.name, imageUrl: null }],
+          userCompanyId
+        );
+        
+        updated += result.updated;
+        failed += result.failed;
+        noImage += result.noImage;
+      } catch (error: any) {
+        console.error(`❌ Error downloading image for ${creative.name}:`, error.message);
+        failed++;
+      }
+    }
+
+    sendEvent('progress', { 
+      step: 'download', 
+      status: 'success', 
+      message: `Download concluído: ${updated} atualizadas`, 
+      current: allCreatives.length, 
+      total: allCreatives.length 
+    });
+
+    sendEvent('complete', {
+      message: `Re-download concluído: ${deletedCount} excluídas do bucket, ${updated} atualizadas, ${failed} falhas, ${noImage} sem imagem disponível`,
       deleted: deletedCount,
-      ...result,
+      updated,
+      failed,
+      noImage,
       total: allCreatives.length
     });
-  } catch (error) {
-    next(error);
+
+    res.end();
+  } catch (error: any) {
+    console.error('❌ Error in redownload-images-stream:', error);
+    res.write(`event: error\ndata: ${JSON.stringify({ message: error.message })}\n\n`);
+    res.end();
   }
 });
 

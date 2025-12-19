@@ -16,6 +16,7 @@ import { DeleteConfirmationDialog } from '../components/DeleteConfirmationDialog
 import { IntegrationCard } from '../components/IntegrationCard';
 import { DeleteAllDataDialog } from '../components/DeleteAllDataDialog';
 import { DeleteProgressModal } from '../components/DeleteProgressModal';
+import { RedownloadProgressModal } from '../components/RedownloadProgressModal';
 import { SyncLoadingModal } from '../components/SyncLoadingModal';
 import { BulkSyncModal } from '../components/BulkSyncModal';
 
@@ -124,6 +125,14 @@ export default function MetaIntegrations() {
   
   // Re-download images state
   const [redownloadingImagesId, setRedownloadingImagesId] = useState<string | null>(null);
+  const [showRedownloadModal, setShowRedownloadModal] = useState(false);
+  const [redownloadSteps, setRedownloadSteps] = useState<Array<{name: string; status: 'pending' | 'loading' | 'success' | 'error'; message?: string}>>([]);
+  const [redownloadProgress, setRedownloadProgress] = useState({ current: 0, total: 0 });
+  const [redownloadCurrentCreative, setRedownloadCurrentCreative] = useState<string | undefined>();
+  const [redownloadComplete, setRedownloadComplete] = useState(false);
+  const [redownloadResult, setRedownloadResult] = useState<{deleted: number; updated: number; failed: number; noImage: number; total: number} | undefined>();
+  const [redownloadStartTime, setRedownloadStartTime] = useState<number | undefined>();
+  const [redownloadEndTime, setRedownloadEndTime] = useState<number | undefined>();
 
   // Check for OAuth session in URL on page load
   useEffect(() => {
@@ -526,28 +535,90 @@ export default function MetaIntegrations() {
 
   const handleRedownloadImages = async (integrationId: string) => {
     setRedownloadingImagesId(integrationId);
+    setShowRedownloadModal(true);
+    setRedownloadComplete(false);
+    setRedownloadResult(undefined);
+    setRedownloadProgress({ current: 0, total: 0 });
+    setRedownloadCurrentCreative(undefined);
+    setRedownloadStartTime(Date.now());
+    setRedownloadEndTime(undefined);
+    setRedownloadSteps([
+      { name: 'Excluindo imagens do bucket', status: 'pending' },
+      { name: 'Buscando criativos', status: 'pending' },
+      { name: 'Limpando URLs antigas', status: 'pending' },
+      { name: 'Baixando imagens em alta resolução', status: 'pending' },
+    ]);
+
     try {
-      const result = await apiRequest(`/api/integrations/${integrationId}/redownload-images`, {
-        method: 'POST'
+      const token = localStorage.getItem('auth_token');
+      const eventSource = new EventSource(`/api/integrations/${integrationId}/redownload-images-stream?token=${token}`);
+
+      eventSource.addEventListener('progress', (event) => {
+        const data = JSON.parse(event.data);
+        
+        setRedownloadSteps(prev => {
+          const newSteps = [...prev];
+          const stepIndex = data.step === 'delete' ? 0 : data.step === 'fetch' ? 1 : data.step === 'clear' ? 2 : 3;
+          newSteps[stepIndex] = { ...newSteps[stepIndex], status: data.status, message: data.message };
+          return newSteps;
+        });
+
+        if (data.current !== undefined && data.total !== undefined) {
+          setRedownloadProgress({ current: data.current, total: data.total });
+        }
+        if (data.creativeName) {
+          setRedownloadCurrentCreative(data.creativeName);
+        }
       });
-      
-      const data = result as any;
-      toast({
-        title: '🖼️ Re-download de imagens concluído',
-        description: data.message || `${data.updated} atualizadas, ${data.failed} falhas, ${data.noImage} sem imagem`,
+
+      eventSource.addEventListener('complete', (event) => {
+        const data = JSON.parse(event.data);
+        setRedownloadComplete(true);
+        setRedownloadEndTime(Date.now());
+        setRedownloadResult({
+          deleted: data.deleted || 0,
+          updated: data.updated || 0,
+          failed: data.failed || 0,
+          noImage: data.noImage || 0,
+          total: data.total || 0
+        });
+        setRedownloadingImagesId(null);
+        eventSource.close();
+        
+        // Invalidate queries to refresh the creatives
+        queryClient.invalidateQueries({ queryKey: ['/api/creatives'] });
       });
-      
-      // Invalidate queries to refresh the creatives
-      queryClient.invalidateQueries({ queryKey: ['/api/creatives'] });
+
+      eventSource.addEventListener('error', (event) => {
+        console.error('SSE Error:', event);
+        eventSource.close();
+        setRedownloadingImagesId(null);
+        setRedownloadComplete(true);
+        setRedownloadEndTime(Date.now());
+        toast({
+          title: 'Erro ao re-baixar imagens',
+          description: 'Ocorreu um erro durante o processo',
+          variant: 'destructive'
+        });
+      });
+
     } catch (error: any) {
       toast({
         title: 'Erro ao re-baixar imagens',
         description: error.message,
         variant: 'destructive'
       });
-    } finally {
       setRedownloadingImagesId(null);
+      setShowRedownloadModal(false);
     }
+  };
+  
+  const handleCloseRedownloadModal = () => {
+    setShowRedownloadModal(false);
+    setRedownloadComplete(false);
+    setRedownloadResult(undefined);
+    setRedownloadProgress({ current: 0, total: 0 });
+    setRedownloadCurrentCreative(undefined);
   };
 
   const handleDeleteAllWithProgress = async () => {
@@ -1397,6 +1468,18 @@ export default function MetaIntegrations() {
         startTime={deleteStartTime}
         endTime={deleteEndTime}
         onClose={handleCloseDeleteProgress}
+      />
+
+      <RedownloadProgressModal
+        open={showRedownloadModal}
+        onClose={handleCloseRedownloadModal}
+        steps={redownloadSteps}
+        currentCreative={redownloadCurrentCreative}
+        downloadProgress={redownloadProgress}
+        isComplete={redownloadComplete}
+        result={redownloadResult}
+        startTime={redownloadStartTime}
+        endTime={redownloadEndTime}
       />
 
       <Dialog open={showAddAccountModal} onOpenChange={setShowAddAccountModal}>

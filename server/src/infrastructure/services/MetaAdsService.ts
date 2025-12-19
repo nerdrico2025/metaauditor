@@ -1224,9 +1224,11 @@ export class MetaAdsService {
           );
           
           if (objectUrl) {
+            // Update database with new image URL
+            const { storage } = await import('../../shared/services/storage.service.js');
+            await storage.updateCreative(creative.id, { imageUrl: objectUrl });
             updated++;
             console.log(`✅ Updated image for ${creative.name}: ${objectUrl}`);
-            // Return the new URL - caller will update the database
           } else {
             failed++;
           }
