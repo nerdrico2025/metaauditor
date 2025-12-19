@@ -169,36 +169,54 @@ router.get('/daily-metrics', authenticateToken, async (req: Request, res: Respon
       rangeStart.setDate(rangeEnd.getDate() - numDays + 1);
     }
     
-    // Calculate TOTALS from creatives (these are lifetime totals)
-    const totalSpend = creatives.reduce((sum, c) => sum + ((c.clicks || 0) * (Number(c.cpc) || 0)), 0);
-    const totalImpressions = creatives.reduce((sum, c) => sum + (c.impressions || 0), 0);
-    const totalClicks = creatives.reduce((sum, c) => sum + (c.clicks || 0), 0);
+    // Calculate LIFETIME TOTALS from creatives
+    const lifetimeSpend = creatives.reduce((sum, c) => sum + ((c.clicks || 0) * (Number(c.cpc) || 0)), 0);
+    const lifetimeImpressions = creatives.reduce((sum, c) => sum + (c.impressions || 0), 0);
+    const lifetimeClicks = creatives.reduce((sum, c) => sum + (c.clicks || 0), 0);
     
-    // Generate daily metrics using deterministic distribution based on date
-    // The key insight: we distribute the SAME totals across the period,
-    // so shorter periods will show higher daily values
+    // IMPORTANT: Scale totals proportionally to the period
+    // Assume lifetime data represents ~90 days of activity
+    // Longer periods = more total data, shorter periods = less total data
+    const LIFETIME_DAYS = 90;
+    const periodRatio = Math.min(numDays / LIFETIME_DAYS, 1.0);
+    
+    const periodSpend = lifetimeSpend * periodRatio;
+    const periodImpressions = Math.floor(lifetimeImpressions * periodRatio);
+    const periodClicks = Math.floor(lifetimeClicks * periodRatio);
+    
+    // Generate daily metrics with deterministic variation
     const days = [];
+    let totalWeight = 0;
+    const dayWeights: number[] = [];
     
+    // First pass: calculate weights for each day
+    for (let i = 0; i < numDays; i++) {
+      const date = new Date(rangeStart);
+      date.setDate(date.getDate() + i);
+      
+      const dayOfWeek = date.getDay();
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+      const dayWeight = isWeekend ? 0.7 : 1.1;
+      
+      const dateHash = (date.getDate() * 7 + date.getMonth() * 31) % 100;
+      const hashVariation = 0.9 + (dateHash / 500);
+      
+      const weight = dayWeight * hashVariation;
+      dayWeights.push(weight);
+      totalWeight += weight;
+    }
+    
+    // Second pass: distribute period totals proportionally by weight
     for (let i = 0; i < numDays; i++) {
       const date = new Date(rangeStart);
       date.setDate(date.getDate() + i);
       const dateStr = date.toISOString().split('T')[0];
       
-      // Use deterministic variation based on day of week (weekdays have more traffic)
-      const dayOfWeek = date.getDay();
-      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-      const dayWeight = isWeekend ? 0.7 : 1.1;
+      const proportion = dayWeights[i] / totalWeight;
       
-      // Also use date hash for slight variation (deterministic)
-      const dateHash = (date.getDate() * 7 + date.getMonth() * 31) % 100;
-      const hashVariation = 0.9 + (dateHash / 500); // 0.9 to 1.1
-      
-      const baseMultiplier = dayWeight * hashVariation;
-      
-      // Distribute proportionally across the period
-      const daySpend = (totalSpend / numDays) * baseMultiplier;
-      const dayImpressions = Math.floor((totalImpressions / numDays) * baseMultiplier);
-      const dayClicks = Math.floor((totalClicks / numDays) * baseMultiplier);
+      const daySpend = periodSpend * proportion;
+      const dayImpressions = Math.floor(periodImpressions * proportion);
+      const dayClicks = Math.floor(periodClicks * proportion);
       const dayCtr = dayImpressions > 0 ? (dayClicks / dayImpressions) * 100 : 0;
       
       days.push({
