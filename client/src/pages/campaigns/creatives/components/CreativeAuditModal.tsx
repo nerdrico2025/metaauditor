@@ -11,7 +11,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Eye, CheckCircle, AlertTriangle, BarChart3, Palette, Sparkles, ChevronRight, Shield, TrendingUp, MousePointer, XCircle, ArrowRight, Target, Loader2, FileText, PenLine, Image, Type, RefreshCw, Play, LayoutGrid, ChevronLeft } from "lucide-react";
+import { Eye, CheckCircle, AlertTriangle, BarChart3, Palette, Sparkles, ChevronRight, Shield, TrendingUp, MousePointer, XCircle, ArrowRight, Target, Loader2, FileText, PenLine, Image, Type, RefreshCw, Play, LayoutGrid, ChevronLeft, Video, Info } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
 import { CreativeImage } from "./CreativeImage";
 
@@ -807,6 +808,17 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
               )}
             </div>
           </div>
+
+          {/* Video Analysis Warning */}
+          {isVideo && (
+            <Alert className="mt-4 border-purple-200 bg-purple-50 dark:bg-purple-950/30 dark:border-purple-800">
+              <Video className="h-4 w-4 text-purple-600" />
+              <AlertDescription className="text-purple-700 dark:text-purple-300">
+                <strong>Análise de vídeo:</strong> Atualmente a análise visual com IA está disponível apenas para imagens e textos. 
+                A análise de vídeos será implementada em breve.
+              </AlertDescription>
+            </Alert>
+          )}
 
           {/* Detalhamento da IA - Full Width Row */}
           {viewingAudit && (viewingAudit.aiAnalysis?.compliance || viewingAudit.aiAnalysis?.performance) && (
