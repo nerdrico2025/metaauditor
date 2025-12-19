@@ -956,9 +956,11 @@ router.get('/google/accounts', authenticateToken, async (req: Request, res: Resp
 });
 
 // Re-download images in high resolution for an integration (SSE with progress)
+// Accepts query param: onlyMissing=true to only sync creatives without images
 router.get('/:id/redownload-images-stream', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userCompanyId = (req as any).user?.companyId;
+    const onlyMissing = req.query.onlyMissing === 'true';
     const integration = await storage.getIntegrationById(req.params.id);
     
     if (!integration) {
@@ -988,20 +990,37 @@ router.get('/:id/redownload-images-stream', authenticateToken, async (req: Reque
       res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
     };
 
-    // Step 1: Delete all images from Object Storage
-    sendEvent('progress', { step: 'delete', status: 'loading', message: 'Excluindo imagens do bucket...' });
-    console.log(`🗑️  Deleting all images from Object Storage for integration ${integration.id}...`);
-    const deletedCount = await objectStorageService.deleteIntegrationFolder(userCompanyId, integration.id);
-    console.log(`🗑️  Deleted ${deletedCount} images from Object Storage`);
-    sendEvent('progress', { step: 'delete', status: 'success', message: `${deletedCount} imagens excluídas do bucket`, count: deletedCount });
+    let deletedCount = 0;
+    
+    // Step 1: Delete images from Object Storage (only if syncing all)
+    if (!onlyMissing) {
+      sendEvent('progress', { step: 'delete', status: 'loading', message: 'Excluindo imagens do bucket...' });
+      console.log(`🗑️  Deleting all images from Object Storage for integration ${integration.id}...`);
+      deletedCount = await objectStorageService.deleteIntegrationFolder(userCompanyId, integration.id);
+      console.log(`🗑️  Deleted ${deletedCount} images from Object Storage`);
+      sendEvent('progress', { step: 'delete', status: 'success', message: `${deletedCount} imagens excluídas do bucket`, count: deletedCount });
+    } else {
+      sendEvent('progress', { step: 'delete', status: 'success', message: 'Pulando exclusão (modo apenas sem imagem)' });
+    }
 
-    // Step 2: Get ALL creatives for this integration
+    // Step 2: Get creatives for this integration
     sendEvent('progress', { step: 'fetch', status: 'loading', message: 'Buscando criativos...' });
-    const allCreatives = await storage.getCreativesByIntegration(integration.id);
+    let allCreatives = await storage.getCreativesByIntegration(integration.id);
+    
+    // Filter to only creatives without images if onlyMissing is true
+    if (onlyMissing) {
+      allCreatives = allCreatives.filter(c => 
+        !c.imageUrl || c.imageUrl === '' || c.imageUrl === 'VIDEO_NO_THUMBNAIL'
+      );
+      console.log(`📋 Filtered to ${allCreatives.length} creatives without images`);
+    }
     
     if (allCreatives.length === 0) {
+      const message = onlyMissing 
+        ? 'Todos os criativos já possuem imagem. Nenhuma sincronização necessária.'
+        : `Excluídas ${deletedCount} imagens do bucket. Nenhum criativo encontrado para re-baixar.`;
       sendEvent('complete', { 
-        message: `Excluídas ${deletedCount} imagens do bucket. Nenhum criativo encontrado para re-baixar.`,
+        message,
         deleted: deletedCount,
         updated: 0,
         failed: 0,
@@ -1011,14 +1030,19 @@ router.get('/:id/redownload-images-stream', authenticateToken, async (req: Reque
       return;
     }
 
-    sendEvent('progress', { step: 'fetch', status: 'success', message: `${allCreatives.length} criativos encontrados`, count: allCreatives.length });
+    const modeLabel = onlyMissing ? '(apenas sem imagem)' : '';
+    sendEvent('progress', { step: 'fetch', status: 'success', message: `${allCreatives.length} criativos encontrados ${modeLabel}`, count: allCreatives.length });
 
-    // Step 3: Clear imageUrl from all creatives
-    sendEvent('progress', { step: 'clear', status: 'loading', message: 'Limpando URLs antigas...' });
-    for (const creative of allCreatives) {
-      await storage.updateCreative(creative.id, { imageUrl: null });
+    // Step 3: Clear imageUrl from creatives (only for the ones we're processing)
+    if (!onlyMissing) {
+      sendEvent('progress', { step: 'clear', status: 'loading', message: 'Limpando URLs antigas...' });
+      for (const creative of allCreatives) {
+        await storage.updateCreative(creative.id, { imageUrl: null });
+      }
+      sendEvent('progress', { step: 'clear', status: 'success', message: 'URLs limpas' });
+    } else {
+      sendEvent('progress', { step: 'clear', status: 'success', message: 'Pulando limpeza (modo apenas sem imagem)' });
     }
-    sendEvent('progress', { step: 'clear', status: 'success', message: 'URLs limpas' });
 
     // Step 4: Re-download all images with progress
     sendEvent('progress', { step: 'download', status: 'loading', message: 'Baixando imagens em alta resolução...', current: 0, total: allCreatives.length });
