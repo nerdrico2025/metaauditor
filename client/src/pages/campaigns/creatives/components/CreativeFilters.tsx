@@ -41,6 +41,20 @@ export function CreativeFilters({
   campaigns,
   adSets,
 }: CreativeFiltersProps) {
+  // Filter adSets based on selected campaign (cascading filter)
+  const filteredAdSets = filters.campaignFilter === "all" 
+    ? adSets 
+    : adSets.filter(adSet => adSet.campaignId === filters.campaignFilter);
+
+  // Handle campaign change - reset adSet filter when campaign changes
+  const handleCampaignChange = (value: string) => {
+    onFilterChange("campaignFilter", value);
+    // Reset adSet filter when campaign changes to avoid invalid selection
+    if (filters.adSetFilter !== "all") {
+      onFilterChange("adSetFilter", "all");
+    }
+  };
+
   const hasActiveFilters = 
     filters.searchTerm || 
     filters.statusFilter !== "all" || 
@@ -76,7 +90,7 @@ export function CreativeFilters({
           {/* Campaign */}
           <div className="space-y-1.5">
             <Label className="text-xs font-medium text-gray-500 dark:text-gray-400">Campanha</Label>
-            <Select value={filters.campaignFilter} onValueChange={(v) => onFilterChange("campaignFilter", v)}>
+            <Select value={filters.campaignFilter} onValueChange={handleCampaignChange}>
               <SelectTrigger className="w-full bg-white dark:bg-gray-800" data-testid="select-campaign-filter">
                 <SelectValue placeholder="Todas" />
               </SelectTrigger>
@@ -91,7 +105,7 @@ export function CreativeFilters({
             </Select>
           </div>
 
-          {/* Ad Set */}
+          {/* Ad Set - filtered by selected campaign */}
           <div className="space-y-1.5">
             <Label className="text-xs font-medium text-gray-500 dark:text-gray-400">Grupo de Anúncios</Label>
             <Select value={filters.adSetFilter} onValueChange={(v) => onFilterChange("adSetFilter", v)}>
@@ -100,7 +114,7 @@ export function CreativeFilters({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos</SelectItem>
-                {adSets.map((adSet) => (
+                {filteredAdSets.map((adSet) => (
                   <SelectItem key={adSet.id} value={adSet.id}>
                     {adSet.name}
                   </SelectItem>
