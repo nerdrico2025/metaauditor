@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -102,7 +102,8 @@ export default function TopCampaigns() {
                 <div 
                   key={campaign.id} 
                   className="p-3 border border-slate-100 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors"
-                  onClick={() => setLocation("/campaigns")}
+                  onClick={() => setLocation(`/campaigns?campaignId=${campaign.id}`)}
+                  data-testid={`campaign-card-${campaign.id}`}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2 flex-1 min-w-0">

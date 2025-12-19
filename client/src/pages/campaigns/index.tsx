@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useMetaAccount } from "@/contexts/MetaAccountContext";
+import { useSearch, useLocation } from "wouter";
 import Sidebar from "@/components/Layout/Sidebar";
 import Header from "@/components/Layout/Header";
 import { Pagination } from "@/components/Pagination";
@@ -44,6 +45,12 @@ export default function Campaigns() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
   const { selectedAccountId } = useMetaAccount();
+  const searchParams = useSearch();
+  const [, setLocation] = useLocation();
+  
+  // Get campaignId filter from URL query params
+  const urlParams = new URLSearchParams(searchParams);
+  const campaignIdFilter = urlParams.get('campaignId');
   
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -191,6 +198,11 @@ export default function Campaigns() {
   };
 
   const filteredCampaigns = campaigns?.filter((campaign) => {
+    // If campaignId is in URL, filter by that specific campaign
+    if (campaignIdFilter) {
+      return campaign.id === campaignIdFilter;
+    }
+    
     const matchesSearch = campaign.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          campaign.externalId.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "all" || campaign.status === statusFilter;
@@ -198,6 +210,11 @@ export default function Campaigns() {
     
     return matchesSearch && matchesStatus && matchesPlatform;
   }) || [];
+  
+  // Get the filtered campaign name for display
+  const filteredCampaignName = campaignIdFilter && filteredCampaigns.length > 0 
+    ? filteredCampaigns[0].name 
+    : null;
 
   const sortedCampaigns = [...filteredCampaigns].sort((a, b) => {
     if (a.status === 'Ativo' && b.status !== 'Ativo') return -1;
@@ -230,6 +247,27 @@ export default function Campaigns() {
                   Gerencie suas campanhas publicitárias do Meta Ads e Google Ads
                 </p>
               </div>
+
+              {/* Campaign filter indicator */}
+              {campaignIdFilter && filteredCampaignName && (
+                <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Search className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <span className="text-sm text-blue-800 dark:text-blue-300">
+                      Filtrando por: <strong>{filteredCampaignName}</strong>
+                    </span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setLocation('/campaigns')}
+                    className="text-blue-600 hover:text-blue-800 hover:bg-blue-100"
+                    data-testid="button-clear-campaign-filter"
+                  >
+                    Limpar filtro
+                  </Button>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                 <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
