@@ -1219,6 +1219,7 @@ export class MetaAdsService {
         }
 
         // STEP 2: Check if it's a VIDEO (has video_id or video_data) - Check BEFORE image detection
+        let videoSourceUrl: string | null = null;
         if (creativeFormat === 'image') {
           const videoUrl = `${this.baseUrl}/${this.apiVersion}/${creativeId}?fields=object_story_spec{video_data{video_id}},video_id&access_token=${integration.accessToken}`;
           const videoResponse = await fetch(videoUrl);
@@ -1229,16 +1230,24 @@ export class MetaAdsService {
               creativeFormat = 'video';
               console.log(`🎬 VIDEO detected with ID: ${videoId}`);
               
-              // Fetch video thumbnail
-              const thumbUrl = `${this.baseUrl}/${this.apiVersion}/${videoId}?fields=thumbnails{uri}&access_token=${integration.accessToken}`;
-              const thumbResponse = await fetch(thumbUrl);
-              if (thumbResponse.ok) {
-                const thumbData = await thumbResponse.json() as any;
-                if (thumbData.thumbnails?.data && thumbData.thumbnails.data.length > 0) {
+              // Fetch video thumbnail AND source URL
+              const videoDetailsUrl = `${this.baseUrl}/${this.apiVersion}/${videoId}?fields=thumbnails{uri},source&access_token=${integration.accessToken}`;
+              const videoDetailsResponse = await fetch(videoDetailsUrl);
+              if (videoDetailsResponse.ok) {
+                const videoDetailsData = await videoDetailsResponse.json() as any;
+                
+                // Get thumbnail
+                if (videoDetailsData.thumbnails?.data && videoDetailsData.thumbnails.data.length > 0) {
                   // Get the highest quality thumbnail (usually the last one)
-                  const bestThumb = thumbData.thumbnails.data[thumbData.thumbnails.data.length - 1];
+                  const bestThumb = videoDetailsData.thumbnails.data[videoDetailsData.thumbnails.data.length - 1];
                   newImageUrl = bestThumb.uri;
                   console.log(`🎬 Got VIDEO thumbnail`);
+                }
+                
+                // Get video source URL
+                if (videoDetailsData.source) {
+                  videoSourceUrl = videoDetailsData.source;
+                  console.log(`🎬 Got VIDEO source URL`);
                 }
               }
               
@@ -1313,6 +1322,20 @@ export class MetaAdsService {
             finalImageUrl = 'VIDEO_NO_THUMBNAIL';
           }
           
+          // Download and save video file if available
+          let finalVideoUrl: string | null = null;
+          if (creativeFormat === 'video' && videoSourceUrl) {
+            finalVideoUrl = await imageStorageService.downloadAndSaveVideo(
+              videoSourceUrl,
+              companyId,
+              integration.id,
+              creative.id
+            );
+            if (finalVideoUrl) {
+              console.log(`🎬 Video saved: ${finalVideoUrl}`);
+            }
+          }
+          
           // Update database with format and images
           const updateData: any = { creativeFormat };
           if (finalImageUrl) {
@@ -1321,10 +1344,13 @@ export class MetaAdsService {
           if (carouselImages.length > 0) {
             updateData.carouselImages = carouselImages;
           }
+          if (finalVideoUrl) {
+            updateData.videoUrl = finalVideoUrl;
+          }
           
           await storage.updateCreative(creative.id, updateData);
           updated++;
-          console.log(`✅ Updated ${creative.name}: format=${creativeFormat}, images=${carouselImages.length || 1}`);
+          console.log(`✅ Updated ${creative.name}: format=${creativeFormat}, images=${carouselImages.length || 1}${finalVideoUrl ? ', video=yes' : ''}`);
         } else {
           noImage++;
           console.warn(`⚠️  No image source found for ${creative.name}`);
