@@ -361,15 +361,13 @@ router.get('/:id/sync-stream', async (req: Request, res: Response) => {
           message: `Campanhas salvas: ${campaigns.length}`
         });
         
-        // Clean up obsolete campaigns (ONLY for this integration)
-        const campaignExternalIds = campaigns.map(c => c.externalId);
-        const deletedCampaigns = await storage.deleteCampaignsNotInList(userId, campaignExternalIds, integration.id);
+        // NOTE: We no longer delete campaigns not in list to preserve audits and historical data
+        // Users can manually delete campaigns if needed
         
         sendEvent('step-complete', { 
           step: 1,
           name: 'Campanhas sincronizadas',
-          count: syncedCampaigns,
-          deleted: deletedCampaigns
+          count: syncedCampaigns
         });
 
         // ===============================
@@ -420,15 +418,13 @@ router.get('/:id/sync-stream', async (req: Request, res: Response) => {
           message: `Grupos de anúncios salvos: ${adSets.length}`
         });
         
-        // Clean up obsolete ad sets (ONLY for this integration)
-        const adSetExternalIds = adSets.map(a => a.externalId);
-        const deletedAdSets = await storage.deleteAdSetsNotInList(userId, adSetExternalIds, integration.id);
+        // NOTE: We no longer delete ad sets not in list to preserve audits and historical data
+        // Users can manually delete ad sets if needed
         
         sendEvent('step-complete', { 
           step: 2,
           name: 'Grupos de anúncios sincronizados',
-          count: syncedAdSets,
-          deleted: deletedAdSets
+          count: syncedAdSets
         });
 
         // ===============================
@@ -497,15 +493,13 @@ router.get('/:id/sync-stream', async (req: Request, res: Response) => {
           message: `Anúncios salvos: ${ads.length}`
         });
         
-        // Clean up obsolete creatives (ONLY for this integration)
-        const creativeExternalIds = ads.map(a => a.externalId);
-        const deletedCreatives = await storage.deleteCreativesNotInList(userId, creativeExternalIds, integration.id);
+        // NOTE: We no longer delete creatives not in list to preserve audits and historical data
+        // Users can manually delete creatives if needed
         
         sendEvent('step-complete', { 
           step: 3,
           name: 'Anúncios sincronizados',
-          count: syncedCreatives,
-          deleted: deletedCreatives
+          count: syncedCreatives
         });
 
         // Update sync history with success
@@ -613,12 +607,7 @@ router.post('/:id/sync', authenticateToken, async (req: Request, res: Response, 
           syncedCampaigns++;
         }
         
-        // Clean up obsolete campaigns (ONLY for this integration)
-        const campaignExternalIds = campaigns.map(c => c.externalId);
-        const deletedCampaigns = await storage.deleteCampaignsNotInList(userId, campaignExternalIds, integration.id);
-        if (deletedCampaigns > 0) {
-          console.log(`🗑️  Removed ${deletedCampaigns} obsolete campaigns from database`);
-        }
+        // NOTE: We no longer delete campaigns not in list to preserve audits and historical data
 
         // ===============================
         // STEP 2: Sync ALL Ad Sets (from account)
@@ -649,12 +638,7 @@ router.post('/:id/sync', authenticateToken, async (req: Request, res: Response, 
           syncedAdSets++;
         }
         
-        // Clean up obsolete ad sets (ONLY for this integration)
-        const adSetExternalIds = adSets.map(a => a.externalId);
-        const deletedAdSets = await storage.deleteAdSetsNotInList(userId, adSetExternalIds, integration.id);
-        if (deletedAdSets > 0) {
-          console.log(`🗑️  Removed ${deletedAdSets} obsolete ad sets from database`);
-        }
+        // NOTE: We no longer delete ad sets not in list to preserve audits and historical data
 
         // ===============================
         // STEP 3: Sync ALL Ads (from account)
@@ -683,17 +667,12 @@ router.post('/:id/sync', authenticateToken, async (req: Request, res: Response, 
           syncedCreatives++;
         }
         
-        // Clean up obsolete creatives (ONLY for this integration)
-        const creativeExternalIds = ads.map(a => a.externalId);
-        const deletedCreatives = await storage.deleteCreativesNotInList(userId, creativeExternalIds, integration.id);
-        if (deletedCreatives > 0) {
-          console.log(`🗑️  Removed ${deletedCreatives} obsolete ads from database`);
-        }
+        // NOTE: We no longer delete creatives not in list to preserve audits and historical data
         
         console.log(`\n🎉 Meta sync completed successfully!`);
-        console.log(`   📊 Campaigns: ${syncedCampaigns} synced (${deletedCampaigns} deleted)`);
-        console.log(`   📦 Ad Sets: ${syncedAdSets} synced (${deletedAdSets} deleted)`);
-        console.log(`   🎨 Ads: ${syncedCreatives} synced (${deletedCreatives} deleted)`);
+        console.log(`   📊 Campaigns: ${syncedCampaigns} synced`);
+        console.log(`   📦 Ad Sets: ${syncedAdSets} synced`);
+        console.log(`   🎨 Ads: ${syncedCreatives} synced`);
         
         // Update sync history with success
         await storage.updateSyncHistory(syncHistoryRecord.id, {
