@@ -17,6 +17,7 @@ import { IntegrationCard } from '../components/IntegrationCard';
 import { DeleteAllDataDialog } from '../components/DeleteAllDataDialog';
 import { DeleteProgressModal } from '../components/DeleteProgressModal';
 import { RedownloadProgressModal } from '../components/RedownloadProgressModal';
+import { RedownloadOptionsModal } from '../components/RedownloadOptionsModal';
 import { SyncLoadingModal } from '../components/SyncLoadingModal';
 import { BulkSyncModal } from '../components/BulkSyncModal';
 
@@ -133,6 +134,10 @@ export default function MetaIntegrations() {
   const [redownloadResult, setRedownloadResult] = useState<{deleted: number; updated: number; failed: number; noImage: number; total: number} | undefined>();
   const [redownloadStartTime, setRedownloadStartTime] = useState<number | undefined>();
   const [redownloadEndTime, setRedownloadEndTime] = useState<number | undefined>();
+  
+  // Redownload options modal state
+  const [showRedownloadOptionsModal, setShowRedownloadOptionsModal] = useState(false);
+  const [pendingRedownloadIntegrationId, setPendingRedownloadIntegrationId] = useState<string | null>(null);
 
   // Check for OAuth session in URL on page load
   useEffect(() => {
@@ -533,7 +538,20 @@ export default function MetaIntegrations() {
     }
   };
 
-  const handleRedownloadImages = async (integrationId: string) => {
+  // Opens the options modal before starting redownload
+  const handleRedownloadImages = (integrationId: string) => {
+    setPendingRedownloadIntegrationId(integrationId);
+    setShowRedownloadOptionsModal(true);
+  };
+  
+  // Process the redownload based on user's choice
+  const handleRedownloadOptionSelect = async (mode: 'all' | 'missing') => {
+    const integrationId = pendingRedownloadIntegrationId;
+    if (!integrationId) return;
+    
+    setShowRedownloadOptionsModal(false);
+    setPendingRedownloadIntegrationId(null);
+    
     setRedownloadingImagesId(integrationId);
     setShowRedownloadModal(true);
     setRedownloadComplete(false);
@@ -542,16 +560,27 @@ export default function MetaIntegrations() {
     setRedownloadCurrentCreative(undefined);
     setRedownloadStartTime(Date.now());
     setRedownloadEndTime(undefined);
-    setRedownloadSteps([
-      { name: 'Excluindo imagens do bucket', status: 'pending' },
-      { name: 'Buscando criativos', status: 'pending' },
-      { name: 'Limpando URLs antigas', status: 'pending' },
-      { name: 'Baixando imagens em alta resolução', status: 'pending' },
-    ]);
+    
+    // Different step labels based on mode
+    const steps = mode === 'missing' 
+      ? [
+          { name: 'Verificando bucket', status: 'pending' as const },
+          { name: 'Buscando criativos sem imagem', status: 'pending' as const },
+          { name: 'Preparando download', status: 'pending' as const },
+          { name: 'Baixando imagens em alta resolução', status: 'pending' as const },
+        ]
+      : [
+          { name: 'Excluindo imagens do bucket', status: 'pending' as const },
+          { name: 'Buscando criativos', status: 'pending' as const },
+          { name: 'Limpando URLs antigas', status: 'pending' as const },
+          { name: 'Baixando imagens em alta resolução', status: 'pending' as const },
+        ];
+    setRedownloadSteps(steps);
 
     try {
       const token = localStorage.getItem('auth_token');
-      const eventSource = new EventSource(`/api/integrations/${integrationId}/redownload-images-stream?token=${token}`);
+      const onlyMissing = mode === 'missing' ? '&onlyMissing=true' : '';
+      const eventSource = new EventSource(`/api/integrations/${integrationId}/redownload-images-stream?token=${token}${onlyMissing}`);
 
       eventSource.addEventListener('progress', (event) => {
         const data = JSON.parse(event.data);
@@ -1468,6 +1497,15 @@ export default function MetaIntegrations() {
         startTime={deleteStartTime}
         endTime={deleteEndTime}
         onClose={handleCloseDeleteProgress}
+      />
+
+      <RedownloadOptionsModal
+        open={showRedownloadOptionsModal}
+        onClose={() => {
+          setShowRedownloadOptionsModal(false);
+          setPendingRedownloadIntegrationId(null);
+        }}
+        onSelect={handleRedownloadOptionSelect}
       />
 
       <RedownloadProgressModal
