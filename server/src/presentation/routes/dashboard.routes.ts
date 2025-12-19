@@ -156,37 +156,53 @@ router.get('/daily-metrics', authenticateToken, async (req: Request, res: Respon
     
     // Calculate number of days to show
     let numDays = period;
-    let customStart: Date | null = null;
-    let customEnd: Date | null = null;
+    let rangeStart: Date;
+    let rangeEnd: Date;
     
     if (startDate && endDate) {
-      customStart = new Date(startDate);
-      customEnd = new Date(endDate);
-      numDays = Math.ceil((customEnd.getTime() - customStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      rangeStart = new Date(startDate);
+      rangeEnd = new Date(endDate);
+      numDays = Math.ceil((rangeEnd.getTime() - rangeStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    } else {
+      rangeEnd = new Date();
+      rangeStart = new Date();
+      rangeStart.setDate(rangeEnd.getDate() - numDays + 1);
     }
     
-    // Generate metrics for the period
-    const days = [];
-    const today = customEnd || new Date();
-    
-    // Calculate totals from creatives (spend = clicks * cpc)
+    // Calculate TOTALS from creatives (these are lifetime totals)
     const totalSpend = creatives.reduce((sum, c) => sum + ((c.clicks || 0) * (Number(c.cpc) || 0)), 0);
     const totalImpressions = creatives.reduce((sum, c) => sum + (c.impressions || 0), 0);
     const totalClicks = creatives.reduce((sum, c) => sum + (c.clicks || 0), 0);
     
-    // Distribute across the period with some variation
-    for (let i = numDays - 1; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
+    // Generate daily metrics using deterministic distribution based on date
+    // The key insight: we distribute the SAME totals across the period,
+    // so shorter periods will show higher daily values
+    const days = [];
+    
+    for (let i = 0; i < numDays; i++) {
+      const date = new Date(rangeStart);
+      date.setDate(date.getDate() + i);
+      const dateStr = date.toISOString().split('T')[0];
       
-      // Add some daily variation
-      const daySpend = (totalSpend / numDays) * (0.7 + Math.random() * 0.6);
-      const dayImpressions = Math.floor((totalImpressions / numDays) * (0.7 + Math.random() * 0.6));
-      const dayClicks = Math.floor((totalClicks / numDays) * (0.7 + Math.random() * 0.6));
+      // Use deterministic variation based on day of week (weekdays have more traffic)
+      const dayOfWeek = date.getDay();
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+      const dayWeight = isWeekend ? 0.7 : 1.1;
+      
+      // Also use date hash for slight variation (deterministic)
+      const dateHash = (date.getDate() * 7 + date.getMonth() * 31) % 100;
+      const hashVariation = 0.9 + (dateHash / 500); // 0.9 to 1.1
+      
+      const baseMultiplier = dayWeight * hashVariation;
+      
+      // Distribute proportionally across the period
+      const daySpend = (totalSpend / numDays) * baseMultiplier;
+      const dayImpressions = Math.floor((totalImpressions / numDays) * baseMultiplier);
+      const dayClicks = Math.floor((totalClicks / numDays) * baseMultiplier);
       const dayCtr = dayImpressions > 0 ? (dayClicks / dayImpressions) * 100 : 0;
       
       days.push({
-        date: date.toISOString().split('T')[0],
+        date: dateStr,
         spend: Math.max(0, daySpend),
         impressions: dayImpressions,
         clicks: dayClicks,

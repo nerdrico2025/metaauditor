@@ -102,7 +102,7 @@ export default function TopCampaigns() {
                 <div 
                   key={campaign.id} 
                   className="p-3 border border-slate-100 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors"
-                  onClick={() => setLocation(`/campaigns/${campaign.id}`)}
+                  onClick={() => setLocation("/campaigns")}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
