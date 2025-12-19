@@ -338,13 +338,33 @@ ${prohibitedKeywordsList}
 
       // Build visual instruction based on creative type
       let visualInstruction = '';
+      let carouselInstructions = '';
       if (isVideo) {
         visualInstruction = `🎬 CRIATIVO DE VÍDEO - Análise apenas textual (sem imagem disponível)`;
       } else if (isCarousel) {
-        visualInstruction = `🎠 CARROSSEL COM ${imageDataList.length} IMAGENS - Analise CADA imagem individualmente:
-• Para cada imagem: identifique textos, cores, logos, elementos visuais
-• Compare consistência entre as imagens
-• Verifique se TODAS as imagens seguem os padrões da marca`;
+        visualInstruction = `🎠 CARROSSEL COM ${imageDataList.length} IMAGENS - ANÁLISE INDIVIDUAL OBRIGATÓRIA:
+• Para CADA imagem do carrossel, forneça uma análise separada
+• Identifique textos, cores, logos e elementos visuais em CADA imagem
+• Verifique conformidade da marca em CADA imagem individualmente
+• Compare consistência entre as imagens`;
+        carouselInstructions = `
+IMPORTANTE: Para carrosséis, você DEVE incluir "carouselImageAnalysis" com análise de CADA imagem:
+"carouselImageAnalysis": [
+  {
+    "imageIndex": 1,
+    "textContent": "Texto visível na imagem 1",
+    "colorsFound": ["#XXXXXX", "#YYYYYY"],
+    "hasLogo": boolean,
+    "logoPosition": "posição do logo ou null",
+    "compliance": {
+      "logoCompliance": boolean,
+      "colorCompliance": boolean,
+      "issues": ["problema específico desta imagem"]
+    },
+    "visualDescription": "Descrição breve da imagem"
+  },
+  ... (uma entrada para cada imagem)
+]`;
       } else if (hasImage) {
         visualInstruction = `🔍 ANÁLISE VISUAL OBRIGATÓRIA - Uma imagem foi fornecida. Examine CADA DETALHE:
 • Leia TODO texto visível na imagem (títulos, legendas, watermarks, textos pequenos)
@@ -428,7 +448,7 @@ Responda em JSON (PORTUGUÊS-BR):
     "callToAction": "Avaliação do CTA (ex: 'CTA forte e direto' ou 'CTA fraco, não incentiva ação')",
     "suggestions": ["sugestão de melhoria 1", "sugestão de melhoria 2"]
   }
-}`;
+}${carouselInstructions}`;
 
       type MessageContent = 
         | string 
@@ -614,6 +634,25 @@ Responda em JSON (PORTUGUÊS-BR):
         console.log('[AIAnalysisService] Validated keyword analysis:', JSON.stringify(validatedKeywordAnalysis));
       }
 
+      // Process carousel image analysis if present
+      let carouselImageAnalysis = undefined;
+      if (isCarousel && result.carouselImageAnalysis && Array.isArray(result.carouselImageAnalysis)) {
+        console.log(`[AIAnalysisService] Processing ${result.carouselImageAnalysis.length} carousel image analyses`);
+        carouselImageAnalysis = result.carouselImageAnalysis.map((img: any, index: number) => ({
+          imageIndex: img.imageIndex || index + 1,
+          textContent: img.textContent || '',
+          colorsFound: Array.isArray(img.colorsFound) ? img.colorsFound : [],
+          hasLogo: Boolean(img.hasLogo),
+          logoPosition: img.logoPosition || null,
+          compliance: {
+            logoCompliance: Boolean(img.compliance?.logoCompliance),
+            colorCompliance: Boolean(img.compliance?.colorCompliance),
+            issues: Array.isArray(img.compliance?.issues) ? img.compliance.issues : []
+          },
+          visualDescription: img.visualDescription || ''
+        }));
+      }
+      
       return {
         score: Math.max(0, Math.min(100, Math.round(parseFloat(result.score) || 0))),
         issues: processedIssues,
@@ -633,6 +672,7 @@ Responda em JSON (PORTUGUÊS-BR):
             callToAction: result.copywritingAnalysis.callToAction || '',
             suggestions: Array.isArray(result.copywritingAnalysis.suggestions) ? result.copywritingAnalysis.suggestions : [],
           } : undefined,
+          carouselImageAnalysis,
         }
       };
     } catch (error) {
