@@ -15,6 +15,7 @@ import { HowToConnectModal } from '../components/HowToConnectModal';
 import { DeleteConfirmationDialog } from '../components/DeleteConfirmationDialog';
 import { IntegrationCard } from '../components/IntegrationCard';
 import { DeleteAllDataDialog } from '../components/DeleteAllDataDialog';
+import { DeleteProgressModal } from '../components/DeleteProgressModal';
 import { SyncLoadingModal } from '../components/SyncLoadingModal';
 import { BulkSyncModal } from '../components/BulkSyncModal';
 
@@ -114,6 +115,12 @@ export default function MetaIntegrations() {
   const [syncedItems, setSyncedItems] = useState(0);
   const [syncStartTime, setSyncStartTime] = useState<number | undefined>(undefined);
   const [syncEndTime, setSyncEndTime] = useState<number | undefined>(undefined);
+
+  // Delete progress modal state
+  const [showDeleteProgressModal, setShowDeleteProgressModal] = useState(false);
+  const [deleteSteps, setDeleteSteps] = useState<Array<{name: string; status: 'pending' | 'loading' | 'success' | 'error'; error?: string}>>([]);
+  const [deleteStartTime, setDeleteStartTime] = useState<number | undefined>(undefined);
+  const [deleteEndTime, setDeleteEndTime] = useState<number | undefined>(undefined);
 
   // Check for OAuth session in URL on page load
   useEffect(() => {
@@ -477,38 +484,67 @@ export default function MetaIntegrations() {
     },
   });
 
-  const deleteAllDataMutation = useMutation({
-    mutationFn: async () => {
-      // Execute in sequence to avoid deadlocks (respect foreign key order)
-      // 1. First delete creatives (no dependents)
+  const handleDeleteAllWithProgress = async () => {
+    setDeleteAllDialogOpen(false);
+    setShowDeleteProgressModal(true);
+    setDeleteStartTime(Date.now());
+    setDeleteEndTime(undefined);
+    
+    const steps = [
+      { name: 'Excluindo Anúncios (Creatives)', status: 'pending' as const },
+      { name: 'Excluindo Grupos de Anúncios', status: 'pending' as const },
+      { name: 'Excluindo Campanhas', status: 'pending' as const },
+      { name: 'Resetando Estado de Sincronização', status: 'pending' as const },
+    ];
+    setDeleteSteps(steps);
+
+    try {
+      // Step 1: Delete creatives
+      setDeleteSteps(prev => prev.map((s, i) => i === 0 ? { ...s, status: 'loading' } : s));
       await apiRequest('/api/creatives/bulk/all', { method: 'DELETE' });
-      // 2. Then delete adsets (creatives already gone)
+      setDeleteSteps(prev => prev.map((s, i) => i === 0 ? { ...s, status: 'success' } : s));
+
+      // Step 2: Delete adsets
+      setDeleteSteps(prev => prev.map((s, i) => i === 1 ? { ...s, status: 'loading' } : s));
       await apiRequest('/api/adsets/bulk/all', { method: 'DELETE' });
-      // 3. Finally delete campaigns
+      setDeleteSteps(prev => prev.map((s, i) => i === 1 ? { ...s, status: 'success' } : s));
+
+      // Step 3: Delete campaigns
+      setDeleteSteps(prev => prev.map((s, i) => i === 2 ? { ...s, status: 'loading' } : s));
       await apiRequest('/api/campaigns/bulk/all', { method: 'DELETE' });
-      // 4. Reset sync state
+      setDeleteSteps(prev => prev.map((s, i) => i === 2 ? { ...s, status: 'success' } : s));
+
+      // Step 4: Reset sync state
+      setDeleteSteps(prev => prev.map((s, i) => i === 3 ? { ...s, status: 'loading' } : s));
       await apiRequest('/api/integrations/reset-sync', { method: 'POST' });
-    },
-    onSuccess: () => {
-      toast({ 
-        title: '✓ Todos os dados foram excluídos',
-        description: `${campaigns.length} campanhas, ${adSets.length} grupos de anúncios e ${creatives.length} anúncios foram removidos permanentemente.`
-      });
+      setDeleteSteps(prev => prev.map((s, i) => i === 3 ? { ...s, status: 'success' } : s));
+
+      setDeleteEndTime(Date.now());
+      
       queryClient.invalidateQueries({ queryKey: ['/api/campaigns'] });
       queryClient.invalidateQueries({ queryKey: ['/api/adsets'] });
       queryClient.invalidateQueries({ queryKey: ['/api/creatives'] });
       queryClient.invalidateQueries({ queryKey: ['/api/integrations/sync-history'] });
       queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
-      setDeleteAllDialogOpen(false);
-    },
-    onError: (error: any) => {
+    } catch (error: any) {
+      setDeleteEndTime(Date.now());
+      setDeleteSteps(prev => prev.map(s => 
+        s.status === 'loading' ? { ...s, status: 'error', error: error.message || 'Erro desconhecido' } : s
+      ));
       toast({ 
         title: 'Erro ao excluir dados',
         description: error.message,
         variant: 'destructive'
       });
-    },
-  });
+    }
+  };
+
+  const handleCloseDeleteProgress = () => {
+    setShowDeleteProgressModal(false);
+    setDeleteSteps([]);
+    setDeleteStartTime(undefined);
+    setDeleteEndTime(undefined);
+  };
 
   const handleConnectOAuth = async () => {
     try {
@@ -1284,10 +1320,18 @@ export default function MetaIntegrations() {
       <DeleteAllDataDialog
         open={deleteAllDialogOpen}
         onOpenChange={setDeleteAllDialogOpen}
-        onConfirm={() => deleteAllDataMutation.mutate()}
-        isDeleting={deleteAllDataMutation.isPending}
+        onConfirm={handleDeleteAllWithProgress}
+        isDeleting={false}
         dataType="Dados Meta"
         count={campaigns.length + adSets.length + creatives.length}
+      />
+
+      <DeleteProgressModal
+        open={showDeleteProgressModal}
+        steps={deleteSteps}
+        startTime={deleteStartTime}
+        endTime={deleteEndTime}
+        onClose={handleCloseDeleteProgress}
       />
 
       <Dialog open={showAddAccountModal} onOpenChange={setShowAddAccountModal}>
