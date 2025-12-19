@@ -778,6 +778,35 @@ export default function MetaIntegrations() {
   const handleSyncAll = async () => {
     if (metaIntegrations.length === 0) return;
     
+    // First, check if all connections have valid tokens
+    const tokenChecks = await Promise.all(
+      metaIntegrations.map(async (integration) => {
+        try {
+          const token = localStorage.getItem('auth_token');
+          const res = await fetch(`/api/auth/meta/check-token/${integration.id}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          });
+          if (!res.ok) return { id: integration.id, name: integration.accountName, valid: false };
+          const data = await res.json();
+          return { id: integration.id, name: integration.accountName, valid: data.valid };
+        } catch {
+          return { id: integration.id, name: integration.accountName, valid: false };
+        }
+      })
+    );
+    
+    const inactiveConnections = tokenChecks.filter(c => !c.valid);
+    
+    if (inactiveConnections.length > 0) {
+      const inactiveNames = inactiveConnections.map(c => c.name || 'Conta sem nome').join(', ');
+      toast({
+        title: 'Conexões inativas detectadas',
+        description: `As seguintes contas estão com conexão inativa e precisam ser reconectadas: ${inactiveNames}. Clique em "Renovar Conexões" ou reconecte manualmente.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     const startTime = Date.now();
     cancelBulkSyncRef.current = false;
     isBulkSyncRef.current = true; // Mark that we're in bulk sync mode
