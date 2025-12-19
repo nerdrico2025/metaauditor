@@ -303,16 +303,61 @@ ${prohibitedKeywordsList}
 - Requer Logo: ${policy.requiresLogo ? 'Sim' : 'Não'}
 - Requer Cores da Marca: ${policy.requiresBrandColors ? 'Sim' : 'Não'}` : '\nNenhum critério de conteúdo encontrado.';
 
-      const imageBase64 = await this.getImageBase64(creative.imageUrl || '');
-      const hasImage = !!imageBase64;
+      // Detect creative format and get appropriate images
+      const creativeFormat = (creative as any).creativeFormat as 'image' | 'video' | 'carousel' | null;
+      const carouselImages = (creative as any).carouselImages as string[] | null;
+      const isVideo = creativeFormat === 'video';
+      const isCarousel = creativeFormat === 'carousel' && carouselImages && carouselImages.length > 1;
+      
+      // For VIDEO: Skip image analysis - analyze text only
+      // For CAROUSEL: Get all carousel images
+      // For IMAGE: Get single image
+      let imageDataList: string[] = [];
+      
+      if (!isVideo) {
+        if (isCarousel && carouselImages) {
+          console.log(`[AIAnalysisService] Carousel detected with ${carouselImages.length} images`);
+          for (const imgUrl of carouselImages) {
+            const imgData = await this.getImageBase64(imgUrl);
+            if (imgData) {
+              imageDataList.push(imgData);
+            }
+          }
+          console.log(`[AIAnalysisService] Successfully loaded ${imageDataList.length} carousel images`);
+        } else {
+          const singleImage = await this.getImageBase64(creative.imageUrl || '');
+          if (singleImage) {
+            imageDataList.push(singleImage);
+          }
+        }
+      } else {
+        console.log(`[AIAnalysisService] VIDEO creative - skipping image analysis, text-only mode`);
+      }
+      
+      const hasImage = imageDataList.length > 0;
+
+      // Build visual instruction based on creative type
+      let visualInstruction = '';
+      if (isVideo) {
+        visualInstruction = `🎬 CRIATIVO DE VÍDEO - Análise apenas textual (sem imagem disponível)`;
+      } else if (isCarousel) {
+        visualInstruction = `🎠 CARROSSEL COM ${imageDataList.length} IMAGENS - Analise CADA imagem individualmente:
+• Para cada imagem: identifique textos, cores, logos, elementos visuais
+• Compare consistência entre as imagens
+• Verifique se TODAS as imagens seguem os padrões da marca`;
+      } else if (hasImage) {
+        visualInstruction = `🔍 ANÁLISE VISUAL OBRIGATÓRIA - Uma imagem foi fornecida. Examine CADA DETALHE:
+• Leia TODO texto visível na imagem (títulos, legendas, watermarks, textos pequenos)
+• Identifique TODAS as cores presentes e seus códigos HEX aproximados
+• Localize EXATAMENTE onde está o logo (canto, centro, ausente)
+• Descreva elementos visuais relevantes`;
+      } else {
+        visualInstruction = `⚠️ Sem imagem - análise apenas textual.`;
+      }
 
       const prompt = `Você é um auditor de compliance de marca. Analise este criativo publicitário com MÁXIMA PRECISÃO.
 
-${hasImage ? '🔍 ANÁLISE VISUAL OBRIGATÓRIA - Uma imagem foi fornecida. Examine CADA DETALHE:' : '⚠️ Sem imagem - análise apenas textual.'}
-${hasImage ? '• Leia TODO texto visível na imagem (títulos, legendas, watermarks, textos pequenos)' : ''}
-${hasImage ? '• Identifique TODAS as cores presentes e seus códigos HEX aproximados' : ''}
-${hasImage ? '• Localize EXATAMENTE onde está o logo (canto, centro, ausente)' : ''}
-${hasImage ? '• Descreva elementos visuais relevantes' : ''}
+${visualInstruction}
 
 📋 DADOS DO CRIATIVO:
 - Nome: ${creative.name}
@@ -389,12 +434,29 @@ Responda em JSON (PORTUGUÊS-BR):
         | string 
         | Array<{ type: "text"; text: string } | { type: "image_url"; image_url: { url: string; detail?: "low" | "high" | "auto" } }>;
 
-      const userContent: MessageContent = hasImage
-        ? [
-            { type: "text" as const, text: prompt },
-            { type: "image_url" as const, image_url: { url: imageBase64!, detail: "high" as const } }
-          ]
-        : prompt;
+      // Build userContent with all images for carousel, or single image for regular creative
+      let userContent: MessageContent;
+      
+      if (imageDataList.length > 0) {
+        const contentParts: Array<{ type: "text"; text: string } | { type: "image_url"; image_url: { url: string; detail: "low" | "high" | "auto" } }> = [
+          { type: "text" as const, text: prompt }
+        ];
+        
+        // Add all images (1 for single image, multiple for carousel)
+        for (let i = 0; i < imageDataList.length; i++) {
+          if (isCarousel) {
+            contentParts.push({ type: "text" as const, text: `\n📷 Imagem ${i + 1} do carrossel:` });
+          }
+          contentParts.push({ 
+            type: "image_url" as const, 
+            image_url: { url: imageDataList[i], detail: "high" as const } 
+          });
+        }
+        
+        userContent = contentParts;
+      } else {
+        userContent = prompt;
+      }
 
       const aiConfig = await getAIConfig();
       const openaiClient = await getOpenAI();
