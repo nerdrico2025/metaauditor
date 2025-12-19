@@ -261,7 +261,9 @@ export const creatives = pgTable("creatives", {
   externalId: varchar("external_id").notNull(),
   name: text("name").notNull(),
   type: varchar("type").notNull(),
+  creativeFormat: varchar("creative_format").default('image'), // 'image', 'video', 'carousel'
   imageUrl: text("image_url"),
+  carouselImages: jsonb("carousel_images"), // Array of image URLs for carousel creatives
   videoUrl: text("video_url"),
   text: text("text"),
   headline: text("headline"),
