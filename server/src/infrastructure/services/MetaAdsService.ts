@@ -1214,6 +1214,57 @@ export class MetaAdsService {
           }
         }
 
+        // Try video thumbnail for VIDEO creatives
+        if (!newImageUrl) {
+          const videoUrl = `${this.baseUrl}/${this.apiVersion}/${creativeId}?fields=object_story_spec{video_data{video_id}},video_id&access_token=${integration.accessToken}`;
+          const videoResponse = await fetch(videoUrl);
+          if (videoResponse.ok) {
+            const videoData = await videoResponse.json() as any;
+            const videoId = videoData.video_id || videoData.object_story_spec?.video_data?.video_id;
+            if (videoId) {
+              console.log(`🎬 Found video ID: ${videoId}, fetching thumbnail...`);
+              const thumbUrl = `${this.baseUrl}/${this.apiVersion}/${videoId}?fields=thumbnails{uri}&access_token=${integration.accessToken}`;
+              const thumbResponse = await fetch(thumbUrl);
+              if (thumbResponse.ok) {
+                const thumbData = await thumbResponse.json() as any;
+                if (thumbData.thumbnails?.data && thumbData.thumbnails.data.length > 0) {
+                  // Get the highest quality thumbnail (usually the last one)
+                  const bestThumb = thumbData.thumbnails.data[thumbData.thumbnails.data.length - 1];
+                  newImageUrl = bestThumb.uri;
+                  console.log(`🎬 Got VIDEO thumbnail`);
+                }
+              }
+            }
+          }
+        }
+
+        // Try carousel/slideshow - get first image from child attachments
+        if (!newImageUrl) {
+          const carouselUrl = `${this.baseUrl}/${this.apiVersion}/${creativeId}?fields=object_story_spec{link_data{child_attachments{image_hash,picture}}}&access_token=${integration.accessToken}`;
+          const carouselResponse = await fetch(carouselUrl);
+          if (carouselResponse.ok) {
+            const carouselData = await carouselResponse.json() as any;
+            const childAttachments = carouselData.object_story_spec?.link_data?.child_attachments;
+            if (childAttachments && childAttachments.length > 0) {
+              // Try to get full-size image from hash first
+              const firstChild = childAttachments[0];
+              if (firstChild.image_hash) {
+                console.log(`🎠 Found carousel image_hash: ${firstChild.image_hash}`);
+                const fullSizeUrl = await this.getImageUrlFromHash(integration.accessToken, integration.accountId, firstChild.image_hash);
+                if (fullSizeUrl) {
+                  newImageUrl = fullSizeUrl;
+                  console.log(`🎠 Got CAROUSEL image from hash`);
+                }
+              }
+              // Fallback to picture URL
+              if (!newImageUrl && firstChild.picture) {
+                newImageUrl = firstChild.picture;
+                console.log(`🎠 Using carousel picture URL`);
+              }
+            }
+          }
+        }
+
         if (newImageUrl) {
           // Download and save to Object Storage
           const objectUrl = await imageStorageService.downloadAndSaveImage(
