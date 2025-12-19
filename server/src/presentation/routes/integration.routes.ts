@@ -991,6 +991,25 @@ router.get('/:id/redownload-images-stream', authenticateToken, async (req: Reque
     };
 
     let deletedCount = 0;
+    const allLogs: string[] = [];
+    
+    // Create sync history record for this media sync
+    const userId = (req as any).user?.id || 'unknown';
+    const syncRecord = await storage.createSyncHistory({
+      integrationId: integration.id,
+      companyId: userCompanyId,
+      userId,
+      status: 'running',
+      type: 'media_sync',
+      metadata: { onlyMissing }
+    });
+    
+    const addLog = (msg: string) => {
+      const timestamp = new Date().toISOString();
+      allLogs.push(`[${timestamp}] ${msg}`);
+    };
+    
+    addLog(`Starting media sync for integration ${integration.id} (onlyMissing=${onlyMissing})`);
     
     // Step 1: Delete images from Object Storage (only if syncing all)
     if (!onlyMissing) {
@@ -1074,8 +1093,15 @@ router.get('/:id/redownload-images-stream', authenticateToken, async (req: Reque
         updated += result.updated;
         failed += result.failed;
         noImage += result.noImage;
+        
+        // Collect detailed logs from each creative
+        if (result.detailedLog) {
+          allLogs.push(result.detailedLog);
+        }
       } catch (error: any) {
-        console.error(`❌ Error downloading image for ${creative.name}:`, error.message);
+        const errorMsg = `❌ Error downloading image for ${creative.name}: ${error.message}`;
+        console.error(errorMsg);
+        addLog(errorMsg);
         failed++;
       }
     }
@@ -1088,13 +1114,34 @@ router.get('/:id/redownload-images-stream', authenticateToken, async (req: Reque
       total: allCreatives.length 
     });
 
+    // Add final summary to logs
+    addLog(`\n📊 FINAL SUMMARY: deleted=${deletedCount}, updated=${updated}, failed=${failed}, noImage=${noImage}, total=${allCreatives.length}`);
+    
+    // Save detailed logs to sync history
+    const finalStatus = failed > 0 ? 'partial' : 'completed';
+    await storage.updateSyncHistory(syncRecord.id, {
+      status: finalStatus,
+      completedAt: new Date(),
+      creativeSynced: updated,
+      detailedLog: allLogs.join('\n'),
+      metadata: { 
+        onlyMissing,
+        deleted: deletedCount,
+        updated,
+        failed,
+        noImage,
+        total: allCreatives.length
+      }
+    });
+    
     sendEvent('complete', {
       message: `Re-download concluído: ${deletedCount} excluídas do bucket, ${updated} atualizadas, ${failed} falhas, ${noImage} sem imagem disponível`,
       deleted: deletedCount,
       updated,
       failed,
       noImage,
-      total: allCreatives.length
+      total: allCreatives.length,
+      syncHistoryId: syncRecord.id
     });
 
     res.end();

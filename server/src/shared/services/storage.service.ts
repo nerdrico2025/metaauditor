@@ -74,8 +74,8 @@ export interface IStorage {
   deleteIntegration(integrationId: string, userId: string): Promise<void>;
   getIntegrationStats(integrationId: string): Promise<{ campaigns: number; adSets: number; creatives: number }>;
   getSyncHistoryByUser(userId: string): Promise<any[]>;
-  createSyncHistory(data: { integrationId: string; userId: string; status: string; type: string; metadata?: any }): Promise<any>;
-  updateSyncHistory(id: string, data: { status?: string; completedAt?: Date; campaignsSynced?: number; adSetsSynced?: number; creativeSynced?: number; errorMessage?: string; metadata?: any }): Promise<any>;
+  createSyncHistory(data: { integrationId: string; companyId?: string; userId: string; status: string; type: string; metadata?: any }): Promise<any>;
+  updateSyncHistory(id: string, data: { status?: string; completedAt?: Date; campaignsSynced?: number; adSetsSynced?: number; creativeSynced?: number; errorMessage?: string; detailedLog?: string; metadata?: any }): Promise<any>;
   deleteAllSyncHistoryByUser(userId: string): Promise<void>;
   createWebhookEvent(data: InsertWebhookEvent): Promise<WebhookEvent>;
   updateWebhookEvent(id: string, data: Partial<InsertWebhookEvent>): Promise<WebhookEvent | undefined>;
@@ -330,6 +330,7 @@ export class DatabaseStorage implements IStorage {
 
   async createSyncHistory(data: {
     integrationId: string;
+    companyId?: string;
     userId: string;
     status: string;
     type: string;
@@ -355,6 +356,7 @@ export class DatabaseStorage implements IStorage {
     adSetsSynced?: number;
     creativeSynced?: number;
     errorMessage?: string;
+    detailedLog?: string;
     metadata?: any;
   }): Promise<any> {
     const [updated] = await db

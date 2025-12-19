@@ -1125,7 +1125,7 @@ export class MetaAdsService {
     creatives: Array<{ id: string; externalId: string; name: string; imageUrl: string | null }>,
     companyId: string,
     progressCallback?: (current: number, total: number, creativeName: string) => void
-  ): Promise<{ updated: number; failed: number; skipped: number; noImage: number }> {
+  ): Promise<{ updated: number; failed: number; skipped: number; noImage: number; detailedLog: string }> {
     if (!integration.accessToken || !integration.accountId) {
       throw new Error('Missing access token or account ID');
     }
@@ -1134,6 +1134,14 @@ export class MetaAdsService {
     let failed = 0;
     let skipped = 0;
     let noImage = 0;
+    const logLines: string[] = [];
+    
+    const log = (msg: string) => {
+      const timestamp = new Date().toISOString();
+      const line = `[${timestamp}] ${msg}`;
+      logLines.push(line);
+      console.log(msg);
+    };
 
     for (let i = 0; i < creatives.length; i++) {
       const creative = creatives[i];
@@ -1147,14 +1155,14 @@ export class MetaAdsService {
         let creativeFormat: 'image' | 'video' | 'carousel' = 'image';
         let carouselImages: string[] = [];
 
-        console.log(`🔍 Creative ${creative.externalId}: Detecting format and fetching images...`);
+        log(`🔍 Creative ${creative.externalId}: Detecting format and fetching images...`);
         
         // First, get the creative details to find the creative ID
         const adUrl = `${this.baseUrl}/${this.apiVersion}/${creative.externalId}?fields=creative{id}&access_token=${integration.accessToken}`;
         const adResponse = await fetch(adUrl);
         
         if (!adResponse.ok) {
-          console.warn(`⚠️  Failed to fetch ad ${creative.externalId}: ${adResponse.status}`);
+          log(`⚠️  Failed to fetch ad ${creative.externalId}: ${adResponse.status}`);
           failed++;
           continue;
         }
@@ -1163,7 +1171,7 @@ export class MetaAdsService {
         const creativeId = adData.creative?.id;
 
         if (!creativeId) {
-          console.warn(`⚠️  No creative ID found for ad ${creative.externalId}`);
+          log(`⚠️  No creative ID found for ad ${creative.externalId}`);
           noImage++;
           continue;
         }
@@ -1176,7 +1184,7 @@ export class MetaAdsService {
           const childAttachments = carouselData.object_story_spec?.link_data?.child_attachments;
           if (childAttachments && childAttachments.length > 1) {
             creativeFormat = 'carousel';
-            console.log(`🎠 CAROUSEL detected with ${childAttachments.length} images`);
+            log(`🎠 CAROUSEL detected with ${childAttachments.length} images`);
             
             // Download ALL carousel images
             for (let j = 0; j < childAttachments.length; j++) {
@@ -1205,7 +1213,7 @@ export class MetaAdsService {
                 );
                 if (objectUrl) {
                   carouselImages.push(objectUrl);
-                  console.log(`✅ Carousel image ${j + 1}/${childAttachments.length} saved: ${objectUrl}`);
+                  log(`✅ Carousel image ${j + 1}/${childAttachments.length} saved: ${objectUrl}`);
                 }
               }
               await this.sleep(50); // Small delay between carousel images
@@ -1228,38 +1236,38 @@ export class MetaAdsService {
             const videoId = videoData.video_id || videoData.object_story_spec?.video_data?.video_id;
             if (videoId) {
               creativeFormat = 'video';
-              console.log(`🎬 VIDEO detected with ID: ${videoId}`);
+              log(`🎬 VIDEO detected with ID: ${videoId}`);
               
               // Fetch video thumbnail AND source URL
               const videoDetailsUrl = `${this.baseUrl}/${this.apiVersion}/${videoId}?fields=thumbnails{uri},source&access_token=${integration.accessToken}`;
               const videoDetailsResponse = await fetch(videoDetailsUrl);
               if (videoDetailsResponse.ok) {
                 const videoDetailsData = await videoDetailsResponse.json() as any;
-                console.log(`🎬 Video API response keys: ${Object.keys(videoDetailsData).join(', ')}`);
+                log(`🎬 Video API response keys: ${Object.keys(videoDetailsData).join(', ')}`);
                 
                 // Get thumbnail
                 if (videoDetailsData.thumbnails?.data && videoDetailsData.thumbnails.data.length > 0) {
                   // Get the highest quality thumbnail (usually the last one)
                   const bestThumb = videoDetailsData.thumbnails.data[videoDetailsData.thumbnails.data.length - 1];
                   newImageUrl = bestThumb.uri;
-                  console.log(`🎬 Got VIDEO thumbnail`);
+                  log(`🎬 Got VIDEO thumbnail`);
                 }
                 
                 // Get video source URL
                 if (videoDetailsData.source) {
                   videoSourceUrl = videoDetailsData.source;
-                  console.log(`🎬 Got VIDEO source URL: ${videoSourceUrl.substring(0, 100)}...`);
+                  log(`🎬 Got VIDEO source URL: ${videoSourceUrl.substring(0, 100)}...`);
                 } else {
-                  console.log(`🎬 Video source not available (may require ads_read permission or video is processing)`);
+                  log(`🎬 Video source not available (may require ads_read permission or video is processing)`);
                 }
               } else {
-                console.log(`🎬 Failed to fetch video details: ${videoDetailsResponse.status}`);
+                log(`🎬 Failed to fetch video details: ${videoDetailsResponse.status}`);
               }
               
               // If no thumbnail from Meta, use placeholder indicator
               if (!newImageUrl) {
                 newImageUrl = 'VIDEO_NO_THUMBNAIL';
-                console.log(`🎬 VIDEO without Meta thumbnail - will use placeholder`);
+                log(`🎬 VIDEO without Meta thumbnail - will use placeholder`);
               }
             }
           }
@@ -1273,7 +1281,7 @@ export class MetaAdsService {
             const fullSizeUrl = await this.getImageUrlFromHash(integration.accessToken, integration.accountId, imageHash);
             if (fullSizeUrl) {
               newImageUrl = fullSizeUrl;
-              console.log(`✅ Got FULL-SIZE image from hash`);
+              log(`✅ Got FULL-SIZE image from hash`);
             }
           }
 
@@ -1285,7 +1293,7 @@ export class MetaAdsService {
               const fullSizeUrl = await this.getImageUrlFromHash(integration.accessToken, integration.accountId, firstImageHash);
               if (fullSizeUrl) {
                 newImageUrl = fullSizeUrl;
-                console.log(`✅ Got FULL-SIZE image from asset_feed_spec`);
+                log(`✅ Got FULL-SIZE image from asset_feed_spec`);
               }
             }
           }
@@ -1298,7 +1306,7 @@ export class MetaAdsService {
               const creativeData = await creativeResponse.json() as { image_url?: string };
               if (creativeData.image_url) {
                 newImageUrl = creativeData.image_url;
-                console.log(`📷 Using image_url from creative endpoint`);
+                log(`📷 Using image_url from creative endpoint`);
               }
             }
           }
@@ -1337,7 +1345,7 @@ export class MetaAdsService {
               creative.id
             );
             if (finalVideoUrl) {
-              console.log(`🎬 Video saved: ${finalVideoUrl}`);
+              log(`🎬 Video saved: ${finalVideoUrl}`);
             }
           }
           
@@ -1355,21 +1363,22 @@ export class MetaAdsService {
           
           await storage.updateCreative(creative.id, updateData);
           updated++;
-          console.log(`✅ Updated ${creative.name}: format=${creativeFormat}, images=${carouselImages.length || 1}${finalVideoUrl ? ', video=yes' : ''}`);
+          log(`✅ Updated ${creative.name}: format=${creativeFormat}, images=${carouselImages.length || 1}${finalVideoUrl ? ', video=yes' : ''}`);
         } else {
           noImage++;
-          console.warn(`⚠️  No image source found for ${creative.name}`);
+          log(`⚠️  No image source found for ${creative.name}`);
         }
 
         // Small delay to avoid rate limiting
         await this.sleep(100);
         
       } catch (error: any) {
-        console.error(`❌ Error processing ${creative.name}:`, error.message);
+        log(`❌ Error processing ${creative.name}: ${error.message}`);
         failed++;
       }
     }
 
-    return { updated, failed, skipped, noImage };
+    log(`\n📊 SYNC SUMMARY: updated=${updated}, failed=${failed}, skipped=${skipped}, noImage=${noImage}`);
+    return { updated, failed, skipped, noImage, detailedLog: logLines.join('\n') };
   }
 }
