@@ -6,6 +6,7 @@ import jwt from 'jsonwebtoken';
 import { storage } from '../../shared/services/storage.service.js';
 import { MetaAdsService } from '../../infrastructure/services/MetaAdsService.js';
 import { GoogleAdsService } from '../../infrastructure/services/GoogleAdsService.js';
+import { objectStorageService } from '../../infrastructure/services/ObjectStorageService.js';
 import { nanoid } from 'nanoid';
 
 const router = Router();
@@ -954,7 +955,7 @@ router.get('/google/accounts', authenticateToken, async (req: Request, res: Resp
   }
 });
 
-// Re-download images in high resolution for an integration
+// Re-download images in high resolution for an integration (delete all from bucket + re-download all)
 router.post('/:id/redownload-images', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userCompanyId = (req as any).user?.companyId;
@@ -976,61 +977,48 @@ router.post('/:id/redownload-images', authenticateToken, async (req: Request, re
       return res.status(400).json({ message: 'Apenas integrações Meta suportam re-download de imagens' });
     }
 
-    // Get campaigns for this integration, then get their creatives
-    const userId = (req as any).user?.id;
-    const integrationCampaigns = await storage.getCampaignsByUser(userId, integration.id);
+    // Step 1: Delete all images from Object Storage for this integration
+    console.log(`🗑️  Deleting all images from Object Storage for integration ${integration.id}...`);
+    const deletedCount = await objectStorageService.deleteIntegrationFolder(userCompanyId, integration.id);
+    console.log(`🗑️  Deleted ${deletedCount} images from Object Storage`);
+
+    // Step 2: Get ALL creatives for this integration (via campaigns)
+    const allCreatives = await storage.getCreativesByIntegration(integration.id);
     
-    if (integrationCampaigns.length === 0) {
+    if (allCreatives.length === 0) {
       return res.json({ 
-        message: 'Nenhuma campanha encontrada para esta integração',
+        message: `Excluídas ${deletedCount} imagens do bucket. Nenhum criativo encontrado para re-baixar.`,
+        deleted: deletedCount,
         updated: 0,
         failed: 0,
-        skipped: 0,
         noImage: 0
       });
     }
 
-    // Get all creatives from these campaigns
-    const allCreatives: any[] = [];
-    for (const campaign of integrationCampaigns) {
-      const campaignCreatives = await storage.getCreativesByCampaign(campaign.id);
-      allCreatives.push(...campaignCreatives);
-    }
-    
-    // Filter creatives that need image update (no image or low quality thumbnails)
-    const creativesToUpdate = allCreatives.filter((c: any) => 
-      !c.imageUrl || // No image
-      !c.imageUrl.startsWith('/objects/') // Not in object storage (includes thumbnails)
-    );
+    console.log(`🖼️  Re-downloading images for ALL ${allCreatives.length} creatives...`);
 
-    console.log(`🖼️  Re-downloading images for ${creativesToUpdate.length} creatives (${allCreatives.length} total)`);
-
-    if (creativesToUpdate.length === 0) {
-      return res.json({ 
-        message: 'Todas as imagens já estão em alta resolução',
-        updated: 0,
-        failed: 0,
-        skipped: allCreatives.length,
-        noImage: 0
-      });
+    // Step 3: Clear imageUrl from all creatives (so they get re-downloaded)
+    for (const creative of allCreatives) {
+      await storage.updateCreative(creative.id, { imageUrl: null });
     }
 
-    // Re-download images
+    // Step 4: Re-download all images
     const result = await metaAdsService.redownloadImagesHighRes(
       integration,
-      creativesToUpdate.map((c: any) => ({
+      allCreatives.map((c: any) => ({
         id: c.id,
         externalId: c.externalId || '',
         name: c.name,
-        imageUrl: c.imageUrl
+        imageUrl: null // Force re-download
       })),
       userCompanyId
     );
 
     res.json({
-      message: `Re-download concluído: ${result.updated} atualizadas, ${result.failed} falhas, ${result.noImage} sem imagem disponível`,
+      message: `Re-download concluído: ${deletedCount} excluídas do bucket, ${result.updated} atualizadas, ${result.failed} falhas, ${result.noImage} sem imagem disponível`,
+      deleted: deletedCount,
       ...result,
-      total: creativesToUpdate.length
+      total: allCreatives.length
     });
   } catch (error) {
     next(error);

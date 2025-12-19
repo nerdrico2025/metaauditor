@@ -97,6 +97,7 @@ export interface IStorage {
   createCreative(creative: InsertCreative): Promise<Creative>;
   getCreativesByUser(userId: string): Promise<Creative[]>;
   getCreativesByCampaign(campaignId: string): Promise<Creative[]>;
+  getCreativesByIntegration(integrationId: string): Promise<Creative[]>;
   getCreativeById(id: string): Promise<Creative | undefined>;
   updateCreative(id: string, data: Partial<InsertCreative>): Promise<Creative | undefined>;
   deleteAllCreativesByUser(userId: string): Promise<void>;
@@ -637,6 +638,18 @@ export class DatabaseStorage implements IStorage {
 
   async getCreativesByCampaign(campaignId: string): Promise<Creative[]> {
     return await db.select().from(creatives).where(eq(creatives.campaignId, campaignId));
+  }
+
+  async getCreativesByIntegration(integrationId: string): Promise<Creative[]> {
+    // Get all campaigns for this integration, then get their creatives
+    const integrationCampaigns = await db.select().from(campaigns).where(eq(campaigns.integrationId, integrationId));
+    
+    if (integrationCampaigns.length === 0) {
+      return [];
+    }
+    
+    const campaignIds = integrationCampaigns.map(c => c.id);
+    return await db.select().from(creatives).where(inArray(creatives.campaignId, campaignIds));
   }
 
   async getCreativeById(id: string): Promise<Creative | undefined> {
