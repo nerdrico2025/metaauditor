@@ -26,6 +26,7 @@ interface Creative {
   callToAction?: string;
   imageUrl?: string | null;
   thumbnailUrl?: string | null;
+  videoUrl?: string | null;
   carouselImages?: string[] | null;
   campaignId?: string;
   adSetId?: string;
@@ -439,10 +440,10 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
                     </Badge>
                   </div>
                   
-                  {/* Image/Carousel Display */}
-                  <div className="relative cursor-pointer" onClick={() => setImageZoomed(true)}>
+                  {/* Image/Video/Carousel Display */}
+                  <div className="relative">
                     {isCarousel ? (
-                      <>
+                      <div className="cursor-pointer" onClick={() => setImageZoomed(true)}>
                         <img 
                           src={carouselImages[carouselIndex]} 
                           alt={`${creative.name} - imagem ${carouselIndex + 1}`}
@@ -481,13 +482,24 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
                             />
                           ))}
                         </div>
-                      </>
+                      </div>
+                    ) : isVideo && creative.videoUrl ? (
+                      <video 
+                        src={creative.videoUrl}
+                        controls
+                        className="w-full h-auto rounded-lg"
+                        poster={creative.imageUrl && creative.imageUrl !== 'VIDEO_NO_THUMBNAIL' ? creative.imageUrl : undefined}
+                      >
+                        Seu navegador não suporta a reprodução de vídeo.
+                      </video>
                     ) : (
-                      <CreativeImage 
-                        creative={creative}
-                        className="w-full h-auto rounded-lg hover:opacity-90 transition-opacity"
-                        size="large"
-                      />
+                      <div className="cursor-pointer" onClick={() => setImageZoomed(true)}>
+                        <CreativeImage 
+                          creative={creative}
+                          className="w-full h-auto rounded-lg hover:opacity-90 transition-opacity"
+                          size="large"
+                        />
+                      </div>
                     )}
                   </div>
                   
