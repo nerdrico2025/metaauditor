@@ -1235,6 +1235,7 @@ export class MetaAdsService {
               const videoDetailsResponse = await fetch(videoDetailsUrl);
               if (videoDetailsResponse.ok) {
                 const videoDetailsData = await videoDetailsResponse.json() as any;
+                console.log(`🎬 Video API response keys: ${Object.keys(videoDetailsData).join(', ')}`);
                 
                 // Get thumbnail
                 if (videoDetailsData.thumbnails?.data && videoDetailsData.thumbnails.data.length > 0) {
@@ -1247,8 +1248,12 @@ export class MetaAdsService {
                 // Get video source URL
                 if (videoDetailsData.source) {
                   videoSourceUrl = videoDetailsData.source;
-                  console.log(`🎬 Got VIDEO source URL`);
+                  console.log(`🎬 Got VIDEO source URL: ${videoSourceUrl.substring(0, 100)}...`);
+                } else {
+                  console.log(`🎬 Video source not available (may require ads_read permission or video is processing)`);
                 }
+              } else {
+                console.log(`🎬 Failed to fetch video details: ${videoDetailsResponse.status}`);
               }
               
               // If no thumbnail from Meta, use placeholder indicator

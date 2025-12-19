@@ -187,13 +187,14 @@ export const syncHistory = pgTable("sync_history", {
   companyId: uuid("company_id").references(() => companies.id, { onDelete: 'cascade' }),
   integrationId: uuid("integration_id").notNull().references(() => integrations.id, { onDelete: 'cascade' }),
   status: varchar("status").notNull(), // 'running', 'completed', 'failed', 'partial'
-  type: varchar("type").notNull(), // 'full', 'incremental'
+  type: varchar("type").notNull(), // 'full', 'incremental', 'media_sync'
   startedAt: timestamp("started_at").notNull().defaultNow(),
   completedAt: timestamp("completed_at"),
   campaignsSynced: integer("campaigns_synced").default(0),
   adSetsSynced: integer("ad_sets_synced").default(0),
   creativeSynced: integer("creatives_synced").default(0),
   errorMessage: text("error_message"),
+  detailedLog: text("detailed_log"), // Full sync log for debugging
   metadata: jsonb("metadata"), // Additional sync metadata
 });
 
