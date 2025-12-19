@@ -1,6 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ImageIcon, ImageOff, Images } from "lucide-react";
+import { Film, ImageOff, RefreshCw } from "lucide-react";
 
 interface RedownloadOptionsModalProps {
   open: boolean;
@@ -20,46 +20,46 @@ export function RedownloadOptionsModal({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <ImageIcon className="w-5 h-5" />
-            Re-download de Imagens
+            <Film className="w-5 h-5" />
+            Sincronizar Mídias
           </DialogTitle>
           <DialogDescription>
             Escolha quais criativos deseja sincronizar
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3 py-4">
-          <Button
-            variant="outline"
-            className="w-full h-auto py-4 flex flex-col items-start gap-2"
+        <div className="flex flex-col gap-3 py-4">
+          <button
+            type="button"
+            className="w-full text-left p-4 rounded-lg border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors disabled:opacity-50 disabled:pointer-events-none"
             onClick={() => onSelect('missing')}
             disabled={isLoading}
             data-testid="button-redownload-missing"
           >
-            <div className="flex items-center gap-2">
-              <ImageOff className="w-5 h-5 text-orange-500" />
-              <span className="font-medium">Apenas sem imagem</span>
+            <div className="flex items-center gap-2 mb-1">
+              <ImageOff className="w-5 h-5 text-orange-500 flex-shrink-0" />
+              <span className="font-medium">Apenas sem mídia</span>
             </div>
-            <span className="text-xs text-muted-foreground text-left">
+            <p className="text-xs text-muted-foreground pl-7">
               Sincroniza apenas criativos que não possuem imagem ou vídeo. Mais rápido e econômico.
-            </span>
-          </Button>
+            </p>
+          </button>
 
-          <Button
-            variant="outline"
-            className="w-full h-auto py-4 flex flex-col items-start gap-2"
+          <button
+            type="button"
+            className="w-full text-left p-4 rounded-lg border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors disabled:opacity-50 disabled:pointer-events-none"
             onClick={() => onSelect('all')}
             disabled={isLoading}
             data-testid="button-redownload-all"
           >
-            <div className="flex items-center gap-2">
-              <Images className="w-5 h-5 text-blue-500" />
+            <div className="flex items-center gap-2 mb-1">
+              <RefreshCw className="w-5 h-5 text-blue-500 flex-shrink-0" />
               <span className="font-medium">Todos os criativos</span>
             </div>
-            <span className="text-xs text-muted-foreground text-left">
-              Sincroniza todos os criativos, mesmo os que já possuem imagem. Útil para atualizar formatos.
-            </span>
-          </Button>
+            <p className="text-xs text-muted-foreground pl-7">
+              Sincroniza todos os criativos, mesmo os que já possuem mídia. Útil para atualizar formatos.
+            </p>
+          </button>
         </div>
       </DialogContent>
     </Dialog>

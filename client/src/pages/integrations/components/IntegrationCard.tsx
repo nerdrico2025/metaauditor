@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CheckCircle2, AlertCircle, RefreshCw, Trash2, Clock, ShieldCheck, ShieldX, Calendar, BarChart3, ImageIcon } from 'lucide-react';
+import { CheckCircle2, AlertCircle, RefreshCw, Trash2, Clock, ShieldCheck, ShieldX, Calendar, BarChart3, Film } from 'lucide-react';
 
 interface Integration {
   id: string;
@@ -159,10 +159,10 @@ export function IntegrationCard({
                   onClick={onRedownloadImages}
                   disabled={isSyncing || isRedownloadingImages}
                   data-testid={`button-redownload-${integration.id}`}
-                  title="Re-baixar imagens em alta resolução para criativos sem imagem ou com baixa qualidade"
+                  title="Sincronizar mídias (imagens e vídeos) dos criativos"
                 >
-                  <ImageIcon className={`w-4 h-4 mr-2 ${isRedownloadingImages ? 'animate-pulse' : ''}`} />
-                  {isRedownloadingImages ? 'Baixando...' : 'Re-baixar Imagens'}
+                  <Film className={`w-4 h-4 mr-2 ${isRedownloadingImages ? 'animate-pulse' : ''}`} />
+                  {isRedownloadingImages ? 'Sincronizando...' : 'Sincronizar Mídias'}
                 </Button>
               )}
               <Button
