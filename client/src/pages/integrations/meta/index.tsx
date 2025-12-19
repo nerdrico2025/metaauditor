@@ -747,6 +747,39 @@ export default function MetaIntegrations() {
   const handleRenewAllTokens = async () => {
     setRenewingTokens(true);
     try {
+      // First check which connections are inactive
+      const tokenChecks = await Promise.all(
+        metaIntegrations.map(async (integration) => {
+          try {
+            const token = localStorage.getItem('auth_token');
+            const res = await fetch(`/api/auth/meta/check-token/${integration.id}`, {
+              headers: token ? { Authorization: `Bearer ${token}` } : {},
+            });
+            if (!res.ok) return { id: integration.id, name: integration.accountName, valid: false };
+            const data = await res.json();
+            return { id: integration.id, name: integration.accountName, valid: data.valid };
+          } catch {
+            return { id: integration.id, name: integration.accountName, valid: false };
+          }
+        })
+      );
+      
+      const inactiveConnections = tokenChecks.filter(c => !c.valid);
+      
+      // If there are inactive connections, start OAuth to re-authenticate
+      if (inactiveConnections.length > 0) {
+        const inactiveNames = inactiveConnections.map(c => c.name || 'Conta sem nome').join(', ');
+        toast({
+          title: 'Conexões inativas detectadas',
+          description: `${inactiveConnections.length} conta(s) precisam de nova autenticação: ${inactiveNames}. Abrindo autenticação...`,
+        });
+        setRenewingTokens(false);
+        // Start OAuth to re-authenticate
+        handleConnectOAuth();
+        return;
+      }
+      
+      // All connections are active, try to extend token validity
       const response = await apiRequest('/api/auth/meta/renew-all-tokens', { method: 'POST' });
       
       if (response.failed > 0) {
@@ -755,6 +788,8 @@ export default function MetaIntegrations() {
           description: `${response.failed} conexões expiraram e precisam de nova autenticação`,
           variant: 'destructive',
         });
+        // Start OAuth for failed ones
+        handleConnectOAuth();
       } else {
         toast({
           title: 'Conexões renovadas!',
