@@ -479,12 +479,15 @@ export default function MetaIntegrations() {
 
   const deleteAllDataMutation = useMutation({
     mutationFn: async () => {
-      await Promise.all([
-        apiRequest('/api/campaigns/bulk/all', { method: 'DELETE' }),
-        apiRequest('/api/adsets/bulk/all', { method: 'DELETE' }),
-        apiRequest('/api/creatives/bulk/all', { method: 'DELETE' }),
-        apiRequest('/api/integrations/reset-sync', { method: 'POST' }),
-      ]);
+      // Execute in sequence to avoid deadlocks (respect foreign key order)
+      // 1. First delete creatives (no dependents)
+      await apiRequest('/api/creatives/bulk/all', { method: 'DELETE' });
+      // 2. Then delete adsets (creatives already gone)
+      await apiRequest('/api/adsets/bulk/all', { method: 'DELETE' });
+      // 3. Finally delete campaigns
+      await apiRequest('/api/campaigns/bulk/all', { method: 'DELETE' });
+      // 4. Reset sync state
+      await apiRequest('/api/integrations/reset-sync', { method: 'POST' });
     },
     onSuccess: () => {
       toast({ 
