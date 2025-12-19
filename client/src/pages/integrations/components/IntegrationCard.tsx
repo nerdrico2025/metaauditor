@@ -122,23 +122,59 @@ export function IntegrationCard({
     <div className="border rounded-lg p-6 space-y-4">
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <div className="flex items-center gap-3 mb-3">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              {integration.accountName || 'Conta de Anúncios'}
-            </h3>
-            <Badge variant={integration.status === 'active' ? 'default' : 'secondary'}>
-              {integration.status === 'active' ? (
-                <>
-                  <CheckCircle2 className="w-3 h-3 mr-1" />
-                  Ativa
-                </>
-              ) : (
-                <>
-                  <AlertCircle className="w-3 h-3 mr-1" />
-                  Inativa
-                </>
+          <div className="flex items-center gap-3 mb-3 justify-between">
+            <div className="flex gap-2 flex-wrap">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                {integration.accountName || 'Conta de Anúncios'}
+              </h3>
+              <Badge variant={integration.status === 'active' ? 'default' : 'secondary'}>
+                {integration.status === 'active' ? (
+                  <>
+                    <CheckCircle2 className="w-3 h-3 mr-1" />
+                    Ativa
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="w-3 h-3 mr-1" />
+                    Inativa
+                  </>
+                )}
+              </Badge>
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onSync}
+                disabled={isSyncing || isRedownloadingImages}
+                data-testid={`button-sync-${integration.id}`}
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
+                Sincronizar
+              </Button>
+              {onRedownloadImages && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onRedownloadImages}
+                  disabled={isSyncing || isRedownloadingImages}
+                  data-testid={`button-redownload-${integration.id}`}
+                  title="Re-baixar imagens em alta resolução para criativos sem imagem ou com baixa qualidade"
+                >
+                  <ImageIcon className={`w-4 h-4 mr-2 ${isRedownloadingImages ? 'animate-pulse' : ''}`} />
+                  {isRedownloadingImages ? 'Baixando...' : 'Re-baixar Imagens'}
+                </Button>
               )}
-            </Badge>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onDelete}
+                data-testid={`button-delete-${integration.id}`}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Remover
+              </Button>
+            </div>
           </div>
           
           {/* Stats row - prominently displayed */}
@@ -162,23 +198,23 @@ export function IntegrationCard({
 
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
             <div>
-              <span className="text-gray-500">Account ID:</span>
+              <span className="text-gray-900 font-semibold">Account ID:</span>
               <p className="font-mono text-gray-900 dark:text-white text-xs">{integration.accountId}</p>
             </div>
             <div>
-              <span className="text-gray-500">Última Sincronização:</span>
+              <span className="text-gray-900 font-semibold">Última Sincronização:</span>
               <p className="text-gray-900 dark:text-white">{formatRelativeTime(integration.lastFullSync || integration.lastSync)}</p>
             </div>
             <div>
-              <span className="text-gray-500">Conectada em:</span>
+              <span className="text-gray-900 font-semibold">Conectada em:</span>
               <p className="text-gray-900 dark:text-white">{formatDate(integration.createdAt)}</p>
             </div>
             <div>
-              <span className="text-gray-500">Conectado por:</span>
+              <span className="text-gray-900 font-semibold">Conectado por:</span>
               <p className="text-gray-900 dark:text-white">{integration.connectedByUserName || '-'}</p>
             </div>
             <div>
-              <span className="text-gray-500">Status da Conexão:</span>
+              <span className="text-gray-900 font-semibold">Status da Conexão:</span>
               {tokenLoading ? (
                 <Skeleton className="h-5 w-20 mt-1" />
               ) : tokenInfo?.valid ? (
@@ -213,40 +249,6 @@ export function IntegrationCard({
           </div>
         </div>
 
-        <div className="flex gap-2 flex-wrap">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onSync}
-            disabled={isSyncing || isRedownloadingImages}
-            data-testid={`button-sync-${integration.id}`}
-          >
-            <RefreshCw className={`w-4 h-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
-            Sincronizar
-          </Button>
-          {onRedownloadImages && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onRedownloadImages}
-              disabled={isSyncing || isRedownloadingImages}
-              data-testid={`button-redownload-${integration.id}`}
-              title="Re-baixar imagens em alta resolução para criativos sem imagem ou com baixa qualidade"
-            >
-              <ImageIcon className={`w-4 h-4 mr-2 ${isRedownloadingImages ? 'animate-pulse' : ''}`} />
-              {isRedownloadingImages ? 'Baixando...' : 'Re-baixar Imagens'}
-            </Button>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onDelete}
-            data-testid={`button-delete-${integration.id}`}
-          >
-            <Trash2 className="w-4 h-4 mr-2" />
-            Remover
-          </Button>
-        </div>
       </div>
 
       {recentHistory.length > 0 && (

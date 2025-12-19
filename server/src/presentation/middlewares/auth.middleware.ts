@@ -6,7 +6,12 @@ import { storage } from '../../shared/services/storage.service.js';
 
 export const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+  let token = authHeader && authHeader.split(' ')[1];
+  
+  // Also check query string for SSE endpoints (EventSource can't send headers)
+  if (!token && req.query.token) {
+    token = req.query.token as string;
+  }
 
   if (!token) {
     throw new UnauthorizedException('Token não fornecido');
