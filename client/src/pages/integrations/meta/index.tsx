@@ -457,32 +457,69 @@ export default function MetaIntegrations() {
     },
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: ({ id, deleteData }: { id: string; deleteData: boolean }) => {
-      const url = `/api/integrations/${id}?deleteData=${deleteData}`;
-      return apiRequest(url, { method: 'DELETE' });
-    },
-    onSuccess: (_, variables) => {
-      const message = variables.deleteData
-        ? '✓ Integração e todos os dados foram excluídos permanentemente'
-        : '✓ Integração removida. Os dados foram preservados.';
+  const handleDeleteIntegration = async (id: string, deleteData: boolean) => {
+    setDeleteDialogOpen(false);
+    
+    if (!deleteData) {
+      // Simple disconnect - just remove integration without deleting data
+      try {
+        await apiRequest(`/api/integrations/${id}?deleteData=false`, { method: 'DELETE' });
+        toast({ title: '✓ Integração removida. Os dados foram preservados.' });
+        queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
+        setIntegrationToDelete(null);
+      } catch (error: any) {
+        toast({ 
+          title: 'Erro ao remover integração',
+          description: error.message,
+          variant: 'destructive'
+        });
+      }
+      return;
+    }
+    
+    // Delete with progress modal
+    setShowDeleteProgressModal(true);
+    setDeleteStartTime(Date.now());
+    setDeleteEndTime(undefined);
+    
+    const accountName = integrationToDelete?.accountName || 'Conta';
+    const steps = [
+      { name: `Excluindo dados da conta ${accountName}`, status: 'pending' as const },
+      { name: 'Removendo integração', status: 'pending' as const },
+    ];
+    setDeleteSteps(steps);
+
+    try {
+      // Step 1: Delete all data
+      setDeleteSteps(prev => prev.map((s, i) => i === 0 ? { ...s, status: 'loading' } : s));
+      await apiRequest(`/api/integrations/${id}?deleteData=true`, { method: 'DELETE' });
+      setDeleteSteps(prev => prev.map((s, i) => i === 0 ? { ...s, status: 'success' } : s));
+
+      // Step 2: Mark as complete
+      setDeleteSteps(prev => prev.map((s, i) => i === 1 ? { ...s, status: 'loading' } : s));
+      // Small delay to show progress
+      await new Promise(resolve => setTimeout(resolve, 300));
+      setDeleteSteps(prev => prev.map((s, i) => i === 1 ? { ...s, status: 'success' } : s));
+
+      setDeleteEndTime(Date.now());
       
-      toast({ title: message });
       queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
       queryClient.invalidateQueries({ queryKey: ['/api/campaigns'] });
       queryClient.invalidateQueries({ queryKey: ['/api/creatives'] });
       queryClient.invalidateQueries({ queryKey: ['/api/adsets'] });
-      setDeleteDialogOpen(false);
       setIntegrationToDelete(null);
-    },
-    onError: (error: any) => {
+    } catch (error: any) {
+      setDeleteEndTime(Date.now());
+      setDeleteSteps(prev => prev.map(s => 
+        s.status === 'loading' ? { ...s, status: 'error', error: error.message || 'Erro desconhecido' } : s
+      ));
       toast({ 
         title: 'Erro ao excluir integração',
         description: error.message,
         variant: 'destructive'
       });
-    },
-  });
+    }
+  };
 
   const handleDeleteAllWithProgress = async () => {
     setDeleteAllDialogOpen(false);
@@ -1308,13 +1345,10 @@ export default function MetaIntegrations() {
         integration={integrationToDelete}
         onConfirm={(deleteAllData) => {
           if (integrationToDelete) {
-            deleteMutation.mutate({ 
-              id: integrationToDelete.id, 
-              deleteData: deleteAllData 
-            });
+            handleDeleteIntegration(integrationToDelete.id, deleteAllData);
           }
         }}
-        isDeleting={deleteMutation.isPending}
+        isDeleting={false}
       />
 
       <DeleteAllDataDialog
