@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 
 interface PaginationProps {
@@ -7,7 +8,9 @@ interface PaginationProps {
   totalItems: number;
   itemsPerPage: number;
   onPageChange: (page: number) => void;
+  onItemsPerPageChange?: (itemsPerPage: number) => void;
   itemName?: string;
+  itemsPerPageOptions?: number[];
 }
 
 export function Pagination({
@@ -16,7 +19,9 @@ export function Pagination({
   totalItems,
   itemsPerPage,
   onPageChange,
-  itemName = "itens"
+  onItemsPerPageChange,
+  itemName = "itens",
+  itemsPerPageOptions = [10, 25, 50, 100]
 }: PaginationProps) {
   const startItem = totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
   const endItem = Math.min(currentPage * itemsPerPage, totalItems);
@@ -56,14 +61,38 @@ export function Pagination({
     return pages;
   };
 
-  if (totalPages <= 1) return null;
+  if (totalPages <= 1 && !onItemsPerPageChange) return null;
 
   return (
     <div className="flex items-center justify-between px-2 py-4">
-      <div className="text-sm text-gray-700 dark:text-gray-300">
-        Mostrando <span className="font-medium">{startItem}</span> até{" "}
-        <span className="font-medium">{endItem}</span> de{" "}
-        <span className="font-medium">{totalItems}</span> {itemName}
+      <div className="flex items-center gap-4">
+        <div className="text-sm text-gray-700 dark:text-gray-300">
+          Mostrando <span className="font-medium">{startItem}</span> até{" "}
+          <span className="font-medium">{endItem}</span> de{" "}
+          <span className="font-medium">{totalItems}</span> {itemName}
+        </div>
+        
+        {onItemsPerPageChange && (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-500 dark:text-gray-400">|</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400">Por página:</span>
+            <Select 
+              value={itemsPerPage.toString()} 
+              onValueChange={(v) => onItemsPerPageChange(parseInt(v))}
+            >
+              <SelectTrigger className="w-[70px] h-8" data-testid="select-items-per-page">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {itemsPerPageOptions.map((option) => (
+                  <SelectItem key={option} value={option.toString()}>
+                    {option}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
       
       <div className="flex items-center gap-1">

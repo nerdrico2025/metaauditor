@@ -2,8 +2,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Search, X } from "lucide-react";
+import { Search, X, ImageOff } from "lucide-react";
 import type { Campaign } from "@shared/schema";
 
 interface AdSet {
@@ -24,6 +25,7 @@ export interface FilterState {
   ctrFilter: string;
   impressionsFilter: string;
   clicksFilter: string;
+  noImageFilter: boolean;
 }
 
 interface CreativeFiltersProps {
@@ -65,7 +67,8 @@ export function CreativeFilters({
     filters.complianceFilter !== "all" || 
     filters.ctrFilter !== "all" || 
     filters.impressionsFilter !== "all" || 
-    filters.clicksFilter !== "all";
+    filters.clicksFilter !== "all" ||
+    filters.noImageFilter;
 
   return (
     <Card className="mb-6 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
@@ -156,7 +159,7 @@ export function CreativeFilters({
         </div>
 
         {/* Second row - Analysis and Metrics filters */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
           {/* Analysis Filter */}
           <div className="space-y-1.5">
             <Label className="text-xs font-medium text-gray-500 dark:text-gray-400">Análise</Label>
@@ -235,6 +238,27 @@ export function CreativeFilters({
             </Select>
           </div>
 
+          {/* No Image Filter - Switch */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-gray-500 dark:text-gray-400">Sem Imagem</Label>
+            <div 
+              className="flex items-center gap-2 h-10 px-3 rounded-md border border-input bg-white dark:bg-gray-800 cursor-pointer"
+              onClick={() => onFilterChange("noImageFilter", !filters.noImageFilter)}
+            >
+              <Switch
+                checked={filters.noImageFilter}
+                onCheckedChange={(v) => onFilterChange("noImageFilter", v)}
+                data-testid="switch-no-image-filter"
+              />
+              <div className="flex items-center gap-1.5">
+                <ImageOff className={`h-4 w-4 ${filters.noImageFilter ? 'text-orange-500' : 'text-gray-400'}`} />
+                <span className={`text-sm ${filters.noImageFilter ? 'text-orange-600 font-medium' : 'text-gray-500'}`}>
+                  {filters.noImageFilter ? 'Ativo' : 'Inativo'}
+                </span>
+              </div>
+            </div>
+          </div>
+
           {/* Clear All Filters */}
           <div className="space-y-1.5">
             <Label className="text-xs font-medium text-gray-500 dark:text-gray-400 invisible">Ações</Label>
@@ -269,7 +293,8 @@ export function hasActiveFilters(filters: FilterState): boolean {
     filters.complianceFilter !== "all" || 
     filters.ctrFilter !== "all" || 
     filters.impressionsFilter !== "all" || 
-    filters.clicksFilter !== "all"
+    filters.clicksFilter !== "all" ||
+    filters.noImageFilter
   );
 }
 
@@ -284,4 +309,5 @@ export const defaultFilters: FilterState = {
   ctrFilter: "all",
   impressionsFilter: "all",
   clicksFilter: "all",
+  noImageFilter: false,
 };

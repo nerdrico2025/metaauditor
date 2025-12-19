@@ -150,8 +150,8 @@ export default function Creatives() {
   const [pendingAnalysisType, setPendingAnalysisType] = useState<'single' | 'selected' | 'all' | null>(null);
   const [pendingCreativeId, setPendingCreativeId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [analyzingCreativeId, setAnalyzingCreativeId] = useState<string | null>(null);
-  const itemsPerPage = 10;
 
   // Batch analysis progress state
   const [batchAnalysisProgress, setBatchAnalysisProgress] = useState<{
@@ -625,8 +625,14 @@ export default function Creatives() {
     else if (filters.clicksFilter === "medium") matchesClicks = clicks >= 50 && clicks <= 500;
     else if (filters.clicksFilter === "high") matchesClicks = clicks > 500;
     
+    // No image filter
+    let matchesNoImage = true;
+    if (filters.noImageFilter) {
+      matchesNoImage = !creative.imageUrl || creative.imageUrl === '';
+    }
+    
     return matchesSearch && matchesStatus && matchesCampaign && matchesAdSet && matchesPlatform && 
-           matchesAnalyzed && matchesCompliance && matchesCtr && matchesImpressions && matchesClicks;
+           matchesAnalyzed && matchesCompliance && matchesCtr && matchesImpressions && matchesClicks && matchesNoImage;
   }).sort((a, b) => {
     // Active creatives first
     const aIsActive = a.status === 'Ativo' ? 0 : 1;
@@ -937,6 +943,10 @@ export default function Creatives() {
                         totalItems={filteredCreatives.length}
                         itemsPerPage={itemsPerPage}
                         onPageChange={setCurrentPage}
+                        onItemsPerPageChange={(newSize) => {
+                          setItemsPerPage(newSize);
+                          setCurrentPage(1);
+                        }}
                         itemName="anúncios"
                       />
                     </div>
