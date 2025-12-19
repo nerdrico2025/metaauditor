@@ -566,7 +566,20 @@ export default function Creatives() {
     
     const matchesSearch = creative.name.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
                          creative.externalId?.toLowerCase().includes(filters.searchTerm.toLowerCase());
-    const matchesStatus = filters.statusFilter === "all" || creative.status === filters.statusFilter;
+    
+    // Handle status filter - "pausados" groups multiple paused statuses
+    let matchesStatus = false;
+    if (filters.statusFilter === "all") {
+      matchesStatus = true;
+    } else if (filters.statusFilter === "pausados") {
+      matchesStatus = creative.status === 'Não está em veiculação' || 
+                     creative.status === 'Campanha Desativada' ||
+                     creative.status === 'PAUSED' ||
+                     creative.status === 'Grupo Desativado';
+    } else {
+      matchesStatus = creative.status === filters.statusFilter;
+    }
+    
     const matchesCampaign = filters.campaignFilter === "all" || creative.campaignId === filters.campaignFilter;
     const matchesAdSet = filters.adSetFilter === "all" || creative.adSetId === filters.adSetFilter;
     const matchesPlatform = filters.platformFilter === "all" || creative.platform === filters.platformFilter;

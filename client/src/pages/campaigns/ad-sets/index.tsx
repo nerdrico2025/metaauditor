@@ -184,7 +184,20 @@ export default function AdSets() {
   const filteredAdSets = adSets?.filter((adSet) => {
     const matchesSearch = adSet.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          adSet.externalId.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || adSet.status === statusFilter;
+    
+    // Handle status filter - "pausados" groups multiple paused statuses
+    let matchesStatus = false;
+    if (statusFilter === "all") {
+      matchesStatus = true;
+    } else if (statusFilter === "pausados") {
+      matchesStatus = adSet.status === 'Não está em veiculação' || 
+                     adSet.status === 'Campanha Desativada' ||
+                     adSet.status === 'PAUSED' ||
+                     adSet.status === 'Grupo Desativado';
+    } else {
+      matchesStatus = adSet.status === statusFilter;
+    }
+    
     const matchesCampaign = campaignFilter === "all" || adSet.campaignId === campaignFilter;
     const matchesPlatform = platformFilter === "all" || adSet.platform === platformFilter;
     
@@ -375,14 +388,13 @@ export default function AdSets() {
 
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
                       <SelectTrigger className="w-full lg:w-[180px] bg-white dark:bg-gray-800" data-testid="select-status-filter">
-                        <SelectValue placeholder="Veiculação" />
+                        <SelectValue placeholder="Status" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">Todas Veiculações</SelectItem>
-                        <SelectItem value="Ativo">Ativo</SelectItem>
-                        <SelectItem value="Não está em veiculação">Não está em veiculação</SelectItem>
-                        <SelectItem value="Campanha Desativada">Campanha Desativada</SelectItem>
-                        <SelectItem value="Arquivado">Arquivado</SelectItem>
+                        <SelectItem value="all">Todos Grupos de Anúncios</SelectItem>
+                        <SelectItem value="Ativo">Grupos de Anúncios Ativos</SelectItem>
+                        <SelectItem value="pausados">Grupos de Anúncios Pausados</SelectItem>
+                        <SelectItem value="Excluído">Grupos de Anúncios Excluídos</SelectItem>
                       </SelectContent>
                     </Select>
 

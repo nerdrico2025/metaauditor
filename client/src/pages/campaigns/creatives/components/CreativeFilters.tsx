@@ -126,18 +126,16 @@ export function CreativeFilters({
 
           {/* Status */}
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-gray-500 dark:text-gray-400">Veiculação</Label>
+            <Label className="text-xs font-medium text-gray-500 dark:text-gray-400">Status</Label>
             <Select value={filters.statusFilter} onValueChange={(v) => onFilterChange("statusFilter", v)}>
               <SelectTrigger className="w-full bg-white dark:bg-gray-800" data-testid="select-status-filter">
-                <SelectValue placeholder="Todas" />
+                <SelectValue placeholder="Todos" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todas</SelectItem>
-                <SelectItem value="Ativo">Ativo</SelectItem>
-                <SelectItem value="Não está em veiculação">Pausado</SelectItem>
-                <SelectItem value="Campanha Desativada">Camp. Desativada</SelectItem>
-                <SelectItem value="Grupo Desativado">Grupo Desativado</SelectItem>
-                <SelectItem value="Arquivado">Arquivado</SelectItem>
+                <SelectItem value="all">Todos Anúncios</SelectItem>
+                <SelectItem value="Ativo">Anúncios Ativos</SelectItem>
+                <SelectItem value="pausados">Anúncios Pausados</SelectItem>
+                <SelectItem value="Excluído">Anúncios Excluídos</SelectItem>
               </SelectContent>
             </Select>
           </div>
