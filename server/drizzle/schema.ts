@@ -163,6 +163,8 @@ export const users = pgTable("users", {
 export const integrations = pgTable("integrations", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: uuid("company_id").references(() => companies.id, { onDelete: 'cascade' }),
+  connectedByUserId: varchar("connected_by_user_id"),
+  connectedByUserName: text("connected_by_user_name"), // Cached name for display
   platform: varchar("platform").notNull(), // 'meta', 'google', 'google_sheets'
   accessToken: text("access_token"),
   refreshToken: text("refresh_token"),
