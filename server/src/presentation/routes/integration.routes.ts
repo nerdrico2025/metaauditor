@@ -976,8 +976,9 @@ router.post('/:id/redownload-images', authenticateToken, async (req: Request, re
       return res.status(400).json({ message: 'Apenas integrações Meta suportam re-download de imagens' });
     }
 
-    // Get all creatives for this company
-    const allCreatives = await storage.getCreativesByCompany(userCompanyId);
+    // Get all creatives for this user
+    const userId = (req as any).user?.id;
+    const allCreatives = await storage.getCreativesByUser(userId);
     
     // Filter creatives that need image update (no image or low quality thumbnails)
     const creativesToUpdate = allCreatives.filter((c: any) => 
