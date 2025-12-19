@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Eye, CheckCircle, AlertTriangle, BarChart3, Palette, Sparkles, ChevronRight, Shield, TrendingUp, MousePointer, XCircle, ArrowRight, Target, Loader2, FileText, PenLine, Image, Type, RefreshCw } from "lucide-react";
+import { Eye, CheckCircle, AlertTriangle, BarChart3, Palette, Sparkles, ChevronRight, Shield, TrendingUp, MousePointer, XCircle, ArrowRight, Target, Loader2, FileText, PenLine, Image, Type, RefreshCw, Play, LayoutGrid, ChevronLeft } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { CreativeImage } from "./CreativeImage";
 
@@ -19,12 +19,14 @@ interface Creative {
   id: string;
   name: string;
   type?: string;
+  creativeFormat?: 'image' | 'video' | 'carousel' | null;
   text?: string;
   headline?: string;
   description?: string;
   callToAction?: string;
   imageUrl?: string | null;
   thumbnailUrl?: string | null;
+  carouselImages?: string[] | null;
   campaignId?: string;
   adSetId?: string;
   impressions?: number;
@@ -123,6 +125,25 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
   const [showPolicyDialog, setShowPolicyDialog] = useState(false);
   const [policyChoice, setPolicyChoice] = useState<'same' | 'different'>('same');
   const [selectedPolicyId, setSelectedPolicyId] = useState<string | null>(null);
+  const [carouselIndex, setCarouselIndex] = useState(0);
+  
+  // Get carousel images array
+  const carouselImages = creative.carouselImages || [];
+  const isCarousel = creative.creativeFormat === 'carousel' && carouselImages.length > 1;
+  const isVideo = creative.creativeFormat === 'video';
+  
+  // Navigate carousel
+  const nextImage = () => {
+    if (carouselIndex < carouselImages.length - 1) {
+      setCarouselIndex(carouselIndex + 1);
+    }
+  };
+  
+  const prevImage = () => {
+    if (carouselIndex > 0) {
+      setCarouselIndex(carouselIndex - 1);
+    }
+  };
 
   // Fetch audit data for this creative
   const { data: audits, isLoading: auditsLoading } = useQuery<ExtendedAudit[]>({
@@ -403,13 +424,93 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
               {/* Coluna 1: Imagem e Métricas */}
               <div className="space-y-4">
                 <div className="border border-slate-200 rounded-lg p-4 bg-slate-50">
-                  <div className="relative cursor-pointer" onClick={() => setImageZoomed(true)}>
-                    <CreativeImage 
-                      creative={creative}
-                      className="w-full h-auto rounded-lg hover:opacity-90 transition-opacity"
-                      size="large"
-                    />
+                  {/* Format Badge */}
+                  <div className="flex items-center gap-2 mb-3">
+                    <Badge variant={isVideo ? "default" : isCarousel ? "secondary" : "outline"} className={`text-xs ${
+                      isVideo ? 'bg-purple-500 text-white' : isCarousel ? 'bg-orange-500 text-white' : 'bg-blue-500 text-white'
+                    }`}>
+                      {isVideo ? (
+                        <><Play className="h-3 w-3 mr-1" />Vídeo</>
+                      ) : isCarousel ? (
+                        <><LayoutGrid className="h-3 w-3 mr-1" />Carrossel ({carouselImages.length} imagens)</>
+                      ) : (
+                        <><Image className="h-3 w-3 mr-1" />Imagem</>
+                      )}
+                    </Badge>
                   </div>
+                  
+                  {/* Image/Carousel Display */}
+                  <div className="relative cursor-pointer" onClick={() => setImageZoomed(true)}>
+                    {isCarousel ? (
+                      <>
+                        <img 
+                          src={carouselImages[carouselIndex]} 
+                          alt={`${creative.name} - imagem ${carouselIndex + 1}`}
+                          className="w-full h-auto rounded-lg hover:opacity-90 transition-opacity"
+                        />
+                        {/* Carousel Navigation */}
+                        <div className="absolute inset-0 flex items-center justify-between pointer-events-none">
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); prevImage(); }}
+                            disabled={carouselIndex === 0}
+                            className={`pointer-events-auto ml-2 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors ${
+                              carouselIndex === 0 ? 'opacity-30 cursor-not-allowed' : ''
+                            }`}
+                          >
+                            <ChevronLeft className="h-5 w-5" />
+                          </button>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); nextImage(); }}
+                            disabled={carouselIndex === carouselImages.length - 1}
+                            className={`pointer-events-auto mr-2 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors ${
+                              carouselIndex === carouselImages.length - 1 ? 'opacity-30 cursor-not-allowed' : ''
+                            }`}
+                          >
+                            <ChevronRight className="h-5 w-5" />
+                          </button>
+                        </div>
+                        {/* Carousel Indicators */}
+                        <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2 flex gap-1.5">
+                          {carouselImages.map((_, idx) => (
+                            <button
+                              key={idx}
+                              onClick={(e) => { e.stopPropagation(); setCarouselIndex(idx); }}
+                              className={`w-2 h-2 rounded-full transition-colors ${
+                                idx === carouselIndex ? 'bg-white' : 'bg-white/50 hover:bg-white/70'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <CreativeImage 
+                        creative={creative}
+                        className="w-full h-auto rounded-lg hover:opacity-90 transition-opacity"
+                        size="large"
+                      />
+                    )}
+                  </div>
+                  
+                  {/* Carousel Thumbnails */}
+                  {isCarousel && (
+                    <div className="flex gap-2 mt-3 overflow-x-auto pb-2">
+                      {carouselImages.map((img, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setCarouselIndex(idx)}
+                          className={`flex-shrink-0 w-16 h-16 rounded-md overflow-hidden border-2 transition-colors ${
+                            idx === carouselIndex ? 'border-primary' : 'border-transparent hover:border-slate-300'
+                          }`}
+                        >
+                          <img 
+                            src={img} 
+                            alt={`Miniatura ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Métricas do Criativo */}
