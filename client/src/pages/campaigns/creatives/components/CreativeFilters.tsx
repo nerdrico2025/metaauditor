@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Search, X, ImageOff } from "lucide-react";
+import { Search, X, ImageOff, Image, Video, Layers } from "lucide-react";
 import type { Campaign } from "@shared/schema";
 
 interface AdSet {
@@ -20,6 +20,7 @@ export interface FilterState {
   campaignFilter: string;
   adSetFilter: string;
   platformFilter: string;
+  creativeTypeFilter: string;
   analysisFilter: string;
   complianceFilter: string;
   ctrFilter: string;
@@ -63,6 +64,7 @@ export function CreativeFilters({
     filters.campaignFilter !== "all" || 
     filters.adSetFilter !== "all" || 
     filters.platformFilter !== "all" || 
+    filters.creativeTypeFilter !== "all" || 
     filters.analysisFilter !== "all" || 
     filters.complianceFilter !== "all" || 
     filters.ctrFilter !== "all" || 
@@ -74,7 +76,7 @@ export function CreativeFilters({
     <Card className="mb-6 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardContent className="pt-6">
         {/* First row - Basic filters */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
           {/* Search */}
           <div className="space-y-1.5 sm:col-span-2 lg:col-span-1">
             <Label className="text-xs font-medium text-gray-500 dark:text-gray-400">Buscar</Label>
@@ -137,6 +139,37 @@ export function CreativeFilters({
                 <SelectItem value="all">Todas</SelectItem>
                 <SelectItem value="meta">Meta Ads</SelectItem>
                 <SelectItem value="google">Google Ads</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Creative Type */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-gray-500 dark:text-gray-400">Tipo</Label>
+            <Select value={filters.creativeTypeFilter} onValueChange={(v) => onFilterChange("creativeTypeFilter", v)}>
+              <SelectTrigger className="w-full bg-white dark:bg-gray-800" data-testid="select-creative-type-filter">
+                <SelectValue placeholder="Todos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="image">
+                  <div className="flex items-center gap-2">
+                    <Image className="h-4 w-4 text-blue-500" />
+                    <span>Imagem</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="video">
+                  <div className="flex items-center gap-2">
+                    <Video className="h-4 w-4 text-purple-500" />
+                    <span>Vídeo</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="carousel">
+                  <div className="flex items-center gap-2">
+                    <Layers className="h-4 w-4 text-orange-500" />
+                    <span>Carrossel</span>
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -289,6 +322,7 @@ export function hasActiveFilters(filters: FilterState): boolean {
     filters.campaignFilter !== "all" || 
     filters.adSetFilter !== "all" || 
     filters.platformFilter !== "all" || 
+    filters.creativeTypeFilter !== "all" || 
     filters.analysisFilter !== "all" || 
     filters.complianceFilter !== "all" || 
     filters.ctrFilter !== "all" || 
@@ -304,6 +338,7 @@ export const defaultFilters: FilterState = {
   campaignFilter: "all",
   adSetFilter: "all",
   platformFilter: "all",
+  creativeTypeFilter: "all",
   analysisFilter: "all",
   complianceFilter: "all",
   ctrFilter: "all",

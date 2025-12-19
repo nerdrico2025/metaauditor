@@ -410,7 +410,7 @@ export default function Creatives() {
   // Reset to page 1 when filters change - must be before early return
   useEffect(() => {
     setCurrentPage(1);
-  }, [filters.searchTerm, filters.statusFilter, filters.campaignFilter, filters.adSetFilter, filters.platformFilter, filters.analysisFilter, filters.complianceFilter, filters.ctrFilter, filters.impressionsFilter, filters.clicksFilter]);
+  }, [filters.searchTerm, filters.statusFilter, filters.campaignFilter, filters.adSetFilter, filters.platformFilter, filters.creativeTypeFilter, filters.analysisFilter, filters.complianceFilter, filters.ctrFilter, filters.impressionsFilter, filters.clicksFilter]);
 
   if (isLoading || !isAuthenticated) {
     return null;
@@ -586,6 +586,12 @@ export default function Creatives() {
     const matchesAdSet = filters.adSetFilter === "all" || creative.adSetId === filters.adSetFilter;
     const matchesPlatform = filters.platformFilter === "all" || creative.platform === filters.platformFilter;
     
+    // Creative type filter (image, video, carousel)
+    let matchesCreativeType = true;
+    if (filters.creativeTypeFilter !== "all") {
+      matchesCreativeType = creative.creativeFormat === filters.creativeTypeFilter;
+    }
+    
     // New filters
     const audit = auditsByCreativeId[creative.id];
     const hasAudit = !!audit;
@@ -633,7 +639,7 @@ export default function Creatives() {
       matchesNoImage = !creative.imageUrl || creative.imageUrl === '';
     }
     
-    return matchesSearch && matchesStatus && matchesCampaign && matchesAdSet && matchesPlatform && 
+    return matchesSearch && matchesStatus && matchesCampaign && matchesAdSet && matchesPlatform && matchesCreativeType &&
            matchesAnalyzed && matchesCompliance && matchesCtr && matchesImpressions && matchesClicks && matchesNoImage;
   }).sort((a, b) => {
     // Active creatives first
