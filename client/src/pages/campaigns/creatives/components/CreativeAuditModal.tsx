@@ -850,8 +850,8 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
                   </summary>
 
                   <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* ANÁLISE DA IMAGEM */}
-                    {viewingAudit.aiAnalysis?.compliance && (
+                    {/* ANÁLISE DA IMAGEM (não exibe para carrossel - usa análise individual) */}
+                    {viewingAudit.aiAnalysis?.compliance && !isCarousel && (
                       <div className="space-y-4">
                         <h4 className="font-semibold text-md flex items-center gap-2 text-gray-700 dark:text-gray-300">
                           <Image className="h-4 w-4" />
@@ -968,81 +968,82 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
                           })()
                         )}
 
-                        {/* ANÁLISE INDIVIDUAL DE CADA IMAGEM DO CARROSSEL */}
-                        {isCarousel && viewingAudit.aiAnalysis.compliance.analysis?.carouselImageAnalysis && 
-                         viewingAudit.aiAnalysis.compliance.analysis.carouselImageAnalysis.length > 0 && (
-                          <div className="mt-4 pt-4 border-t border-slate-200">
-                            <h5 className="font-semibold text-sm flex items-center gap-2 text-gray-700 dark:text-gray-300 mb-3">
-                              <LayoutGrid className="h-4 w-4" />
-                              Análise Individual por Imagem ({viewingAudit.aiAnalysis.compliance.analysis.carouselImageAnalysis.length} imagens)
-                            </h5>
-                            <div className="space-y-3">
-                              {viewingAudit.aiAnalysis.compliance.analysis.carouselImageAnalysis.map((imgAnalysis, idx) => (
-                                <div key={idx} className="p-3 rounded-lg border bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700">
-                                  <div className="flex items-center justify-between mb-2">
-                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                                      Imagem {imgAnalysis.imageIndex || idx + 1}
-                                    </span>
-                                    <div className="flex gap-1">
-                                      <Badge 
-                                        variant={imgAnalysis.compliance?.logoCompliance ? 'default' : 'destructive'}
-                                        className="text-[10px]"
-                                      >
-                                        {imgAnalysis.compliance?.logoCompliance ? '✓ Logo' : '✗ Logo'}
-                                      </Badge>
-                                      <Badge 
-                                        variant={imgAnalysis.compliance?.colorCompliance ? 'default' : 'destructive'}
-                                        className="text-[10px]"
-                                      >
-                                        {imgAnalysis.compliance?.colorCompliance ? '✓ Cores' : '✗ Cores'}
-                                      </Badge>
-                                    </div>
-                                  </div>
-                                  
-                                  {/* Cores encontradas */}
-                                  {imgAnalysis.colorsFound && imgAnalysis.colorsFound.length > 0 && (
-                                    <div className="flex items-center gap-1 mb-2">
-                                      <span className="text-[10px] font-semibold text-slate-500">Cores:</span>
-                                      {imgAnalysis.colorsFound.slice(0, 6).map((color, colorIdx) => (
-                                        <div 
-                                          key={colorIdx} 
-                                          className="w-4 h-4 rounded border border-slate-300" 
-                                          style={{ backgroundColor: color }}
-                                          title={color}
-                                        />
-                                      ))}
-                                    </div>
-                                  )}
-                                  
-                                  {/* Acertos */}
-                                  <div className="flex flex-wrap gap-1 mb-1">
-                                    {imgAnalysis.compliance?.logoCompliance && (
-                                      <Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 border-green-200">
-                                        ✓ Logo presente
-                                      </Badge>
-                                    )}
-                                    {imgAnalysis.compliance?.colorCompliance && (
-                                      <Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 border-green-200">
-                                        ✓ Cores corretas
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  
-                                  {/* Problemas */}
-                                  {imgAnalysis.compliance?.issues && imgAnalysis.compliance.issues.length > 0 && (
-                                    <div className="mt-1">
-                                      <ul className="text-[10px] text-red-600 list-disc list-inside">
-                                        {imgAnalysis.compliance.issues.map((issue, issueIdx) => (
-                                          <li key={issueIdx}>{issue}</li>
-                                        ))}
-                                      </ul>
-                                    </div>
-                                  )}
+                      </div>
+                    )}
+
+                    {/* ANÁLISE INDIVIDUAL DE CADA IMAGEM DO CARROSSEL (seção separada) */}
+                    {isCarousel && viewingAudit.aiAnalysis?.compliance?.analysis?.carouselImageAnalysis && 
+                     viewingAudit.aiAnalysis.compliance.analysis.carouselImageAnalysis.length > 0 && (
+                      <div className="space-y-4">
+                        <h4 className="font-semibold text-md flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                          <LayoutGrid className="h-4 w-4" />
+                          Análise Individual por Imagem ({viewingAudit.aiAnalysis.compliance.analysis.carouselImageAnalysis.length} imagens)
+                        </h4>
+                        <div className="space-y-3">
+                          {viewingAudit.aiAnalysis.compliance.analysis.carouselImageAnalysis.map((imgAnalysis, idx) => (
+                            <div key={idx} className="p-3 rounded-lg border bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                                  Imagem {imgAnalysis.imageIndex || idx + 1}
+                                </span>
+                                <div className="flex gap-1">
+                                  <Badge 
+                                    variant={imgAnalysis.compliance?.logoCompliance ? 'default' : 'destructive'}
+                                    className="text-[10px]"
+                                  >
+                                    {imgAnalysis.compliance?.logoCompliance ? '✓ Logo' : '✗ Logo'}
+                                  </Badge>
+                                  <Badge 
+                                    variant={imgAnalysis.compliance?.colorCompliance ? 'default' : 'destructive'}
+                                    className="text-[10px]"
+                                  >
+                                    {imgAnalysis.compliance?.colorCompliance ? '✓ Cores' : '✗ Cores'}
+                                  </Badge>
                                 </div>
-                              ))}
+                              </div>
+                              
+                              {/* Cores encontradas */}
+                              {imgAnalysis.colorsFound && imgAnalysis.colorsFound.length > 0 && (
+                                <div className="flex items-center gap-1 mb-2">
+                                  <span className="text-[10px] font-semibold text-slate-500">Cores:</span>
+                                  {imgAnalysis.colorsFound.slice(0, 6).map((color, colorIdx) => (
+                                    <div 
+                                      key={colorIdx} 
+                                      className="w-4 h-4 rounded border border-slate-300" 
+                                      style={{ backgroundColor: color }}
+                                      title={color}
+                                    />
+                                  ))}
+                                </div>
+                              )}
+                              
+                              {/* Acertos */}
+                              <div className="flex flex-wrap gap-1 mb-1">
+                                {imgAnalysis.compliance?.logoCompliance && (
+                                  <Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 border-green-200">
+                                    ✓ Logo presente
+                                  </Badge>
+                                )}
+                                {imgAnalysis.compliance?.colorCompliance && (
+                                  <Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 border-green-200">
+                                    ✓ Cores corretas
+                                  </Badge>
+                                )}
+                              </div>
+                              
+                              {/* Problemas */}
+                              {imgAnalysis.compliance?.issues && imgAnalysis.compliance.issues.length > 0 && (
+                                <div className="mt-1">
+                                  <ul className="text-[10px] text-red-600 list-disc list-inside">
+                                    {imgAnalysis.compliance.issues.map((issue, issueIdx) => (
+                                      <li key={issueIdx}>{issue}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
                             </div>
-                          </div>
-                        )}
+                          ))}
+                        </div>
                       </div>
                     )}
 
