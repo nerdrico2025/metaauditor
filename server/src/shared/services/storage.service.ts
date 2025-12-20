@@ -74,6 +74,7 @@ export interface IStorage {
   deleteIntegration(integrationId: string, userId: string): Promise<void>;
   getIntegrationStats(integrationId: string): Promise<{ campaigns: number; adSets: number; creatives: number }>;
   getSyncHistoryByUser(userId: string): Promise<any[]>;
+  getLastSuccessfulSync(integrationId: string): Promise<{ completedAt: Date } | null>;
   createSyncHistory(data: { integrationId: string; companyId?: string; userId: string; status: string; type: string; metadata?: any }): Promise<any>;
   updateSyncHistory(id: string, data: { status?: string; completedAt?: Date; campaignsSynced?: number; adSetsSynced?: number; creativeSynced?: number; errorMessage?: string; detailedLog?: string; metadata?: any }): Promise<any>;
   deleteAllSyncHistoryByUser(userId: string): Promise<void>;
@@ -326,6 +327,26 @@ export class DatabaseStorage implements IStorage {
     }
     
     return [];
+  }
+
+  async getLastSuccessfulSync(integrationId: string): Promise<{ completedAt: Date } | null> {
+    const [lastSync] = await db
+      .select({ completedAt: syncHistory.completedAt })
+      .from(syncHistory)
+      .where(
+        and(
+          eq(syncHistory.integrationId, integrationId),
+          eq(syncHistory.status, 'success'),
+          eq(syncHistory.type, 'full')
+        )
+      )
+      .orderBy(desc(syncHistory.completedAt))
+      .limit(1);
+    
+    if (lastSync?.completedAt) {
+      return { completedAt: lastSync.completedAt };
+    }
+    return null;
   }
 
   async createSyncHistory(data: {

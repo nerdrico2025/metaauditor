@@ -304,18 +304,27 @@ router.get('/:id/sync-stream', async (req: Request, res: Response) => {
     let syncedCreatives = 0;
 
     if (integration.platform === 'meta') {
+      // Check for last successful sync for incremental mode
+      const lastSync = await storage.getLastSuccessfulSync(integration.id);
+      const isIncremental = !!lastSync?.completedAt;
+      const sinceDateForApi = lastSync?.completedAt;
+      
       // Create sync history record
       const syncHistoryRecord = await storage.createSyncHistory({
         integrationId: integration.id,
         userId,
         status: 'running',
-        type: 'full',
-        metadata: { platform: 'meta' }
+        type: isIncremental ? 'incremental' : 'full',
+        metadata: { platform: 'meta', isIncremental, sinceDateForApi: sinceDateForApi?.toISOString() }
       });
+      
+      const syncModeMessage = isIncremental 
+        ? `Sincronização incremental - buscando apenas alterações desde ${sinceDateForApi?.toLocaleDateString('pt-BR')}`
+        : 'Primeira sincronização - buscando todos os dados da conta';
       
       sendEvent('start', { 
         message: 'Iniciando sincronização...',
-        note: 'A primeira sincronização pode levar alguns minutos dependendo da quantidade de anúncios na sua conta.'
+        note: syncModeMessage
       });
 
       try {
@@ -331,11 +340,14 @@ router.get('/:id/sync-stream', async (req: Request, res: Response) => {
         sendEvent('step', { 
           step: 1, 
           totalSteps: 3,
-          name: 'Buscando campanhas...',
-          description: 'Carregando todas as campanhas da sua conta Meta Ads'
+          name: isIncremental ? 'Buscando campanhas atualizadas...' : 'Buscando campanhas...',
+          description: isIncremental 
+            ? 'Carregando apenas campanhas modificadas desde a última sincronização'
+            : 'Carregando todas as campanhas da sua conta Meta Ads'
         });
         
-        const campaigns = await metaAdsService.syncCampaigns(integration, userId, companyId);
+        // Use incremental sync when we have a previous sync timestamp
+        const campaigns = await metaAdsService.syncCampaigns(integration, userId, companyId, sinceDateForApi);
         
         if (shouldStop()) {
           sendEvent('cancelled', { message: 'Sincronização cancelada pelo usuário' });

@@ -79,7 +79,7 @@ export function RedownloadProgressModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ImageIcon className="w-5 h-5" />
-            Re-download de Imagens
+            Sincronização de Mídias
           </DialogTitle>
         </DialogHeader>
 
