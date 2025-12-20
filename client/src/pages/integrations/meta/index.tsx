@@ -54,6 +54,8 @@ interface Integration {
   lastSync: Date | null;
   lastFullSync: Date | null;
   createdAt: Date;
+  connectedByUserName: string | null;
+  connectedByUserId: string | null;
 }
 
 interface BusinessGroup {
@@ -1625,16 +1627,20 @@ export default function MetaIntegrations() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <SiFacebook className="w-5 h-5 text-blue-600" />
-              Selecione as Contas para Conectar
+              Gerenciar Contas de Anúncios
             </DialogTitle>
             <DialogDescription>
-              Encontramos {oauthAccounts.length} conta(s) nos Business Managers autorizados. Clique nas contas que deseja conectar.
+              Encontramos {oauthAccounts.length} conta(s) nos Business Managers autorizados.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-2 max-h-96 overflow-y-auto py-2">
+          <div className="space-y-4 max-h-[70vh] overflow-y-auto py-2">
             {(() => {
-              // Group accounts by Business Manager
-              const groupedAccounts = oauthAccounts.reduce((acc, account) => {
+              // Separate connected and new accounts
+              const connectedAccounts = oauthAccounts.filter(acc => acc.is_connected);
+              const newAccounts = oauthAccounts.filter(acc => !acc.is_connected);
+              
+              // Group new accounts by Business Manager
+              const groupedNewAccounts = newAccounts.reduce((acc, account) => {
                 const bmName = account.business_name || 'Conta Pessoal';
                 if (!acc[bmName]) {
                   acc[bmName] = [];
@@ -1643,53 +1649,104 @@ export default function MetaIntegrations() {
                 return acc;
               }, {} as Record<string, AdAccount[]>);
 
-              return Object.entries(groupedAccounts).map(([bmName, accounts]) => (
-                <div key={bmName} className="mb-4">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
-                    <span className="text-blue-600">🏢</span> {bmName}
-                  </h4>
-                  <div className="space-y-2 pl-2">
-                    {accounts.map((account) => (
-                      <button
-                        key={account.id}
-                        onClick={() => handleSelectOAuthAccount(account)}
-                        disabled={account.is_connected || connectingAccountId === account.id}
-                        className={`w-full p-3 rounded-lg border text-left flex items-center justify-between transition-colors ${
-                          account.is_connected 
-                            ? 'bg-green-50 border-green-200 cursor-not-allowed' 
-                            : connectingAccountId === account.id
-                              ? 'bg-blue-50 border-blue-300'
-                              : 'hover:bg-blue-50 hover:border-blue-300 cursor-pointer'
-                        }`}
-                      >
-                        <div>
-                          <p className="font-medium text-gray-900">{account.name}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xs text-gray-500 font-mono">{account.id}</span>
-                            <span className={`text-xs px-1.5 py-0.5 rounded ${
-                              account.account_status === 1 
-                                ? 'bg-green-100 text-green-700' 
-                                : 'bg-orange-100 text-orange-700'
-                            }`}>
-                              {account.account_status === 1 ? 'Ativa' : 'Desativada'}
-                            </span>
+              return (
+                <>
+                  {/* Connected accounts section */}
+                  {connectedAccounts.length > 0 && (
+                    <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-4 border border-green-200 dark:border-green-800">
+                      <h4 className="text-sm font-semibold text-green-800 dark:text-green-300 mb-3 flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4" />
+                        Contas Já Conectadas ({connectedAccounts.length})
+                      </h4>
+                      <p className="text-xs text-green-700 dark:text-green-400 mb-3">
+                        Os tokens dessas contas foram renovados automaticamente.
+                      </p>
+                      <div className="space-y-2">
+                        {connectedAccounts.map((account) => (
+                          <div
+                            key={account.id}
+                            className="p-3 rounded-lg bg-white dark:bg-gray-900 border border-green-200 dark:border-green-700"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="font-medium text-gray-900 dark:text-white">{account.name}</p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="text-xs text-gray-500 font-mono">{account.id}</span>
+                                  <span className="text-xs text-gray-500">{account.business_name || 'Conta Pessoal'}</span>
+                                </div>
+                              </div>
+                              <span className="flex items-center gap-1 text-green-600 text-sm">
+                                <CheckCircle2 className="w-4 h-4" />
+                                Token Renovado
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* New accounts section */}
+                  {newAccounts.length > 0 && (
+                    <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+                      <h4 className="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-3 flex items-center gap-2">
+                        <Plus className="w-4 h-4" />
+                        Novas Contas Disponíveis ({newAccounts.length})
+                      </h4>
+                      <p className="text-xs text-blue-700 dark:text-blue-400 mb-3">
+                        Clique em uma conta para adicioná-la ao sistema.
+                      </p>
+                      {Object.entries(groupedNewAccounts).map(([bmName, accounts]) => (
+                        <div key={bmName} className="mb-3 last:mb-0">
+                          <h5 className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2 flex items-center gap-1">
+                            🏢 {bmName}
+                          </h5>
+                          <div className="space-y-2">
+                            {accounts.map((account) => (
+                              <button
+                                key={account.id}
+                                onClick={() => handleSelectOAuthAccount(account)}
+                                disabled={connectingAccountId === account.id}
+                                className={`w-full p-3 rounded-lg bg-white dark:bg-gray-900 border text-left flex items-center justify-between transition-colors ${
+                                  connectingAccountId === account.id
+                                    ? 'border-blue-400 bg-blue-100 dark:bg-blue-900/50'
+                                    : 'border-blue-200 dark:border-blue-700 hover:border-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 cursor-pointer'
+                                }`}
+                              >
+                                <div>
+                                  <p className="font-medium text-gray-900 dark:text-white">{account.name}</p>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <span className="text-xs text-gray-500 font-mono">{account.id}</span>
+                                    <span className={`text-xs px-1.5 py-0.5 rounded ${
+                                      account.account_status === 1 
+                                        ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' 
+                                        : 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300'
+                                    }`}>
+                                      {account.account_status === 1 ? 'Ativa' : 'Desativada'}
+                                    </span>
+                                  </div>
+                                </div>
+                                {connectingAccountId === account.id ? (
+                                  <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+                                ) : (
+                                  <Plus className="w-5 h-5 text-blue-500" />
+                                )}
+                              </button>
+                            ))}
                           </div>
                         </div>
-                        {account.is_connected ? (
-                          <span className="flex items-center gap-1 text-green-600 text-sm">
-                            <CheckCircle2 className="w-4 h-4" />
-                            Conectada
-                          </span>
-                        ) : connectingAccountId === account.id ? (
-                          <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
-                        ) : (
-                          <Plus className="w-5 h-5 text-gray-400" />
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ));
+                      ))}
+                    </div>
+                  )}
+
+                  {/* No accounts message */}
+                  {connectedAccounts.length === 0 && newAccounts.length === 0 && (
+                    <div className="text-center py-8 text-gray-500">
+                      Nenhuma conta de anúncios encontrada nos Business Managers autorizados.
+                    </div>
+                  )}
+                </>
+              );
             })()}
           </div>
           <div className="flex justify-end gap-2 pt-2 border-t">
