@@ -999,43 +999,38 @@ export default function CreativeAuditModal({ creative, onClose, autoAnalyze = fa
                                     </div>
                                   </div>
                                   
-                                  {imgAnalysis.visualDescription && (
-                                    <p className="text-[10px] text-slate-600 dark:text-slate-400 mb-2">
-                                      {imgAnalysis.visualDescription}
-                                    </p>
+                                  {/* Cores encontradas */}
+                                  {imgAnalysis.colorsFound && imgAnalysis.colorsFound.length > 0 && (
+                                    <div className="flex items-center gap-1 mb-2">
+                                      <span className="text-[10px] font-semibold text-slate-500">Cores:</span>
+                                      {imgAnalysis.colorsFound.slice(0, 6).map((color, colorIdx) => (
+                                        <div 
+                                          key={colorIdx} 
+                                          className="w-4 h-4 rounded border border-slate-300" 
+                                          style={{ backgroundColor: color }}
+                                          title={color}
+                                        />
+                                      ))}
+                                    </div>
                                   )}
                                   
-                                  <div className="grid grid-cols-2 gap-2 text-[10px]">
-                                    {imgAnalysis.textContent && (
-                                      <div>
-                                        <span className="font-semibold text-slate-500">Texto:</span>
-                                        <span className="ml-1 text-slate-700 dark:text-slate-300">{imgAnalysis.textContent}</span>
-                                      </div>
+                                  {/* Acertos */}
+                                  <div className="flex flex-wrap gap-1 mb-1">
+                                    {imgAnalysis.compliance?.logoCompliance && (
+                                      <Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 border-green-200">
+                                        ✓ Logo presente
+                                      </Badge>
                                     )}
-                                    {imgAnalysis.hasLogo && imgAnalysis.logoPosition && (
-                                      <div>
-                                        <span className="font-semibold text-slate-500">Logo:</span>
-                                        <span className="ml-1 text-slate-700 dark:text-slate-300">{imgAnalysis.logoPosition}</span>
-                                      </div>
-                                    )}
-                                    {imgAnalysis.colorsFound && imgAnalysis.colorsFound.length > 0 && (
-                                      <div className="col-span-2 flex items-center gap-1">
-                                        <span className="font-semibold text-slate-500">Cores:</span>
-                                        {imgAnalysis.colorsFound.slice(0, 5).map((color, colorIdx) => (
-                                          <div 
-                                            key={colorIdx} 
-                                            className="w-4 h-4 rounded border border-slate-300" 
-                                            style={{ backgroundColor: color }}
-                                            title={color}
-                                          />
-                                        ))}
-                                      </div>
+                                    {imgAnalysis.compliance?.colorCompliance && (
+                                      <Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 border-green-200">
+                                        ✓ Cores corretas
+                                      </Badge>
                                     )}
                                   </div>
                                   
+                                  {/* Problemas */}
                                   {imgAnalysis.compliance?.issues && imgAnalysis.compliance.issues.length > 0 && (
-                                    <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-600">
-                                      <span className="text-[10px] font-semibold text-red-600">Problemas:</span>
+                                    <div className="mt-1">
                                       <ul className="text-[10px] text-red-600 list-disc list-inside">
                                         {imgAnalysis.compliance.issues.map((issue, issueIdx) => (
                                           <li key={issueIdx}>{issue}</li>
