@@ -542,13 +542,15 @@ router.get('/oauth-session/:sessionId', async (req: Request, res: Response, next
 router.post('/embedded-signup', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user?.userId;
-    const { code, originUrl } = req.body;
+    const { code, accessToken: directAccessToken, originUrl } = req.body;
 
-    if (!code) {
-      return res.status(400).json({ error: 'Authorization code is required' });
+    // Accept either access_token directly (response_type: 'token') or code
+    if (!code && !directAccessToken) {
+      return res.status(400).json({ error: 'Authorization code or access token is required' });
     }
 
     console.log(`🔐 Processing Embedded Signup for user ${userId}`);
+    console.log(`   Mode: ${directAccessToken ? 'Direct Token' : 'Code Exchange'}`);
 
     // Get platform settings
     const settings = await storage.getPlatformSettingsByPlatform('meta');
@@ -557,65 +559,86 @@ router.post('/embedded-signup', authenticateToken, async (req: Request, res: Res
       return res.status(400).json({ error: 'Meta app not configured' });
     }
 
-    // For User Token type, redirect_uri is required and must match exactly
-    // FB.login with JavaScript SDK uses specific redirect_uri patterns
-    console.log(`📍 Attempting Embedded Signup token exchange`);
+    let accessToken: string;
 
-    // Try token exchange with different redirect_uri options
-    let tokenData: TokenResponse | null = null;
-    
-    // List of redirect_uri options to try (in order of likelihood)
-    const redirectOptions = [
-      // Option 1: Origin + specific Facebook redirect path
-      originUrl ? `${originUrl}/` : null,
-      // Option 2: Origin without trailing slash
-      originUrl,
-      // Option 3: Origin + integrations page (where FB.login was called)
-      originUrl ? `${originUrl}/integrations/meta` : null,
-      // Option 4: No redirect_uri (works for System User tokens)
-      null
-    ].filter(Boolean) as string[];
-    
-    // Add null at the end to try without redirect_uri
-    const allOptions = [...redirectOptions, ''];
-    
-    for (const redirectUri of allOptions) {
-      const urlParams = `client_id=${settings.appId}&client_secret=${settings.appSecret}&code=${code}`;
-      const tokenUrl = redirectUri 
-        ? `https://graph.facebook.com/v22.0/oauth/access_token?${urlParams}&redirect_uri=${encodeURIComponent(redirectUri)}`
-        : `https://graph.facebook.com/v22.0/oauth/access_token?${urlParams}`;
+    // If we received an access_token directly, use it (and exchange for long-lived)
+    if (directAccessToken) {
+      console.log('🔑 Using direct access token from FB.login');
       
-      console.log(`  Trying with redirect_uri: ${redirectUri || '(none)'}`);
+      // Exchange for long-lived token
+      const longLivedUrl = `https://graph.facebook.com/v22.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${settings.appId}&client_secret=${settings.appSecret}&fb_exchange_token=${directAccessToken}`;
       
-      const tokenResponse = await fetch(tokenUrl);
-      tokenData = await tokenResponse.json() as TokenResponse;
-      
-      if (tokenData?.access_token) {
-        console.log(`  ✅ Success with redirect_uri: ${redirectUri || '(none)'}`);
-        break;
+      const longLivedResponse = await fetch(longLivedUrl);
+      const longLivedData = await longLivedResponse.json() as TokenResponse;
+
+      if (longLivedData.access_token) {
+        accessToken = longLivedData.access_token;
+        console.log('🔑 Long-lived token obtained from direct token');
       } else {
-        const errorMsg = typeof tokenData?.error === 'object' ? (tokenData.error as any)?.message : tokenData?.error;
-        console.log(`  ❌ Failed:`, errorMsg);
-        tokenData = null;
+        // If long-lived exchange fails, use the direct token
+        console.log('⚠️ Long-lived token exchange failed, using direct token');
+        accessToken = directAccessToken;
       }
+    } else {
+      // Legacy code exchange flow
+      console.log(`📍 Attempting Embedded Signup code exchange`);
+
+      // Try token exchange with different redirect_uri options
+      let tokenData: TokenResponse | null = null;
+      
+      // List of redirect_uri options to try (in order of likelihood)
+      const redirectOptions = [
+        // Option 1: Origin + specific Facebook redirect path
+        originUrl ? `${originUrl}/` : null,
+        // Option 2: Origin without trailing slash
+        originUrl,
+        // Option 3: Origin + integrations page (where FB.login was called)
+        originUrl ? `${originUrl}/integrations/meta` : null,
+        // Option 4: No redirect_uri (works for System User tokens)
+        null
+      ].filter(Boolean) as string[];
+      
+      // Add null at the end to try without redirect_uri
+      const allOptions = [...redirectOptions, ''];
+      
+      for (const redirectUri of allOptions) {
+        const urlParams = `client_id=${settings.appId}&client_secret=${settings.appSecret}&code=${code}`;
+        const tokenUrl = redirectUri 
+          ? `https://graph.facebook.com/v22.0/oauth/access_token?${urlParams}&redirect_uri=${encodeURIComponent(redirectUri)}`
+          : `https://graph.facebook.com/v22.0/oauth/access_token?${urlParams}`;
+        
+        console.log(`  Trying with redirect_uri: ${redirectUri || '(none)'}`);
+        
+        const tokenResponse = await fetch(tokenUrl);
+        tokenData = await tokenResponse.json() as TokenResponse;
+        
+        if (tokenData?.access_token) {
+          console.log(`  ✅ Success with redirect_uri: ${redirectUri || '(none)'}`);
+          break;
+        } else {
+          const errorMsg = typeof tokenData?.error === 'object' ? (tokenData.error as any)?.message : tokenData?.error;
+          console.log(`  ❌ Failed:`, errorMsg);
+          tokenData = null;
+        }
+      }
+
+      if (!tokenData || !tokenData.access_token) {
+        console.error('❌ Failed to exchange code for token:', tokenData);
+        return res.status(400).json({ error: 'Failed to exchange code for access token' });
+      }
+
+      const shortLivedToken = tokenData.access_token;
+      console.log('🔑 Embedded Signup token obtained');
+
+      // Exchange for long-lived token
+      const longLivedUrl = `https://graph.facebook.com/v22.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${settings.appId}&client_secret=${settings.appSecret}&fb_exchange_token=${shortLivedToken}`;
+      
+      const longLivedResponse = await fetch(longLivedUrl);
+      const longLivedData = await longLivedResponse.json() as TokenResponse;
+
+      accessToken = longLivedData.access_token || shortLivedToken;
+      console.log('🔑 Long-lived token obtained for Embedded Signup');
     }
-
-    if (!tokenData || !tokenData.access_token) {
-      console.error('❌ Failed to exchange code for token:', tokenData);
-      return res.status(400).json({ error: 'Failed to exchange code for access token' });
-    }
-
-    const shortLivedToken = tokenData.access_token;
-    console.log('🔑 Embedded Signup token obtained');
-
-    // Exchange for long-lived token
-    const longLivedUrl = `https://graph.facebook.com/v22.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${settings.appId}&client_secret=${settings.appSecret}&fb_exchange_token=${shortLivedToken}`;
-    
-    const longLivedResponse = await fetch(longLivedUrl);
-    const longLivedData = await longLivedResponse.json() as TokenResponse;
-
-    const accessToken = longLivedData.access_token || shortLivedToken;
-    console.log('🔑 Long-lived token obtained for Embedded Signup');
 
     // Get Facebook user info
     const fbUserUrl = `https://graph.facebook.com/v22.0/me?access_token=${accessToken}&fields=id,name,email`;

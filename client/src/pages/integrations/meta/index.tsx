@@ -775,14 +775,22 @@ export default function MetaIntegrations() {
     (window as any).FB.login(
       function(response: any) {
         if (response.authResponse) {
+          // Use access_token directly when available (response_type: 'token')
+          // Fall back to code if access_token is not present
+          const accessToken = response.authResponse.accessToken || response.authResponse.access_token;
           const code = response.authResponse.code;
-          console.log('✅ Embedded Signup authorization received');
+          
+          console.log('✅ Embedded Signup authorization received', accessToken ? '(token)' : '(code)');
           
           // Use .then() instead of async/await for FB callback
-          // Send the origin URL for redirect_uri validation (required for User Token type)
+          // Send either the token or code to the backend
           apiRequest('/api/auth/meta/embedded-signup', {
             method: 'POST',
-            body: JSON.stringify({ code, originUrl: window.location.origin })
+            body: JSON.stringify({ 
+              code, 
+              accessToken,
+              originUrl: window.location.origin 
+            })
           }).then((data: any) => {
             if (data.success && data.accounts) {
               console.log(`📊 Found ${data.accounts.length} accounts via Embedded Signup`);
@@ -855,7 +863,7 @@ export default function MetaIntegrations() {
       },
       {
         config_id: config.configId,
-        response_type: 'code',
+        response_type: 'token,granted_scopes',
         override_default_response_type: true,
         scope: 'ads_management,ads_read,business_management,read_insights'
       }
