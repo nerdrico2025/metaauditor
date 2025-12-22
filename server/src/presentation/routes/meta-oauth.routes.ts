@@ -187,9 +187,11 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
         // Fetch client ad accounts (contas de clientes/agência)
         const clientAccountsUrl = `https://graph.facebook.com/v22.0/${business.id}/client_ad_accounts?access_token=${accessToken}&fields=id,name,account_status&limit=500`;
         const clientAccountsResponse = await fetch(clientAccountsUrl);
-        const clientAccountsData = await clientAccountsResponse.json() as { data?: any[] };
+        const clientAccountsData = await clientAccountsResponse.json() as { data?: any[], error?: any };
         
-        if (clientAccountsData.data && clientAccountsData.data.length > 0) {
+        if (clientAccountsData.error) {
+          console.log(`  ⚠️ Error fetching client_ad_accounts: ${clientAccountsData.error.message}`);
+        } else if (clientAccountsData.data && clientAccountsData.data.length > 0) {
           console.log(`  ✅ Found ${clientAccountsData.data.length} CLIENT ad accounts in BM "${business.name}"`);
           const clientAccountsWithBM = clientAccountsData.data.map(acc => ({
             ...acc,
@@ -199,9 +201,26 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
           allAdAccounts.push(...clientAccountsWithBM);
         }
         
-        if ((!ownedAccountsData.data || ownedAccountsData.data.length === 0) && 
-            (!clientAccountsData.data || clientAccountsData.data.length === 0)) {
-          console.log(`  ⚠️ No ad accounts (owned or client) in BM "${business.name}"`);
+        // Fetch assigned ad accounts (contas atribuídas ao usuário no BM)
+        const assignedAccountsUrl = `https://graph.facebook.com/v22.0/${business.id}/assigned_ad_accounts?access_token=${accessToken}&fields=id,name,account_status&limit=500`;
+        const assignedAccountsResponse = await fetch(assignedAccountsUrl);
+        const assignedAccountsData = await assignedAccountsResponse.json() as { data?: any[], error?: any };
+        
+        if (assignedAccountsData.error) {
+          console.log(`  ⚠️ Error fetching assigned_ad_accounts: ${assignedAccountsData.error.message}`);
+        } else if (assignedAccountsData.data && assignedAccountsData.data.length > 0) {
+          console.log(`  ✅ Found ${assignedAccountsData.data.length} ASSIGNED ad accounts in BM "${business.name}"`);
+          const assignedAccountsWithBM = assignedAccountsData.data.map(acc => ({
+            ...acc,
+            business_name: `${business.name} (Atribuída)`,
+            business_id: business.id
+          }));
+          allAdAccounts.push(...assignedAccountsWithBM);
+        }
+        
+        const totalFound = (ownedAccountsData.data?.length || 0) + (clientAccountsData.data?.length || 0) + (assignedAccountsData.data?.length || 0);
+        if (totalFound === 0) {
+          console.log(`  ⚠️ No ad accounts (owned, client, or assigned) in BM "${business.name}"`);
         }
       }
     }
@@ -236,8 +255,9 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
     console.log('📋 Authorized Ad Accounts:', adAccountsData.data.map((a: any) => ({ id: a.id, name: a.name, bm: a.business_name })));
 
     if (!adAccountsData.data || adAccountsData.data.length === 0) {
-      console.error('❌ No ad accounts found in authorized Business Managers');
-      return sendResultAndClose(false, 'Nenhuma conta encontrada nos Business Managers autorizados. Verifique se você tem contas de anúncios nos BMs que autorizou.');
+      console.error('❌ No ad accounts found - user has no access to any ad accounts');
+      console.error('   This Facebook user needs to be added as admin/analyst to an ad account in Business Manager');
+      return sendResultAndClose(false, 'Nenhuma conta de anúncios encontrada. Este usuário do Facebook precisa ter acesso a contas de anúncios no Business Manager. Peça ao administrador do BM para adicionar você como analista ou admin de uma conta.');
     }
 
     // Get already connected accounts for this user
