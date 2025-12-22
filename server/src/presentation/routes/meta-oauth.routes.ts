@@ -728,7 +728,31 @@ router.post('/embedded-signup', authenticateToken, async (req: Request, res: Res
       }
     });
     
-    const accountsForSelection = Array.from(uniqueAccounts.values()).map(acc => ({
+    // Verify which accounts actually have permission by testing access
+    const accountsToVerify = Array.from(uniqueAccounts.values());
+    console.log(`🔍 Verifying permissions for ${accountsToVerify.length} accounts...`);
+    
+    const verifiedAccounts: any[] = [];
+    for (const acc of accountsToVerify) {
+      const accountId = acc.id.replace('act_', '');
+      try {
+        // Try to fetch basic account info to verify we have permission
+        const verifyUrl = `https://graph.facebook.com/v22.0/act_${accountId}?access_token=${accessToken}&fields=id,name`;
+        const verifyResponse = await fetch(verifyUrl);
+        const verifyData = await verifyResponse.json() as { id?: string; error?: any };
+        
+        if (verifyData.id && !verifyData.error) {
+          console.log(`  ✅ Permission verified for: ${acc.name} (${accountId})`);
+          verifiedAccounts.push(acc);
+        } else {
+          console.log(`  ❌ No permission for: ${acc.name} (${accountId})`);
+        }
+      } catch (err) {
+        console.log(`  ❌ Error verifying: ${acc.name} (${accountId})`);
+      }
+    }
+    
+    const accountsForSelection = verifiedAccounts.map(acc => ({
       id: acc.id.replace('act_', ''),
       name: acc.name,
       account_status: acc.account_status,
@@ -736,7 +760,7 @@ router.post('/embedded-signup', authenticateToken, async (req: Request, res: Res
       business_id: acc.business_id
     }));
 
-    console.log(`📊 Total unique accounts found (Embedded): ${accountsForSelection.length}`);
+    console.log(`📊 Total verified accounts (Embedded): ${accountsForSelection.length}`);
 
     // Check which accounts are already connected
     const existingIntegrations = await storage.getIntegrationsByUser(userId);
