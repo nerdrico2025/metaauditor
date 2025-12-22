@@ -201,26 +201,27 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
           allAdAccounts.push(...clientAccountsWithBM);
         }
         
-        // Fetch assigned ad accounts (contas atribuídas ao usuário no BM)
-        const assignedAccountsUrl = `https://graph.facebook.com/v22.0/${business.id}/assigned_ad_accounts?access_token=${accessToken}&fields=id,name,account_status&limit=500`;
-        const assignedAccountsResponse = await fetch(assignedAccountsUrl);
-        const assignedAccountsData = await assignedAccountsResponse.json() as { data?: any[], error?: any };
+        // Try fetching ad accounts accessible by this user in the BM via different edges
+        // Method 1: Get all ad accounts the business has access to (adaccounts edge)
+        const bmAllAccountsUrl = `https://graph.facebook.com/v22.0/${business.id}/adaccounts?access_token=${accessToken}&fields=id,name,account_status&limit=500`;
+        const bmAllAccountsResponse = await fetch(bmAllAccountsUrl);
+        const bmAllAccountsData = await bmAllAccountsResponse.json() as { data?: any[], error?: any };
         
-        if (assignedAccountsData.error) {
-          console.log(`  ⚠️ Error fetching assigned_ad_accounts: ${assignedAccountsData.error.message}`);
-        } else if (assignedAccountsData.data && assignedAccountsData.data.length > 0) {
-          console.log(`  ✅ Found ${assignedAccountsData.data.length} ASSIGNED ad accounts in BM "${business.name}"`);
-          const assignedAccountsWithBM = assignedAccountsData.data.map(acc => ({
+        if (bmAllAccountsData.error) {
+          console.log(`  ⚠️ Error fetching BM adaccounts: ${bmAllAccountsData.error.message}`);
+        } else if (bmAllAccountsData.data && bmAllAccountsData.data.length > 0) {
+          console.log(`  ✅ Found ${bmAllAccountsData.data.length} ad accounts via BM adaccounts edge "${business.name}"`);
+          const bmAllAccountsWithBM = bmAllAccountsData.data.map(acc => ({
             ...acc,
-            business_name: `${business.name} (Atribuída)`,
+            business_name: business.name,
             business_id: business.id
           }));
-          allAdAccounts.push(...assignedAccountsWithBM);
+          allAdAccounts.push(...bmAllAccountsWithBM);
         }
         
-        const totalFound = (ownedAccountsData.data?.length || 0) + (clientAccountsData.data?.length || 0) + (assignedAccountsData.data?.length || 0);
+        const totalFound = (ownedAccountsData.data?.length || 0) + (clientAccountsData.data?.length || 0) + (bmAllAccountsData.data?.length || 0);
         if (totalFound === 0) {
-          console.log(`  ⚠️ No ad accounts (owned, client, or assigned) in BM "${business.name}"`);
+          console.log(`  ⚠️ No ad accounts found in BM "${business.name}" via any edge`);
         }
       }
     }
