@@ -1486,7 +1486,7 @@ export default function MetaIntegrations() {
                         ) : (
                           <Plus className="w-4 h-4 mr-2" />
                         )}
-                        {isConnecting ? 'Conectando...' : 'Adicionar BM'}
+                        {isConnecting ? 'Conectando...' : 'Adicionar Integração'}
                       </Button>
                     </div>
                   </div>
