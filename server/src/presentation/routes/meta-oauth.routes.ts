@@ -542,7 +542,7 @@ router.get('/oauth-session/:sessionId', async (req: Request, res: Response, next
 router.post('/embedded-signup', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user?.userId;
-    const { code } = req.body;
+    const { code, originUrl } = req.body;
 
     if (!code) {
       return res.status(400).json({ error: 'Authorization code is required' });
@@ -557,23 +557,46 @@ router.post('/embedded-signup', authenticateToken, async (req: Request, res: Res
       return res.status(400).json({ error: 'Meta app not configured' });
     }
 
-    // For User Token type, redirect_uri is required and must match the origin
-    // Use the registered domain from the Facebook app settings
-    const baseUrl = process.env.REPLIT_DEV_DOMAIN 
-      ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-      : (process.env.REPL_URL || 'http://localhost:5000');
-    
-    // The redirect_uri for Embedded Signup should be the origin URL (where FB.login was called from)
-    const redirectUri = `${baseUrl}/`;
+    // For User Token type, redirect_uri is required and must match the origin where FB.login was called
+    // The frontend sends the window.location.origin
+    const redirectUri = originUrl || '';
     console.log(`📍 Attempting Embedded Signup token exchange with redirect_uri: ${redirectUri}`);
 
-    // Exchange code for access token WITH redirect_uri for User Token type
-    const tokenUrl = `https://graph.facebook.com/v22.0/oauth/access_token?client_id=${settings.appId}&client_secret=${settings.appSecret}&code=${code}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+    // Try token exchange with different redirect_uri options
+    let tokenData: TokenResponse | null = null;
     
-    const tokenResponse = await fetch(tokenUrl);
-    const tokenData = await tokenResponse.json() as TokenResponse;
+    // Option 1: Try with origin URL from frontend (if provided)
+    if (originUrl) {
+      console.log(`  Trying with originUrl: ${originUrl}`);
+      const tokenUrl = `https://graph.facebook.com/v22.0/oauth/access_token?client_id=${settings.appId}&client_secret=${settings.appSecret}&code=${code}&redirect_uri=${encodeURIComponent(originUrl)}`;
+      const tokenResponse = await fetch(tokenUrl);
+      tokenData = await tokenResponse.json() as TokenResponse;
+      
+      if (tokenData?.access_token) {
+        console.log(`  ✅ Success with originUrl`);
+      } else {
+        const errorMsg = typeof tokenData?.error === 'object' ? (tokenData.error as any)?.message : tokenData?.error;
+        console.log(`  ❌ Failed with originUrl:`, errorMsg);
+        tokenData = null;
+      }
+    }
+    
+    // Option 2: Try without redirect_uri (works for System User tokens)
+    if (!tokenData?.access_token) {
+      console.log(`  Trying without redirect_uri...`);
+      const tokenUrl = `https://graph.facebook.com/v22.0/oauth/access_token?client_id=${settings.appId}&client_secret=${settings.appSecret}&code=${code}`;
+      const tokenResponse = await fetch(tokenUrl);
+      tokenData = await tokenResponse.json() as TokenResponse;
+      
+      if (tokenData?.access_token) {
+        console.log(`  ✅ Success without redirect_uri`);
+      } else {
+        const errorMsg = typeof tokenData?.error === 'object' ? (tokenData.error as any)?.message : tokenData?.error;
+        console.log(`  ❌ Failed without redirect_uri:`, errorMsg);
+      }
+    }
 
-    if (tokenData.error || !tokenData.access_token) {
+    if (!tokenData || !tokenData.access_token) {
       console.error('❌ Failed to exchange code for token:', tokenData);
       return res.status(400).json({ error: 'Failed to exchange code for access token' });
     }

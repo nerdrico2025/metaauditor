@@ -779,9 +779,10 @@ export default function MetaIntegrations() {
           console.log('✅ Embedded Signup authorization received');
           
           // Use .then() instead of async/await for FB callback
+          // Send the origin URL for redirect_uri validation (required for User Token type)
           apiRequest('/api/auth/meta/embedded-signup', {
             method: 'POST',
-            body: JSON.stringify({ code })
+            body: JSON.stringify({ code, originUrl: window.location.origin })
           }).then((data: any) => {
             if (data.success && data.accounts) {
               console.log(`📊 Found ${data.accounts.length} accounts via Embedded Signup`);
