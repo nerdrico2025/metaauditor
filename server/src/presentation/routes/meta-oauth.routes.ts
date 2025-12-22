@@ -557,16 +557,20 @@ router.post('/embedded-signup', authenticateToken, async (req: Request, res: Res
       return res.status(400).json({ error: 'Meta app not configured' });
     }
 
-    // For Embedded Signup with FB.login, the redirect_uri must match the origin URL
-    // Get the origin from the request headers
-    const origin = req.get('origin') || req.get('referer')?.replace(/\/[^/]*$/, '') || `${process.env.REPL_URL || 'https://localhost:5000'}`;
-    // Embedded Signup doesn't need redirect_uri - use origin URL without path
-    const redirectUri = origin.replace(/\/$/, '');
+    // For Embedded Signup with FB.login using config_id, we need to use the configured redirect_uri
+    // or try without redirect_uri as some configurations don't require it
+    const configuredRedirectUri = settings.redirectUri;
+    
+    console.log(`📍 Attempting Embedded Signup token exchange`);
+    console.log(`📍 Configured redirect_uri: ${configuredRedirectUri}`);
 
-    console.log(`📍 Using redirect_uri for Embedded Signup: ${redirectUri}`);
-
-    // Exchange code for access token
-    const tokenUrl = `https://graph.facebook.com/v22.0/oauth/access_token?client_id=${settings.appId}&redirect_uri=${encodeURIComponent(redirectUri)}&client_secret=${settings.appSecret}&code=${code}`;
+    // First try with configured redirect_uri
+    let tokenUrl = `https://graph.facebook.com/v22.0/oauth/access_token?client_id=${settings.appId}&client_secret=${settings.appSecret}&code=${code}`;
+    
+    // Add redirect_uri if configured
+    if (configuredRedirectUri) {
+      tokenUrl += `&redirect_uri=${encodeURIComponent(configuredRedirectUri)}`;
+    }
     
     const tokenResponse = await fetch(tokenUrl);
     const tokenData = await tokenResponse.json() as TokenResponse;
