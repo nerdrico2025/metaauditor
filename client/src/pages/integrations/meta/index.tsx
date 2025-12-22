@@ -770,25 +770,25 @@ export default function MetaIntegrations() {
   };
 
   const launchEmbeddedSignup = (config: { appId: string; configId: string }) => {
-    console.log('🚀 Launching Embedded Signup with config:', config.configId);
+    console.log('🚀 Launching Facebook Login (standard flow for user token)');
     
+    // Use standard FB.login (not Business Extension) to get user's own token
+    // This ensures we get the real user's token, not a System User token
     (window as any).FB.login(
       function(response: any) {
         if (response.authResponse) {
-          // Use access_token directly when available (response_type: 'token')
-          // Fall back to code if access_token is not present
-          const accessToken = response.authResponse.accessToken || response.authResponse.access_token;
-          const code = response.authResponse.code;
+          // Standard FB.login returns accessToken directly
+          const accessToken = response.authResponse.accessToken;
+          const userID = response.authResponse.userID;
           
-          console.log('✅ Embedded Signup authorization received', accessToken ? '(token)' : '(code)');
+          console.log('✅ Facebook Login successful, got user token for userID:', userID);
           
-          // Use .then() instead of async/await for FB callback
-          // Send either the token or code to the backend
+          // Send the access token directly to backend
           apiRequest('/api/auth/meta/embedded-signup', {
             method: 'POST',
             body: JSON.stringify({ 
-              code, 
               accessToken,
+              facebookUserId: userID,
               originUrl: window.location.origin 
             })
           }).then((data: any) => {
@@ -862,10 +862,8 @@ export default function MetaIntegrations() {
         }
       },
       {
-        config_id: config.configId,
-        response_type: 'token,granted_scopes',
-        override_default_response_type: true,
-        scope: 'ads_management,ads_read,business_management,read_insights'
+        scope: 'ads_management,ads_read,business_management,read_insights',
+        return_scopes: true
       }
     );
   };
