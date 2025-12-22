@@ -204,20 +204,25 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
           console.log(`  ⚠️ No ad accounts (owned or client) in BM "${business.name}"`);
         }
       }
+    }
+    
+    // ALWAYS also fetch personal ad accounts (me/adaccounts) as additional source
+    // This catches accounts that the user has direct access to but aren't in a BM
+    console.log('🔍 Also fetching personal ad accounts (me/adaccounts)...');
+    const personalAccountsUrl = `https://graph.facebook.com/v22.0/me/adaccounts?access_token=${accessToken}&fields=id,name,account_status&limit=500`;
+    const personalAccountsResponse = await fetch(personalAccountsUrl);
+    const personalAccountsData = await personalAccountsResponse.json() as AdAccountsResponse;
+    
+    if (personalAccountsData.data && personalAccountsData.data.length > 0) {
+      console.log(`  ✅ Found ${personalAccountsData.data.length} personal ad accounts`);
+      const personalAccounts = personalAccountsData.data.map(acc => ({
+        ...acc,
+        business_name: 'Conta Pessoal',
+        business_id: null
+      }));
+      allAdAccounts.push(...personalAccounts);
     } else {
-      // Fallback: if no Business Manager was authorized, try personal ad accounts
-      console.log('⚠️ No Business Manager authorized, trying personal ad accounts...');
-      const personalAccountsUrl = `https://graph.facebook.com/v22.0/me/adaccounts?access_token=${accessToken}&fields=id,name,account_status&limit=500`;
-      const personalAccountsResponse = await fetch(personalAccountsUrl);
-      const personalAccountsData = await personalAccountsResponse.json() as AdAccountsResponse;
-      
-      if (personalAccountsData.data && personalAccountsData.data.length > 0) {
-        allAdAccounts = personalAccountsData.data.map(acc => ({
-          ...acc,
-          business_name: 'Conta Pessoal',
-          business_id: null
-        }));
-      }
+      console.log('  ⚠️ No personal ad accounts found');
     }
 
     // Remove duplicates (in case an account appears in multiple BMs)
