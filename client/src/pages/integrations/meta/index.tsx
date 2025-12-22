@@ -723,13 +723,13 @@ export default function MetaIntegrations() {
     try {
       setIsConnecting(true);
       
-      // Get Meta config (appId and configId)
+      // Get Meta config (configId)
       const config = await apiRequest('/api/auth/meta/config');
       
-      if (!config.configured || !config.appId || !config.configId) {
+      if (!config.configured || !config.configId) {
         toast({
           title: 'Configuração incompleta',
-          description: 'O Meta Business Extension não está configurado. Configure o Config ID nas configurações.',
+          description: 'O Meta Business Extension não está configurado.',
           variant: 'destructive'
         });
         setIsConnecting(false);
@@ -738,31 +738,17 @@ export default function MetaIntegrations() {
 
       // Check if FB SDK is loaded
       if (typeof (window as any).FB === 'undefined') {
-        // Initialize FB SDK
-        (window as any).fbAsyncInit = function() {
-          (window as any).FB.init({
-            appId: config.appId,
-            cookie: true,
-            xfbml: true,
-            version: 'v22.0'
-          });
-          launchEmbeddedSignup(config);
-        };
-        
-        // If SDK script already loaded but not initialized
-        if (document.getElementById('facebook-jssdk')) {
-          (window as any).FB.init({
-            appId: config.appId,
-            cookie: true,
-            xfbml: true,
-            version: 'v22.0'
-          });
-          launchEmbeddedSignup(config);
-        }
-      } else {
-        // SDK already loaded, just launch
-        launchEmbeddedSignup(config);
+        toast({
+          title: 'Erro',
+          description: 'Facebook SDK não carregou. Tente recarregar a página.',
+          variant: 'destructive'
+        });
+        setIsConnecting(false);
+        return;
       }
+      
+      // SDK should be initialized from index.html, launch embedded signup
+      launchEmbeddedSignup(config);
     } catch (error: any) {
       toast({
         title: 'Erro',
