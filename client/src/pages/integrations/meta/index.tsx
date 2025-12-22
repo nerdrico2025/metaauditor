@@ -1104,10 +1104,18 @@ export default function MetaIntegrations() {
   });
 
   const handleAddAccount = async (businessId?: string | null, businessName?: string) => {
+    // With System User Token, each authorization is independent
+    // So we always start a new Embedded Signup to add more accounts
+    setSelectedBusinessId(businessId || null);
+    setSelectedBusinessName(businessName || '');
+    
+    // Start new Embedded Signup to authorize more accounts
+    handleEmbeddedSignup();
+    return;
+    
+    // Legacy flow (kept for reference but not used with System User Token)
     if (hasExistingIntegration) {
       setLoadingAccounts(true);
-      setSelectedBusinessId(businessId || null);
-      setSelectedBusinessName(businessName || '');
       try {
         const url = businessId 
           ? `/api/auth/meta/ad-accounts?businessId=${businessId}` 
