@@ -777,85 +777,84 @@ export default function MetaIntegrations() {
     console.log('🚀 Launching Embedded Signup with config:', config.configId);
     
     (window as any).FB.login(
-      async (response: any) => {
+      function(response: any) {
         if (response.authResponse) {
           const code = response.authResponse.code;
           console.log('✅ Embedded Signup authorization received');
           
-          try {
-            // Send code to backend for processing
-            const data = await apiRequest('/api/auth/meta/embedded-signup', {
-              method: 'POST',
-              body: JSON.stringify({ code })
-            });
-            
+          // Use .then() instead of async/await for FB callback
+          apiRequest('/api/auth/meta/embedded-signup', {
+            method: 'POST',
+            body: JSON.stringify({ code })
+          }).then((data: any) => {
             if (data.success && data.accounts) {
               console.log(`📊 Found ${data.accounts.length} accounts via Embedded Signup`);
               
-              // Check if there are already connected accounts
               const connectedAccounts = data.accounts.filter((acc: AdAccount) => acc.is_connected);
               const newAccounts = data.accounts.filter((acc: AdAccount) => !acc.is_connected);
               
-              if (connectedAccounts.length > 0) {
-                // Update tokens for connected accounts
-                try {
-                  const updateRes = await apiRequest('/api/auth/meta/update-connected-tokens', {
+              // Update tokens for connected accounts using .then()
+              const updatePromise = connectedAccounts.length > 0 
+                ? apiRequest('/api/auth/meta/update-connected-tokens', {
                     method: 'POST',
                     body: JSON.stringify({
                       userId: user?.id,
                       accessToken: data.accessToken,
                       connectedAccountIds: connectedAccounts.map((acc: AdAccount) => acc.id),
                     }),
-                  });
-                  
-                  if (updateRes.updated > 0) {
-                    toast({
-                      title: 'Conexões atualizadas!',
-                      description: `${updateRes.updated} conta(s) tiveram suas conexões renovadas.`,
-                    });
-                    queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
-                  }
-                } catch (updateError) {
-                  console.error('Error updating connected tokens:', updateError);
-                }
-              }
+                  }).then((updateRes: any) => {
+                    if (updateRes.updated > 0) {
+                      toast({
+                        title: 'Conexões atualizadas!',
+                        description: `${updateRes.updated} conta(s) tiveram suas conexões renovadas.`,
+                      });
+                      queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
+                    }
+                  }).catch((updateError: any) => {
+                    console.error('Error updating connected tokens:', updateError);
+                  })
+                : Promise.resolve();
               
-              if (newAccounts.length > 0) {
-                // Show account selection modal
-                setOauthAccounts(data.accounts);
-                setOauthToken(data.accessToken);
-                setOauthFacebookUserId(data.facebookUserId || null);
-                setOauthFacebookUserName(data.facebookUserName || null);
-                setShowAccountSelectionModal(true);
-              } else if (connectedAccounts.length === 0) {
-                toast({
-                  title: 'Nenhuma conta encontrada',
-                  description: 'Não foram encontradas contas de anúncios acessíveis. Verifique suas permissões no Business Manager.',
-                  variant: 'destructive'
-                });
-              }
+              updatePromise.then(() => {
+                if (newAccounts.length > 0) {
+                  setOauthAccounts(data.accounts);
+                  setOauthToken(data.accessToken);
+                  setOauthFacebookUserId(data.facebookUserId || null);
+                  setOauthFacebookUserName(data.facebookUserName || null);
+                  setShowAccountSelectionModal(true);
+                } else if (connectedAccounts.length === 0) {
+                  toast({
+                    title: 'Nenhuma conta encontrada',
+                    description: 'Não foram encontradas contas de anúncios acessíveis. Verifique suas permissões no Business Manager.',
+                    variant: 'destructive'
+                  });
+                }
+                setIsConnecting(false);
+              });
             } else {
               toast({
                 title: 'Erro',
                 description: 'Não foi possível obter as contas de anúncios',
                 variant: 'destructive'
               });
+              setIsConnecting(false);
             }
-          } catch (error: any) {
+          }).catch((error: any) => {
             toast({
               title: 'Erro ao processar autorização',
               description: error.message || 'Erro desconhecido',
               variant: 'destructive'
             });
-          }
+            setIsConnecting(false);
+          });
         } else {
           console.log('❌ User cancelled Embedded Signup or authorization failed');
           toast({
             title: 'Cancelado',
             description: 'A autorização foi cancelada',
           });
+          setIsConnecting(false);
         }
-        setIsConnecting(false);
       },
       {
         config_id: config.configId,
