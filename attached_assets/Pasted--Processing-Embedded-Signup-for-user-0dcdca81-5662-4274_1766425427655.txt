@@ -1,0 +1,26 @@
+🔐 Processing Embedded Signup for user 0dcdca81-5662-4274-b698-0995103e6541
+📍 Attempting Embedded Signup token exchange
+  Trying with redirect_uri: https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev/
+  ❌ Failed: Error validating verification code. Please make sure your redirect_uri is identical to the one you used in the OAuth dialog request
+  Trying with redirect_uri: https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev
+  ❌ Failed: Error validating verification code. Please make sure your redirect_uri is identical to the one you used in the OAuth dialog request
+  Trying with redirect_uri: https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev/integrations/meta
+  ❌ Failed: Can't load URL: The domain of this URL isn't included in the app's domains. To be able to load this URL, add all domains and subdomains of your app to the App Domains field in your app settings.
+  Trying with redirect_uri: (none)
+  ✅ Success with redirect_uri: (none)
+🔑 Embedded Signup token obtained
+🔑 Long-lived token obtained for Embedded Signup
+👤 Facebook user (Embedded): Click Auditor System User (ID: 122098542651181240)
+🔐 Business Managers found (Embedded): 0
+📱 Personal accounts response: {"data":[{"id":"act_1106848610874805","name":"CA - FENIX 1","account_status":1}],"paging":{"cursors":{"before":"MTIwMjE1NTkwODQ3MjAwMjk0","after":"MTIwMjE1NTkwODQ3MjAwMjk0"}}}
+  ✅ Found 1 personal accounts
+📊 Total unique accounts found (Embedded): 1
+POST /api/auth/meta/embedded-signup 200 in 2674ms :: {"success":true,"accessTok…
+📋 Processing integration for user 0dcdca81-5662-4274-b698-0995103e6541 with companyId: 74ff6eae-d563-400e-8e2e-fc808f923d52, BM: Conta Pessoal
+👤 Facebook user: Click Auditor System User (122098542651181240)
+➕ Creating NEW integration for account 1106848610874805 - CA - FENIX 1 (BM: Conta Pessoal)
+✅ Account selected and saved: 1106848610874805 - CA - FENIX 1 (companyId: 74ff6eae-d563-400e-8e2e-fc808f923d52)
+POST /api/auth/meta/select-account 200 in 99ms :: {"success":true}
+GET /api/integrations 200 in 45ms :: [{"id":"db75bbf2-1baa-4ee1-a59f-3f243f2585…
+🔍 Token check for db75bbf2-1baa-4ee1-a59f-3f243f258594: {"error":{"message":"(#100) You must provide an app access token, or a user access token that is an owner or developer of the app","type":"OAuthException","code":100,"fbtrace_id":"Aqjqb4eLmUKfu_VEyc_NCHZ"}}
+⚠️ debug_token failed, trying /me call...
