@@ -152,6 +152,21 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
     const longLivedData = await longLivedResponse.json() as TokenResponse;
 
     const accessToken = longLivedData.access_token || shortLivedToken;
+    
+    // Log token info for debugging (first 20 chars only for security)
+    console.log(`🔑 New OAuth token obtained: ${accessToken.substring(0, 20)}...`);
+    console.log(`👤 ClickAuditor userId making request: ${userId}`);
+    
+    // Get Facebook user info to confirm identity
+    const fbUserUrl = `https://graph.facebook.com/v22.0/me?access_token=${accessToken}&fields=id,name,email`;
+    const fbUserResponse = await fetch(fbUserUrl);
+    const fbUserData = await fbUserResponse.json() as { id?: string; name?: string; email?: string; error?: any };
+    
+    if (fbUserData.error) {
+      console.error('❌ Error getting Facebook user info:', fbUserData.error);
+    } else {
+      console.log(`👤 Facebook user authenticated: ${fbUserData.name} (ID: ${fbUserData.id}, Email: ${fbUserData.email || 'not provided'})`);
+    }
 
     // Step 1: Get ONLY the Business Managers that were AUTHORIZED during OAuth
     const businessesUrl = `https://graph.facebook.com/v22.0/me/businesses?access_token=${accessToken}&fields=id,name,verification_status&limit=100`;
