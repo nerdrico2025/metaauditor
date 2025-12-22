@@ -723,10 +723,10 @@ export default function MetaIntegrations() {
     try {
       setIsConnecting(true);
       
-      // Get Meta config (configId)
+      // Get Meta config (appId and configId)
       const config = await apiRequest('/api/auth/meta/config');
       
-      if (!config.configured || !config.configId) {
+      if (!config.configured || !config.appId || !config.configId) {
         toast({
           title: 'Configuração incompleta',
           description: 'O Meta Business Extension não está configurado.',
@@ -736,8 +736,9 @@ export default function MetaIntegrations() {
         return;
       }
 
-      // Check if FB SDK is loaded
-      if (typeof (window as any).FB === 'undefined') {
+      // Check if FB SDK script is loaded
+      const FB = (window as any).FB;
+      if (typeof FB === 'undefined') {
         toast({
           title: 'Erro',
           description: 'Facebook SDK não carregou. Tente recarregar a página.',
@@ -747,7 +748,16 @@ export default function MetaIntegrations() {
         return;
       }
       
-      // SDK should be initialized from index.html, launch embedded signup
+      // Initialize FB SDK with correct appId from backend
+      FB.init({
+        appId: config.appId,
+        cookie: true,
+        xfbml: true,
+        version: 'v22.0'
+      });
+      console.log('✅ Facebook SDK initialized with appId:', config.appId);
+      
+      // Launch embedded signup
       launchEmbeddedSignup(config);
     } catch (error: any) {
       toast({
