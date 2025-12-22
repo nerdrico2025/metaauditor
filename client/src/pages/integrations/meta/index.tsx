@@ -56,6 +56,8 @@ interface Integration {
   createdAt: Date;
   connectedByUserName: string | null;
   connectedByUserId: string | null;
+  facebookUserId: string | null;
+  facebookUserName: string | null;
 }
 
 interface BusinessGroup {
@@ -108,6 +110,8 @@ export default function MetaIntegrations() {
   const [oauthUrl, setOauthUrl] = useState<string | null>(null);
   const [oauthAccounts, setOauthAccounts] = useState<AdAccount[]>([]);
   const [oauthToken, setOauthToken] = useState<string | null>(null);
+  const [oauthFacebookUserId, setOauthFacebookUserId] = useState<string | null>(null);
+  const [oauthFacebookUserName, setOauthFacebookUserName] = useState<string | null>(null);
   const [showAccountSelectionModal, setShowAccountSelectionModal] = useState(false);
   const [connectingAccountId, setConnectingAccountId] = useState<string | null>(null);
   
@@ -777,6 +781,8 @@ export default function MetaIntegrations() {
                 // Show account selection modal for new accounts
                 setOauthAccounts(data.accounts);
                 setOauthToken(data.accessToken);
+                setOauthFacebookUserId(data.facebookUserId || null);
+                setOauthFacebookUserName(data.facebookUserName || null);
                 setShowOAuthModal(false);
                 setShowAccountSelectionModal(true);
               } else {
@@ -877,7 +883,9 @@ export default function MetaIntegrations() {
           accountName: account.name,
           accountStatus: account.account_status === 1 ? 'ACTIVE' : 'DISABLED',
           businessId: account.business_id || null,
-          businessName: account.business_name || null
+          businessName: account.business_name || null,
+          facebookUserId: oauthFacebookUserId,
+          facebookUserName: oauthFacebookUserName
         })
       });
       

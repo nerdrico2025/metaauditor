@@ -309,12 +309,14 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
       await db.delete(oauthSessions).where(lt(oauthSessions.expiresAt, new Date()));
       console.log(`🧹 Cleaned up old OAuth sessions`);
       
-      // Store new session in database
+      // Store new session in database (including Facebook user info)
       const insertResult = await db.insert(oauthSessions).values({
         id: oauthSessionId,
         userId,
         accessToken,
         accounts: accountsForSelection,
+        facebookUserId: fbUserData.id || null,
+        facebookUserName: fbUserData.name || null,
         expiresAt,
       }).returning();
       
@@ -497,7 +499,9 @@ router.get('/oauth-session/:sessionId', async (req: Request, res: Response, next
     res.json({
       accessToken: sessionData.accessToken,
       accounts: sessionData.accounts,
-      userId: sessionData.userId
+      userId: sessionData.userId,
+      facebookUserId: sessionData.facebookUserId,
+      facebookUserName: sessionData.facebookUserName
     });
   } catch (error) {
     next(error);
@@ -507,7 +511,7 @@ router.get('/oauth-session/:sessionId', async (req: Request, res: Response, next
 // Save selected account
 router.post('/select-account', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { userId, accessToken, accountId, accountName, accountStatus, businessId, businessName } = req.body;
+    const { userId, accessToken, accountId, accountName, accountStatus, businessId, businessName, facebookUserId, facebookUserName } = req.body;
 
     if (!userId || !accessToken || !accountId) {
       return res.status(400).json({ error: 'Missing required fields' });
@@ -518,6 +522,7 @@ router.post('/select-account', async (req: Request, res: Response, next: NextFun
     const companyId = user?.companyId || null;
     
     console.log(`📋 Processing integration for user ${userId} with companyId: ${companyId}, BM: ${businessName}`);
+    console.log(`👤 Facebook user: ${facebookUserName} (${facebookUserId})`);
 
     // Check if THIS SPECIFIC account is already connected (by accountId)
     const existingIntegrations = await storage.getIntegrationsByUser(userId);
@@ -540,6 +545,8 @@ router.post('/select-account', async (req: Request, res: Response, next: NextFun
         status: 'active',
         connectedByUserId: userId,
         connectedByUserName: userName,
+        facebookUserId: facebookUserId || null,
+        facebookUserName: facebookUserName || null,
       });
     } else {
       // Different account or no Meta integration yet - CREATE NEW
@@ -556,6 +563,8 @@ router.post('/select-account', async (req: Request, res: Response, next: NextFun
         status: 'active',
         connectedByUserId: userId,
         connectedByUserName: userName,
+        facebookUserId: facebookUserId || null,
+        facebookUserName: facebookUserName || null,
       });
     }
 

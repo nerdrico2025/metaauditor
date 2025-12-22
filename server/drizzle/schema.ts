@@ -47,6 +47,8 @@ export const oauthSessions = pgTable("oauth_sessions", {
   userId: uuid("user_id").notNull(),
   accessToken: text("access_token").notNull(),
   accounts: jsonb("accounts").notNull(), // Array of available ad accounts
+  facebookUserId: varchar("facebook_user_id"), // Facebook user ID who authenticated
+  facebookUserName: text("facebook_user_name"), // Facebook user name for display
   createdAt: timestamp("created_at").defaultNow(),
   expiresAt: timestamp("expires_at").notNull(),
 });
@@ -165,6 +167,8 @@ export const integrations = pgTable("integrations", {
   companyId: uuid("company_id").references(() => companies.id, { onDelete: 'cascade' }),
   connectedByUserId: varchar("connected_by_user_id"),
   connectedByUserName: text("connected_by_user_name"), // Cached name for display
+  facebookUserId: varchar("facebook_user_id"), // Facebook user ID who authenticated
+  facebookUserName: text("facebook_user_name"), // Facebook user name for display
   platform: varchar("platform").notNull(), // 'meta', 'google', 'google_sheets'
   accessToken: text("access_token"),
   refreshToken: text("refresh_token"),

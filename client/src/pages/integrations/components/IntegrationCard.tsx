@@ -15,6 +15,8 @@ interface Integration {
   lastFullSync: Date | null;
   createdAt: Date;
   connectedByUserName: string | null;
+  facebookUserId: string | null;
+  facebookUserName: string | null;
 }
 
 interface TokenInfo {
@@ -196,7 +198,7 @@ export function IntegrationCard({
             )}
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-4 text-sm">
             <div>
               <span className="text-gray-900 font-semibold">Account ID:</span>
               <p className="font-mono text-gray-900 dark:text-white text-xs">{integration.accountId}</p>
@@ -210,8 +212,12 @@ export function IntegrationCard({
               <p className="text-gray-900 dark:text-white">{formatDate(integration.createdAt)}</p>
             </div>
             <div>
-              <span className="text-gray-900 font-semibold">Conectado por:</span>
+              <span className="text-gray-900 font-semibold">Admin ClickAuditor:</span>
               <p className="text-gray-900 dark:text-white">{integration.connectedByUserName || '-'}</p>
+            </div>
+            <div>
+              <span className="text-gray-900 font-semibold">Usuário Facebook:</span>
+              <p className="text-gray-900 dark:text-white">{integration.facebookUserName || '-'}</p>
             </div>
             <div>
               <span className="text-gray-900 font-semibold">Status da Conexão:</span>
