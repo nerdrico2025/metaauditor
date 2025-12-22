@@ -557,8 +557,13 @@ router.post('/embedded-signup', authenticateToken, async (req: Request, res: Res
       return res.status(400).json({ error: 'Meta app not configured' });
     }
 
-    // The redirect URI for embedded signup is typically the same origin
-    const redirectUri = settings.redirectUri || `${process.env.REPL_URL || 'http://localhost:5000'}/auth/meta/callback`;
+    // For Embedded Signup with FB.login, the redirect_uri must match the origin URL
+    // Get the origin from the request headers
+    const origin = req.get('origin') || req.get('referer')?.replace(/\/[^/]*$/, '') || `${process.env.REPL_URL || 'https://localhost:5000'}`;
+    // Embedded Signup doesn't need redirect_uri - use origin URL without path
+    const redirectUri = origin.replace(/\/$/, '');
+
+    console.log(`📍 Using redirect_uri for Embedded Signup: ${redirectUri}`);
 
     // Exchange code for access token
     const tokenUrl = `https://graph.facebook.com/v22.0/oauth/access_token?client_id=${settings.appId}&redirect_uri=${encodeURIComponent(redirectUri)}&client_secret=${settings.appSecret}&code=${code}`;
