@@ -641,9 +641,13 @@ router.post('/embedded-signup', authenticateToken, async (req: Request, res: Res
     // Also fetch personal ad accounts
     const personalAccountsUrl = `https://graph.facebook.com/v22.0/me/adaccounts?access_token=${accessToken}&fields=id,name,account_status&limit=500`;
     const personalResponse = await fetch(personalAccountsUrl);
-    const personalData = await personalResponse.json() as { data?: any[] };
+    const personalData = await personalResponse.json() as { data?: any[]; error?: any };
     
-    if (personalData.data && personalData.data.length > 0) {
+    console.log(`📱 Personal accounts response:`, JSON.stringify(personalData).substring(0, 500));
+    
+    if (personalData.error) {
+      console.log(`⚠️ Error fetching personal accounts: ${personalData.error.message}`);
+    } else if (personalData.data && personalData.data.length > 0) {
       console.log(`  ✅ Found ${personalData.data.length} personal accounts`);
       const personalWithType = personalData.data.map(acc => ({
         ...acc,
@@ -651,6 +655,8 @@ router.post('/embedded-signup', authenticateToken, async (req: Request, res: Res
         business_id: null
       }));
       allAdAccounts.push(...personalWithType);
+    } else {
+      console.log(`  ℹ️ No personal accounts found`);
     }
 
     // Remove duplicates
