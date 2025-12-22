@@ -119,6 +119,17 @@ export class MetaAdsService {
   }
 
   /**
+   * Format account ID with act_ prefix for Meta API calls
+   * Meta API requires the act_ prefix for ad account endpoints
+   */
+  private formatAccountId(accountId: string): string {
+    if (accountId.startsWith('act_')) {
+      return accountId;
+    }
+    return `act_${accountId}`;
+  }
+
+  /**
    * Fetch HIGH RESOLUTION image URL from hash via Meta API
    * Dynamic Creative ads store images as hashes, not URLs
    * We query /{ad_account_id}/adimages?hashes=[hash]&fields=url,url_128,permalink_url to get full-size image
@@ -128,7 +139,8 @@ export class MetaAdsService {
     try {
       const encodedHashes = encodeURIComponent(JSON.stringify([imageHash]));
       // Request url (full-size) and permalink_url (full-size backup)
-      const url = `${this.baseUrl}/${this.apiVersion}/${accountId}/adimages?hashes=${encodedHashes}&fields=hash,url,permalink_url&access_token=${accessToken}`;
+      const formattedAccountId = this.formatAccountId(accountId);
+      const url = `${this.baseUrl}/${this.apiVersion}/${formattedAccountId}/adimages?hashes=${encodedHashes}&fields=hash,url,permalink_url&access_token=${accessToken}`;
       const response = await fetch(url);
       
       if (!response.ok) {
@@ -349,8 +361,9 @@ export class MetaAdsService {
    */
   async getAccountName(accessToken: string, accountId: string): Promise<string> {
     try {
+      const formattedAccountId = this.formatAccountId(accountId);
       const response = await fetch(
-        `${this.baseUrl}/${this.apiVersion}/${accountId}?fields=name&access_token=${accessToken}`
+        `${this.baseUrl}/${this.apiVersion}/${formattedAccountId}?fields=name&access_token=${accessToken}`
       );
       
       if (!response.ok) {
@@ -432,8 +445,11 @@ export class MetaAdsService {
       // Get account name
       const accountName = await this.getAccountName(integration.accessToken, integration.accountId);
       
+      // Format account ID with act_ prefix for Meta API
+      const formattedAccountId = this.formatAccountId(integration.accountId);
+      
       // Build URL with optional filtering
-      let url = `${this.baseUrl}/${this.apiVersion}/${integration.accountId}/campaigns?fields=id,name,status,effective_status,objective,created_time,updated_time,daily_budget,lifetime_budget&limit=100&access_token=${integration.accessToken}`;
+      let url = `${this.baseUrl}/${this.apiVersion}/${formattedAccountId}/campaigns?fields=id,name,status,effective_status,objective,created_time,updated_time,daily_budget,lifetime_budget&limit=100&access_token=${integration.accessToken}`;
       
       // Add filtering for incremental sync
       if (since) {
@@ -500,10 +516,13 @@ export class MetaAdsService {
     try {
       console.log(`🎯 Fetching ALL ad sets from Meta account ${integration.accountId}...`);
       
+      // Format account ID with act_ prefix for Meta API
+      const formattedAccountId = this.formatAccountId(integration.accountId);
+      
       // Fetch ALL ad sets from the entire account in one call
       // CRITICAL: Keep fields minimal to avoid "too much data" error from Meta API
       // Removed: targeting (very large object), bid_strategy (not essential)
-      const url = `${this.baseUrl}/${this.apiVersion}/${integration.accountId}/adsets?fields=id,name,status,effective_status,campaign_id,daily_budget,lifetime_budget,start_time,end_time&limit=100&access_token=${integration.accessToken}`;
+      const url = `${this.baseUrl}/${this.apiVersion}/${formattedAccountId}/adsets?fields=id,name,status,effective_status,campaign_id,daily_budget,lifetime_budget,start_time,end_time&limit=100&access_token=${integration.accessToken}`;
       const adSets = await this.fetchAllPages<MetaAdSet>(url);
       
       console.log(`✅ Found ${adSets.length} total ad sets from Meta API`);
@@ -712,11 +731,14 @@ export class MetaAdsService {
     try {
       console.log(`🎯 Fetching ALL ads from Meta account ${integration.accountId}...`);
       
+      // Format account ID with act_ prefix for Meta API
+      const formattedAccountId = this.formatAccountId(integration.accountId);
+      
       // Fetch ALL ads from the entire account in one call
       // CRITICAL: Keep fields minimal to avoid "too much data" error from Meta API
       // Note: thumbnail_url is used when image_url is not available (Dynamic Creative, carousel, etc.)
       // effective_object_story_id allows us to fetch thumbnails for DCO ads
-      const url = `${this.baseUrl}/${this.apiVersion}/${integration.accountId}/ads?fields=id,name,status,effective_status,adset_id,creative{id,image_url,thumbnail_url,body,title,effective_object_story_id}&limit=100&access_token=${integration.accessToken}`;
+      const url = `${this.baseUrl}/${this.apiVersion}/${formattedAccountId}/ads?fields=id,name,status,effective_status,adset_id,creative{id,image_url,thumbnail_url,body,title,effective_object_story_id}&limit=100&access_token=${integration.accessToken}`;
       const ads = await this.fetchAllPages<MetaAd>(url, progressCallback);
       
       console.log(`✅ Found ${ads.length} total ads from Meta API`);
