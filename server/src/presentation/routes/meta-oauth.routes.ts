@@ -165,23 +165,43 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
     
     if (businessesData.data && businessesData.data.length > 0) {
       // Step 2: Get ad accounts ONLY from AUTHORIZED Business Managers
+      // Fetch BOTH owned accounts AND client/agency accounts
       for (const business of businessesData.data) {
         console.log(`🔍 Fetching ad accounts from authorized BM: ${business.name} (${business.id})`);
-        const bmAdAccountsUrl = `https://graph.facebook.com/v22.0/${business.id}/owned_ad_accounts?access_token=${accessToken}&fields=id,name,account_status&limit=500`;
-        const bmAdAccountsResponse = await fetch(bmAdAccountsUrl);
-        const bmAdAccountsData = await bmAdAccountsResponse.json() as { data?: any[] };
         
-        if (bmAdAccountsData.data && bmAdAccountsData.data.length > 0) {
-          console.log(`  ✅ Found ${bmAdAccountsData.data.length} ad accounts in authorized BM "${business.name}"`);
-          // Tag each account with the BM name for display
-          const accountsWithBM = bmAdAccountsData.data.map(acc => ({
+        // Fetch owned ad accounts (contas próprias do BM)
+        const ownedAccountsUrl = `https://graph.facebook.com/v22.0/${business.id}/owned_ad_accounts?access_token=${accessToken}&fields=id,name,account_status&limit=500`;
+        const ownedAccountsResponse = await fetch(ownedAccountsUrl);
+        const ownedAccountsData = await ownedAccountsResponse.json() as { data?: any[] };
+        
+        if (ownedAccountsData.data && ownedAccountsData.data.length > 0) {
+          console.log(`  ✅ Found ${ownedAccountsData.data.length} OWNED ad accounts in BM "${business.name}"`);
+          const accountsWithBM = ownedAccountsData.data.map(acc => ({
             ...acc,
             business_name: business.name,
             business_id: business.id
           }));
           allAdAccounts.push(...accountsWithBM);
-        } else {
-          console.log(`  ⚠️ No ad accounts in BM "${business.name}"`);
+        }
+        
+        // Fetch client ad accounts (contas de clientes/agência)
+        const clientAccountsUrl = `https://graph.facebook.com/v22.0/${business.id}/client_ad_accounts?access_token=${accessToken}&fields=id,name,account_status&limit=500`;
+        const clientAccountsResponse = await fetch(clientAccountsUrl);
+        const clientAccountsData = await clientAccountsResponse.json() as { data?: any[] };
+        
+        if (clientAccountsData.data && clientAccountsData.data.length > 0) {
+          console.log(`  ✅ Found ${clientAccountsData.data.length} CLIENT ad accounts in BM "${business.name}"`);
+          const clientAccountsWithBM = clientAccountsData.data.map(acc => ({
+            ...acc,
+            business_name: `${business.name} (Cliente)`,
+            business_id: business.id
+          }));
+          allAdAccounts.push(...clientAccountsWithBM);
+        }
+        
+        if ((!ownedAccountsData.data || ownedAccountsData.data.length === 0) && 
+            (!clientAccountsData.data || clientAccountsData.data.length === 0)) {
+          console.log(`  ⚠️ No ad accounts (owned or client) in BM "${business.name}"`);
         }
       }
     } else {
