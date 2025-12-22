@@ -1065,13 +1065,16 @@ export default function MetaIntegrations() {
   const hasExistingIntegration = metaIntegrations.length > 0;
 
   // Group integrations by Business Manager
+  // With System User Token, accounts without businessId are grouped together as "Contas Conectadas"
   const groupedByBM: BusinessGroup[] = metaIntegrations.reduce((acc: BusinessGroup[], integration) => {
-    const bmId = integration.businessId || 'personal';
-    const bmName = integration.businessName || 'Conta Pessoal';
+    // If no businessId, group all under "Contas Conectadas" (single card for all personal/system accounts)
+    const hasRealBM = integration.businessId && integration.businessId !== 'personal';
+    const bmId = hasRealBM ? integration.businessId : 'all_connected';
+    const bmName = hasRealBM ? (integration.businessName || 'Business Manager') : 'Contas Conectadas';
     
     let group = acc.find(g => g.businessId === bmId);
     if (!group) {
-      group = { businessId: bmId === 'personal' ? null : bmId, businessName: bmName, integrations: [] };
+      group = { businessId: bmId === 'all_connected' ? null : bmId, businessName: bmName, integrations: [] };
       acc.push(group);
     }
     group.integrations.push(integration);
