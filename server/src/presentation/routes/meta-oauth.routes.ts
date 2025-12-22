@@ -42,6 +42,29 @@ interface AdAccountsResponse {
   error?: string;
 }
 
+// Get Meta app configuration for frontend (Embedded Signup)
+router.get('/config', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const settings = await storage.getPlatformSettingsByPlatform('meta');
+    
+    if (!settings || !settings.isConfigured) {
+      return res.status(400).json({
+        error: 'Meta app not configured',
+        configured: false
+      });
+    }
+
+    // Return only public info needed for Embedded Signup (not the secret!)
+    res.json({
+      configured: true,
+      appId: settings.appId,
+      configId: process.env.META_CONFIG_ID || null
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Initiate Meta OAuth flow
 router.get('/connect', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -511,6 +534,164 @@ router.get('/oauth-session/:sessionId', async (req: Request, res: Response, next
       facebookUserName: sessionData.facebookUserName
     });
   } catch (error) {
+    next(error);
+  }
+});
+
+// Handle Embedded Signup callback (exchange code for token and get accounts)
+router.post('/embedded-signup', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = (req as any).user?.userId;
+    const { code } = req.body;
+
+    if (!code) {
+      return res.status(400).json({ error: 'Authorization code is required' });
+    }
+
+    console.log(`🔐 Processing Embedded Signup for user ${userId}`);
+
+    // Get platform settings
+    const settings = await storage.getPlatformSettingsByPlatform('meta');
+    
+    if (!settings || !settings.isConfigured) {
+      return res.status(400).json({ error: 'Meta app not configured' });
+    }
+
+    // The redirect URI for embedded signup is typically the same origin
+    const redirectUri = settings.redirectUri || `${process.env.REPL_URL || 'http://localhost:5000'}/auth/meta/callback`;
+
+    // Exchange code for access token
+    const tokenUrl = `https://graph.facebook.com/v22.0/oauth/access_token?client_id=${settings.appId}&redirect_uri=${encodeURIComponent(redirectUri)}&client_secret=${settings.appSecret}&code=${code}`;
+    
+    const tokenResponse = await fetch(tokenUrl);
+    const tokenData = await tokenResponse.json() as TokenResponse;
+
+    if (tokenData.error || !tokenData.access_token) {
+      console.error('❌ Failed to exchange code for token:', tokenData);
+      return res.status(400).json({ error: 'Failed to exchange code for access token' });
+    }
+
+    const shortLivedToken = tokenData.access_token;
+    console.log('🔑 Embedded Signup token obtained');
+
+    // Exchange for long-lived token
+    const longLivedUrl = `https://graph.facebook.com/v22.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${settings.appId}&client_secret=${settings.appSecret}&fb_exchange_token=${shortLivedToken}`;
+    
+    const longLivedResponse = await fetch(longLivedUrl);
+    const longLivedData = await longLivedResponse.json() as TokenResponse;
+
+    const accessToken = longLivedData.access_token || shortLivedToken;
+    console.log('🔑 Long-lived token obtained for Embedded Signup');
+
+    // Get Facebook user info
+    const fbUserUrl = `https://graph.facebook.com/v22.0/me?access_token=${accessToken}&fields=id,name,email`;
+    const fbUserResponse = await fetch(fbUserUrl);
+    const fbUserData = await fbUserResponse.json() as { id?: string; name?: string; email?: string; error?: any };
+    
+    console.log(`👤 Facebook user (Embedded): ${fbUserData.name} (ID: ${fbUserData.id})`);
+
+    // Fetch Business Managers and Ad Accounts
+    const businessesUrl = `https://graph.facebook.com/v22.0/me/businesses?access_token=${accessToken}&fields=id,name,verification_status&limit=100`;
+    const businessesResponse = await fetch(businessesUrl);
+    const businessesData = await businessesResponse.json() as { data?: Array<{ id: string; name: string }> };
+
+    console.log('🔐 Business Managers found (Embedded):', businessesData.data?.length || 0);
+
+    let allAdAccounts: any[] = [];
+    
+    if (businessesData.data && businessesData.data.length > 0) {
+      for (const business of businessesData.data) {
+        console.log(`🔍 Fetching accounts from BM: ${business.name} (${business.id})`);
+        
+        // Fetch owned ad accounts
+        const ownedAccountsUrl = `https://graph.facebook.com/v22.0/${business.id}/owned_ad_accounts?access_token=${accessToken}&fields=id,name,account_status&limit=500`;
+        const ownedAccountsResponse = await fetch(ownedAccountsUrl);
+        const ownedAccountsData = await ownedAccountsResponse.json() as { data?: any[], error?: any };
+        
+        if (ownedAccountsData.data && ownedAccountsData.data.length > 0) {
+          console.log(`  ✅ Found ${ownedAccountsData.data.length} OWNED accounts`);
+          const accountsWithBM = ownedAccountsData.data.map(acc => ({
+            ...acc,
+            business_name: business.name,
+            business_id: business.id
+          }));
+          allAdAccounts.push(...accountsWithBM);
+        } else if (ownedAccountsData.error) {
+          console.log(`  ⚠️ Error fetching owned_ad_accounts: ${ownedAccountsData.error.message}`);
+        }
+        
+        // Fetch client ad accounts
+        const clientAccountsUrl = `https://graph.facebook.com/v22.0/${business.id}/client_ad_accounts?access_token=${accessToken}&fields=id,name,account_status&limit=500`;
+        const clientAccountsResponse = await fetch(clientAccountsUrl);
+        const clientAccountsData = await clientAccountsResponse.json() as { data?: any[], error?: any };
+        
+        if (clientAccountsData.data && clientAccountsData.data.length > 0) {
+          console.log(`  ✅ Found ${clientAccountsData.data.length} CLIENT accounts`);
+          const clientAccountsWithBM = clientAccountsData.data.map(acc => ({
+            ...acc,
+            business_name: `${business.name} (Cliente)`,
+            business_id: business.id
+          }));
+          allAdAccounts.push(...clientAccountsWithBM);
+        }
+      }
+    }
+
+    // Also fetch personal ad accounts
+    const personalAccountsUrl = `https://graph.facebook.com/v22.0/me/adaccounts?access_token=${accessToken}&fields=id,name,account_status&limit=500`;
+    const personalResponse = await fetch(personalAccountsUrl);
+    const personalData = await personalResponse.json() as { data?: any[] };
+    
+    if (personalData.data && personalData.data.length > 0) {
+      console.log(`  ✅ Found ${personalData.data.length} personal accounts`);
+      const personalWithType = personalData.data.map(acc => ({
+        ...acc,
+        business_name: 'Conta Pessoal',
+        business_id: null
+      }));
+      allAdAccounts.push(...personalWithType);
+    }
+
+    // Remove duplicates
+    const uniqueAccounts = new Map();
+    allAdAccounts.forEach(acc => {
+      const accountId = acc.id.replace('act_', '');
+      if (!uniqueAccounts.has(accountId)) {
+        uniqueAccounts.set(accountId, acc);
+      }
+    });
+    
+    const accountsForSelection = Array.from(uniqueAccounts.values()).map(acc => ({
+      id: acc.id.replace('act_', ''),
+      name: acc.name,
+      account_status: acc.account_status,
+      business_name: acc.business_name,
+      business_id: acc.business_id
+    }));
+
+    console.log(`📊 Total unique accounts found (Embedded): ${accountsForSelection.length}`);
+
+    // Check which accounts are already connected
+    const existingIntegrations = await storage.getIntegrationsByUser(userId);
+    const connectedAccountIds = existingIntegrations
+      .filter(i => i.platform === 'meta')
+      .map(i => i.accountId);
+
+    const accountsWithConnectionStatus = accountsForSelection.map(acc => ({
+      ...acc,
+      is_connected: connectedAccountIds.includes(acc.id)
+    }));
+
+    res.json({
+      success: true,
+      accessToken,
+      accounts: accountsWithConnectionStatus,
+      facebookUserId: fbUserData.id,
+      facebookUserName: fbUserData.name,
+      businessCount: businessesData.data?.length || 0
+    });
+  } catch (error) {
+    console.error('❌ Embedded Signup error:', error);
     next(error);
   }
 });

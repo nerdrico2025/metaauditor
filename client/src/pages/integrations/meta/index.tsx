@@ -718,6 +718,154 @@ export default function MetaIntegrations() {
     setDeleteEndTime(undefined);
   };
 
+  // Embedded Signup with Facebook SDK
+  const handleEmbeddedSignup = async () => {
+    try {
+      setIsConnecting(true);
+      
+      // Get Meta config (appId and configId)
+      const config = await apiRequest('/api/auth/meta/config');
+      
+      if (!config.configured || !config.appId || !config.configId) {
+        toast({
+          title: 'Configuração incompleta',
+          description: 'O Meta Business Extension não está configurado. Configure o Config ID nas configurações.',
+          variant: 'destructive'
+        });
+        setIsConnecting(false);
+        return;
+      }
+
+      // Check if FB SDK is loaded
+      if (typeof (window as any).FB === 'undefined') {
+        // Initialize FB SDK
+        (window as any).fbAsyncInit = function() {
+          (window as any).FB.init({
+            appId: config.appId,
+            cookie: true,
+            xfbml: true,
+            version: 'v22.0'
+          });
+          launchEmbeddedSignup(config);
+        };
+        
+        // If SDK script already loaded but not initialized
+        if (document.getElementById('facebook-jssdk')) {
+          (window as any).FB.init({
+            appId: config.appId,
+            cookie: true,
+            xfbml: true,
+            version: 'v22.0'
+          });
+          launchEmbeddedSignup(config);
+        }
+      } else {
+        // SDK already loaded, just launch
+        launchEmbeddedSignup(config);
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Erro',
+        description: error.message || 'Erro ao iniciar Embedded Signup',
+        variant: 'destructive'
+      });
+      setIsConnecting(false);
+    }
+  };
+
+  const launchEmbeddedSignup = (config: { appId: string; configId: string }) => {
+    console.log('🚀 Launching Embedded Signup with config:', config.configId);
+    
+    (window as any).FB.login(
+      async (response: any) => {
+        if (response.authResponse) {
+          const code = response.authResponse.code;
+          console.log('✅ Embedded Signup authorization received');
+          
+          try {
+            // Send code to backend for processing
+            const data = await apiRequest('/api/auth/meta/embedded-signup', {
+              method: 'POST',
+              body: JSON.stringify({ code })
+            });
+            
+            if (data.success && data.accounts) {
+              console.log(`📊 Found ${data.accounts.length} accounts via Embedded Signup`);
+              
+              // Check if there are already connected accounts
+              const connectedAccounts = data.accounts.filter((acc: AdAccount) => acc.is_connected);
+              const newAccounts = data.accounts.filter((acc: AdAccount) => !acc.is_connected);
+              
+              if (connectedAccounts.length > 0) {
+                // Update tokens for connected accounts
+                try {
+                  const updateRes = await apiRequest('/api/auth/meta/update-connected-tokens', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                      userId: user?.id,
+                      accessToken: data.accessToken,
+                      connectedAccountIds: connectedAccounts.map((acc: AdAccount) => acc.id),
+                    }),
+                  });
+                  
+                  if (updateRes.updated > 0) {
+                    toast({
+                      title: 'Conexões atualizadas!',
+                      description: `${updateRes.updated} conta(s) tiveram suas conexões renovadas.`,
+                    });
+                    queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
+                  }
+                } catch (updateError) {
+                  console.error('Error updating connected tokens:', updateError);
+                }
+              }
+              
+              if (newAccounts.length > 0) {
+                // Show account selection modal
+                setOauthAccounts(data.accounts);
+                setOauthToken(data.accessToken);
+                setOauthFacebookUserId(data.facebookUserId || null);
+                setOauthFacebookUserName(data.facebookUserName || null);
+                setShowAccountSelectionModal(true);
+              } else if (connectedAccounts.length === 0) {
+                toast({
+                  title: 'Nenhuma conta encontrada',
+                  description: 'Não foram encontradas contas de anúncios acessíveis. Verifique suas permissões no Business Manager.',
+                  variant: 'destructive'
+                });
+              }
+            } else {
+              toast({
+                title: 'Erro',
+                description: 'Não foi possível obter as contas de anúncios',
+                variant: 'destructive'
+              });
+            }
+          } catch (error: any) {
+            toast({
+              title: 'Erro ao processar autorização',
+              description: error.message || 'Erro desconhecido',
+              variant: 'destructive'
+            });
+          }
+        } else {
+          console.log('❌ User cancelled Embedded Signup or authorization failed');
+          toast({
+            title: 'Cancelado',
+            description: 'A autorização foi cancelada',
+          });
+        }
+        setIsConnecting(false);
+      },
+      {
+        config_id: config.configId,
+        response_type: 'code',
+        override_default_response_type: true,
+        scope: 'ads_management,ads_read,business_management,read_insights'
+      }
+    );
+  };
+
   const handleConnectOAuth = async () => {
     try {
       setIsConnecting(true);
@@ -1321,10 +1469,10 @@ export default function MetaIntegrations() {
                         Como Conectar
                       </Button>
                       <Button 
-                        onClick={handleConnectOAuth} 
+                        onClick={handleEmbeddedSignup} 
                         size="sm"
                         disabled={isConnecting}
-                        data-testid="button-connect-meta-oauth"
+                        data-testid="button-connect-meta-embedded"
                       >
                         {isConnecting ? (
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />

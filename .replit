@@ -99,3 +99,8 @@ integrations = ["javascript_openai:1.0.0"]
 
 [objectStorage]
 defaultBucketID = "replit-objstore-71b787d2-3e2a-44cd-815a-0f9f32651cb8"
+
+[userenv]
+
+[userenv.shared]
+META_CONFIG_ID = "2654299858262839"
