@@ -557,42 +557,46 @@ router.post('/embedded-signup', authenticateToken, async (req: Request, res: Res
       return res.status(400).json({ error: 'Meta app not configured' });
     }
 
-    // For User Token type, redirect_uri is required and must match the origin where FB.login was called
-    // The frontend sends the window.location.origin
-    const redirectUri = originUrl || '';
-    console.log(`📍 Attempting Embedded Signup token exchange with redirect_uri: ${redirectUri}`);
+    // For User Token type, redirect_uri is required and must match exactly
+    // FB.login with JavaScript SDK uses specific redirect_uri patterns
+    console.log(`📍 Attempting Embedded Signup token exchange`);
 
     // Try token exchange with different redirect_uri options
     let tokenData: TokenResponse | null = null;
     
-    // Option 1: Try with origin URL from frontend (if provided)
-    if (originUrl) {
-      console.log(`  Trying with originUrl: ${originUrl}`);
-      const tokenUrl = `https://graph.facebook.com/v22.0/oauth/access_token?client_id=${settings.appId}&client_secret=${settings.appSecret}&code=${code}&redirect_uri=${encodeURIComponent(originUrl)}`;
-      const tokenResponse = await fetch(tokenUrl);
-      tokenData = await tokenResponse.json() as TokenResponse;
-      
-      if (tokenData?.access_token) {
-        console.log(`  ✅ Success with originUrl`);
-      } else {
-        const errorMsg = typeof tokenData?.error === 'object' ? (tokenData.error as any)?.message : tokenData?.error;
-        console.log(`  ❌ Failed with originUrl:`, errorMsg);
-        tokenData = null;
-      }
-    }
+    // List of redirect_uri options to try (in order of likelihood)
+    const redirectOptions = [
+      // Option 1: Origin + specific Facebook redirect path
+      originUrl ? `${originUrl}/` : null,
+      // Option 2: Origin without trailing slash
+      originUrl,
+      // Option 3: Origin + integrations page (where FB.login was called)
+      originUrl ? `${originUrl}/integrations/meta` : null,
+      // Option 4: No redirect_uri (works for System User tokens)
+      null
+    ].filter(Boolean) as string[];
     
-    // Option 2: Try without redirect_uri (works for System User tokens)
-    if (!tokenData?.access_token) {
-      console.log(`  Trying without redirect_uri...`);
-      const tokenUrl = `https://graph.facebook.com/v22.0/oauth/access_token?client_id=${settings.appId}&client_secret=${settings.appSecret}&code=${code}`;
+    // Add null at the end to try without redirect_uri
+    const allOptions = [...redirectOptions, ''];
+    
+    for (const redirectUri of allOptions) {
+      const urlParams = `client_id=${settings.appId}&client_secret=${settings.appSecret}&code=${code}`;
+      const tokenUrl = redirectUri 
+        ? `https://graph.facebook.com/v22.0/oauth/access_token?${urlParams}&redirect_uri=${encodeURIComponent(redirectUri)}`
+        : `https://graph.facebook.com/v22.0/oauth/access_token?${urlParams}`;
+      
+      console.log(`  Trying with redirect_uri: ${redirectUri || '(none)'}`);
+      
       const tokenResponse = await fetch(tokenUrl);
       tokenData = await tokenResponse.json() as TokenResponse;
       
       if (tokenData?.access_token) {
-        console.log(`  ✅ Success without redirect_uri`);
+        console.log(`  ✅ Success with redirect_uri: ${redirectUri || '(none)'}`);
+        break;
       } else {
         const errorMsg = typeof tokenData?.error === 'object' ? (tokenData.error as any)?.message : tokenData?.error;
-        console.log(`  ❌ Failed without redirect_uri:`, errorMsg);
+        console.log(`  ❌ Failed:`, errorMsg);
+        tokenData = null;
       }
     }
 
