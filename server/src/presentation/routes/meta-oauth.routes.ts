@@ -187,9 +187,14 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
         // Fetch owned ad accounts (contas próprias do BM)
         const ownedAccountsUrl = `https://graph.facebook.com/v22.0/${business.id}/owned_ad_accounts?access_token=${accessToken}&fields=id,name,account_status&limit=500`;
         const ownedAccountsResponse = await fetch(ownedAccountsUrl);
-        const ownedAccountsData = await ownedAccountsResponse.json() as { data?: any[] };
+        const ownedAccountsData = await ownedAccountsResponse.json() as { data?: any[], error?: any };
         
-        if (ownedAccountsData.data && ownedAccountsData.data.length > 0) {
+        // Log full response for debugging
+        console.log(`  📊 owned_ad_accounts response:`, JSON.stringify(ownedAccountsData));
+        
+        if (ownedAccountsData.error) {
+          console.log(`  ⚠️ Error fetching owned_ad_accounts: ${ownedAccountsData.error.message}`);
+        } else if (ownedAccountsData.data && ownedAccountsData.data.length > 0) {
           console.log(`  ✅ Found ${ownedAccountsData.data.length} OWNED ad accounts in BM "${business.name}"`);
           const accountsWithBM = ownedAccountsData.data.map(acc => ({
             ...acc,
@@ -197,6 +202,8 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
             business_id: business.id
           }));
           allAdAccounts.push(...accountsWithBM);
+        } else {
+          console.log(`  ⚠️ owned_ad_accounts returned empty array or no data`);
         }
         
         // Fetch client ad accounts (contas de clientes/agência)
