@@ -823,11 +823,14 @@ router.get('/check-token/:integrationId', authenticateToken, async (req: Request
       return res.json({ valid: false, error: 'No token found' });
     }
 
-    // Call Meta API to check token validity
+    // For System User tokens, try a simple API call instead of debug_token
+    // First try debug_token, if that fails, try a simple /me call
     const debugUrl = `https://graph.facebook.com/v22.0/debug_token?input_token=${integration.accessToken}&access_token=${integration.accessToken}`;
     
     const response = await fetch(debugUrl);
     const data = await response.json() as { data?: { is_valid: boolean; expires_at?: number; scopes?: string[]; app_id?: string; user_id?: string }; error?: { message: string } };
+    
+    console.log(`🔍 Token check for ${integrationId}:`, JSON.stringify(data));
     
     if (data.data) {
       const tokenData = data.data;
@@ -842,6 +845,24 @@ router.get('/check-token/:integrationId', authenticateToken, async (req: Request
         appId: tokenData.app_id,
         userId: tokenData.user_id,
       });
+    }
+    
+    // If debug_token fails, try a simple API call to verify token works
+    if (data.error) {
+      console.log(`⚠️ debug_token failed, trying /me call...`);
+      const meUrl = `https://graph.facebook.com/v22.0/me?access_token=${integration.accessToken}`;
+      const meResponse = await fetch(meUrl);
+      const meData = await meResponse.json() as { id?: string; name?: string; error?: { message: string } };
+      
+      if (meData.id) {
+        // Token works for /me, consider it valid
+        return res.json({
+          valid: true,
+          expiresAt: null,
+          scopes: [],
+          userId: meData.id,
+        });
+      }
     }
     
     return res.json({ valid: false, error: data.error?.message || 'Unknown error' });
