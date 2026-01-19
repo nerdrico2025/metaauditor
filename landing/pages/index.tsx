@@ -20,8 +20,9 @@ const getApiUrl = () => {
     return process.env.NEXT_PUBLIC_API_URL
   }
 
-  // In Replit, we use the main domain which proxies everything
-  return window.location.origin.replace(':3000', '').replace('3000-', '')
+  // In Replit, each port gets its own domain if not using a gateway.
+  // We can try to construct the port 5000 URL from the current port 3000 URL.
+  return window.location.origin.replace('3000', '5000')
 }
 
 interface Plan {
@@ -148,6 +149,7 @@ export default function Home(): ReactElement {
       
       try {
         const apiUrl = getApiUrl()
+        console.log('Fetching plans from:', `${apiUrl}/api/plans`)
         const response = await fetch(`${apiUrl}/api/plans`, {
           method: 'GET',
           headers: {
