@@ -8,12 +8,20 @@ const PLATFORM_URL = 'https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyge
 
 const getApiUrl = () => {
   if (typeof window === 'undefined') {
-    return process.env.NEXT_PUBLIC_API_URL || 'https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev'
+    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
   }
-  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+  
+  const hostname = window.location.hostname
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
     return 'http://localhost:5000'
   }
-  return process.env.NEXT_PUBLIC_API_URL || 'https://70ee3bc2-1ccd-4e6b-9da8-7c85536912ab-00-33s1eutyget0m.riker.replit.dev'
+  
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL
+  }
+
+  // In Replit, we use the main domain which proxies everything
+  return window.location.origin.replace(':3000', '').replace('3000-', '')
 }
 
 interface Plan {
@@ -205,8 +213,8 @@ export default function Home(): ReactElement {
               Click Auditor
             </div>
           </div>
-          <a 
-            href={PLATFORM_URL}
+            <a 
+            href="/login"
             className="px-6 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all shadow-md hover:shadow-lg font-medium"
             data-testid="button-login-nav"
           >
