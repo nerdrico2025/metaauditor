@@ -1,0 +1,164 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Click Hero Dark Theme */
+    --background: 75 8% 4%;
+    --foreground: 220 11% 93%;
+
+    --card: 80 7% 7%;
+    --card-foreground: 220 11% 93%;
+
+    --popover: 80 7% 7%;
+    --popover-foreground: 220 11% 93%;
+
+    --primary: 35 97% 41%;
+    --primary-foreground: 75 8% 4%;
+
+    --secondary: 0 0% 16%;
+    --secondary-foreground: 220 11% 93%;
+
+    --muted: 0 0% 16%;
+    --muted-foreground: 220 9% 64%;
+
+    --accent: 35 97% 41%;
+    --accent-foreground: 75 8% 4%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 220 11% 93%;
+
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 0%;
+
+    --border: 0 0% 100% / 0.05;
+    --input: 0 0% 100% / 0.1;
+    --ring: 35 97% 41%;
+
+    --radius: 0.5rem;
+
+    /* Sidebar */
+    --sidebar-background: 80 7% 7%;
+    --sidebar-foreground: 220 11% 93%;
+    --sidebar-primary: 35 97% 41%;
+    --sidebar-primary-foreground: 75 8% 4%;
+    --sidebar-accent: 35 97% 41% / 0.1;
+    --sidebar-accent-foreground: 35 97% 41%;
+    --sidebar-border: 0 0% 100% / 0.05;
+    --sidebar-ring: 35 97% 41%;
+
+    /* Chart colors */
+    --chart-1: 35 97% 41%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-ch-black text-ch-white antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer utilities {
+  /* Gradient text for logo */
+  .gradient-text {
+    @apply bg-gradient-to-r from-ch-orange to-ch-orange-hover bg-clip-text text-transparent;
+  }
+
+  /* Card with subtle border */
+  .card-hover {
+    @apply transition-all duration-200 hover:border-ch-orange/20 hover:shadow-lg hover:shadow-ch-orange/5;
+  }
+
+  /* Active sidebar item */
+  .sidebar-active {
+    @apply bg-ch-orange/10 text-ch-orange border-l-[3px] border-ch-orange;
+  }
+
+  /* Hover effect for sidebar items */
+  .sidebar-hover {
+    @apply transition-colors duration-200 hover:bg-white/5;
+  }
+
+  /* Button hover scale */
+  .hover-scale {
+    @apply transition-transform duration-200 hover:scale-105;
+  }
+
+  /* Scrollbar styling */
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-ch-dark-gray rounded-full;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    @apply bg-ch-text-dimmed;
+  }
+
+  /* Glow Effects */
+  .glow-orange {
+    box-shadow: 0 0 20px -5px rgba(207, 111, 3, 0.3);
+  }
+  
+  .hover-glow:hover {
+    box-shadow: 0 0 25px -5px rgba(207, 111, 3, 0.4);
+  }
+
+  /* Refined Glass */
+  .glass-premium {
+    @apply bg-ch-black-soft/40 backdrop-blur-xl border border-white/10 shadow-2xl;
+    background-image: linear-gradient(
+      to bottom right,
+      rgba(255, 255, 255, 0.05),
+      rgba(255, 255, 255, 0.01)
+    );
+  }
+}
+
+/* Animation for page transitions */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Glassmorphism effect */
+.glass {
+  @apply bg-ch-black-soft/60 backdrop-blur-lg border border-white/5;
+}
+
+.glass-card {
+  @apply bg-[#121311]/50 backdrop-blur-md border border-white/5 shadow-xl transition-all duration-300;
+}
+
+.glass-card:hover {
+  @apply border-ch-orange/20 bg-[#121311]/70;
+}
