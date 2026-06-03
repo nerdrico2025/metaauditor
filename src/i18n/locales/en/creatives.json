@@ -1,0 +1,9 @@
+{
+  "title": "Creatives",
+  "subtitle": "Manage your ad creatives",
+  "searchPlaceholder": "Search creative by name...",
+  "empty": {
+    "title": "No creatives found",
+    "subtitle": "Try adjusting your search filters"
+  }
+}

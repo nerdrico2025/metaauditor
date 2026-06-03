@@ -1,0 +1,13 @@
+{
+  "title": "Regras",
+  "subtitle": "Automatize o gerenciamento das suas campanhas",
+  "performance": {
+    "expandHint": "Clique para ver criativos dentro e fora desta regra",
+    "withinRule": "Dentro da regra",
+    "outsideRule": "Fora da regra",
+    "noCreativesScope": "Esta regra aplica-se a campanhas ou conjuntos. Para ver criativos individualmente, o escopo da regra precisa ser Anúncio.",
+    "insufficientData": "Sem dados suficientes",
+    "emptyWithin": "Nenhum criativo dentro da regra no momento.",
+    "emptyOutside": "Nenhum criativo fora da regra no momento."
+  }
+}

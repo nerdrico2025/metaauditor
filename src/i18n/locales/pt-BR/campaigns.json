@@ -1,0 +1,62 @@
+{
+  "title": "Campanhas Ativas",
+  "trafficManagement": "Gestão de Tráfego",
+  "subtitle": "Monitoramento e otimização de {{count}} fluxos de aquisição",
+  "filtered": "{{count}} filtradas",
+  "newCampaign": "Nova Campanha",
+  "searchPlaceholder": "Buscar campanha por nome ou ID...",
+  "statusFilter": {
+    "all": "Todas",
+    "active": "Ativas",
+    "paused": "Pausadas"
+  },
+  "sort": {
+    "label": "Ordenar",
+    "sortBy": "Ordenar por",
+    "recent": "Mais Recentes",
+    "performance": "Performance",
+    "highestSpend": "Maior Gasto",
+    "lowestSpend": "Menor Gasto",
+    "highestImpressions": "Maior Impressão",
+    "mostConversions": "Mais Resultados",
+    "bestCTR": "Melhor CTR",
+    "lowestCPA": "Menor CPA"
+  },
+  "metrics": {
+    "spend": "Gasto",
+    "impressions": "Impr.",
+    "clicks": "Cliques",
+    "conversions": "Conv.",
+    "ctr": "CTR",
+    "cpa": "CPA",
+    "perDay": "/ dia"
+  },
+  "status": {
+    "active": "Ativa",
+    "paused": "Pausada"
+  },
+  "insight": "Insight Neural",
+  "insightText": "Otimização de orçamento sugerida: Aumentar em 15% para maximizar conversões no final de semana.",
+  "aiAnalysisButton": "Análise IA",
+  "breadcrumb": {
+    "campaigns": "Campanhas",
+    "adSets": "Conjuntos",
+    "creatives": "Criativos",
+    "allCampaigns": "Ver todas as campanhas",
+    "clearFilter": "Limpar filtro",
+    "creativesInAdSet": "{{count}} criativos neste conjunto",
+    "creativesInCampaign": "{{count}} criativos nesta campanha"
+  },
+  "empty": {
+    "title": "Nenhuma campanha encontrada",
+    "subtitle": "Tente ajustar seus filtros de busca"
+  },
+  "pagination": {
+    "showing": "Exibindo",
+    "to": "a",
+    "of": "de",
+    "campaigns": "campanhas",
+    "previous": "Anterior",
+    "next": "Próxima"
+  }
+}

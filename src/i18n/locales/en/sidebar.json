@@ -1,0 +1,26 @@
+{
+  "groups": {
+    "general": "General",
+    "trafficManagement": "Traffic Management",
+    "intelligence": "Intelligence",
+    "automation": "Automation",
+    "system": "System"
+  },
+  "items": {
+    "overview": "Overview",
+    "monitoring": "Monitoring",
+    "campaigns": "Campaigns",
+    "adSets": "Ad Sets",
+    "creatives": "Ads",
+    "history": "History",
+    "diagnosticsAI": "AI Diagnostics",
+    "audits": "Audits",
+    "rules": "Rules",
+    "brandingRules": "Branding Rules",
+    "performanceRules": "Performance Rules",
+    "recommendations": "Click Auditor Recommendations",
+    "team": "Team",
+    "settings": "Settings"
+  },
+  "syncEcosystem": "Syncing your ecosystem..."
+}

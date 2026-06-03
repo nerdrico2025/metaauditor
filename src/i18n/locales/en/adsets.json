@@ -1,0 +1,9 @@
+{
+  "title": "Ad Sets",
+  "subtitle": "Manage your ad sets",
+  "searchPlaceholder": "Search ad set by name...",
+  "empty": {
+    "title": "No ad sets found",
+    "subtitle": "Try adjusting your search filters"
+  }
+}

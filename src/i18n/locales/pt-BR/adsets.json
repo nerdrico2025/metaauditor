@@ -1,0 +1,9 @@
+{
+  "title": "Conjuntos de Anúncios",
+  "subtitle": "Gerencie seus conjuntos de anúncios",
+  "searchPlaceholder": "Buscar conjunto por nome...",
+  "empty": {
+    "title": "Nenhum conjunto encontrado",
+    "subtitle": "Tente ajustar seus filtros de busca"
+  }
+}

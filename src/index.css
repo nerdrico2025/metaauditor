@@ -1,0 +1,311 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Click Auditor Light Theme (Default) */
+    --background: 220 14% 97%;
+    --foreground: 240 10% 4%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 4%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 4%;
+
+    --primary: 35 97% 41%;
+    --primary-foreground: 0 0% 98%;
+
+    --secondary: 220 13% 95%;
+    --secondary-foreground: 240 6% 10%;
+
+    --muted: 220 13% 95%;
+    --muted-foreground: 220 9% 46%;
+
+    --accent: 35 97% 41%;
+    --accent-foreground: 0 0% 98%;
+
+    /* Click Auditor accent (tokenized so the whole app can re-theme per module) */
+    --ch-orange: 35 97% 41%;
+    --ch-orange-hover: 27 95% 45%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 0%;
+
+    --border: 220 13% 87%;
+    --input: 220 13% 87%;
+    --ring: 35 97% 41%;
+
+    /* Glass surface tokens (opacity applied via utilities) */
+    --border-glass: 220 13% 90%;
+    --surface-glass: 0 0% 100%;
+
+    --radius: 0.75rem;
+    /* rounded-xl */
+
+    /* Elevation & interaction (module-aware via --ch-orange).
+       Apple-style: large, soft, low-opacity shadows. Two tiers: soft (resting) + elevated (raised). */
+    --shadow-soft: 0 1px 2px hsl(0 0% 0% / 0.04), 0 2px 6px hsl(0 0% 0% / 0.04);
+    --shadow-elevated: 0 1px 2px hsl(0 0% 0% / 0.03), 0 8px 24px -8px hsl(0 0% 0% / 0.10);
+    --shadow-accent: 0 0 20px -6px hsl(var(--ch-orange) / 0.35);
+    --surface-hover: hsl(var(--muted) / 0.4);
+
+    /* Sidebar Light */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 9% 26%;
+    --sidebar-primary: 240 6% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 220 13% 95%;
+    --sidebar-accent-foreground: 240 6% 10%;
+    --sidebar-border: 220 13% 87%;
+    --sidebar-ring: 217 91% 60%;
+
+    /* Chart colors Light */
+    --chart-1: 35 97% 41%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+  }
+
+  .dark {
+    /* Click Auditor Dark Theme */
+    --background: 75 8% 4%;
+    --foreground: 220 11% 93%;
+
+    --card: 80 7% 7%;
+    --card-foreground: 220 11% 93%;
+
+    --popover: 80 7% 7%;
+    --popover-foreground: 220 11% 93%;
+
+    --primary: 35 97% 41%;
+    --primary-foreground: 75 8% 4%;
+
+    --secondary: 0 0% 16%;
+    --secondary-foreground: 220 11% 93%;
+
+    --muted: 0 0% 16%;
+    --muted-foreground: 220 9% 64%;
+
+    --accent: 35 97% 41%;
+    --accent-foreground: 75 8% 4%;
+
+    /* Click Auditor accent (tokenized so the whole app can re-theme per module) */
+    --ch-orange: 35 97% 41%;
+    --ch-orange-hover: 27 95% 45%;
+
+    /* Dark needs higher opacity for the soft/elevated shadows to read on near-black surfaces. */
+    --shadow-soft: 0 1px 2px hsl(0 0% 0% / 0.3), 0 2px 6px hsl(0 0% 0% / 0.25);
+    --shadow-elevated: 0 1px 2px hsl(0 0% 0% / 0.3), 0 8px 24px -8px hsl(0 0% 0% / 0.5);
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 220 11% 93%;
+
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 0%;
+
+    --border: 240 3% 18%;
+    --input: 240 3% 22%;
+    --ring: 35 97% 41%;
+
+    /* Glass surface tokens (opacity applied via utilities) */
+    --border-glass: 240 3% 22%;
+    --surface-glass: 80 7% 7%;
+
+    /* Sidebar Dark */
+    --sidebar-background: 80 7% 7%;
+    --sidebar-foreground: 220 11% 93%;
+    --sidebar-primary: 35 97% 41%;
+    --sidebar-primary-foreground: 75 8% 4%;
+    --sidebar-accent: 35 30% 12%;
+    --sidebar-accent-foreground: 35 97% 41%;
+    --sidebar-border: 240 3% 18%;
+    --sidebar-ring: 35 97% 41%;
+
+    /* Chart colors Dark */
+    --chart-1: 35 97% 41%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+  }
+
+  /*
+   * Branding module = violeta discreto. A classe `module-branding` é aplicada no
+   * <html> junto com .light/.dark, então re-tematiza o app inteiro trocando só estas
+   * variáveis (ch-orange/primary/accent/ring/chart-1/sidebar-*). Performance = sem a
+   * classe = laranja padrão. Para afinar o tom, mexa só nos valores HSL abaixo.
+   */
+  html.module-branding {
+    --ch-orange: 262 45% 60%;        /* violeta dessaturado (~#8a78c7) */
+    --ch-orange-hover: 262 42% 52%;
+    --primary: 262 45% 60%;
+    --accent: 262 45% 60%;
+    --ring: 262 45% 60%;
+    --chart-1: 262 45% 60%;
+    --sidebar-primary: 262 45% 60%;
+    --sidebar-accent: 262 28% 14%;
+    --sidebar-accent-foreground: 262 45% 60%;
+    --sidebar-ring: 262 45% 60%;
+  }
+
+  /* Light mode precisa de um violeta um pouco mais escuro p/ legibilidade no branco. */
+  html.module-branding.light {
+    --ch-orange: 262 38% 50%;
+    --ch-orange-hover: 262 36% 44%;
+    --primary: 262 38% 50%;
+    --accent: 262 38% 50%;
+    --ring: 262 38% 50%;
+    --chart-1: 262 38% 50%;
+    --sidebar-primary: 262 38% 50%;
+    --sidebar-accent: 262 25% 94%;
+    --sidebar-accent-foreground: 262 38% 50%;
+    --sidebar-ring: 262 38% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Global Scrollbars responsive to theme */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--background));
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 10px;
+    border: 3px solid hsl(var(--background));
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary) / 0.6);
+  }
+}
+
+@layer utilities {
+
+  /* Gradient text for logo */
+  .gradient-text {
+    @apply bg-gradient-to-r from-ch-orange to-ch-orange-hover bg-clip-text text-transparent;
+  }
+
+  /* Card with subtle border */
+  .card-hover {
+    @apply transition-all duration-200 hover:border-ch-orange/20;
+    box-shadow: var(--shadow-elevated);
+  }
+
+  .card-hover:hover {
+    box-shadow: var(--shadow-accent), var(--shadow-elevated);
+  }
+
+  /* Subtle lift on hover (Apple-style, no aggressive scale) */
+  .hover-lift {
+    @apply transition-all duration-200 ease-out;
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-elevated);
+  }
+
+  /* Module-aware accent glow */
+  .shadow-accent {
+    box-shadow: var(--shadow-accent);
+  }
+
+  /* Active sidebar item */
+  .sidebar-active {
+    @apply bg-sidebar-accent text-sidebar-primary border-l-[3px] border-sidebar-primary font-medium;
+  }
+
+  /* Hover effect for sidebar items */
+  .sidebar-hover {
+    @apply transition-colors duration-200 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground;
+  }
+
+  /* Button hover scale */
+  .hover-scale {
+    @apply transition-transform duration-200 hover:scale-105;
+  }
+
+  /* Generic Scrollbar styling */
+  .scrollbar-custom::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .scrollbar-custom::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-custom::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.2);
+    border-radius: 20px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  .scrollbar-custom::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary) / 0.5);
+    background-clip: content-box;
+  }
+
+  /* Well-defined card for light mode */
+  .card-elevated {
+    @apply bg-card/90 backdrop-blur-sm border-0 rounded-2xl;
+    box-shadow: var(--shadow-elevated);
+  }
+
+  /* Apple Liquid Glass — borderless elevated surface */
+  .glass-card {
+    @apply bg-card/85 backdrop-blur-sm border-0 rounded-2xl;
+    box-shadow: var(--shadow-elevated);
+  }
+}
+
+/* Animation for page transitions */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Glassmorphism effect */
+.glass {
+  @apply bg-background/60 backdrop-blur-lg border border-border/50;
+}

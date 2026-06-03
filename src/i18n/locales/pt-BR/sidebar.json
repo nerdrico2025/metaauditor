@@ -1,0 +1,26 @@
+{
+  "groups": {
+    "general": "Geral",
+    "trafficManagement": "Gestão de Tráfego",
+    "intelligence": "Inteligência",
+    "automation": "Automação",
+    "system": "Sistema"
+  },
+  "items": {
+    "overview": "Visão Geral",
+    "monitoring": "Monitoramento",
+    "campaigns": "Campanhas",
+    "adSets": "Conjuntos",
+    "creatives": "Anúncios",
+    "history": "Histórico",
+    "diagnosticsAI": "Diagnósticos IA",
+    "audits": "Auditorias",
+    "rules": "Regras",
+    "brandingRules": "Regras de Branding",
+    "performanceRules": "Regras de Performance",
+    "recommendations": "Recomendações Click Auditor",
+    "team": "Equipe",
+    "settings": "Configurações"
+  },
+  "syncEcosystem": "Sincronizando seu ecossistema..."
+}

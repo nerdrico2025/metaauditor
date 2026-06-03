@@ -1,0 +1,13 @@
+{
+  "title": "Rules",
+  "subtitle": "Automate your campaign management",
+  "performance": {
+    "expandHint": "Click to see creatives within and outside this rule",
+    "withinRule": "Within rule",
+    "outsideRule": "Outside rule",
+    "noCreativesScope": "This rule applies to campaigns or ad sets. To see individual creatives, the rule scope must be Ad level.",
+    "insufficientData": "Insufficient data",
+    "emptyWithin": "No creatives within the rule at the moment.",
+    "emptyOutside": "No creatives outside the rule at the moment."
+  }
+}
