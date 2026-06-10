@@ -25,6 +25,7 @@ interface AuditRequest {
     date_start?: string;
     date_end?: string;
     force_refresh?: boolean;
+    performance_rule_ids?: string[];
 }
 
 serve(async (req) => {
@@ -53,7 +54,7 @@ serve(async (req) => {
             .single();
         if (!userData?.company_id) throw new Error('User not associated with company');
 
-        const { campaign_id, date_start, date_end, force_refresh } = await req.json() as AuditRequest;
+        const { campaign_id, date_start, date_end, force_refresh, performance_rule_ids } = await req.json() as AuditRequest;
         if (!campaign_id) throw new Error('Missing campaign_id');
 
         const auditFocus = 'performance';
@@ -85,7 +86,13 @@ serve(async (req) => {
         const [metrics, childCreatives, perfRules] = await Promise.all([
             aggregateCampaignMetrics(supabase, campaign_id, date_start, date_end),
             fetchActiveChildCreatives(supabase, { campaignId: campaign_id }),
-            fetchActivePerformanceRules(supabase, userData.company_id),
+            fetchActivePerformanceRules(
+                supabase,
+                userData.company_id,
+                Array.isArray(performance_rule_ids) && performance_rule_ids.length > 0
+                    ? performance_rule_ids
+                    : undefined,
+            ),
         ]);
 
         const rulesReport = buildEntityPerformanceRulesReport(perfRules, metrics, childCreatives);

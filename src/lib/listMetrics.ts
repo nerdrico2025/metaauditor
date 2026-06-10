@@ -45,6 +45,7 @@ function finalizeMetrics(t: {
 type MetricRow = {
   campaign_id?: string;
   ad_set_id?: string;
+  creative_id?: string;
   spend: number | null;
   impressions: number | null;
   clicks: number | null;
@@ -54,7 +55,7 @@ type MetricRow = {
 
 function aggregateMetricRows(
   rows: MetricRow[],
-  idKey: 'campaign_id' | 'ad_set_id',
+  idKey: 'campaign_id' | 'ad_set_id' | 'creative_id',
 ): Map<string, AggregatedListMetrics> {
   const totals = new Map<
     string,
@@ -130,6 +131,54 @@ export async function fetchAdSetPeriodMetrics(
   );
 
   return aggregateMetricRows(rows, 'ad_set_id');
+}
+
+export async function fetchCreativePeriodMetrics(
+  creativeIds: string[],
+  startDate?: string,
+  endDate?: string,
+): Promise<Map<string, AggregatedListMetrics>> {
+  if (creativeIds.length === 0) return new Map();
+
+  const rows = await fetchAllPaginatedInChunks<MetricRow & { creative_id: string }>(
+    creativeIds,
+    (chunkIds) => {
+      let q = supabase
+        .from('creative_metrics')
+        .select('creative_id, spend, impressions, clicks, conversions, reach')
+        .in('creative_id', chunkIds);
+      if (startDate) q = q.gte('date', startDate);
+      if (endDate) q = q.lte('date', endDate);
+      return q;
+    },
+  );
+
+  return aggregateMetricRows(rows, 'creative_id');
+}
+
+/** Rolling totals from denormalized columns on creatives (sync mirrors last 90d). */
+export function metricsFromCreativeRow(creative: {
+  spend?: number | null;
+  impressions?: number | null;
+  clicks?: number | null;
+  conversions?: number | null;
+  reach?: number | null;
+  ctr?: number | null;
+  cpc?: number | null;
+}): AggregatedListMetrics {
+  const spend = Number(creative.spend) || 0;
+  const impressions = Number(creative.impressions) || 0;
+  const clicks = Number(creative.clicks) || 0;
+  const conversions = Number(creative.conversions) || 0;
+  const reach = Number(creative.reach) || 0;
+  const base = finalizeMetrics({ spend, impressions, clicks, conversions, reach });
+  if (creative.ctr != null && Number(creative.ctr) > 0) {
+    return { ...base, ctr: Number(creative.ctr) };
+  }
+  if (creative.cpc != null && Number(creative.cpc) > 0) {
+    return { ...base, cpc: Number(creative.cpc) };
+  }
+  return base;
 }
 
 /** Lifetime totals from denormalized columns on campaigns. */

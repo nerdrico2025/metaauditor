@@ -48,6 +48,9 @@ import { motion } from 'framer-motion';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { motionVariants } from '@/lib/motion-presets';
 import { EntityPerformanceAuditCard } from '@/components/audits/EntityPerformanceAuditCard';
+import { useModule } from '@/contexts/ModuleContext';
+import { useBrandingCompliance } from '@/hooks/useBrandingCompliance';
+import { BrandingCounts } from '@/components/branding/BrandingCounts';
 
 interface CampaignDetail {
     id: string;
@@ -77,6 +80,9 @@ export default function CampanhaDetalhe() {
     const campaignAction = useCampaignAction();
     const reduced = useReducedMotion();
     const { staggerContainer: container, fadeUp: item } = motionVariants(reduced);
+    const { module } = useModule();
+    const isBranding = module === 'branding';
+    const { data: brandingCompliance } = useBrandingCompliance();
 
     const { data: campaign, isLoading } = useQuery({
         queryKey: ['campaign', id, dateRange.startDate, dateRange.endDate],
@@ -301,11 +307,13 @@ export default function CampanhaDetalhe() {
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <DateRangeFilter />
+                    {!isBranding && <DateRangeFilter />}
+                    {!isBranding && (
                     <div className="flex items-center gap-2 px-4 py-2 bg-ch-orange/5 border border-ch-orange/10 rounded-xl mr-2">
                         <Activity className="w-4 h-4 text-ch-orange" />
                         <span className="text-[10px] font-bold text-ch-orange uppercase tracking-widest">Performance Ativa</span>
                     </div>
+                    )}
 
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -324,16 +332,27 @@ export default function CampanhaDetalhe() {
                                     <Play className="mr-3 h-4 w-4" /> <span className="font-bold">Retomar Campanha</span>
                                 </DropdownMenuItem>
                             )}
+                            {!isBranding && (
+                            <>
                             <DropdownMenuSeparator className="bg-border my-1" />
                             <DropdownMenuItem onClick={() => setIsEditing(true)} className="py-3 px-3 cursor-pointer rounded-xl hover:bg-ch-orange/10 text-ch-orange transition-colors">
                                 <DollarSign className="mr-3 h-4 w-4" /> <span className="font-bold">Calibrar Orçamento</span>
                             </DropdownMenuItem>
+                            </>
+                            )}
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
             </motion.div>
 
             {/* Quick Insights Grid - Expanded with Real Data */}
+            {isBranding ? (
+                <motion.div variants={item} className="bg-card border border-border rounded-2xl p-6 shadow-sm">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-3">Conformidade de Branding</p>
+                    <BrandingCounts counts={id ? brandingCompliance?.byCampaign.get(id) : undefined} />
+                </motion.div>
+            ) : (
+            <>
             <motion.div variants={item} className={cn('grid gap-4', statsGridCols[6])}>
                 <div className="bg-card border border-border rounded-2xl p-5 shadow-sm group hover:translate-y-[-4px] transition-all duration-300">
                     <div className="flex items-center justify-between mb-3">
@@ -415,12 +434,14 @@ export default function CampanhaDetalhe() {
                     <p className="text-xl font-bold text-foreground tabular-nums">{formatNumber(reach)}</p>
                 </div>
             </motion.div>
+            </>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Main Content: Ad Sets List */}
                 <motion.div variants={item} className="lg:col-span-2 space-y-8">
                     {/* Diagnóstico de performance (entidade) */}
-                    {id && campaign && (
+                    {!isBranding && id && campaign && (
                         <EntityPerformanceAuditCard
                             entityId={id}
                             entityName={campaign.name}
@@ -465,13 +486,22 @@ export default function CampanhaDetalhe() {
                                                 >
                                                     {adSet.status === 'active' ? 'Ativo' : 'Pausado'}
                                                 </Badge>
+                                                {!isBranding && (
                                                 <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tight">
                                                     {formatCurrency((adSet.spend || 0))} gastos
                                                 </span>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-8">
+                                        {isBranding ? (
+                                            <div className="text-right hidden sm:block">
+                                                <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">Branding</p>
+                                                <BrandingCounts counts={brandingCompliance?.byAdSet.get(adSet.id)} variant="compact" />
+                                            </div>
+                                        ) : (
+                                        <>
                                         <div className="text-right hidden sm:block">
                                             <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">CTR</p>
                                             <p className="font-bold text-foreground tabular-nums tracking-tight">
@@ -484,6 +514,8 @@ export default function CampanhaDetalhe() {
                                                 {formatNumber(adSet.clicks || 0)}
                                             </p>
                                         </div>
+                                        </>
+                                        )}
                                         <div className="h-10 w-10 rounded-xl bg-muted/50 flex items-center justify-center group-hover:bg-ch-orange text-muted-foreground group-hover:text-white transition-all">
                                             <ChevronRight className="w-5 h-5" />
                                         </div>
@@ -502,7 +534,8 @@ export default function CampanhaDetalhe() {
 
                 {/* Sidebar: Technical Parameters & Budget */}
                 <motion.div variants={item} className="space-y-6">
-                    {/* Budget Management */}
+                    {/* Budget Management — performance only */}
+                    {!isBranding && (
                     <div className="bg-card border border-border rounded-3xl shadow-sm p-6 space-y-6">
                         <div className="flex items-center justify-between">
                             <h2 className="text-lg font-bold text-foreground uppercase tracking-tighter flex items-center gap-2">
@@ -586,6 +619,7 @@ export default function CampanhaDetalhe() {
                             </motion.div>
                         )}
                     </div>
+                    )}
 
                     {/* Technical Parameters */}
                     <div className="bg-card border border-border rounded-3xl shadow-sm p-6">

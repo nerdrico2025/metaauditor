@@ -23,6 +23,8 @@ interface BatchAuditRequest {
     chunk_size?: number;
     skip_recent_hours?: number;
     creative_ids?: string[];
+    creative_rule_ids?: string[];
+    performance_rule_ids?: string[];
 }
 
 interface BatchAuditJob {
@@ -42,14 +44,20 @@ interface BatchAuditJob {
     ad_set_id: string | null;
     policy_id: string | null;
     creative_ids: string[] | null;
+    creative_rule_ids: string[] | null;
+    performance_rule_ids: string[] | null;
     skip_recent_hours: number;
     errors: string[] | null;
     started_at: string;
     finished_at: string | null;
 }
 
-function asArray(value: unknown): string[] {
+function asUuidArray(value: unknown): string[] {
     return Array.isArray(value) ? value.map(String).filter(Boolean) : [];
+}
+
+function asArray(value: unknown): string[] {
+    return asUuidArray(value);
 }
 
 function normalizeAnalysisMode(raw?: string): AnalysisMode {
@@ -210,6 +218,8 @@ serve(async (req) => {
                     ad_set_id: body.ad_set_id || null,
                     policy_id: body.policy_id || null,
                     creative_ids: normalizedCreativeIds,
+                    creative_rule_ids: asUuidArray(body.creative_rule_ids),
+                    performance_rule_ids: asUuidArray(body.performance_rule_ids),
                     skip_recent_hours: skipRecentHours,
                     errors: [],
                     started_at: new Date().toISOString(),
@@ -248,6 +258,8 @@ serve(async (req) => {
         const typedJob = {
             ...job,
             creative_ids: asArray(job.creative_ids),
+            creative_rule_ids: asArray(job.creative_rule_ids),
+            performance_rule_ids: asArray(job.performance_rule_ids),
             errors: asArray(job.errors),
         } as BatchAuditJob;
 
@@ -282,26 +294,51 @@ serve(async (req) => {
         let recentAuditMap = new Set<string>();
         if (skipWindowHours > 0 && creativeIdsInChunk.length > 0) {
             const thresholdIso = new Date(Date.now() - skipWindowHours * 60 * 60 * 1000).toISOString();
-            const { data: recentAudits } = await supabase
+
+            let skipPolicyId = typedJob.policy_id;
+            if (!skipPolicyId) {
+                const { data: defaultPolicy } = await supabase
+                    .from('policies')
+                    .select('id')
+                    .eq('company_id', userData.company_id)
+                    .eq('is_default', true)
+                    .maybeSingle();
+                skipPolicyId = defaultPolicy?.id ?? null;
+            }
+
+            let recentQuery = supabase
                 .from('audits')
                 .select('creative_id')
                 .eq('company_id', userData.company_id)
                 .eq('audit_focus', typedJob.audit_focus)
                 .in('creative_id', creativeIdsInChunk)
                 .gte('created_at', thresholdIso);
+
+            if (skipPolicyId) {
+                recentQuery = recentQuery.eq('policy_id', skipPolicyId);
+            } else {
+                recentQuery = recentQuery.is('policy_id', null);
+            }
+
+            const { data: recentAudits } = await recentQuery;
             recentAuditMap = new Set((recentAudits || []).map((a) => a.creative_id));
         }
         const toAudit = creatives.filter((c) => !recentAuditMap.has(c.id));
 
         const isBranding = typedJob.audit_focus === 'branding';
+        const creativeRuleIds = typedJob.creative_rule_ids ?? [];
+        const performanceRuleIds = typedJob.performance_rule_ids ?? [];
         let hasActiveRules = false;
         if (isBranding) {
-            const { data: activeRules } = await supabase
+            let rulesQuery = supabase
                 .from('creative_rules')
                 .select('id')
                 .eq('company_id', userData.company_id)
-                .eq('is_active', true)
-                .limit(1);
+                .eq('is_active', true);
+            if (creativeRuleIds.length > 0) {
+                rulesQuery = rulesQuery.in('id', creativeRuleIds);
+            }
+            const { data: activeRules } = await rulesQuery.limit(1);
             hasActiveRules = (activeRules?.length || 0) > 0;
         }
 
@@ -329,6 +366,12 @@ serve(async (req) => {
                             policy_id: typedJob.policy_id,
                             audit_focus: typedJob.audit_focus,
                             analysis_mode: typedJob.analysis_mode,
+                            ...(isBranding && creativeRuleIds.length > 0
+                                ? { rule_ids: creativeRuleIds }
+                                : {}),
+                            ...(!isBranding && performanceRuleIds.length > 0
+                                ? { performance_rule_ids: performanceRuleIds }
+                                : {}),
                         }),
                     });
                     if (response.ok) {
@@ -355,7 +398,10 @@ serve(async (req) => {
                                 'Authorization': authHeader,
                                 'Content-Type': 'application/json',
                             },
-                            body: JSON.stringify({ creative_id: creative.id }),
+                            body: JSON.stringify({
+                                creative_id: creative.id,
+                                ...(creativeRuleIds.length > 0 ? { rule_ids: creativeRuleIds } : {}),
+                            }),
                         });
                         if (rulesResp.ok) chunkRulesChecked++;
                     } catch (_) {

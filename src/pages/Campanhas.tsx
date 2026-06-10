@@ -112,6 +112,13 @@ export default function Campanhas() {
     const [entityAuditCampaignId, setEntityAuditCampaignId] = useState<string | null>(null);
     const [batchBusy, setBatchBusy] = useState(false);
     const [creativeEstimate, setCreativeEstimate] = useState<number | undefined>();
+    const [isPerfRuleDialogOpen, setIsPerfRuleDialogOpen] = useState(false);
+    const [perfRuleIdsForBatch, setPerfRuleIdsForBatch] = useState<string[]>([]);
+    const [pendingEntityAnalysis, setPendingEntityAnalysis] = useState<{
+        campaignId: string;
+        campaignName: string;
+        forceRefresh?: boolean;
+    } | null>(null);
 
     const { runCampaignAudit, runEntityQueue, runCreativesBatch } = useEntityAudit();
 
@@ -146,9 +153,18 @@ export default function Campanhas() {
         setBatchRuleIds([]);
     };
 
-    const handleCampaignAiAnalysis = async (campaignId: string, campaignName: string) => {
+    const handleCampaignAiAnalysis = async (
+        campaignId: string,
+        campaignName: string,
+        performanceRuleIds?: string[],
+        forceRefresh?: boolean,
+    ) => {
         try {
-            const result = await runCampaignAudit.mutateAsync({ campaignId });
+            const result = await runCampaignAudit.mutateAsync({
+                campaignId,
+                forceRefresh,
+                performanceRuleIds,
+            });
             setEntityAudit(result.audit);
             setEntityAuditName(campaignName);
             setEntityAuditCampaignId(campaignId);
@@ -156,6 +172,11 @@ export default function Campanhas() {
         } catch {
             /* toast via hook */
         }
+    };
+
+    const openPerformanceAnalysisFlow = () => {
+        if (selectedCampaignIds.size === 0) return;
+        setIsPerfRuleDialogOpen(true);
     };
 
     const openPerformanceScopeDialog = async () => {
@@ -176,11 +197,18 @@ export default function Campanhas() {
         setBatchBusy(true);
         try {
             if (scope === 'entities' || scope === 'both') {
-                await runEntityQueue.mutateAsync({ ids, level: 'campaign' });
+                await runEntityQueue.mutateAsync({
+                    ids,
+                    level: 'campaign',
+                    performanceRuleIds: perfRuleIdsForBatch.length > 0 ? perfRuleIdsForBatch : undefined,
+                });
             }
             if (scope === 'creatives' || scope === 'both') {
                 for (const campaignId of ids) {
-                    await runCreativesBatch.mutateAsync({ campaignId });
+                    await runCreativesBatch.mutateAsync({
+                        campaignId,
+                        performanceRuleIds: perfRuleIdsForBatch.length > 0 ? perfRuleIdsForBatch : undefined,
+                    });
                 }
             }
             setIsScopeDialogOpen(false);
@@ -533,7 +561,7 @@ export default function Campanhas() {
                         <InfoTip title="Analisar em lote" hint="Auditoria de performance nas campanhas selecionadas e/ou nos criativos ativos filhos.">
                             <Button
                                 size="sm"
-                                onClick={() => void openPerformanceScopeDialog()}
+                                onClick={() => void openPerformanceAnalysisFlow()}
                                 disabled={batchBusy}
                                 className="h-9 font-bold text-xs"
                             >
@@ -731,7 +759,10 @@ export default function Campanhas() {
                                             className="shrink-0 h-8 text-xs font-semibold rounded-lg border-primary/30 hover:bg-primary/10 hover:text-primary"
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                void handleCampaignAiAnalysis(campaign.id, campaign.name);
+                                                setPendingEntityAnalysis({
+                                                    campaignId: campaign.id,
+                                                    campaignName: campaign.name,
+                                                });
                                             }}
                                             disabled={runCampaignAudit.isPending}
                                         >
@@ -835,6 +866,36 @@ export default function Campanhas() {
                 />
             )}
 
+            <SelectRuleDialog
+                isOpen={isPerfRuleDialogOpen}
+                onClose={() => setIsPerfRuleDialogOpen(false)}
+                onConfirm={(ids) => {
+                    setPerfRuleIdsForBatch(ids);
+                    setIsPerfRuleDialogOpen(false);
+                    void openPerformanceScopeDialog();
+                }}
+                variant="performance"
+                title={`Analisar ${selectedCampaignIds.size} campanha${selectedCampaignIds.size !== 1 ? 's' : ''}`}
+                description="Selecione as regras de performance a aplicar na análise em lote."
+            />
+
+            <SelectRuleDialog
+                isOpen={!!pendingEntityAnalysis}
+                onClose={() => setPendingEntityAnalysis(null)}
+                onConfirm={(ids) => {
+                    if (!pendingEntityAnalysis) return;
+                    const { campaignId, campaignName, forceRefresh } = pendingEntityAnalysis;
+                    setPendingEntityAnalysis(null);
+                    void handleCampaignAiAnalysis(campaignId, campaignName, ids, forceRefresh);
+                }}
+                variant="performance"
+                title={
+                    pendingEntityAnalysis
+                        ? `Quais regras aplicar em "${pendingEntityAnalysis.campaignName}"?`
+                        : undefined
+                }
+            />
+
             <SelectAnalysisScopeDialog
                 open={isScopeDialogOpen}
                 onOpenChange={setIsScopeDialogOpen}
@@ -853,7 +914,11 @@ export default function Campanhas() {
                 entityLevel="campaign"
                 viewCreativesHref={entityAuditCampaignId ? criativosPath({ campaignId: entityAuditCampaignId }) : undefined}
                 onReanalyze={entityAuditCampaignId ? () => {
-                    void handleCampaignAiAnalysis(entityAuditCampaignId, entityAuditName);
+                    setPendingEntityAnalysis({
+                        campaignId: entityAuditCampaignId,
+                        campaignName: entityAuditName,
+                        forceRefresh: true,
+                    });
                 } : undefined}
                 isReanalyzing={runCampaignAudit.isPending}
             />

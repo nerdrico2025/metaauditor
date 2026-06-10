@@ -1,4 +1,4 @@
-import { Outlet, Navigate, useLocation } from 'react-router-dom';
+import { Outlet, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Sidebar } from './Sidebar';
 import { ModuleSwitchTransition } from './ModuleSwitchTransition';
@@ -20,6 +20,7 @@ interface AppLayoutProps {
 export function AppLayout({ requireAuth = true }: AppLayoutProps) {
     const { user, loading } = useAuth();
     const location = useLocation();
+    const navigate = useNavigate();
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const { t } = useTranslation(['sidebar']);
     const reduced = useReducedMotion();
@@ -68,7 +69,14 @@ export function AppLayout({ requireAuth = true }: AppLayoutProps) {
                         >
                             <Menu className="w-6 h-6" />
                         </button>
-                        <span className="ml-4 font-bold text-foreground">Click Auditor</span>
+                        <button
+                            type="button"
+                            onClick={() => navigate('/dashboard')}
+                            aria-label="Ir para visão geral"
+                            className="ml-4 font-bold text-foreground hover:text-primary transition-colors"
+                        >
+                            Click Auditor
+                        </button>
                     </div>
 
                     <motion.div

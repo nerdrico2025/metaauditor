@@ -47,6 +47,7 @@ import {
     PauseCircle,
     Wallet,
     Database,
+    RefreshCw,
 } from 'lucide-react';
 import {
     DropdownMenu,
@@ -67,9 +68,12 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { CreativeAuditReportDialog } from '@/components/audits/CreativeAuditReportDialog';
-import { auditFocusLabel, primaryAuditScore, resolveAuditFocus, type AuditFocus } from '@/lib/audit-focus';
+import { SelectRuleDialog } from '@/components/branding/SelectRuleDialog';
+import { auditFocusLabel, resolveAuditFocus } from '@/lib/audit-focus';
 import { isActiveCampaignStatus } from '@/lib/creativeScope';
 import { friendlyEdgeFunctionError, parseSupabaseFunctionError } from '@/lib/edgeFunctionErrors';
+import { useDateFilter } from '@/contexts/DateFilterContext';
+import { fetchCreativePeriodMetrics, metricsFromCreativeRow, type AggregatedListMetrics } from '@/lib/listMetrics';
 
 const formatPercent = (value: number) => {
     if (value === undefined || value === null || isNaN(value)) return '0.00%';
@@ -115,14 +119,20 @@ export default function CriativoDetalhe() {
     const [imageZoomOpen, setImageZoomOpen] = useState(false);
     const [isAnalysisPanelOpen, setIsAnalysisPanelOpen] = useState(false);
     const [analyzeAI, setAnalyzeAI] = useState(true);
+    const [ruleSelectMode, setRuleSelectMode] = useState<'panel' | 'execute' | null>(null);
+    const [reanalyzeForceRefresh, setReanalyzeForceRefresh] = useState(false);
     const [selectedRuleIds, setSelectedRuleIds] = useState<Set<string>>(new Set());
     const [selectedPerfRuleIds, setSelectedPerfRuleIds] = useState<Set<string>>(new Set());
     const [lastRulesCheck, setLastRulesCheck] = useState<any>(null);
     const [lastPerfResults, setLastPerfResults] = useState<Array<{ rule_name: string; passed: boolean; reason: string }> | null>(null);
     const [budgetDialogOpen, setBudgetDialogOpen] = useState(false);
     const [newBudgetValue, setNewBudgetValue] = useState('');
+    const [isSyncing, setIsSyncing] = useState(false);
 
     const campaignAction = useCampaignAction();
+    const { range: dateRange, label: dateLabel } = useDateFilter();
+    const dateFilterActive = !dateRange.isAll && !!dateRange.startDate && !!dateRange.endDate;
+    const isAdmin = user?.role === 'company_admin' || user?.role === 'super_admin';
 
     const { module } = useModule();
     const isBranding = module === 'branding';
@@ -151,7 +161,7 @@ export default function CriativoDetalhe() {
             if (error) throw error;
             return data || [];
         },
-        enabled: !!companyId,
+        enabled: !!companyId && !isBranding,
     });
 
     const { data: creative, isLoading } = useQuery({
@@ -170,6 +180,69 @@ export default function CriativoDetalhe() {
         },
         enabled: !!id,
     });
+
+    const integrationId = (creative?.campaigns as { integration_id?: string } | null)?.integration_id;
+
+    const { data: periodMetrics, isPending: isPeriodMetricsPending } = useQuery({
+        queryKey: ['creative-period-metrics', id, dateRange.startDate, dateRange.endDate],
+        queryFn: async (): Promise<AggregatedListMetrics | null> => {
+            if (!id) return null;
+            const map = await fetchCreativePeriodMetrics(
+                [id],
+                dateRange.startDate,
+                dateRange.endDate,
+            );
+            return map.get(id) ?? null;
+        },
+        enabled: !!id && dateFilterActive && !isBranding,
+    });
+
+    const { data: lastSyncAt } = useQuery({
+        queryKey: ['integration-sync', integrationId],
+        queryFn: async () => {
+            if (!integrationId) return null;
+            const { data, error } = await supabase
+                .from('integrations')
+                .select('last_sync_at')
+                .eq('id', integrationId)
+                .single();
+            if (error) throw error;
+            return data?.last_sync_at ?? null;
+        },
+        enabled: !!integrationId && !isBranding,
+    });
+
+    const handleSyncMetrics = async () => {
+        if (!integrationId) return;
+        setIsSyncing(true);
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) throw new Error('Sem sessão ativa');
+
+            const { error: fullError } = await supabase.functions.invoke('sync-meta-data', {
+                body: { integration_id: integrationId, sync_type: 'full' },
+                headers: { Authorization: `Bearer ${session.access_token}` },
+            });
+            if (fullError) throw fullError;
+
+            const { error: metricsError } = await supabase.functions.invoke('sync-meta-data', {
+                body: { integration_id: integrationId, sync_type: 'metrics_only' },
+                headers: { Authorization: `Bearer ${session.access_token}` },
+            });
+            if (metricsError) throw metricsError;
+
+            toast.success('Sincronização concluída. Atualizando métricas...');
+            await queryClient.invalidateQueries({ queryKey: ['creative', id] });
+            await queryClient.invalidateQueries({ queryKey: ['creative-period-metrics', id] });
+            await queryClient.invalidateQueries({ queryKey: ['creatives'] });
+            await queryClient.invalidateQueries({ queryKey: ['integration-sync', integrationId] });
+        } catch (error: unknown) {
+            console.error(error);
+            toast.error(error instanceof Error ? error.message : 'Erro ao sincronizar dados');
+        } finally {
+            setIsSyncing(false);
+        }
+    };
 
     // Auto-fetch fresh video URL or preview when video fails or is missing
     const fetchFreshPreview = async () => {
@@ -243,8 +316,9 @@ export default function CriativoDetalhe() {
     const aiAuditAction = useMutation({
         mutationFn: async ({
             ruleIds,
+            performanceRuleIds,
             forceRefresh,
-        }: { ruleIds?: string[]; forceRefresh?: boolean } = {}) => {
+        }: { ruleIds?: string[]; performanceRuleIds?: string[]; forceRefresh?: boolean } = {}) => {
             const campaignStatus = (creative as { campaigns?: { status?: string } } | undefined)?.campaigns?.status;
             if (!isActiveCampaignStatus(campaignStatus)) {
                 throw new Error('Campanha pausada — análise disponível apenas para campanhas ativas');
@@ -292,6 +366,7 @@ export default function CriativoDetalhe() {
                     creative_id: id,
                     audit_focus: module,
                     rule_ids: isBranding && ruleIds?.length ? ruleIds : undefined,
+                    performance_rule_ids: !isBranding && performanceRuleIds?.length ? performanceRuleIds : undefined,
                     force_refresh: forceRefresh ?? false,
                 },
                 headers,
@@ -492,35 +567,101 @@ export default function CriativoDetalhe() {
         );
     };
 
-    // Auto-evaluate performance rules against this creative's metrics
-    const ctr = creative?.ctr ? Number(creative.ctr) : 0;
-    const cpc = creative?.cpc ? Number(creative.cpc) : 0;
-    const spend = creative ? (Number(creative.spend) || (creative.clicks || 0) * cpc) : 0;
-    const cpa = creative?.conversions && creative.conversions > 0 ? spend / creative.conversions : 0;
+    // Metrics: period from creative_metrics when date filter active, else denormalized creatives.*
+    const lifetimeMetrics = useMemo(
+        (): AggregatedListMetrics => metricsFromCreativeRow(creative ?? {}),
+        [creative],
+    );
+
+    const displayMetrics = useMemo((): AggregatedListMetrics => {
+        if (!creative) {
+            return metricsFromCreativeRow({});
+        }
+        if (dateFilterActive) {
+            if (periodMetrics) return periodMetrics;
+            if (lifetimeMetrics.spend > 0 || lifetimeMetrics.impressions > 0) {
+                return lifetimeMetrics;
+            }
+            return metricsFromCreativeRow({
+                spend: 0,
+                impressions: 0,
+                clicks: 0,
+                conversions: 0,
+                reach: 0,
+            });
+        }
+        return lifetimeMetrics;
+    }, [creative, dateFilterActive, periodMetrics, lifetimeMetrics]);
+
+    const metricsUsingRollingFallback =
+        dateFilterActive &&
+        !isPeriodMetricsPending &&
+        !periodMetrics &&
+        (lifetimeMetrics.spend > 0 || lifetimeMetrics.impressions > 0);
+
+    const metricsCreative = useMemo(() => {
+        if (!creative) return null;
+        return {
+            ...creative,
+            spend: displayMetrics.spend,
+            impressions: displayMetrics.impressions,
+            clicks: displayMetrics.clicks,
+            conversions: displayMetrics.conversions,
+            reach: displayMetrics.reach,
+            ctr: displayMetrics.ctr,
+            cpc: displayMetrics.cpc,
+        };
+    }, [creative, displayMetrics]);
+
+    const spend = displayMetrics.spend;
+    const ctr = displayMetrics.ctr;
+    const cpc = displayMetrics.cpc;
+    const cpa = displayMetrics.conversions > 0 ? spend / displayMetrics.conversions : 0;
+
+    const syncStale = useMemo(() => {
+        if (!lastSyncAt) return true;
+        const ageMs = Date.now() - new Date(lastSyncAt).getTime();
+        return ageMs > 24 * 60 * 60 * 1000;
+    }, [lastSyncAt]);
+
+    const showStaleMetricsBanner =
+        !metricsUsingRollingFallback &&
+        syncStale &&
+        displayMetrics.spend === 0 &&
+        displayMetrics.impressions === 0;
+
+    const showNoDeliveryInPeriodBanner =
+        dateFilterActive &&
+        !isPeriodMetricsPending &&
+        !periodMetrics &&
+        !metricsUsingRollingFallback &&
+        lifetimeMetrics.spend === 0 &&
+        lifetimeMetrics.impressions === 0 &&
+        !syncStale;
 
     const perfViolations = useMemo(() => {
-        if (!performanceRules?.length || !creative) {
+        if (isBranding || !performanceRules?.length || !metricsCreative) {
             return { violations: [] as Array<{ rule_name: string; metric: string; current: number; operator: string; threshold: number; action_type?: string }>, violatedMetrics: new Set<string>() };
         }
         const adLevelRules = performanceRules.filter(isAdLevelPerformanceRule);
-        const violations = evaluatePerformanceRules(adLevelRules, creative);
+        const violations = evaluatePerformanceRules(adLevelRules, metricsCreative);
         const violatedMetrics = new Set(violations.map(v => v.metric));
         return { violations, violatedMetrics };
-    }, [performanceRules, creative]);
+    }, [isBranding, performanceRules, metricsCreative]);
 
     const hasPerfViolations = perfViolations.violations.length > 0;
 
     // Map metric label to metric key for card highlighting
     const metricLabelToKey: Record<string, string> = {
         'Gasto no Ativo': 'spend',
-        'Alcance Global': 'impressions',
+        'Alcance Global': 'reach',
         'Cliques Únicos': 'clicks',
         'CTR do Ativo': 'ctr',
         'Custo p/ Clique': 'cpc',
         'Resultado': 'conversions',
     };
 
-    if (isLoading || !creative) {
+    if (isLoading || !creative || (!isBranding && dateFilterActive && isPeriodMetricsPending)) {
         return (
             <div className="p-6 flex flex-col items-center justify-center min-h-[500px] gap-4">
                 <Loader2 className="w-10 h-10 animate-spin text-ch-orange opacity-40" />
@@ -536,6 +677,76 @@ export default function CriativoDetalhe() {
             variants={container}
             className="p-6 space-y-8"
         >
+            {!isBranding && showStaleMetricsBanner && (
+                <motion.div
+                    variants={item}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl border border-amber-500/30 bg-amber-500/5"
+                >
+                    <div className="flex items-start gap-3">
+                        <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                        <div>
+                            <p className="text-sm font-semibold text-foreground">Métricas desatualizadas</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                                Não há dados de performance para {dateLabel.toLowerCase()}.
+                                {lastSyncAt
+                                    ? ` Última sincronização: ${format(new Date(lastSyncAt), "dd/MM/yyyy 'às' HH:mm")}.`
+                                    : ' A conta ainda não foi sincronizada.'}
+                            </p>
+                        </div>
+                    </div>
+                    {isAdmin && integrationId && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleSyncMetrics}
+                            disabled={isSyncing}
+                            className="shrink-0 border-amber-500/30 hover:bg-amber-500/10"
+                        >
+                            {isSyncing ? (
+                                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                            ) : (
+                                <RefreshCw className="w-4 h-4 mr-2" />
+                            )}
+                            Sincronizar agora
+                        </Button>
+                    )}
+                </motion.div>
+            )}
+
+            {!isBranding && metricsUsingRollingFallback && (
+                <motion.div
+                    variants={item}
+                    className="flex items-start gap-3 p-4 rounded-2xl border border-blue-500/30 bg-blue-500/5"
+                >
+                    <AlertTriangle className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
+                    <div>
+                        <p className="text-sm font-semibold text-foreground">Sem entrega no período selecionado</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                            Não há dados diários em creative_metrics para {dateLabel.toLowerCase()}.
+                            Exibindo totais agregados dos últimos 90 dias sincronizados com a Meta.
+                        </p>
+                    </div>
+                </motion.div>
+            )}
+
+            {!isBranding && showNoDeliveryInPeriodBanner && (
+                <motion.div
+                    variants={item}
+                    className="flex items-start gap-3 p-4 rounded-2xl border border-border bg-muted/30"
+                >
+                    <AlertTriangle className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
+                    <div>
+                        <p className="text-sm font-semibold text-foreground">Sem entrega no período</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                            Este anúncio não registrou gasto ou impressões em {dateLabel.toLowerCase()}
+                            {lastSyncAt
+                                ? ` (sync em ${format(new Date(lastSyncAt), "dd/MM/yyyy 'às' HH:mm")}).`
+                                : '.'}
+                        </p>
+                    </div>
+                </motion.div>
+            )}
+
             {/* Header */}
             <motion.div variants={item} className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="flex items-center gap-5">
@@ -574,12 +785,7 @@ export default function CriativoDetalhe() {
                     <Button
                         onClick={() => {
                             if (isAnalyzing) return;
-                            // Pre-select all active rules
-                            const activeIds = (creativeRules || []).filter(r => r.is_active).map(r => r.id);
-                            setSelectedRuleIds(new Set(activeIds));
-                            setSelectedPerfRuleIds(new Set((performanceRules || []).map(r => r.id)));
-                            setAnalyzeAI(true);
-                            setIsAnalysisPanelOpen(true);
+                            setRuleSelectMode('panel');
                         }}
                         disabled={isAnalyzing}
                         className="relative overflow-hidden bg-gradient-to-r from-ch-orange to-ch-orange-hover hover:shadow-sm text-white font-bold rounded-xl transition-all h-12 px-8 group border-none"
@@ -827,6 +1033,9 @@ export default function CriativoDetalhe() {
                                                 ruleIds: isBranding && selectedRuleIds.size > 0
                                                     ? Array.from(selectedRuleIds)
                                                     : undefined,
+                                                performanceRuleIds: !isBranding && selectedPerfRuleIds.size > 0
+                                                    ? Array.from(selectedPerfRuleIds)
+                                                    : undefined,
                                             });
                                         } else if (isBranding && selectedRuleIds.size > 0 && id) {
                                             runCheck.mutate({ creative_id: id, rule_ids: Array.from(selectedRuleIds) });
@@ -942,7 +1151,6 @@ export default function CriativoDetalhe() {
             {/* Latest Analysis Summary - cached results */}
             {audits && audits.length > 0 && (() => {
                 const latest = audits[0];
-                const latestScore = latest.compliance_score || latest.score || 0;
                 const latestAnalysis = latest.ai_analysis;
                 const isLatestApproved = latest.status === 'approved';
                 const timeAgo = (() => {
@@ -976,13 +1184,8 @@ export default function CriativoDetalhe() {
                                     <BrainCircuit className={`w-5 h-5 ${isLatestApproved ? 'text-emerald-500' : 'text-ch-orange'}`} />
                                 </div>
                                 <div>
-                                    <p className="text-sm font-bold text-foreground flex items-center gap-2">
+                                    <p className="text-sm font-bold text-foreground">
                                         Última Análise IA
-                                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                                            isLatestApproved ? 'bg-emerald-500/10 text-emerald-500' : 'bg-ch-orange/10 text-ch-orange'
-                                        }`}>
-                                            Score {latestScore}%
-                                        </span>
                                     </p>
                                     <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
                                         <Clock className="w-3 h-3" />
@@ -1164,6 +1367,7 @@ export default function CriativoDetalhe() {
                                 </div>
                             )}
 
+                            {!isBranding && (
                             <div className="flex items-center justify-between pt-6 border-t border-border">
                                 <div className="flex items-center gap-3">
                                     <div>
@@ -1174,21 +1378,22 @@ export default function CriativoDetalhe() {
                                     </div>
                                 </div>
                             </div>
+                            )}
                         </div>
                     </div>
                 </motion.div>
 
                 {/* Intelligence & Audit Side */}
                 <div className="lg:col-span-2 space-y-8">
-                    {/* Key Metrics Grid */}
+                    {!isBranding && (
                     <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                         {[
                             { label: 'Gasto no Ativo', value: formatCurrency(spend), icon: DollarSign, color: 'emerald-500' },
-                            { label: 'Alcance Global', value: formatNumber(creative.impressions || 0), icon: Eye, color: 'blue-500' },
-                            { label: 'Cliques Únicos', value: formatNumber(creative.clicks || 0), icon: MousePointerClick, color: 'amber-500' },
+                            { label: 'Alcance Global', value: formatNumber(displayMetrics.reach || 0), icon: Eye, color: 'blue-500' },
+                            { label: 'Cliques Únicos', value: formatNumber(displayMetrics.clicks || 0), icon: MousePointerClick, color: 'amber-500' },
                             { label: 'CTR do Ativo', value: formatPercent(ctr), icon: TrendingUp, color: 'ch-orange' },
                             { label: 'Custo p/ Clique', value: formatCurrency(cpc), icon: Target, color: 'ch-blue' },
-                            { label: 'Resultado', value: formatNumber(creative.conversions || 0), icon: Award, color: 'emerald-600' },
+                            { label: 'Resultado', value: formatNumber(displayMetrics.conversions || 0), icon: Award, color: 'emerald-600' },
                         ].map((metric) => {
                             const metricKey = metricLabelToKey[metric.label];
                             const isViolated = metricKey ? perfViolations.violatedMetrics.has(metricKey) : false;
@@ -1226,6 +1431,7 @@ export default function CriativoDetalhe() {
                             );
                         })}
                     </div>
+                    )}
 
                     {/* Metadata & Technical Info */}
                     <motion.div variants={item} className="bg-card border border-border rounded-[2rem] p-8 shadow-sm relative overflow-hidden">
@@ -1260,32 +1466,33 @@ export default function CriativoDetalhe() {
                                     </p>
                                 </div>
                                 <div>
-                                    <p className="text-xs font-semibold text-muted-foreground mb-2">
-                                        {isBranding ? 'Score de Branding' : 'Score de Performance'}
-                                    </p>
-                                    {(() => {
-                                        const score = latestModuleAudit
-                                            ? primaryAuditScore(latestModuleAudit, module as AuditFocus)
-                                            : null;
-                                        if (score == null) {
-                                            return <p className="text-sm text-muted-foreground">Não calculado</p>;
-                                        }
-                                        const cls = score >= 70 ? 'text-emerald-500' : score >= 40 ? 'text-amber-500' : 'text-red-500';
-                                        return <p className={`text-sm font-bold ${cls}`}>{score}/100</p>;
-                                    })()}
-                                </div>
-                                <div>
                                     <p className="text-xs font-semibold text-muted-foreground mb-2">ID Externo (Meta)</p>
                                     <p className="text-foreground font-medium text-xs font-mono">{creative.external_id || '-'}</p>
                                 </div>
                             </div>
                             <div className="space-y-6">
+                                {isBranding ? (
+                                <div>
+                                    <p className="text-xs font-semibold text-muted-foreground mb-2">Conformidade de Branding</p>
+                                    <p className="text-foreground font-medium">
+                                        {ruleCheck?.overall_status === 'approved'
+                                            ? 'Aprovado'
+                                            : ruleCheck?.overall_status === 'rejected'
+                                                ? 'Reprovado'
+                                                : ruleCheck?.overall_status === 'warning'
+                                                    ? 'Com ressalvas'
+                                                    : 'Não verificado'}
+                                        {ruleCheck?.overall_score != null ? ` (${ruleCheck.overall_score}/100)` : ''}
+                                    </p>
+                                </div>
+                                ) : (
                                 <div>
                                     <p className="text-xs font-semibold text-muted-foreground mb-2">CPA (Custo por Conversão)</p>
                                     <p className="text-foreground font-medium">
                                         {cpa > 0 ? formatCurrency(cpa) : 'Sem conversões'}
                                     </p>
                                 </div>
+                                )}
                                 <div>
                                     <p className="text-xs font-semibold text-muted-foreground mb-2">Última Atualização</p>
                                     <p className="text-foreground font-medium">
@@ -1360,20 +1567,6 @@ export default function CriativoDetalhe() {
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-10 mt-6 md:mt-0">
-                                            {(() => {
-                                                const auditScore = primaryAuditScore(audit, module as AuditFocus);
-                                                return (
-                                                <div className="text-right">
-                                                    <p className="text-xs font-semibold text-muted-foreground mb-1">Score IA</p>
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
-                                                            <div className="h-full bg-ch-orange rounded-full" style={{ width: `${auditScore}%` }} />
-                                                        </div>
-                                                        <span className="text-sm font-bold text-foreground tabular-nums">{auditScore}%</span>
-                                                    </div>
-                                                </div>
-                                                );
-                                            })()}
                                             {getAuditStatusBadge(audit.status)}
                                             <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-ch-orange group-hover:translate-x-1 transition-all" />
                                         </div>
@@ -1406,15 +1599,11 @@ export default function CriativoDetalhe() {
                 auditFocus={module}
                 isReanalyzing={isAnalyzing}
                 onReanalyze={({ forceRefresh }) => {
-                    aiAuditAction.mutate({
-                        ruleIds: isBranding && selectedRuleIds.size > 0
-                            ? Array.from(selectedRuleIds)
-                            : undefined,
-                        forceRefresh,
-                    });
+                    setReanalyzeForceRefresh(!!forceRefresh);
+                    setRuleSelectMode('execute');
                 }}
                 footerActions={
-                    creative?.campaigns ? (
+                    !isBranding && creative?.campaigns ? (
                         <div className="flex flex-wrap gap-2">
                             {creative.campaigns.status !== 'PAUSED' && (
                                 <Button
@@ -1456,7 +1645,8 @@ export default function CriativoDetalhe() {
                 }
             />
 
-            {/* Budget Increase Dialog */}
+            {/* Budget Increase Dialog — performance only */}
+            {!isBranding && (
             <Dialog open={budgetDialogOpen} onOpenChange={setBudgetDialogOpen}>
                 <DialogContent className="max-w-md rounded-2xl">
                     <DialogHeader>
@@ -1541,6 +1731,7 @@ export default function CriativoDetalhe() {
                     </div>
                 </DialogContent>
             </Dialog>
+            )}
 
             {/* Preview Dialog */}
             {/* Image Zoom Modal */}
@@ -1727,13 +1918,21 @@ export default function CriativoDetalhe() {
                             {/* Agent Steps */}
                             <div className="w-full space-y-3">
                                 {(() => {
-                                    const agentIcons = [
-                                        { icon: SearchCheck, label: 'Agente de Visão', color: 'text-blue-400', bg: 'bg-blue-500/20' },
-                                        { icon: Activity, label: 'Agente de Performance', color: 'text-emerald-400', bg: 'bg-emerald-500/20' },
-                                        { icon: Dna, label: 'Agente de Marketing', color: 'text-purple-400', bg: 'bg-purple-500/20' },
-                                        { icon: ShieldCheck, label: 'Agente de Regras', color: 'text-amber-400', bg: 'bg-amber-500/20' },
-                                        { icon: Zap, label: 'Compilação Final', color: 'text-ch-orange', bg: 'bg-ch-orange/20' },
-                                    ];
+                                    const agentIcons = isBranding
+                                        ? [
+                                            { icon: SearchCheck, label: 'Agente de Visão', color: 'text-blue-400', bg: 'bg-blue-500/20' },
+                                            { icon: ShieldCheck, label: 'Agente de Branding', color: 'text-emerald-400', bg: 'bg-emerald-500/20' },
+                                            { icon: Type, label: 'Agente de Copy', color: 'text-purple-400', bg: 'bg-purple-500/20' },
+                                            { icon: ShieldCheck, label: 'Agente de Regras', color: 'text-amber-400', bg: 'bg-amber-500/20' },
+                                            { icon: Zap, label: 'Compilação Final', color: 'text-ch-orange', bg: 'bg-ch-orange/20' },
+                                        ]
+                                        : [
+                                            { icon: SearchCheck, label: 'Agente de Visão', color: 'text-blue-400', bg: 'bg-blue-500/20' },
+                                            { icon: Activity, label: 'Agente de Performance', color: 'text-emerald-400', bg: 'bg-emerald-500/20' },
+                                            { icon: Dna, label: 'Agente de Marketing', color: 'text-purple-400', bg: 'bg-purple-500/20' },
+                                            { icon: ShieldCheck, label: 'Agente de Regras', color: 'text-amber-400', bg: 'bg-amber-500/20' },
+                                            { icon: Zap, label: 'Compilação Final', color: 'text-ch-orange', bg: 'bg-ch-orange/20' },
+                                        ];
 
                                     // Map to actual step count
                                     const hasRules = auditTotalSteps > 4;
@@ -1842,6 +2041,32 @@ export default function CriativoDetalhe() {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            <SelectRuleDialog
+                isOpen={ruleSelectMode !== null}
+                onClose={() => setRuleSelectMode(null)}
+                onConfirm={(ids) => {
+                    const mode = ruleSelectMode;
+                    setRuleSelectMode(null);
+                    if (isBranding) {
+                        setSelectedRuleIds(new Set(ids));
+                    } else {
+                        setSelectedPerfRuleIds(new Set(ids));
+                    }
+                    if (mode === 'panel') {
+                        setAnalyzeAI(true);
+                        setIsAnalysisPanelOpen(true);
+                    } else if (mode === 'execute') {
+                        aiAuditAction.mutate({
+                            ruleIds: isBranding && ids.length > 0 ? ids : undefined,
+                            performanceRuleIds: !isBranding && ids.length > 0 ? ids : undefined,
+                            forceRefresh: reanalyzeForceRefresh,
+                        });
+                    }
+                }}
+                variant={isBranding ? 'branding' : 'performance'}
+                title="Quais regras aplicar nesta análise?"
+            />
         </motion.div >
     );
 }

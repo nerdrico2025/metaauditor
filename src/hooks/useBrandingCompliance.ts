@@ -7,6 +7,8 @@ import {
     integrationIdsKey,
     loadMonitoredScope,
 } from '@/hooks/useMonitoredCampaignScope';
+import type { DateFilterRange } from '@/contexts/DateFilterContext';
+import { hasDateRangeBounds, latestChecksPerCreativeInRange } from '@/lib/brandingDateScope';
 
 /**
  * Branding compliance aggregations for the listing screens (Campanhas / Conjuntos).
@@ -40,13 +42,21 @@ function emptyCounts(): BrandingComplianceCounts {
     return { total_creatives: 0, approved: 0, rejected: 0, not_checked: 0 };
 }
 
-export function useBrandingCompliance() {
+export function useBrandingCompliance(dateRange?: DateFilterRange) {
     const { user } = useAuth();
     const { effectiveIds } = useIntegrationFilter();
     const companyId = user?.company?.id ?? user?.company_id;
+    const periodScoped = hasDateRangeBounds(dateRange);
 
     return useQuery({
-        queryKey: ['branding-compliance', companyId, integrationIdsKey(effectiveIds)],
+        queryKey: [
+            'branding-compliance',
+            companyId,
+            integrationIdsKey(effectiveIds),
+            dateRange?.startDate,
+            dateRange?.endDate,
+            dateRange?.isAll,
+        ],
         queryFn: async (): Promise<BrandingComplianceMaps> => {
             if (!companyId) return { byCampaign: new Map(), byAdSet: new Map(), byCreative: new Map() };
 
@@ -77,7 +87,11 @@ export function useBrandingCompliance() {
             );
 
             const latestStatusByCreative = new Map<string, 'approved' | 'rejected'>();
-            for (const row of checks) {
+            const checksToProcess = hasDateRangeBounds(dateRange)
+                ? [...latestChecksPerCreativeInRange(checks, dateRange.startDate, dateRange.endDate).values()]
+                : checks;
+
+            for (const row of checksToProcess) {
                 if (latestStatusByCreative.has(row.creative_id)) continue;
                 const s = row.overall_status;
                 if (s === 'approved') latestStatusByCreative.set(row.creative_id, 'approved');
@@ -90,6 +104,12 @@ export function useBrandingCompliance() {
 
             for (const c of allCreatives) {
                 const status = latestStatusByCreative.get(c.id) ?? null;
+
+                if (periodScoped && status === null) {
+                    byCreative.set(c.id, null);
+                    continue;
+                }
+
                 byCreative.set(c.id, status);
 
                 const bumpCounts = (map: Map<string, BrandingComplianceCounts>, key: string | null | undefined) => {

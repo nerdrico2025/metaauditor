@@ -4,6 +4,7 @@ import { loadCompanyAiContext, formatAiContextForPrompt } from '../_shared/ai-co
 import { evaluatePerformanceRules, perfRulesPassRate } from '../_shared/performance-eval.ts';
 import { buildCreativeAuditRecommendations, persistRecommendations } from '../_shared/persist-recommendations.ts';
 import { assertCreativeInActiveCampaign } from '../_shared/activeCampaignScope.ts';
+import { resolveCreativeImageForAI } from '../_shared/creativeImageForAI.ts';
 import {
     type AuditFocus,
     getExpertPrompt,
@@ -19,6 +20,7 @@ interface AuditRequest {
     creative_id: string;
     policy_id?: string;
     rule_ids?: string[];
+    performance_rule_ids?: string[];
     force_refresh?: boolean;
     audit_focus?: AuditFocus;
     analysis_mode?: 'fast' | 'balanced' | 'full';
@@ -72,6 +74,7 @@ serve(async (req) => {
             creative_id,
             policy_id,
             rule_ids,
+            performance_rule_ids,
             force_refresh,
             audit_focus: rawFocus,
             analysis_mode = 'balanced',
@@ -85,19 +88,38 @@ serve(async (req) => {
         const auditFocus = resolveAuditFocus(rawFocus);
         const isBranding = auditFocus === 'branding';
 
-        // Deduplication per creative + focus (6h unless force_refresh)
+        // Resolve effective policy for deduplication (matches insert behavior)
+        let effectivePolicyId: string | null = policy_id ?? null;
+        if (!effectivePolicyId) {
+            const { data: defaultPolicy } = await supabase
+                .from('policies')
+                .select('id')
+                .eq('company_id', userData.company_id)
+                .eq('is_default', true)
+                .maybeSingle();
+            effectivePolicyId = defaultPolicy?.id ?? null;
+        }
+
+        // Deduplication per creative + focus + policy (6h unless force_refresh)
         if (!force_refresh) {
             const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
-            const { data: recentAudit } = await supabase
+            let recentQuery = supabase
                 .from('audits')
-                .select('id, status, compliance_score, performance_score, audit_focus, ai_analysis, issues, recommendations, created_at')
+                .select('id, status, compliance_score, performance_score, audit_focus, ai_analysis, issues, recommendations, created_at, policy_id')
                 .eq('creative_id', creative_id)
                 .eq('company_id', userData.company_id)
                 .eq('audit_focus', auditFocus)
                 .gte('created_at', sixHoursAgo)
                 .order('created_at', { ascending: false })
-                .limit(1)
-                .maybeSingle();
+                .limit(1);
+
+            if (effectivePolicyId) {
+                recentQuery = recentQuery.eq('policy_id', effectivePolicyId);
+            } else {
+                recentQuery = recentQuery.is('policy_id', null);
+            }
+
+            const { data: recentAudit } = await recentQuery.maybeSingle();
 
             if (recentAudit) {
                 return new Response(
@@ -191,11 +213,17 @@ serve(async (req) => {
         let perfPassRate = 100;
 
         if (!isBranding) {
-            const { data: automationRules } = await supabase
+            let automationQuery = supabase
                 .from('automation_rules')
                 .select('*')
                 .eq('company_id', userData.company_id)
                 .eq('status', 'active');
+
+            if (Array.isArray(performance_rule_ids) && performance_rule_ids.length > 0) {
+                automationQuery = automationQuery.in('id', performance_rule_ids);
+            }
+
+            const { data: automationRules } = await automationQuery;
 
             perfCompliance = evaluatePerformanceRules(automationRules ?? [], creative);
             perfPassRate = perfRulesPassRate(perfCompliance);
@@ -353,38 +381,62 @@ serve(async (req) => {
                         ];
 
                         if (hasImageAsset) {
-                            visualContent.push({
-                                type: 'image_url',
-                                image_url: { url: creative.image_url, detail: 'high' },
+                            const resolved = await resolveCreativeImageForAI(supabase, {
+                                imageUrl: creative.image_url,
+                                externalId: creative.external_id,
+                                companyId: userData.company_id,
+                                campaignId: creative.campaign_id,
+                                creativeId: creative.id,
                             });
+                            if (resolved) {
+                                visualContent.push({
+                                    type: 'image_url',
+                                    image_url: { url: resolved.dataUrl, detail: 'high' },
+                                });
+                            } else {
+                                console.warn('audit-creative: could not resolve image for visual agent');
+                            }
                         }
                         if (hasVideoAsset && creative.video_url !== creative.image_url) {
-                            visualContent.push({
-                                type: 'image_url',
-                                image_url: { url: creative.video_url, detail: 'high' },
+                            const resolvedVideoThumb = await resolveCreativeImageForAI(supabase, {
+                                imageUrl: creative.video_url,
+                                externalId: creative.external_id,
+                                companyId: userData.company_id,
+                                campaignId: creative.campaign_id,
+                                creativeId: creative.id,
                             });
+                            if (resolvedVideoThumb) {
+                                visualContent.push({
+                                    type: 'image_url',
+                                    image_url: { url: resolvedVideoThumb.dataUrl, detail: 'high' },
+                                });
+                            }
                         }
 
-                        const visualResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': `Bearer ${openaiApiKey}`,
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                model: 'gpt-4o-mini',
-                                messages: [
-                                    { role: 'system', content: getVisualPrompt(auditFocus) },
-                                    { role: 'user', content: visualContent },
-                                ],
-                                temperature: 0.3,
-                                max_tokens: 500,
-                            }),
-                        });
+                        if (visualContent.length <= 1) {
+                            console.warn('audit-creative: skipping visual OpenAI call — no resolvable image');
+                        } else {
+                            const visualResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': `Bearer ${openaiApiKey}`,
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    model: 'gpt-4o-mini',
+                                    messages: [
+                                        { role: 'system', content: getVisualPrompt(auditFocus) },
+                                        { role: 'user', content: visualContent },
+                                    ],
+                                    temperature: 0.3,
+                                    max_tokens: 500,
+                                }),
+                            });
 
-                        if (visualResponse.ok) {
-                            const vData = await visualResponse.json();
-                            visualDescription = vData.choices?.[0]?.message?.content || '';
+                            if (visualResponse.ok) {
+                                const vData = await visualResponse.json();
+                                visualDescription = vData.choices?.[0]?.message?.content || '';
+                            }
                         }
                     } catch (e) {
                         console.error('Visual analysis agent error:', e);

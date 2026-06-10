@@ -2,6 +2,21 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { loadCompanyAiContext, formatAiContextForPrompt, formatBrandBriefingForPrompt } from '../_shared/ai-context.ts';
 import { assertCreativeInActiveCampaign } from '../_shared/activeCampaignScope.ts';
+import {
+    buildLabeledVisionContent,
+    resolveCreativeImageForAI,
+    resolveUrlForAI,
+    type ReferenceLogoForVision,
+} from '../_shared/creativeImageForAI.ts';
+
+const LOGO_DETECTION_GUIDANCE = `
+REGRAS DE DETECÇÃO DE LOGO (aplicam-se a regras visuais que exigem logo):
+- Logo PRESENTE = qualquer elemento reconhecível como logo da marca no criativo, mesmo pequeno, discreto ou com baixo contraste.
+- Logo AUSENTE = não há nenhum elemento identificável como logo da marca no criativo.
+- Se o logo está presente mas pequeno ou ilegível: passed=false, severity=warning, reason="Logo presente, porém pequeno/ilegível" — NUNCA diga "logo não está visível" ou "logo ausente".
+- Se a regra exige posição específica (ex.: canto superior direito) e o logo está em outro lugar: falha de POSIÇÃO, não de ausência.
+- Imagens de referência de logo NÃO são o criativo — nunca avalie a referência como se fosse o anúncio.
+- Faça varredura sistemática nos quatro cantos antes de concluir ausência de logo.`;
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -175,22 +190,21 @@ serve(async (req) => {
 - Gastos: R$ ${creative.spend || 0}`;
 
         const rulesPrompt = applicableRules.map((r: any, i: number) => {
+            const isLogoRule = r.rule_type === 'visual' &&
+                (String(r.rule_definition || '').toLowerCase().includes('logo') || !!r.logo_url);
             const logoLine = r.logo_url
-                ? `- Logo de referência (compare presença/posicionamento no criativo): ${r.logo_url}`
+                ? `- Logo de referência anexado abaixo (regra "${r.name}") — compare presença/posicionamento no criativo`
+                : '';
+            const logoHint = isLogoRule
+                ? '\n- DETECÇÃO DE LOGO: Varredura obrigatória nos 4 cantos. Logo pequeno mas reconhecível = PRESENTE. Ausente somente se nenhum logo identificável existir.'
                 : '';
             return `REGRA ${i + 1} (id: ${r.id}):
 - Nome: ${r.name}
 - Tipo: ${r.rule_type}
 - Definição: ${r.rule_definition}
 - Severidade: ${r.severity}
-- Aplica-se a: ${r.applies_to}${logoLine ? `\n${logoLine}` : ''}`;
+- Aplica-se a: ${r.applies_to}${logoLine ? `\n${logoLine}` : ''}${logoHint}`;
         }).join('\n\n');
-
-        const logoUrls = [...new Set(
-            applicableRules
-                .map((r: any) => r.logo_url as string | null)
-                .filter((url): url is string => !!url)
-        )];
 
         const aiContextLoaded = await loadCompanyAiContext(supabase, companyId);
         const brandContextBlock =
@@ -207,6 +221,7 @@ IMPORTANTE:
 - Para regras que genuinamente NÃO PODEM ser verificadas com os assets disponíveis, marque como "warning" e explique claramente.
 - Considere o briefing de marca e o contexto do anunciante ao interpretar regras visuais, de copy e de conteúdo.
 - Seja objetivo e prático nas avaliações.
+${LOGO_DETECTION_GUIDANCE}
 ${brandContextBlock}
 RETORNE APENAS um JSON válido neste formato:
 {
@@ -227,30 +242,48 @@ RETORNE APENAS um JSON válido neste formato:
 
         const userPrompt = `Avalie o criativo abaixo contra as regras listadas:\n\n${creativeContext}\n\nREGRAS A VERIFICAR:\n${rulesPrompt}\n\nRetorne o JSON de avaliação.`;
 
-        // Build message content — image/thumbnail only (OpenAI does not accept MP4 in image_url)
-        const userContent: any[] = [
-            { type: 'text', text: userPrompt },
-        ];
-
+        let resolvedCreativeImage = null;
+        let resolvedVisual = false;
         if (hasVisualAsset) {
-            userContent.push({
-                type: 'image_url',
-                image_url: {
-                    url: imageUrl,
-                    detail: 'high',
-                },
+            resolvedCreativeImage = await resolveCreativeImageForAI(supabase, {
+                imageUrl,
+                externalId: creative.external_id,
+                companyId,
+                campaignId: creative.campaign_id,
+                creativeId: creative.id,
+            });
+
+            if (!resolvedCreativeImage) {
+                throw new Error(
+                    'Não foi possível carregar a mídia do criativo. Tente sincronizar a conta ou aguarde o cache da imagem.',
+                );
+            }
+            resolvedVisual = true;
+        }
+
+        const referenceLogos: ReferenceLogoForVision[] = [];
+        for (const rule of applicableRules) {
+            const logoUrl = rule.logo_url as string | null;
+            if (!logoUrl) continue;
+
+            const resolvedLogo = await resolveUrlForAI(logoUrl);
+            if (!resolvedLogo) {
+                console.warn('check-creative-rules: failed to resolve logo URL', logoUrl, 'rule', rule.name);
+                continue;
+            }
+
+            referenceLogos.push({
+                ruleName: rule.name,
+                ruleId: rule.id,
+                dataUrl: resolvedLogo.dataUrl,
             });
         }
 
-        for (const logoUrl of logoUrls) {
-            userContent.push({
-                type: 'image_url',
-                image_url: {
-                    url: logoUrl,
-                    detail: 'high',
-                },
-            });
-        }
+        const userContent = buildLabeledVisionContent({
+            textPrompt: userPrompt,
+            creativeImage: resolvedCreativeImage,
+            referenceLogos,
+        });
 
         const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
@@ -324,7 +357,7 @@ RETORNE APENAS um JSON válido neste formato:
             JSON.stringify({
                 success: true,
                 check,
-                visual_analysis: hasVisualAsset,
+                visual_analysis: resolvedVisual,
                 tokens_used: openaiData.usage?.total_tokens || 0,
             }),
             {

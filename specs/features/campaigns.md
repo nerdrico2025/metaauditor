@@ -46,7 +46,9 @@ Modulo de navegacao pela hierarquia Meta Ads: Campanhas → Conjuntos (Ad Sets) 
 ## CriativoDetalhe
 
 - Preview de imagem/video em tamanho grande
-- Metricas completas
+- Metricas completas respeitando o filtro global de periodo (`DateFilterContext`): agregadas de `creative_metrics` via `fetchCreativePeriodMetrics`; card "Alcance Global" usa `reach` (nao impressoes)
+- Sem linhas no periodo selecionado: se `creatives.*` (rolling 90d) tiver gasto/impressoes, exibe fallback com banner "Sem entrega no periodo selecionado"; se tudo zero e sync recente, banner "Sem entrega no periodo"; se sync > 24h e zero, banner "Metricas desatualizadas" + botao "Sincronizar agora" (admins)
+- Fallback lifetime: colunas denormalizadas em `creatives.*` (rolling 90d espelhado pelo sync) quando `dateRange.isAll` ou quando periodo vazio mas lifetime > 0
 - Auditoria IA com scores por framework (hook, value prop, persuasion, etc)
 - Verificacao de regras customizaveis
 - Botoes de acao: "Pausar Campanha" e "Aumentar Verba"
@@ -82,8 +84,19 @@ Contas com centenas de campanhas/conjuntos (ex.: Nio/Marina) nao devem carregar 
 - **Campanhas / Conjuntos**: listagem leve (sem embed de `campaign_metrics` / `ad_set_metrics`); metricas do periodo buscadas em query separada via `listMetrics.ts` (`fetchCampaignPeriodMetrics`, `fetchAdSetPeriodMetrics`) com chunking de IDs (`IN_FILTER_CHUNK = 150`).
 - **Conjuntos**: escopo via join `ad_sets` + `campaigns!inner` filtrando `campaigns.integration_id` (elimina pre-busca de 683 campaign IDs).
 - **Criativos / Anuncios (`useCreatives`)**: escopo por `campaigns.integration_id` quando nao ha `campaignId` especifico; paginacao server-side preservada.
+- **Sync Meta (`sync-meta-data`)**: ad-level insights particionados por chunks de `campaign.id` (30 campanhas/chunk) para evitar truncamento de paginacao em contas grandes; resposta inclui `metrics_warnings` quando houver skips ou cap de paginas.
+- **Sync Meta (2026-06)**: removido filtro `ad.effective_status IN [ACTIVE, PAUSED]` nos insights de anuncio — ads com `CAMPAIGN_PAUSED` / `ADSET_PAUSED` ainda recebem metricas historicas; warning quando N creatives locais nao retornam linhas de insights em 90d.
+- **useCreatives**: com filtro de data, fallback para colunas denormalizadas quando `creative_metrics` vazio no periodo.
 - **Compliance hooks**: mesma estrategia de join por integracao; `companyId` com fallback `user?.company?.id ?? user?.company_id`.
 - **UX**: `isError` + toast + botao "Tentar novamente" em Campanhas e Conjuntos (nao spinner eterno).
+
+## MODIFIED: Páginas de detalhe no módulo Branding (2026-06)
+
+Quando `module === 'branding'`, as páginas de detalhe exibem apenas conformidade de branding e metadados criativos — sem KPIs financeiros, filtros de período de performance, auditoria de entidade de performance nem ações de orçamento.
+
+- **CampanhaDetalhe**: oculta `DateRangeFilter`, badge "Performance Ativa", grids de spend/CTR/CPC/CPA, sidebar de orçamento, `EntityPerformanceAuditCard` e menu "Calibrar Orçamento"; exibe `BrandingCounts` da campanha e conformidade por conjunto na lista.
+- **AdSetDetalhe**: oculta `DateRangeFilter`, snapshot de métricas (impressões, CTR, investimento), nota sobre filtro de datas, `EntityPerformanceAuditCard`, sidebar "Parâmetros Financeiros" e "Calibrar Orçamento"; exibe `BrandingCounts` do conjunto; lista de criativos mostra status de branding (aprovado/reprovado) em vez de CTR e custo.
+- **CriativoDetalhe**: oculta banners de sync/período, grid de métricas, investimento total, CPA; substitui CPA por conformidade de branding; oculta botões "Aumentar verba" e dialog de orçamento no relatório IA; queries de métricas de período desabilitadas em branding.
 
 ## MODIFIED: Layout responsivo (2026-06-02)
 

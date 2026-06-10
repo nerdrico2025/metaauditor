@@ -160,6 +160,27 @@ function buildProblemsList(
     return problems;
 }
 
+function isLogoAbsenceFailure(row: BrandingRuleRow): boolean {
+    const text = `${row.rule_name} ${row.reason}`.toLowerCase();
+    const mentionsLogo = text.includes('logo') || text.includes('marca');
+    if (!mentionsLogo) return false;
+    const absenceSignals = [
+        'não está visível', 'nao esta visivel', 'ausente', 'não visível', 'nao visivel',
+        'sem logo', 'não há logo', 'nao ha logo', 'faltando', 'não presente', 'nao presente',
+        'não encontrado', 'nao encontrado',
+    ];
+    return absenceSignals.some(s => text.includes(s));
+}
+
+function strengthClaimsLogoPresent(strength: string): boolean {
+    const lower = strength.toLowerCase();
+    if (!lower.includes('logo')) return false;
+    const absenceSignals = ['ausente', 'não presente', 'nao presente', 'sem logo', 'faltando', 'não visível', 'nao visivel'];
+    if (absenceSignals.some(s => lower.includes(s))) return false;
+    const presentSignals = ['presente', 'visível', 'visivel', 'identificável', 'identificavel', 'detectado', 'encontrado'];
+    return presentSignals.some(s => lower.includes(s));
+}
+
 function buildStrengthsList(
     rawAnalysis: AiAnalysis,
     perfResults: PerfRow[],
@@ -167,7 +188,12 @@ function buildStrengthsList(
     isBranding: boolean,
 ): string[] {
     const fromAi = [...(rawAnalysis.strengths ?? [])];
-    if (fromAi.length > 0) return fromAi;
+    if (fromAi.length > 0) {
+        if (isBranding && brandingResults.some(r => !r.passed && isLogoAbsenceFailure(r))) {
+            return fromAi.filter(s => !strengthClaimsLogoPresent(s));
+        }
+        return fromAi;
+    }
 
     const passedRules = isBranding
         ? brandingResults.filter(r => r.passed)
@@ -317,14 +343,15 @@ export function CreativeAuditReportDialog({
     const isApproved = audit?.status === 'approved';
     const isRejected = audit?.status === 'rejected';
 
-    const textAccentClass = isRejected ? 'text-rose-500' : score > 90 ? 'text-emerald-500' : 'text-ch-orange';
-    const bgAccentClass = isRejected ? 'bg-rose-500/10' : score > 90 ? 'bg-emerald-500/10' : 'bg-ch-orange/10';
-    const borderAccentClass = isRejected ? 'border-rose-500/20' : score > 90 ? 'border-emerald-500/20' : 'border-ch-orange/20';
+    const textAccentClass = isRejected ? 'text-rose-500' : isApproved ? 'text-emerald-500' : 'text-ch-orange';
+    const bgAccentClass = isRejected ? 'bg-rose-500/10' : isApproved ? 'bg-emerald-500/10' : 'bg-ch-orange/10';
+    const borderAccentClass = isRejected ? 'border-rose-500/20' : isApproved ? 'border-emerald-500/20' : 'border-ch-orange/20';
     const gradientHeader = isRejected
         ? 'from-rose-950 to-ch-black'
-        : score > 90
+        : isApproved
             ? 'from-emerald-950 to-ch-black'
             : 'from-ch-orange/20 to-ch-black';
+    const statusLabel = isApproved ? 'Aprovado' : isRejected ? 'Reprovado' : 'Revisão pendente';
 
     const resolved = useMemo(
         () =>
@@ -391,63 +418,111 @@ export function CreativeAuditReportDialog({
                 </DialogHeader>
 
                 <div className={`relative shrink-0 h-28 sm:h-32 bg-gradient-to-br ${gradientHeader} px-6 py-4 flex flex-col justify-end border-b border-border`}>
-                    <div className={`absolute top-3 right-12 z-50 ${bgAccentClass} rounded-xl px-4 py-2 border ${borderAccentClass} text-center min-w-[88px]`}>
-                        <p className={`text-[9px] font-bold ${textAccentClass} uppercase tracking-widest opacity-80`}>Score</p>
-                        <p className={`text-2xl font-semibold ${textAccentClass} leading-none`}>{score}%</p>
-                    </div>
+                    {layer === 'detail' && (
+                        <div className={`absolute top-3 right-12 z-50 ${bgAccentClass} rounded-xl px-4 py-2 border ${borderAccentClass} text-center min-w-[88px]`}>
+                            <p className={`text-[9px] font-bold ${textAccentClass} uppercase tracking-widest opacity-80`}>Score</p>
+                            <p className={`text-2xl font-semibold ${textAccentClass} leading-none`}>{score}%</p>
+                        </div>
+                    )}
                     <div className="flex items-center gap-2 mb-1">
                         <BrainCircuit className={`w-5 h-5 ${textAccentClass}`} />
                         <span className={`text-[10px] font-bold ${textAccentClass} uppercase tracking-widest`}>
                             {layer === 'summary' ? 'Resumo da Auditoria' : 'Relatório Detalhado'}
                         </span>
                     </div>
-                    <h2 className="text-lg font-bold text-white tracking-tight truncate pr-24">
+                    <h2 className={`text-lg font-bold text-white tracking-tight truncate ${layer === 'detail' ? 'pr-24' : ''}`}>
                         {auditFocusLabel(focus)}
                     </h2>
-                    <span className={`inline-flex w-fit mt-1 items-center ${isApproved ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border-rose-500/30'} border font-bold text-[9px] uppercase tracking-widest px-2 py-0.5 rounded-full`}>
-                        {isApproved ? 'Conformidade OK' : isRejected ? 'Necessita ajustes' : 'Revisão pendente'}
+                    <span className={`inline-flex w-fit mt-1 items-center border font-bold text-[9px] uppercase tracking-widest px-2 py-0.5 rounded-full ${
+                        isApproved
+                            ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                            : isRejected
+                                ? 'bg-rose-500/20 text-rose-400 border-rose-500/30'
+                                : 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+                    }`}>
+                        {statusLabel}
                     </span>
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-muted/20 custom-scrollbar min-h-0">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        {kpiItems.map(item => (
-                            <div key={item.label} className="rounded-xl border border-border bg-card p-3 text-center">
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground leading-tight">{item.label}</p>
-                                <p className="text-xl font-bold tabular-nums mt-1">{item.value}</p>
-                            </div>
-                        ))}
-                    </div>
+                    {layer === 'summary' ? (
+                        hasContent ? (
+                            <>
+                                <ViolatedRulesSummary
+                                    isBranding={isBranding}
+                                    perfResults={perfResults}
+                                    brandingResults={brandingResults}
+                                />
 
-                    {analysis.score_breakdown && (
-                        <div className="rounded-xl border border-border bg-card/50 p-4 space-y-2">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Composição do score</p>
-                            <div className="grid grid-cols-2 gap-2 text-xs">
-                                {rawAnalysis.score_breakdown?.ai_overall != null && (
-                                    <span>IA: {rawAnalysis.score_breakdown.ai_overall}%</span>
+                                {problems.length > 0 && <ProblemsSection problems={problems} />}
+
+                                {analysis.strengths.length > 0 && (
+                                    <ListSection
+                                        title="Pontos fortes"
+                                        icon={<Sparkles className="w-3 h-3 text-emerald-500" />}
+                                        items={analysis.strengths}
+                                        variant="success"
+                                    />
                                 )}
-                                <span>Política: {rawAnalysis.score_breakdown?.policy_compliance ?? '—'}%</span>
-                                {isBranding ? (
-                                    <span>Regras de branding: {rawAnalysis.score_breakdown?.creative_rules_pass_rate ?? '—'}%</span>
-                                ) : (
-                                    <>
-                                        <span>Regras de performance: {rawAnalysis.score_breakdown?.performance_rules_pass_rate ?? '—'}%</span>
-                                        <span>Métricas: {rawAnalysis.score_breakdown?.performance_metrics ?? '—'}%</span>
-                                    </>
+
+                                {analysis.tone_analysis && (
+                                    <div>
+                                        <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2 flex items-center gap-2">
+                                            <Dna className="w-3 h-3 text-ch-orange" /> Veredito
+                                        </h4>
+                                        <p className="text-sm text-foreground/80 leading-relaxed border-l-4 border-ch-orange pl-4">
+                                            {analysis.tone_analysis}
+                                        </p>
+                                    </div>
                                 )}
+
+                                {summarySuggestions.length > 0 && (
+                                    <ActionPlanSection items={summarySuggestions} title="Plano de ação" />
+                                )}
+                            </>
+                        ) : (
+                            <div className="rounded-xl border border-dashed border-border bg-card/30 p-6 text-center">
+                                <p className="text-sm text-muted-foreground">
+                                    Execute a análise com regras selecionadas para gerar o relatório.
+                                </p>
                             </div>
-                        </div>
-                    )}
-
-                    {hasFrameworkScoresFlag && (layer === 'summary' || layer === 'detail') && (
-                        <AuditMarketingSummary ai={rawAnalysis} auditFocus={focus} />
-                    )}
-
-                    {hasContent ? (
+                        )
+                    ) : hasContent ? (
                         <>
-                            {layer === 'detail' && (
-                                <AuditCreativeProfile creative={creative} auditFocus={focus} />
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                {kpiItems.map(item => (
+                                    <div key={item.label} className="rounded-xl border border-border bg-card p-3 text-center">
+                                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground leading-tight">{item.label}</p>
+                                        <p className="text-xl font-bold tabular-nums mt-1">{item.value}</p>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {analysis.score_breakdown && (
+                                <div className="rounded-xl border border-border bg-card/50 p-4 space-y-2">
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Composição do score</p>
+                                    <div className="grid grid-cols-2 gap-2 text-xs">
+                                        {rawAnalysis.score_breakdown?.ai_overall != null && (
+                                            <span>IA: {rawAnalysis.score_breakdown.ai_overall}%</span>
+                                        )}
+                                        <span>Política: {rawAnalysis.score_breakdown?.policy_compliance ?? '—'}%</span>
+                                        {isBranding ? (
+                                            <span>Regras de branding: {rawAnalysis.score_breakdown?.creative_rules_pass_rate ?? '—'}%</span>
+                                        ) : (
+                                            <>
+                                                <span>Regras de performance: {rawAnalysis.score_breakdown?.performance_rules_pass_rate ?? '—'}%</span>
+                                                <span>Métricas: {rawAnalysis.score_breakdown?.performance_metrics ?? '—'}%</span>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
                             )}
+
+                            {hasFrameworkScoresFlag && (
+                                <AuditMarketingSummary ai={rawAnalysis} auditFocus={focus} />
+                            )}
+
+                            <AuditCreativeProfile creative={creative} auditFocus={focus} />
 
                             <ProblemsSection problems={problems} />
 
@@ -482,61 +557,57 @@ export function CreativeAuditReportDialog({
                                 </div>
                             )}
 
-                            {summarySuggestions.length > 0 && layer === 'summary' && (
+                            {summarySuggestions.length > 0 && (
                                 <ActionPlanSection items={summarySuggestions} title="Plano de ação" />
                             )}
 
-                            {layer === 'detail' && (
+                            <AuditCopyDiagnosis creative={creative} />
+                            <AuditImprovementPlan actions={improvementActions} />
+
+                            {hasFrameworkScoresFlag && (
                                 <>
-                                    <AuditCopyDiagnosis creative={creative} />
-                                    <AuditImprovementPlan actions={improvementActions} />
-
-                                    {hasFrameworkScoresFlag && (
-                                        <>
-                                            <AuditFrameworkGrid ai={rawAnalysis} compact />
-                                            <AuditPersuasionSection ai={rawAnalysis} compact />
-                                            <AuditVisualSection ai={rawAnalysis} compact />
-                                        </>
-                                    )}
-
-                                    {!isBranding && (analysis.performance_diagnosis || analysis.scaling_recommendation) && (
-                                        <div className="space-y-3 rounded-xl border border-border bg-card/50 p-4">
-                                            {analysis.performance_diagnosis && (
-                                                <div>
-                                                    <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1 flex items-center gap-2">
-                                                        <BarChart3 className="w-3 h-3" /> Diagnóstico de performance
-                                                    </h4>
-                                                    <p className="text-sm text-muted-foreground">{analysis.performance_diagnosis}</p>
-                                                </div>
-                                            )}
-                                            {scalingBadge && (
-                                                <Badge variant="outline" className={`${scalingBadge.color} border-0`}>
-                                                    {scalingBadge.label}
-                                                </Badge>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    <RulesSection
-                                        isBranding={isBranding}
-                                        brandingResults={brandingResults}
-                                        perfResults={perfResults}
-                                        lastRulesCheck={lastRulesCheck}
-                                        expanded
-                                    />
-
-                                    {extraSuggestions.length > 0 && (
-                                        <ActionPlanSection items={extraSuggestions} title="Plano de ação completo" />
-                                    )}
-
-                                    <SourcesCollapsible
-                                        creative={creative}
-                                        audit={audit}
-                                        creativeRules={creativeRules}
-                                        auditFocus={focus}
-                                    />
+                                    <AuditFrameworkGrid ai={rawAnalysis} compact />
+                                    <AuditPersuasionSection ai={rawAnalysis} compact />
+                                    <AuditVisualSection ai={rawAnalysis} compact />
                                 </>
                             )}
+
+                            {!isBranding && (analysis.performance_diagnosis || analysis.scaling_recommendation) && (
+                                <div className="space-y-3 rounded-xl border border-border bg-card/50 p-4">
+                                    {analysis.performance_diagnosis && (
+                                        <div>
+                                            <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1 flex items-center gap-2">
+                                                <BarChart3 className="w-3 h-3" /> Diagnóstico de performance
+                                            </h4>
+                                            <p className="text-sm text-muted-foreground">{analysis.performance_diagnosis}</p>
+                                        </div>
+                                    )}
+                                    {scalingBadge && (
+                                        <Badge variant="outline" className={`${scalingBadge.color} border-0`}>
+                                            {scalingBadge.label}
+                                        </Badge>
+                                    )}
+                                </div>
+                            )}
+
+                            <RulesSection
+                                isBranding={isBranding}
+                                brandingResults={brandingResults}
+                                perfResults={perfResults}
+                                lastRulesCheck={lastRulesCheck}
+                                expanded
+                            />
+
+                            {extraSuggestions.length > 0 && (
+                                <ActionPlanSection items={extraSuggestions} title="Plano de ação completo" />
+                            )}
+
+                            <SourcesCollapsible
+                                creative={creative}
+                                audit={audit}
+                                creativeRules={creativeRules}
+                                auditFocus={focus}
+                            />
                         </>
                     ) : (
                         <div className="rounded-xl border border-dashed border-border bg-card/30 p-6 text-center">
@@ -548,7 +619,7 @@ export function CreativeAuditReportDialog({
                 </div>
 
                 <div className="shrink-0 p-4 border-t border-border bg-muted/30 space-y-3">
-                    {footerActions}
+                    {layer === 'detail' && footerActions}
                     <div className="flex flex-wrap justify-between gap-2">
                         {onReanalyze && (
                             <Button
@@ -588,6 +659,48 @@ export function CreativeAuditReportDialog({
                 </div>
             </DialogContent>
         </Dialog>
+    );
+}
+
+function ViolatedRulesSummary({
+    isBranding,
+    perfResults,
+    brandingResults,
+}: {
+    isBranding: boolean;
+    perfResults: PerfRow[];
+    brandingResults: BrandingRuleRow[];
+}) {
+    const violated = isBranding
+        ? brandingResults.filter(r => !r.passed)
+        : perfResults.filter(r => !r.passed);
+
+    const sectionTitle = isBranding ? 'Regras de branding violadas' : 'Regras de performance violadas';
+    const SectionIcon = isBranding ? ShieldCheck : Activity;
+
+    return (
+        <div className="space-y-2">
+            <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                <SectionIcon className="w-3 h-3 text-rose-500" /> {sectionTitle}
+            </h4>
+            {violated.length === 0 ? (
+                <p className="text-sm text-muted-foreground p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/10">
+                    Nenhuma regra violada.
+                </p>
+            ) : (
+                <div className="space-y-2">
+                    {violated.map((rule, i) => (
+                        <div
+                            key={`violated-${i}`}
+                            className="p-3 rounded-xl text-sm border bg-rose-500/5 border-rose-500/10"
+                        >
+                            <p className="font-semibold text-foreground">{rule.rule_name}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{rule.reason}</p>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
     );
 }
 

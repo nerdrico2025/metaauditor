@@ -119,7 +119,8 @@ export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         overview,
         { icon: Zap, label: t('sidebar:items.brandingRules'), path: '/regras', hint: 'Defina o que os criativos devem ter; a IA verifica cada um contra essas regras.' },
         campaignsItem,
-        { icon: Image, label: t('sidebar:items.history'), path: '/anuncios', hint: 'Consulta livre de todos os anúncios já analisados, com filtros por campanha, regra e status.' },
+        { icon: History, label: t('sidebar:items.history'), path: '/diagnosticos', hint: 'Histórico de análises de IA: diagnósticos de branding por criativo.' },
+        { icon: Image, label: t('sidebar:items.creatives'), path: '/anuncios', hint: 'Consulta livre de todos os anúncios já analisados, com filtros por campanha, regra e status.' },
         ...(settingsItem ? [settingsItem] : []),
       ];
     }
@@ -137,7 +138,7 @@ export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
   // current route after switching, or must fall back to /dashboard.
   const menuPathsFor = (m: AppModule): string[] => {
     const base = ['/dashboard', '/regras', '/campanhas', '/conjuntos', '/criativos', '/settings'];
-    return m === 'branding' ? [...base, '/anuncios'] : [...base, '/diagnosticos', '/recomendacoes'];
+    return m === 'branding' ? [...base, '/diagnosticos', '/anuncios'] : [...base, '/diagnosticos', '/recomendacoes'];
   };
 
   const handleSwitch = (target: AppModule) => {
@@ -244,33 +245,43 @@ export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         {/* Logo Section */}
         <div className={cn(
           "flex items-center border-b border-border/30 relative",
-          isCollapsed ? "justify-center px-2 py-4 flex-col gap-1" : "px-4 py-3 gap-3"
+          isCollapsed ? "justify-center px-2 py-4" : "px-4 py-3 gap-2"
         )}>
-          <div className="relative flex-shrink-0 w-10 h-10 flex items-center justify-center">
-            <img
-              src={logo}
-              alt="Click Auditor Logo"
-              className="relative w-full h-full object-contain"
-            />
-          </div>
+          <button
+            type="button"
+            onClick={() => navigate('/dashboard')}
+            aria-label="Ir para visão geral"
+            className={cn(
+              "flex items-center min-w-0 text-left rounded-lg transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+              isCollapsed ? "justify-center p-1" : "flex-1 gap-3 p-1"
+            )}
+          >
+            <div className="relative flex-shrink-0 w-10 h-10 flex items-center justify-center">
+              <img
+                src={logo}
+                alt="Click Auditor Logo"
+                className="relative w-full h-full object-contain"
+              />
+            </div>
 
-          {!isCollapsed && (
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5">
-                <span className="font-semibold text-lg tracking-tight leading-none bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-                  Click Auditor
-                </span>
-                {planConf?.label && (
-                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${planConf.color}`}>
-                    {planConf.label}
+            {!isCollapsed && (
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-semibold text-lg tracking-tight leading-none bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+                    Click Auditor
                   </span>
+                  {planConf?.label && (
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${planConf.color}`}>
+                      {planConf.label}
+                    </span>
+                  )}
+                </div>
+                {companyName && (
+                  <p className="text-xs text-muted-foreground/70 truncate mt-0.5">{companyName}</p>
                 )}
               </div>
-              {companyName && (
-                <p className="text-xs text-muted-foreground/70 truncate mt-0.5">{companyName}</p>
-              )}
-            </div>
-          )}
+            )}
+          </button>
 
           {/* Collapse Toggle (Desktop only) */}
           <button

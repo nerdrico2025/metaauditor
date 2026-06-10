@@ -119,6 +119,14 @@ export default function Conjuntos() {
     const [entityAuditCampaignId, setEntityAuditCampaignId] = useState<string | null>(null);
     const [batchBusy, setBatchBusy] = useState(false);
     const [creativeEstimate, setCreativeEstimate] = useState<number | undefined>();
+    const [isPerfRuleDialogOpen, setIsPerfRuleDialogOpen] = useState(false);
+    const [perfRuleIdsForBatch, setPerfRuleIdsForBatch] = useState<string[]>([]);
+    const [pendingEntityAnalysis, setPendingEntityAnalysis] = useState<{
+        adSetId: string;
+        adSetName: string;
+        adSetCampaignId: string;
+        forceRefresh?: boolean;
+    } | null>(null);
 
     const { runAdSetAudit, runEntityQueue, runCreativesBatch } = useEntityAudit();
 
@@ -152,9 +160,19 @@ export default function Conjuntos() {
         setBatchRuleIds([]);
     };
 
-    const handleAdSetAiAnalysis = async (adSetId: string, adSetName: string, adSetCampaignId: string) => {
+    const handleAdSetAiAnalysis = async (
+        adSetId: string,
+        adSetName: string,
+        adSetCampaignId: string,
+        performanceRuleIds?: string[],
+        forceRefresh?: boolean,
+    ) => {
         try {
-            const result = await runAdSetAudit.mutateAsync({ adSetId });
+            const result = await runAdSetAudit.mutateAsync({
+                adSetId,
+                forceRefresh,
+                performanceRuleIds,
+            });
             setEntityAudit(result.audit);
             setEntityAuditName(adSetName);
             setEntityAuditAdSetId(adSetId);
@@ -163,6 +181,11 @@ export default function Conjuntos() {
         } catch {
             /* toast via hook */
         }
+    };
+
+    const openPerformanceAnalysisFlow = () => {
+        if (selectedAdSetIds.size === 0) return;
+        setIsPerfRuleDialogOpen(true);
     };
 
     const openPerformanceScopeDialog = async () => {
@@ -183,11 +206,18 @@ export default function Conjuntos() {
         setBatchBusy(true);
         try {
             if (scope === 'entities' || scope === 'both') {
-                await runEntityQueue.mutateAsync({ ids, level: 'ad_set' });
+                await runEntityQueue.mutateAsync({
+                    ids,
+                    level: 'ad_set',
+                    performanceRuleIds: perfRuleIdsForBatch.length > 0 ? perfRuleIdsForBatch : undefined,
+                });
             }
             if (scope === 'creatives' || scope === 'both') {
                 for (const adSetId of ids) {
-                    await runCreativesBatch.mutateAsync({ adSetId });
+                    await runCreativesBatch.mutateAsync({
+                        adSetId,
+                        performanceRuleIds: perfRuleIdsForBatch.length > 0 ? perfRuleIdsForBatch : undefined,
+                    });
                 }
             }
             setIsScopeDialogOpen(false);
@@ -554,7 +584,7 @@ export default function Conjuntos() {
                     <div className="flex items-center gap-2">
                         <Button variant="outline" size="sm" onClick={() => setSelectedAdSetIds(new Set())} className="h-9 text-xs">Limpar</Button>
                         <InfoTip title="Analisar em lote" hint="Auditoria de performance nos conjuntos selecionados e/ou nos criativos ativos filhos.">
-                            <Button size="sm" onClick={() => void openPerformanceScopeDialog()} disabled={batchBusy} className="h-9 font-bold text-xs">
+                            <Button size="sm" onClick={() => void openPerformanceAnalysisFlow()} disabled={batchBusy} className="h-9 font-bold text-xs">
                                 <BrainCircuit className="w-3.5 h-3.5 mr-1.5" />
                                 Analisar em lote
                             </Button>
@@ -777,7 +807,11 @@ export default function Conjuntos() {
                                             className="shrink-0 h-8 text-xs font-semibold rounded-lg border-primary/30 hover:bg-primary/10 hover:text-primary"
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                void handleAdSetAiAnalysis(adSet.id, adSet.name, adSet.campaign_id);
+                                                setPendingEntityAnalysis({
+                                                    adSetId: adSet.id,
+                                                    adSetName: adSet.name,
+                                                    adSetCampaignId: adSet.campaign_id,
+                                                });
                                             }}
                                             disabled={runAdSetAudit.isPending}
                                         >
@@ -881,6 +915,36 @@ export default function Conjuntos() {
                 />
             )}
 
+            <SelectRuleDialog
+                isOpen={isPerfRuleDialogOpen}
+                onClose={() => setIsPerfRuleDialogOpen(false)}
+                onConfirm={(ids) => {
+                    setPerfRuleIdsForBatch(ids);
+                    setIsPerfRuleDialogOpen(false);
+                    void openPerformanceScopeDialog();
+                }}
+                variant="performance"
+                title={`Analisar ${selectedAdSetIds.size} conjunto${selectedAdSetIds.size !== 1 ? 's' : ''}`}
+                description="Selecione as regras de performance a aplicar na análise em lote."
+            />
+
+            <SelectRuleDialog
+                isOpen={!!pendingEntityAnalysis}
+                onClose={() => setPendingEntityAnalysis(null)}
+                onConfirm={(ids) => {
+                    if (!pendingEntityAnalysis) return;
+                    const { adSetId, adSetName, adSetCampaignId, forceRefresh } = pendingEntityAnalysis;
+                    setPendingEntityAnalysis(null);
+                    void handleAdSetAiAnalysis(adSetId, adSetName, adSetCampaignId, ids, forceRefresh);
+                }}
+                variant="performance"
+                title={
+                    pendingEntityAnalysis
+                        ? `Quais regras aplicar em "${pendingEntityAnalysis.adSetName}"?`
+                        : undefined
+                }
+            />
+
             <SelectAnalysisScopeDialog
                 open={isScopeDialogOpen}
                 onOpenChange={setIsScopeDialogOpen}
@@ -903,7 +967,12 @@ export default function Conjuntos() {
                         : undefined
                 }
                 onReanalyze={entityAuditAdSetId && entityAuditCampaignId ? () => {
-                    void handleAdSetAiAnalysis(entityAuditAdSetId, entityAuditName, entityAuditCampaignId);
+                    setPendingEntityAnalysis({
+                        adSetId: entityAuditAdSetId,
+                        adSetName: entityAuditName,
+                        adSetCampaignId: entityAuditCampaignId,
+                        forceRefresh: true,
+                    });
                 } : undefined}
                 isReanalyzing={runAdSetAudit.isPending}
             />

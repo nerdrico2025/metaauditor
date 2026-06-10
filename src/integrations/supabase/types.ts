@@ -1019,13 +1019,17 @@ export type Database = {
           description: string | null
           detected_media_type: string | null
           external_id: string
+          frequency: number | null
           headline: string | null
           id: string
           image_url: string | null
           impressions: number | null
+          inline_link_clicks: number | null
           name: string
           performance_score: number | null
           platform: string
+          reach: number | null
+          spend: number | null
           status: string
           text: string | null
           type: string
@@ -1049,13 +1053,17 @@ export type Database = {
           description?: string | null
           detected_media_type?: string | null
           external_id: string
+          frequency?: number | null
           headline?: string | null
           id?: string
           image_url?: string | null
           impressions?: number | null
+          inline_link_clicks?: number | null
           name: string
           performance_score?: number | null
           platform: string
+          reach?: number | null
+          spend?: number | null
           status: string
           text?: string | null
           type: string
@@ -1079,13 +1087,17 @@ export type Database = {
           description?: string | null
           detected_media_type?: string | null
           external_id?: string
+          frequency?: number | null
           headline?: string | null
           id?: string
           image_url?: string | null
           impressions?: number | null
+          inline_link_clicks?: number | null
           name?: string
           performance_score?: number | null
           platform?: string
+          reach?: number | null
+          spend?: number | null
           status?: string
           text?: string | null
           type?: string

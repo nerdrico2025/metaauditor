@@ -5,6 +5,8 @@ import { toast } from 'sonner';
 import { friendlyEdgeFunctionError, parseSupabaseFunctionError } from '@/lib/edgeFunctionErrors';
 import { fetchAllPaginated } from '@/lib/supabasePaginate';
 import { integrationIdsKey, type MonitoredCampaignScope } from '@/hooks/useMonitoredCampaignScope';
+import type { DateFilterRange } from '@/contexts/DateFilterContext';
+import { hasDateRangeBounds, latestChecksPerCreativeInRange } from '@/lib/brandingDateScope';
 
 export interface CreativeRule {
     id: string;
@@ -256,12 +258,21 @@ export function useComplianceSummary(
     integrationIds?: string[],
     campaignScope?: MonitoredCampaignScope | null,
     scopeLoading?: boolean,
+    dateRange?: DateFilterRange,
 ) {
     const { user } = useAuth();
     const companyId = user?.company?.id ?? user?.company_id ?? undefined;
 
     return useQuery({
-        queryKey: ['compliance-summary', companyId, integrationIdsKey(integrationIds), campaignScope?.monitoredIntegrationIds.length ?? 'unset'],
+        queryKey: [
+            'compliance-summary',
+            companyId,
+            integrationIdsKey(integrationIds),
+            campaignScope?.monitoredIntegrationIds.length ?? 'unset',
+            dateRange?.startDate,
+            dateRange?.endDate,
+            dateRange?.isAll,
+        ],
         queryFn: async (): Promise<ComplianceSummaryData> => {
             if (!companyId) throw new Error('No company ID');
 
@@ -298,13 +309,17 @@ export function useComplianceSummary(
 
             const checks = await fetchScopedRuleChecks(companyId, scopedCreativeIdList);
 
-            // Deduplicate: keep only latest check per creative
-            const latestByCreative = new Map<string, typeof checks[number]>();
-            for (const row of checks) {
-                if (!latestByCreative.has(row.creative_id)) {
-                    latestByCreative.set(row.creative_id, row);
-                }
-            }
+            const latestByCreative = hasDateRangeBounds(dateRange)
+                ? latestChecksPerCreativeInRange(checks, dateRange.startDate, dateRange.endDate)
+                : (() => {
+                    const map = new Map<string, typeof checks[number]>();
+                    for (const row of checks) {
+                        if (!map.has(row.creative_id)) {
+                            map.set(row.creative_id, row);
+                        }
+                    }
+                    return map;
+                })();
 
             let approved = 0, warning = 0, rejected = 0;
             const ruleViolationCount = new Map<string, { count: number; severity: string }>();

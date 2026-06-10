@@ -326,12 +326,19 @@ Responda APENAS em JSON válido com:
 export async function fetchActivePerformanceRules(
     supabase: SupabaseClient,
     companyId: string,
+    ruleIds?: string[],
 ): Promise<PerfRuleRow[]> {
-    const { data } = await supabase
+    let query = supabase
         .from('automation_rules')
         .select('id, name, trigger_type, trigger_conditions, applies_to, status')
         .eq('company_id', companyId)
         .eq('status', 'active');
+
+    if (Array.isArray(ruleIds) && ruleIds.length > 0) {
+        query = query.in('id', ruleIds);
+    }
+
+    const { data } = await query;
 
     return (data || []) as PerfRuleRow[];
 }

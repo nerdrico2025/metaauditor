@@ -33,6 +33,20 @@ export interface Audit {
         cpc: number | null;
         conversions: number | null;
         external_id: string | null;
+        campaign_id?: string | null;
+        ad_set_id?: string | null;
+        campaigns?: {
+            id: string;
+            name: string;
+            external_id?: string | null;
+            daily_budget?: number | null;
+            status?: string | null;
+            integration_id?: string | null;
+        };
+        ad_sets?: {
+            id: string;
+            name: string;
+        };
     };
     creative?: {
         name: string;
@@ -117,14 +131,14 @@ export interface BatchAuditJob {
 
 const AUDITS_SELECT = `
           *,
-          creatives(name, image_url, type, spend, status, impressions, clicks, ctr, cpc, conversions, external_id, campaign_id, campaigns(id, name, external_id, daily_budget, status, integration_id)),
+          creatives(name, image_url, type, spend, status, impressions, clicks, ctr, cpc, conversions, external_id, campaign_id, ad_set_id, campaigns(id, name, external_id, daily_budget, status, integration_id), ad_sets(id, name)),
           policies(name)
         `;
 
 export function useAudits(auditFocus?: AuditFocus) {
     const { user } = useAuth();
     const queryClient = useQueryClient();
-    const companyId = user?.company?.id;
+    const companyId = user?.company?.id ?? user?.company_id;
 
     const auditsQuery = useQuery({
         queryKey: ['audits', companyId, auditFocus ?? 'all'],
@@ -135,6 +149,7 @@ export function useAudits(auditFocus?: AuditFocus) {
                 .from('audits')
                 .select(AUDITS_SELECT)
                 .eq('company_id', companyId)
+                .eq('audit_level', 'creative')
                 .not('creative_id', 'is', null)
                 .order('created_at', { ascending: false })
                 .limit(100);
@@ -156,10 +171,14 @@ export function useAudits(auditFocus?: AuditFocus) {
             creativeId,
             policyId,
             auditFocus = 'performance',
+            ruleIds,
+            performanceRuleIds,
         }: {
             creativeId: string;
             policyId?: string;
             auditFocus?: AuditFocus;
+            ruleIds?: string[];
+            performanceRuleIds?: string[];
         }) => {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) throw new Error('No session');
@@ -176,6 +195,8 @@ export function useAudits(auditFocus?: AuditFocus) {
                         creative_id: creativeId,
                         policy_id: policyId,
                         audit_focus: auditFocus,
+                        ...(ruleIds?.length ? { rule_ids: ruleIds } : {}),
+                        ...(performanceRuleIds?.length ? { performance_rule_ids: performanceRuleIds } : {}),
                     }),
                 }
             );
@@ -207,6 +228,8 @@ export function useAudits(auditFocus?: AuditFocus) {
             analysisMode = 'balanced',
             chunkSize,
             skipRecentHours,
+            creativeRuleIds,
+            performanceRuleIds,
         }: {
             action?: BatchAuditAction;
             jobId?: string;
@@ -217,6 +240,8 @@ export function useAudits(auditFocus?: AuditFocus) {
             analysisMode?: BatchAnalysisMode;
             chunkSize?: number;
             skipRecentHours?: number;
+            creativeRuleIds?: string[];
+            performanceRuleIds?: string[];
         }) => {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) throw new Error('No session');
@@ -239,6 +264,8 @@ export function useAudits(auditFocus?: AuditFocus) {
                         analysis_mode: analysisMode,
                         chunk_size: chunkSize,
                         skip_recent_hours: skipRecentHours,
+                        ...(creativeRuleIds?.length ? { creative_rule_ids: creativeRuleIds } : {}),
+                        ...(performanceRuleIds?.length ? { performance_rule_ids: performanceRuleIds } : {}),
                     }),
                 }
             );

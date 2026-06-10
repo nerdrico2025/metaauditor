@@ -37,7 +37,7 @@ export interface CreativeFilters {
     search?: string;
     limit?: number;
     offset?: number;
-    sortBy?: 'spend' | 'clicks' | 'impressions' | 'ctr' | 'conversions' | 'performance_score' | 'created_at';
+    sortBy?: 'spend' | 'clicks' | 'impressions' | 'ctr' | 'conversions' | 'created_at';
     sortOrder?: 'asc' | 'desc';
     integrationIds?: string[];
     dateFrom?: string;
@@ -46,34 +46,6 @@ export interface CreativeFilters {
     adSetId?: string;
     /** When set, only creatives with these IDs are returned (compliance/rule filters). */
     restrictToCreativeIds?: string[];
-}
-
-async function enrichCreativesWithAuditScores(creatives: any[]): Promise<any[]> {
-    if (creatives.length === 0) return creatives;
-
-    const ids = creatives.map((c: any) => c.id);
-    const auditRows = await fetchAllPaginatedInChunks<any>(
-        ids,
-        (chunkIds) =>
-            (supabase as any)
-                .from('audits')
-                .select('creative_id, performance_score, created_at')
-                .in('creative_id', chunkIds)
-                .not('performance_score', 'is', null)
-                .order('created_at', { ascending: false }),
-    );
-
-    const scoreMap = new Map<string, number>();
-    for (const a of auditRows) {
-        if (!scoreMap.has(a.creative_id)) {
-            scoreMap.set(a.creative_id, Number(a.performance_score) || 0);
-        }
-    }
-
-    return creatives.map((c: any) => ({
-        ...c,
-        performance_score: scoreMap.get(c.id) ?? 0,
-    }));
 }
 
 const ID_CHUNK = 200;
@@ -203,9 +175,8 @@ export function useCreatives(filters: CreativeFilters = {}) {
                 : '*, campaigns(name, status), creative_tags(tag:tags(*))';
 
             const hasDateFilter = !!filters.dateFrom && !!filters.dateTo;
-            const isScoreSort = filters.sortBy === 'performance_score';
             const hasIdRestriction = filters.restrictToCreativeIds !== undefined;
-            const needsClientSort = hasDateFilter || isScoreSort || hasIdRestriction;
+            const needsClientSort = hasDateFilter || hasIdRestriction;
 
             const buildBase = (idFilter?: string[]) => {
                 let q = supabase
@@ -243,10 +214,6 @@ export function useCreatives(filters: CreativeFilters = {}) {
                 }
                 creatives = (data as any)?.map((c: any) => ({ ...c, tags: c.creative_tags })) || [];
                 totalCount = count || 0;
-
-                if (creatives.length > 0) {
-                    creatives = await enrichCreativesWithAuditScores(creatives);
-                }
             } else if (hasIdRestriction) {
                 const allowedIds = filters.restrictToCreativeIds ?? [];
                 if (allowedIds.length === 0) {
@@ -262,20 +229,12 @@ export function useCreatives(filters: CreativeFilters = {}) {
                     allowedIds,
                 );
                 totalCount = creatives.length;
-
-                if (creatives.length > 0) {
-                    creatives = await enrichCreativesWithAuditScores(creatives);
-                }
             } else {
                 const allRows = await fetchAllPaginated<any>(() =>
                     buildBase().order('created_at', { ascending: false }),
                 );
                 creatives = allRows.map((c: any) => ({ ...c, tags: c.creative_tags }));
                 totalCount = creatives.length;
-
-                if (creatives.length > 0) {
-                    creatives = await enrichCreativesWithAuditScores(creatives);
-                }
             }
 
             if (needsClientSort && creatives.length > 0) {
@@ -320,6 +279,28 @@ export function useCreatives(filters: CreativeFilters = {}) {
                     creatives = creatives.map((c: any) => {
                         const t = totals.get(c.id);
                         if (!t) {
+                            const denormSpend = Number(c.spend) || 0;
+                            const denormImpressions = Number(c.impressions) || 0;
+                            if (denormSpend > 0 || denormImpressions > 0) {
+                                const ctr =
+                                    denormImpressions > 0
+                                        ? ((Number(c.clicks) || 0) / denormImpressions) * 100
+                                        : Number(c.ctr) || 0;
+                                const cpc =
+                                    (Number(c.clicks) || 0) > 0
+                                        ? denormSpend / (Number(c.clicks) || 0)
+                                        : Number(c.cpc) || 0;
+                                return {
+                                    ...c,
+                                    spend: denormSpend,
+                                    impressions: denormImpressions,
+                                    clicks: Number(c.clicks) || 0,
+                                    conversions: Number(c.conversions) || 0,
+                                    reach: Number(c.reach) || 0,
+                                    ctr,
+                                    cpc,
+                                };
+                            }
                             return {
                                 ...c,
                                 impressions: 0,

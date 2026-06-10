@@ -154,6 +154,12 @@ export default function Criativos() {
     const [isSyncing, setIsSyncing] = useState(false);
     const [isBatchAiRunning, setIsBatchAiRunning] = useState(false);
 
+    type PendingAnalysisAction =
+        | { type: 'batch'; mode: 'page' | 'top50' }
+        | { type: 'diagnosis'; id: string }
+        | null;
+    const [pendingAnalysisAction, setPendingAnalysisAction] = useState<PendingAnalysisAction>(null);
+
     const { data: filterAdSet } = useQuery({
         queryKey: ['ad_set', adSetId],
         queryFn: async () => {
@@ -235,29 +241,7 @@ export default function Criativos() {
 
     const PAUSED_CAMPAIGN_MSG = 'Campanha pausada — análise disponível apenas para campanhas ativas';
 
-    const handleRunDiagnosis = async (
-        e: React.MouseEvent,
-        id: string,
-        campaignStatus?: string | null,
-    ) => {
-        e.stopPropagation(); // Evitar navegar para detalhes ao clicar em diagnóstico
-
-        let resolvedStatus = campaignStatus;
-        if (resolvedStatus === undefined) {
-            const { data: row } = await supabase
-                .from('creatives')
-                .select('campaigns(status)')
-                .eq('id', id)
-                .maybeSingle();
-            resolvedStatus = (row?.campaigns as { status?: string } | null)?.status ?? null;
-        }
-
-        if (!isActiveCampaignStatus(resolvedStatus)) {
-            const { toast } = await import('sonner');
-            toast.warning(PAUSED_CAMPAIGN_MSG);
-            return;
-        }
-
+    const executeDiagnosis = async (id: string, ruleIds: string[]) => {
         setSelectedCreativeId(id);
         setIsAiModalOpen(true);
         setIsAiLoading(true);
@@ -267,8 +251,18 @@ export default function Criativos() {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) throw new Error('Sem sessão ativa');
 
+            const body: Record<string, unknown> = {
+                creative_id: id,
+                audit_focus: module,
+            };
+            if (isBranding && ruleIds.length > 0) {
+                body.rule_ids = ruleIds;
+            } else if (!isBranding && ruleIds.length > 0) {
+                body.performance_rule_ids = ruleIds;
+            }
+
             const { data, error: functionError } = await supabase.functions.invoke('audit-creative', {
-                body: { creative_id: id, audit_focus: module },
+                body,
                 headers: { Authorization: `Bearer ${session.access_token}` },
             });
 
@@ -298,6 +292,32 @@ export default function Criativos() {
         } finally {
             setIsAiLoading(false);
         }
+    };
+
+    const handleRunDiagnosis = async (
+        e: React.MouseEvent,
+        id: string,
+        campaignStatus?: string | null,
+    ) => {
+        e.stopPropagation();
+
+        let resolvedStatus = campaignStatus;
+        if (resolvedStatus === undefined) {
+            const { data: row } = await supabase
+                .from('creatives')
+                .select('campaigns(status)')
+                .eq('id', id)
+                .maybeSingle();
+            resolvedStatus = (row?.campaigns as { status?: string } | null)?.status ?? null;
+        }
+
+        if (!isActiveCampaignStatus(resolvedStatus)) {
+            const { toast } = await import('sonner');
+            toast.warning(PAUSED_CAMPAIGN_MSG);
+            return;
+        }
+
+        setPendingAnalysisAction({ type: 'diagnosis', id });
     };
 
     const restrictToCreativeIds = useMemo(() => {
@@ -380,6 +400,7 @@ export default function Criativos() {
         toastMod: typeof import('sonner'),
         toastId: string | number,
         auditFocus: 'performance' | 'branding' = module,
+        ruleIds: string[] = [],
     ): Promise<{ ok: number; fail: number }> => {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) throw new Error('Sem sessão ativa');
@@ -393,8 +414,14 @@ export default function Criativos() {
             const slice = ids.slice(i, i + BATCH_AUDIT_CONCURRENCY);
             const outcomes = await Promise.all(
                 slice.map(async (creative_id) => {
+                    const body: Record<string, unknown> = { creative_id, audit_focus: auditFocus };
+                    if (auditFocus === 'branding' && ruleIds.length > 0) {
+                        body.rule_ids = ruleIds;
+                    } else if (auditFocus === 'performance' && ruleIds.length > 0) {
+                        body.performance_rule_ids = ruleIds;
+                    }
                     const { error } = await supabase.functions.invoke('audit-creative', {
-                        body: { creative_id, audit_focus: auditFocus },
+                        body,
                         headers,
                     });
                     return error === null;
@@ -413,7 +440,7 @@ export default function Criativos() {
         return { ok, fail };
     };
 
-    const handleBatchAuditCurrentPage = async () => {
+    const handleBatchAuditCurrentPage = async (ruleIds: string[]) => {
         if (!creatives.length) return;
         setIsBatchAiRunning(true);
         const toastMod = await import('sonner');
@@ -421,7 +448,7 @@ export default function Criativos() {
         const totalN = ids.length;
         const t = toastMod.toast.loading(`Auditoria IA: 0/${totalN}…`, { duration: Infinity });
         try {
-            const { ok, fail } = await runAuditCreativeClientBatch(ids, toastMod, t);
+            const { ok, fail } = await runAuditCreativeClientBatch(ids, toastMod, t, module, ruleIds);
             toastMod.toast.dismiss(t);
             toastMod.toast.success(
                 `Auditoria IA concluída: ${ok} de ${totalN}${fail ? ` (${fail} falha(s))` : ''}.`,
@@ -437,7 +464,7 @@ export default function Criativos() {
         }
     };
 
-    const handleBatchAuditTopActive = async () => {
+    const handleBatchAuditTopActive = async (ruleIds: string[]) => {
         setIsBatchAiRunning(true);
         const toastMod = await import('sonner');
         let progressId: string | number | undefined;
@@ -450,7 +477,7 @@ export default function Criativos() {
                 return;
             }
             toastMod.toast.loading(`Auditoria IA: 0/${ids.length}…`, { id: progressId, duration: Infinity });
-            const { ok, fail } = await runAuditCreativeClientBatch(ids, toastMod, progressId);
+            const { ok, fail } = await runAuditCreativeClientBatch(ids, toastMod, progressId, module, ruleIds);
             if (progressId !== undefined) toastMod.toast.dismiss(progressId);
             toastMod.toast.success(
                 `Auditoria IA concluída: ${ok} de ${ids.length}${fail ? ` (${fail} falha(s))` : ''}.`,
@@ -463,6 +490,21 @@ export default function Criativos() {
             toastMod.toast.error(err instanceof Error ? err.message : 'Erro na auditoria em lote');
         } finally {
             setIsBatchAiRunning(false);
+        }
+    };
+
+    const handleAnalysisRulesConfirm = (ruleIds: string[]) => {
+        const action = pendingAnalysisAction;
+        setPendingAnalysisAction(null);
+        if (!action) return;
+        if (action.type === 'batch') {
+            if (action.mode === 'page') {
+                void handleBatchAuditCurrentPage(ruleIds);
+            } else {
+                void handleBatchAuditTopActive(ruleIds);
+            }
+        } else if (action.type === 'diagnosis') {
+            void executeDiagnosis(action.id, ruleIds);
         }
     };
 
@@ -575,7 +617,7 @@ export default function Criativos() {
                                 disabled={creatives.length === 0 || isBatchAiRunning}
                                 className="cursor-pointer flex-col items-start gap-1 py-3"
                                 onSelect={() => {
-                                    void handleBatchAuditCurrentPage();
+                                    setPendingAnalysisAction({ type: 'batch', mode: 'page' });
                                 }}
                             >
                                 <span className="font-bold text-foreground">Esta página ({creatives.length})</span>
@@ -587,7 +629,7 @@ export default function Criativos() {
                                 disabled={isBatchAiRunning}
                                 className="cursor-pointer flex-col items-start gap-1 py-3"
                                 onSelect={() => {
-                                    void handleBatchAuditTopActive();
+                                    setPendingAnalysisAction({ type: 'batch', mode: 'top50' });
                                 }}
                             >
                                 <span className="font-bold text-foreground">Top 50 ativos (maior spend)</span>
@@ -744,7 +786,6 @@ export default function Criativos() {
                             <SelectItem value="clicks" className="text-indigo-500">Mais Cliques</SelectItem>
                             <SelectItem value="ctr" className="text-purple-500">Melhor CTR</SelectItem>
                             <SelectItem value="conversions" className="text-rose-500">Mais Resultados</SelectItem>
-                            <SelectItem value="performance_score" className="text-amber-500">Melhor Score IA</SelectItem>
                         </SelectContent>
                     </Select>
                     )}
@@ -963,11 +1004,7 @@ export default function Criativos() {
                                                 </div>
                                                 )}
 
-                                                <div className="flex items-center gap-4 min-w-[160px] justify-end">
-                                                    <div className="text-center">
-                                                        <p className="text-[8px] font-semibold text-ch-orange uppercase mb-1">Score IA</p>
-                                                        <p className="text-lg font-semibold text-foreground">{creative.performance_score ? creative.performance_score.toFixed(0) : '—'}</p>
-                                                    </div>
+                                                <div className="flex items-center gap-4 justify-end">
                                                     <Button
                                                         size="icon"
                                                         onClick={(e) => {
@@ -1076,8 +1113,29 @@ export default function Criativos() {
                 onClose={() => setIsAiModalOpen(false)}
                 data={aiData}
                 isLoading={isAiLoading}
-                onReanalyze={() => selectedCreativeId && handleRunDiagnosis({ stopPropagation: () => { } } as any, selectedCreativeId)}
+                onReanalyze={() => {
+                    if (selectedCreativeId) {
+                        setPendingAnalysisAction({ type: 'diagnosis', id: selectedCreativeId });
+                    }
+                }}
                 title="Diagnóstico IA Expresso"
+            />
+
+            {/* Rule selector before batch IA / express diagnosis (performance) or rule check flow (branding) */}
+            <SelectRuleDialog
+                isOpen={!!pendingAnalysisAction}
+                onClose={() => setPendingAnalysisAction(null)}
+                onConfirm={handleAnalysisRulesConfirm}
+                variant={isBranding ? 'branding' : 'performance'}
+                title={
+                    pendingAnalysisAction?.type === 'batch'
+                        ? pendingAnalysisAction.mode === 'page'
+                            ? `Quais regras aplicar na auditoria desta página (${creatives.length})?`
+                            : 'Quais regras aplicar na auditoria dos top 50 ativos?'
+                        : pendingAnalysisAction?.type === 'diagnosis'
+                            ? 'Quais regras aplicar neste diagnóstico IA?'
+                            : undefined
+                }
             />
 
             {/* B5: rule selector — runs before the check modal */}

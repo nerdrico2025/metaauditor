@@ -7,14 +7,19 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Shield, CheckCircle2, Circle, Loader2 } from 'lucide-react';
+import { Shield, Zap, CheckCircle2, Circle, Loader2 } from 'lucide-react';
 import { useCreativeRules, CreativeRule } from '@/hooks/useCreativeRules';
+import { useRules, AutomationRule } from '@/hooks/useRules';
+
+export type SelectRuleDialogVariant = 'branding' | 'performance';
 
 interface Props {
     isOpen: boolean;
     onClose: () => void;
     /** Called with the selected rule IDs (empty array = "all rules"). */
     onConfirm: (ruleIds: string[]) => void;
+    /** Branding = creative_rules; Performance = automation_rules */
+    variant?: SelectRuleDialogVariant;
     /** Optional title override. */
     title?: string;
     /** Optional helper text. */
@@ -28,25 +33,68 @@ const RULE_TYPE_LABELS: Record<string, string> = {
     structure: 'Estrutura',
 };
 
-export function SelectRuleDialog({ isOpen, onClose, onConfirm, title, description }: Props) {
-    const { rules, isLoading } = useCreativeRules();
+interface RuleListItem {
+    id: string;
+    name: string;
+    description?: string | null;
+    badge: string;
+}
+
+function formatPerfBadge(rule: AutomationRule): string {
+    const metric = rule.trigger_conditions?.metric;
+    const op = rule.trigger_conditions?.operator ?? 'lt';
+    const threshold = rule.trigger_conditions?.threshold;
+    if (metric && threshold != null) {
+        return `${String(metric).toUpperCase()} ${op} ${threshold}`;
+    }
+    return rule.trigger_type || 'Performance';
+}
+
+export function SelectRuleDialog({
+    isOpen,
+    onClose,
+    onConfirm,
+    variant = 'branding',
+    title,
+    description,
+}: Props) {
+    const { rules: creativeRules, isLoading: brandingLoading } = useCreativeRules();
+    const { rules: automationRules, isLoading: perfLoading } = useRules();
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-    // Active rules only — paused/inactive are not analyzable.
-    const activeRules = useMemo(
-        () => (rules ?? []).filter((r: CreativeRule) => r.is_active),
-        [rules]
-    );
+    const isPerformance = variant === 'performance';
+    const isLoading = isPerformance ? perfLoading : brandingLoading;
+
+    const activeRules = useMemo((): RuleListItem[] => {
+        if (isPerformance) {
+            return (automationRules ?? [])
+                .filter((r) => r.status === 'active')
+                .map((r) => ({
+                    id: r.id,
+                    name: r.name,
+                    description: r.description,
+                    badge: formatPerfBadge(r),
+                }));
+        }
+        return (creativeRules ?? [])
+            .filter((r: CreativeRule) => r.is_active)
+            .map((r) => ({
+                id: r.id,
+                name: r.name,
+                description: r.description,
+                badge: RULE_TYPE_LABELS[r.rule_type] || r.rule_type,
+            }));
+    }, [isPerformance, automationRules, creativeRules]);
 
     useEffect(() => {
-        if (isOpen) setSelectedIds(new Set()); // start empty each time
+        if (isOpen) setSelectedIds(new Set());
     }, [isOpen]);
 
     const allChecked = activeRules.length > 0 && selectedIds.size === activeRules.length;
     const noneChecked = selectedIds.size === 0;
 
     const toggle = (id: string) => {
-        setSelectedIds(prev => {
+        setSelectedIds((prev) => {
             const next = new Set(prev);
             if (next.has(id)) next.delete(id);
             else next.add(id);
@@ -56,27 +104,31 @@ export function SelectRuleDialog({ isOpen, onClose, onConfirm, title, descriptio
 
     const toggleAll = () => {
         if (allChecked) setSelectedIds(new Set());
-        else setSelectedIds(new Set(activeRules.map(r => r.id)));
+        else setSelectedIds(new Set(activeRules.map((r) => r.id)));
     };
 
     const handleConfirm = () => {
-        // Empty array = "no filter" (apply all). We pass the explicit array of selections.
-        // If user picked nothing, treat as "all".
         const ids = noneChecked ? [] : Array.from(selectedIds);
         onConfirm(ids);
         onClose();
     };
+
+    const defaultTitle = isPerformance ? 'Quais regras de performance aplicar?' : 'Quais regras aplicar?';
+    const defaultDescription = isPerformance
+        ? 'Selecione as regras de performance para esta análise. Deixe em branco para aplicar todas as ativas.'
+        : 'Selecione apenas as regras que se aplicam a esta análise. Deixe em branco para aplicar todas as ativas.';
+    const Icon = isPerformance ? Zap : Shield;
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="max-w-lg max-h-[80vh] flex flex-col overflow-hidden p-0">
                 <div className="px-6 pt-6 pb-4 border-b border-border flex-shrink-0">
                     <DialogTitle className="text-lg font-bold flex items-center gap-2">
-                        <Shield className="w-5 h-5 text-ch-orange" />
-                        {title ?? 'Quais regras aplicar?'}
+                        <Icon className={`w-5 h-5 ${isPerformance ? 'text-primary' : 'text-ch-orange'}`} />
+                        {title ?? defaultTitle}
                     </DialogTitle>
                     <DialogDescription className="text-xs mt-1">
-                        {description ?? 'Selecione apenas as regras que se aplicam a esta análise. Deixe em branco para aplicar todas as ativas.'}
+                        {description ?? defaultDescription}
                     </DialogDescription>
                 </div>
 
@@ -101,12 +153,12 @@ export function SelectRuleDialog({ isOpen, onClose, onConfirm, title, descriptio
                         </div>
                     ) : activeRules.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-12 gap-2 text-muted-foreground">
-                            <Shield className="w-8 h-8 opacity-30" />
+                            <Icon className="w-8 h-8 opacity-30" />
                             <p className="text-sm font-medium">Nenhuma regra ativa disponível</p>
-                            <p className="text-xs">Crie e ative regras antes de rodar uma verificação.</p>
+                            <p className="text-xs">Crie e ative regras antes de rodar uma análise.</p>
                         </div>
                     ) : (
-                        activeRules.map(rule => {
+                        activeRules.map((rule) => {
                             const isSelected = selectedIds.has(rule.id);
                             return (
                                 <button
@@ -128,7 +180,7 @@ export function SelectRuleDialog({ isOpen, onClose, onConfirm, title, descriptio
                                         <div className="flex items-center gap-2 flex-wrap mb-0.5">
                                             <span className="text-sm font-semibold text-foreground">{rule.name}</span>
                                             <Badge variant="outline" className="text-[10px] font-medium">
-                                                {RULE_TYPE_LABELS[rule.rule_type] || rule.rule_type}
+                                                {rule.badge}
                                             </Badge>
                                         </div>
                                         {rule.description && (

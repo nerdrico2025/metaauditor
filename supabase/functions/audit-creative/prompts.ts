@@ -102,6 +102,7 @@ Analisar criativos com foco EXCLUSIVO em BRANDING: conformidade visual, regras c
 
 ### 1. CONFORMIDADE VISUAL & IDENTIDADE (Peso: 30%)
 - Logo presente, legível e posicionado conforme guidelines?
+- IMPORTANTE: Logo pequeno ou discreto no canto (ex.: superior direito) conta como PRESENTE — distinga presença de tamanho/legibilidade.
 - Paleta de cores alinhada à marca?
 - Tipografia consistente com identidade visual?
 - Excesso de texto na imagem (>20% Meta)?
@@ -125,7 +126,7 @@ Analisar criativos com foco EXCLUSIVO em BRANDING: conformidade visual, regras c
 - Elementos que violam política da empresa?
 
 ## RED FLAGS DE BRANDING
-- Logo ausente ou ilegível quando exigido
+- Logo ausente quando exigido (não confundir com logo pequeno/discreto — pequeno = presente, pode ser warning de legibilidade)
 - Texto excessivo na imagem (penalização Meta)
 - Inconsistência visual com outras peças da marca
 - Violação de regras criativas configuradas
@@ -153,7 +154,7 @@ Seja ESPECÍFICO sobre o impacto na conversão e CTR.`;
 export const VISUAL_ANALYSIS_BRANDING_PROMPT = `Você é um especialista em análise visual focado em BRANDING e CONFORMIDADE DE MARCA.
 
 Analise a imagem/thumbnail e descreva:
-1. **Logo & Identidade**: Logo visível? Posição? Tamanho adequado?
+1. **Logo & Identidade**: Logo visível? Inspecione os quatro cantos (superior direito, superior esquerdo, inferior direito, inferior esquerdo). Logo pequeno mas reconhecível = PRESENTE. Posição? Tamanho adequado?
 2. **Texto Visível**: Transcreva TODO o texto. Estimativa de % da imagem coberta por texto.
 3. **Paleta & Tipografia**: Cores e fontes alinhadas a uma identidade profissional?
 4. **Composição**: Hierarquia visual, safe zones, regra dos terços?

@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useLatestEntityAudit, useEntityAudit } from '@/hooks/useEntityAudit';
 import { PerformanceEntityAuditDialog } from '@/components/audits/PerformanceEntityAuditDialog';
+import { SelectRuleDialog } from '@/components/branding/SelectRuleDialog';
 import { primaryAuditScore } from '@/lib/audit-focus';
 import { criativosPath } from '@/lib/campaignNavigation';
 import { useState } from 'react';
@@ -24,6 +25,8 @@ export function EntityPerformanceAuditCard({
     const { data: latestAudit, isLoading } = useLatestEntityAudit(entityId, level);
     const { runCampaignAudit, runAdSetAudit } = useEntityAudit();
     const [dialogOpen, setDialogOpen] = useState(false);
+    const [ruleDialogOpen, setRuleDialogOpen] = useState(false);
+    const [pendingForceRefresh, setPendingForceRefresh] = useState(false);
     const [activeAudit, setActiveAudit] = useState<Audit | null>(null);
 
     const pending = level === 'campaign' ? runCampaignAudit.isPending : runAdSetAudit.isPending;
@@ -31,16 +34,21 @@ export function EntityPerformanceAuditCard({
     const score = displayAudit ? primaryAuditScore(displayAudit, 'performance') : null;
     const summary = (displayAudit?.ai_analysis as { executive_summary?: string } | null)?.executive_summary;
 
-    const runAnalysis = async (forceRefresh?: boolean) => {
+    const runAnalysis = async (performanceRuleIds: string[], forceRefresh?: boolean) => {
         try {
             const result = level === 'campaign'
-                ? await runCampaignAudit.mutateAsync({ campaignId: entityId, forceRefresh })
-                : await runAdSetAudit.mutateAsync({ adSetId: entityId, forceRefresh });
+                ? await runCampaignAudit.mutateAsync({ campaignId: entityId, forceRefresh, performanceRuleIds })
+                : await runAdSetAudit.mutateAsync({ adSetId: entityId, forceRefresh, performanceRuleIds });
             setActiveAudit(result.audit);
             setDialogOpen(true);
         } catch {
             /* toast via hook */
         }
+    };
+
+    const openRuleDialog = (forceRefresh?: boolean) => {
+        setPendingForceRefresh(!!forceRefresh);
+        setRuleDialogOpen(true);
     };
 
     return (
@@ -80,7 +88,7 @@ export function EntityPerformanceAuditCard({
                     )}
 
                     <div className="flex flex-wrap gap-2">
-                        <Button size="sm" onClick={() => void runAnalysis()} disabled={pending}>
+                        <Button size="sm" onClick={() => openRuleDialog()} disabled={pending}>
                             {pending ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <BrainCircuit className="w-4 h-4 mr-1.5" />}
                             {displayAudit ? 'Atualizar análise' : 'Executar análise IA'}
                         </Button>
@@ -93,6 +101,17 @@ export function EntityPerformanceAuditCard({
                 </div>
             </div>
 
+            <SelectRuleDialog
+                isOpen={ruleDialogOpen}
+                onClose={() => setRuleDialogOpen(false)}
+                onConfirm={(ids) => {
+                    setRuleDialogOpen(false);
+                    void runAnalysis(ids, pendingForceRefresh);
+                }}
+                variant="performance"
+                title={`Quais regras aplicar em "${entityName}"?`}
+            />
+
             <PerformanceEntityAuditDialog
                 open={dialogOpen}
                 onOpenChange={setDialogOpen}
@@ -104,7 +123,7 @@ export function EntityPerformanceAuditCard({
                         ? criativosPath({ campaignId: entityId })
                         : criativosPath({ adSetId: entityId, campaignId })
                 }
-                onReanalyze={() => void runAnalysis(true)}
+                onReanalyze={() => openRuleDialog(true)}
                 isReanalyzing={pending}
             />
         </>

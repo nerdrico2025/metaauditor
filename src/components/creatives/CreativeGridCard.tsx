@@ -39,7 +39,6 @@ export interface CreativeGridCardProps {
     video_url?: string | null;
     impressions?: number | null;
     ctr?: number | null;
-    performance_score?: number | null;
     campaigns?: { status?: string | null } | null;
   };
   isBranding: boolean;
@@ -229,21 +228,12 @@ export function CreativeGridCard({
           )}
         </div>
 
-        {!isBranding && (
+        {!isBranding && failedRules.length > 0 && (
           <div className="absolute top-3 right-3 md:top-4 md:right-4">
-            {failedRules.length > 0 ? (
-              <div className="flex items-center justify-center min-w-9 h-9 px-1.5 rounded-xl bg-rose-500/90 backdrop-blur-md text-white shadow-lg">
-                <Activity className="w-3.5 h-3.5 mr-0.5" />
-                <span className="text-xs font-bold">{failedRules.length}</span>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-xl bg-ch-orange backdrop-blur-md text-black shadow-lg">
-                <span className="text-[8px] font-semibold uppercase leading-none opacity-60">IA</span>
-                <span className="text-xs md:text-sm font-semibold leading-none">
-                  {creative.performance_score ? creative.performance_score.toFixed(0) : '—'}
-                </span>
-              </div>
-            )}
+            <div className="flex items-center justify-center min-w-9 h-9 px-1.5 rounded-xl bg-rose-500/90 backdrop-blur-md text-white shadow-lg">
+              <Activity className="w-3.5 h-3.5 mr-0.5" />
+              <span className="text-xs font-bold">{failedRules.length}</span>
+            </div>
           </div>
         )}
 

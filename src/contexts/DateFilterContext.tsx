@@ -35,6 +35,16 @@ const fmt = (d: Date) => {
     return `${y}-${m}-${day}`;
 };
 
+const parseStoredDate = (value: string): Date | undefined => {
+    const ymd = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    if (ymd) {
+        const d = new Date(Number(ymd[1]), Number(ymd[2]) - 1, Number(ymd[3]));
+        return isNaN(d.getTime()) ? undefined : d;
+    }
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? undefined : d;
+};
+
 const presetDays: Record<Exclude<DatePreset, 'custom'>, number> = {
     '1d': 1,
     '7d': 7,
@@ -74,12 +84,12 @@ export function DateFilterProvider({ children }: { children: ReactNode }) {
             if (!stored) return undefined;
             const parsed = JSON.parse(stored);
             if (!parsed?.from) return undefined;
-            const from = new Date(parsed.from);
-            if (isNaN(from.getTime())) return undefined;
-            const to = parsed.to ? new Date(parsed.to) : undefined;
+            const from = parseStoredDate(parsed.from);
+            if (!from) return undefined;
+            const to = parsed.to ? parseStoredDate(parsed.to) : undefined;
             return {
                 from,
-                to: to && !isNaN(to.getTime()) ? to : undefined,
+                to: to ?? undefined,
             };
         } catch { /* noop */ }
         return undefined;
@@ -108,8 +118,8 @@ export function DateFilterProvider({ children }: { children: ReactNode }) {
             const seeded = { from: start, to: end };
             try {
                 localStorage.setItem(STORAGE_CUSTOM, JSON.stringify({
-                    from: seeded.from.toISOString(),
-                    to: seeded.to.toISOString(),
+                    from: fmt(seeded.from),
+                    to: fmt(seeded.to),
                 }));
             } catch { /* noop */ }
             return seeded;
@@ -121,8 +131,8 @@ export function DateFilterProvider({ children }: { children: ReactNode }) {
         try {
             if (r?.from) {
                 localStorage.setItem(STORAGE_CUSTOM, JSON.stringify({
-                    from: r.from.toISOString(),
-                    to: r.to ? r.to.toISOString() : null,
+                    from: fmt(r.from),
+                    to: r.to ? fmt(r.to) : null,
                 }));
             } else {
                 localStorage.removeItem(STORAGE_CUSTOM);

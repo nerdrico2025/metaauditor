@@ -73,6 +73,9 @@ const cleanName = (name: string) => {
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { motionVariants } from '@/lib/motion-presets';
 import { EntityPerformanceAuditCard } from '@/components/audits/EntityPerformanceAuditCard';
+import { useModule } from '@/contexts/ModuleContext';
+import { useBrandingCompliance } from '@/hooks/useBrandingCompliance';
+import { BrandingCounts } from '@/components/branding/BrandingCounts';
 
 export default function AdSetDetalhe() {
     const { id: campaignId, adsetId } = useParams<{ id: string; adsetId: string }>();
@@ -83,6 +86,9 @@ export default function AdSetDetalhe() {
     const { range: dateRange } = useDateFilter();
     const dateFilterActive =
         !dateRange.isAll && !!dateRange.startDate && !!dateRange.endDate;
+    const { module } = useModule();
+    const isBranding = module === 'branding';
+    const { data: brandingCompliance } = useBrandingCompliance();
 
     const [isBudgetOpen, setIsBudgetOpen] = useState(false);
     const [newDailyBudget, setNewDailyBudget] = useState('');
@@ -142,7 +148,7 @@ export default function AdSetDetalhe() {
             }), { impressions: 0, clicks: 0, spend: 0, conversions: 0 });
             return totals;
         },
-        enabled: !!adsetId && dateFilterActive,
+        enabled: !!adsetId && dateFilterActive && !isBranding,
     });
 
     // Per-creative metrics within the selected period. Without this, each creative
@@ -171,7 +177,7 @@ export default function AdSetDetalhe() {
             });
             return byId;
         },
-        enabled: !!adsetId && !!creatives && creatives.length > 0 && dateFilterActive,
+        enabled: !!adsetId && !!creatives && creatives.length > 0 && dateFilterActive && !isBranding,
     });
 
     const adSetAction = useMutation({
@@ -296,7 +302,7 @@ export default function AdSetDetalhe() {
         );
     };
 
-    if (isLoading || !adSet || (dateFilterActive && (isAdSetPeriodPending || (creatives && creatives.length > 0 && isCreativePeriodPending)))) {
+    if (isLoading || !adSet || (!isBranding && dateFilterActive && (isAdSetPeriodPending || (creatives && creatives.length > 0 && isCreativePeriodPending)))) {
         return (
             <div className="p-6 flex flex-col items-center justify-center min-h-[500px] gap-4">
                 <Loader2 className="w-10 h-10 animate-spin text-ch-orange opacity-40" />
@@ -384,7 +390,7 @@ export default function AdSetDetalhe() {
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <DateRangeFilter />
+                    {!isBranding && <DateRangeFilter />}
                     <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/5 border border-emerald-500/10 rounded-xl mr-2">
                         <ShieldCheck className="w-4 h-4 text-emerald-500" />
                         <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">Público Qualificado</span>
@@ -407,10 +413,14 @@ export default function AdSetDetalhe() {
                                     <Play className="mr-3 h-4 w-4 text-emerald-500" /> <span className="font-bold">Descongelar Conjunto</span>
                                 </DropdownMenuItem>
                             )}
+                            {!isBranding && (
+                            <>
                             <DropdownMenuSeparator className="bg-border" />
                             <DropdownMenuItem onClick={handleOpenBudget} className="py-3 cursor-pointer">
                                 <DollarSign className="mr-3 h-4 w-4 text-teal-500" /> Calibrar Orçamento
                             </DropdownMenuItem>
+                            </>
+                            )}
                             <DropdownMenuSeparator className="bg-border" />
                             <DropdownMenuItem className="py-3 text-rose-500 opacity-50 cursor-not-allowed">
                                 <Trash2 className="mr-3 h-4 w-4" /> Descartar Público
@@ -421,6 +431,13 @@ export default function AdSetDetalhe() {
             </motion.div>
 
             {/* Metrics Snapshot */}
+            {isBranding ? (
+                <motion.div variants={item} className="bg-card border border-border rounded-2xl p-6 shadow-sm">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-3">Conformidade de Branding</p>
+                    <BrandingCounts counts={adsetId ? brandingCompliance?.byAdSet.get(adsetId) : undefined} />
+                </motion.div>
+            ) : (
+            <>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
                     { label: 'Impressões Totais', value: formatNumber(totalImpressions), icon: Eye, color: 'blue-500' },
@@ -449,6 +466,8 @@ export default function AdSetDetalhe() {
                     Os valores por anúncio seguem o filtro de datas (quando houver). Podem diferir levemente do investimento total do conjunto na Meta por atribuição e arredondamento.
                 </span>
             </motion.p>
+            </>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Main Content Side */}
@@ -491,6 +510,24 @@ export default function AdSetDetalhe() {
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-10 mt-6 md:mt-0">
+                                        {isBranding ? (
+                                            (() => {
+                                                const s = brandingCompliance?.byCreative.get(creative.id) ?? null;
+                                                return (
+                                                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold ${
+                                                        s === 'approved' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' :
+                                                        s === 'rejected' ? 'bg-red-500/10 text-red-500 border border-red-500/20' :
+                                                        'bg-muted text-muted-foreground border border-border'
+                                                    }`}>
+                                                        {s === 'approved' ? <ShieldCheck className="w-3.5 h-3.5" /> :
+                                                         s === 'rejected' ? <AlertTriangle className="w-3.5 h-3.5" /> :
+                                                         <ShieldCheck className="w-3.5 h-3.5 opacity-40" />}
+                                                        {s === 'approved' ? 'Aprovado' : s === 'rejected' ? 'Reprovado' : 'Não analisado'}
+                                                    </div>
+                                                );
+                                            })()
+                                        ) : (
+                                        <>
                                         <div className="text-right">
                                             <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-1">CTR do Ativo</p>
                                             <p className="text-sm font-bold text-ch-orange tabular-nums">
@@ -503,6 +540,8 @@ export default function AdSetDetalhe() {
                                                 {formatCurrency(creative.realSpend)}
                                             </p>
                                         </div>
+                                        </>
+                                        )}
                                         <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-ch-orange group-hover:translate-x-1 transition-all" />
                                     </div>
                                 </div>
@@ -513,7 +552,7 @@ export default function AdSetDetalhe() {
 
                 {/* Sidebar Side */}
                 <div className="space-y-8">
-                    {adSetId && adSet && (
+                    {!isBranding && adSetId && adSet && (
                         <EntityPerformanceAuditCard
                             entityId={adSetId}
                             entityName={adSet.name}
@@ -532,7 +571,8 @@ export default function AdSetDetalhe() {
                         {renderTargeting(adSet.targeting)}
                     </motion.div>
 
-                    {/* Budget & Bid Side Card */}
+                    {/* Budget & Bid Side Card — performance only */}
+                    {!isBranding && (
                     <motion.div variants={item} className="glass rounded-[2rem] p-8 border border-border relative overflow-hidden shadow-2xl">
                         <h2 className="text-sm font-bold text-foreground uppercase tracking-[0.2em] mb-8 border-l-2 border-ch-orange pl-4">Parâmetros Financeiros</h2>
                         <div className="space-y-8">
@@ -566,6 +606,7 @@ export default function AdSetDetalhe() {
                             </div>
                         </div>
                     </motion.div>
+                    )}
 
                     {/* Information Node */}
                     <motion.div variants={item} className="glass rounded-[2rem] p-8 border border-border shadow-2xl">
@@ -586,7 +627,8 @@ export default function AdSetDetalhe() {
                 </div>
             </div>
 
-            {/* Calibration Dialog */}
+            {/* Calibration Dialog — performance only */}
+            {!isBranding && (
             <AnimatePresence>
                 {isBudgetOpen && (
                     <Dialog open={isBudgetOpen} onOpenChange={setIsBudgetOpen}>
@@ -635,6 +677,7 @@ export default function AdSetDetalhe() {
                     </Dialog>
                 )}
             </AnimatePresence>
+            )}
         </motion.div>
     );
 }

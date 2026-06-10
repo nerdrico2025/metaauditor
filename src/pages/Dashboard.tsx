@@ -96,7 +96,7 @@ export default function Dashboard() {
     const { user } = useAuth();
     const navigate = useNavigate();
     const { effectiveIds } = useIntegrationFilter();
-    const { range: dateFilterRange } = useDateFilter();
+    const { range: dateFilterRange, label: dateFilterLabel } = useDateFilter();
     const { module } = useModule();
     const accentColor = useAccentColor();
     const reduced = useReducedMotion();
@@ -132,6 +132,7 @@ export default function Dashboard() {
         effectiveIds,
         campaignScope ?? null,
         scopeLoading,
+        dateFilterRange,
     );
     const { runFullAnalysis, isRunning: isBrandingAnalysisRunning, activeRulesCount, isBriefingComplete } = useBrandingAnalysis();
 
@@ -229,7 +230,7 @@ export default function Dashboard() {
         }
     }, [runFullAnalysis, effectiveIds]);
     const { data: perfCompliance, isLoading: perfComplianceLoading } = usePerformanceCompliance();
-    const { data: brandingCompliance } = useBrandingCompliance();
+    const { data: brandingCompliance } = useBrandingCompliance(dateFilterRange);
 
     const monitoredCampaignCount = campaignScope?.validCampaignIds.length ?? 0;
 
@@ -743,8 +744,8 @@ export default function Dashboard() {
                                         {
                                             label: 'Analisados',
                                             value: String(compliance.total_checked),
-                                            sub: `${compliance.total_checked} totais`,
-                                            tooltip: 'Total de criativos que já passaram pela auditoria IA.',
+                                            sub: dateFilterLabel,
+                                            tooltip: 'Criativos verificados no período selecionado (data da verificação).',
                                             onClick: () => navigate('/criativos'),
                                         },
                                         {
@@ -911,8 +912,16 @@ export default function Dashboard() {
                         <motion.div variants={fadeUpVariant}>
                             <Card className="flex flex-col items-center justify-center py-16 gap-3">
                                 <ShieldCheck className="h-10 w-10 text-muted-foreground/20 mb-1" />
-                                <p className="text-sm text-muted-foreground">Nenhuma análise de conformidade realizada</p>
-                                <p className="text-xs text-muted-foreground">Execute a Análise de Branding para ver conformidade da sua marca.</p>
+                                <p className="text-sm text-muted-foreground">
+                                    {compliance && compliance.total_checked === 0
+                                        ? 'Nenhuma verificação de branding neste período'
+                                        : 'Nenhuma análise de conformidade realizada'}
+                                </p>
+                                <p className="text-xs text-muted-foreground text-center max-w-sm">
+                                    {compliance && compliance.total_checked === 0
+                                        ? `Não há checks com data em ${dateFilterLabel.toLowerCase()}. Amplie o intervalo de datas ou execute uma nova Análise de Branding.`
+                                        : 'Execute a Análise de Branding para ver conformidade da sua marca.'}
+                                </p>
                                 <Button
                                     size="sm"
                                     onClick={startBrandingAnalysis}

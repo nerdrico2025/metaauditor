@@ -38,6 +38,37 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { SyncLikeOverlay } from '@/components/common/SyncLikeOverlay';
 import { META_SYNC_STEPS } from '@/components/common/syncLikeOverlayPresets';
 
+type SyncResultRow = {
+    integration_id?: string;
+    status?: string;
+    items_synced?: number;
+    metrics_warnings?: string[];
+};
+
+function collectMetricsWarnings(results: SyncResultRow[] | undefined): string[] {
+    if (!results?.length) return [];
+    const warnings: string[] = [];
+    for (const row of results) {
+        if (Array.isArray(row.metrics_warnings)) {
+            warnings.push(...row.metrics_warnings);
+        }
+    }
+    return warnings;
+}
+
+function showMetricsWarningsToast(
+    toastFn: ReturnType<typeof useToast>['toast'],
+    warnings: string[],
+) {
+    if (warnings.length === 0) return;
+    const preview = warnings.slice(0, 2).join(' · ');
+    const extra = warnings.length > 2 ? ` (+${warnings.length - 2} avisos)` : '';
+    toastFn({
+        title: 'Avisos na sincronização de métricas',
+        description: `${preview}${extra}`,
+    });
+}
+
 
 export default function Integracoes() {
     const { user } = useAuth();
@@ -360,6 +391,7 @@ export default function Integracoes() {
             let totalSuccess = 0;
             let totalItems = 0;
             let lastError: string | null = null;
+            const allMetricsWarnings: string[] = [];
 
             for (let idx = 0; idx < ids.length; idx += SYNC_BATCH_SIZE) {
                 const batch = ids.slice(idx, idx + SYNC_BATCH_SIZE);
@@ -386,6 +418,7 @@ export default function Integracoes() {
                             lastError = mError.message || 'Erro ao sincronizar métricas';
                         } else {
                             totalItems += mData?.results?.reduce((acc: number, r: any) => acc + (r.items_synced || 0), 0) || 0;
+                            allMetricsWarnings.push(...collectMetricsWarnings(mData?.results));
                         }
                     }
                 } catch (err: any) {
@@ -413,6 +446,8 @@ export default function Integracoes() {
                     description: `${totalSuccess} de ${ids.length} contas sincronizadas. ${totalItems} itens atualizados.`,
                 });
             }
+
+            showMetricsWarningsToast(toast, allMetricsWarnings);
 
             setSyncing(null);
         }, ids);
@@ -451,6 +486,7 @@ export default function Integracoes() {
 
                 let itemsSynced = data.results?.[0]?.items_synced || 0;
                 const status = data.results?.[0]?.status;
+                const metricsWarnings: string[] = [];
 
                 // Fase 2: métricas (insights) — invocação separada, orçamento próprio
                 if (status !== 'error' && status !== 'skipped_special_account') {
@@ -462,6 +498,7 @@ export default function Integracoes() {
                             console.error('Metrics sync error:', mError);
                         } else {
                             itemsSynced += mData?.results?.[0]?.items_synced || 0;
+                            metricsWarnings.push(...collectMetricsWarnings(mData?.results));
                         }
                     } catch (mErr) {
                         console.error('Metrics phase failed:', mErr);
@@ -475,6 +512,8 @@ export default function Integracoes() {
                         : `${itemsSynced} itens sincronizados com sucesso.`,
                     variant: status === 'error' ? 'destructive' : 'default'
                 });
+
+                showMetricsWarningsToast(toast, metricsWarnings);
 
                 triggerPostSyncAutomations();
                 if (status !== 'error') {

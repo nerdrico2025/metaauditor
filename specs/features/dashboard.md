@@ -108,6 +108,15 @@ Pré-requisito: pelo menos uma regra de branding ativa em `/regras`
 - `AppLayout` main: `min-w-0 overflow-x-hidden`; `SectionHeader` actions com `flex-wrap`.
 - Mapas centralizados em `src/lib/responsiveGrids.ts`.
 
+### MODIFIED: KPIs Branding respeitam filtro de período (2026-06-01)
+
+- No **Dashboard Branding**, `useComplianceSummary(..., dateFilterRange)` e `useBrandingCompliance(dateFilterRange)` contam apenas verificações com `checked_at` dentro do intervalo global (`DateFilterContext`).
+- Dedup: último check **por criativo dentro do período** (helper `src/lib/brandingDateScope.ts`). Criativos sem check no intervalo não entram em `total_checked`.
+- KPI **Analisados** exibe o label do período (ex.: "Últimos 7 dias") como subtítulo.
+- Empty state quando `total_checked === 0`: mensagem contextual sugerindo ampliar o intervalo ou executar Análise de Branding.
+- **Listagens** (`/campanhas`, `/conjuntos`, `/criativos`) continuam com `useBrandingCompliance()` **sem** `dateRange` — status acumulado (último check global).
+- Persistência de range personalizado: `YYYY-MM-DD` no `localStorage` (evita shift de timezone do `toISOString()`).
+
 ### MODIFIED: Separação Branding vs Performance (2026-06-01)
 
 - KPI **Campanhas** (módulo Branding): conta campanhas monitoradas no escopo (`useMonitoredCampaignScope`), sem spend/conversões de `useCompanyMetrics`.
@@ -119,7 +128,7 @@ Pré-requisito: pelo menos uma regra de branding ativa em `/regras`
 
 - [ ] Filtros de periodo retornam dados corretos do campaign_metrics
 - [ ] Aba Performance mostra KPIs, grafico, funil, top criativos, Feedback do Click Auditor
-- [ ] Aba Branding mostra conformidade, campanhas, saude, regras (dados mudam ao trocar filtro de conta)
+- [ ] Aba Branding mostra conformidade, campanhas, saude, regras (dados mudam ao trocar filtro de conta **e** filtro de período no dashboard)
 - [ ] KPIs de branding no dashboard são clicáveis e levam à tela correspondente
 - [ ] Dashboard Branding não exibe spend/CTR/conversões nos KPIs principais nem na lista de campanhas
 - [ ] Botão Análise de Branding executa wizard + batch + overlay de conformidade

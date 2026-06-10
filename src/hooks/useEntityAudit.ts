@@ -118,9 +118,11 @@ export function useEntityAudit() {
         mutationFn: async ({
             campaignId,
             forceRefresh,
+            performanceRuleIds,
         }: {
             campaignId: string;
             forceRefresh?: boolean;
+            performanceRuleIds?: string[];
         }) => {
             const token = await getSessionToken();
             const response = await fetch(`${supabaseUrl}/functions/v1/audit-campaign`, {
@@ -133,6 +135,7 @@ export function useEntityAudit() {
                     campaign_id: campaignId,
                     force_refresh: forceRefresh,
                     ...datePayload,
+                    ...(performanceRuleIds?.length ? { performance_rule_ids: performanceRuleIds } : {}),
                 }),
             });
             if (!response.ok) {
@@ -152,9 +155,11 @@ export function useEntityAudit() {
         mutationFn: async ({
             adSetId,
             forceRefresh,
+            performanceRuleIds,
         }: {
             adSetId: string;
             forceRefresh?: boolean;
+            performanceRuleIds?: string[];
         }) => {
             const token = await getSessionToken();
             const response = await fetch(`${supabaseUrl}/functions/v1/audit-ad-set`, {
@@ -167,6 +172,7 @@ export function useEntityAudit() {
                     ad_set_id: adSetId,
                     force_refresh: forceRefresh,
                     ...datePayload,
+                    ...(performanceRuleIds?.length ? { performance_rule_ids: performanceRuleIds } : {}),
                 }),
             });
             if (!response.ok) {
@@ -186,10 +192,12 @@ export function useEntityAudit() {
         mutationFn: async ({
             campaignId,
             adSetId,
+            performanceRuleIds,
             onProgress,
         }: {
             campaignId?: string;
             adSetId?: string;
+            performanceRuleIds?: string[];
             onProgress?: (job: BatchJob) => void;
         }) => {
             const token = await getSessionToken();
@@ -208,6 +216,7 @@ export function useEntityAudit() {
                     analysis_mode: 'balanced',
                     chunk_size: 8,
                     skip_recent_hours: 6,
+                    ...(performanceRuleIds?.length ? { performance_rule_ids: performanceRuleIds } : {}),
                 }),
             });
             if (!startRes.ok) {
@@ -256,10 +265,12 @@ export function useEntityAudit() {
         mutationFn: async ({
             ids,
             level,
+            performanceRuleIds,
             onItemDone,
         }: {
             ids: string[];
             level: EntityAuditLevel;
+            performanceRuleIds?: string[];
             onItemDone?: (index: number, total: number) => void;
         }) => {
             const token = await getSessionToken();
@@ -269,8 +280,16 @@ export function useEntityAudit() {
             for (let i = 0; i < ids.length; i++) {
                 const id = ids[i];
                 const body = level === 'campaign'
-                    ? { campaign_id: id, ...datePayload }
-                    : { ad_set_id: id, ...datePayload };
+                    ? {
+                        campaign_id: id,
+                        ...datePayload,
+                        ...(performanceRuleIds?.length ? { performance_rule_ids: performanceRuleIds } : {}),
+                    }
+                    : {
+                        ad_set_id: id,
+                        ...datePayload,
+                        ...(performanceRuleIds?.length ? { performance_rule_ids: performanceRuleIds } : {}),
+                    };
 
                 const response = await fetch(`${supabaseUrl}/functions/v1/${endpoint}`, {
                     method: 'POST',

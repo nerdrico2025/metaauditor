@@ -237,3 +237,65 @@ Modulo de analise profunda de criativos por IA. Permite varredura em lote (batch
 - Modo **Campanha**: filtra recs persistidas por `campaign_id === campaignId` (recs legadas sem `campaign_id` não aparecem)
 - Modo **Conta**: todas as recs do módulo (performance vs branding via `category`)
 
+## MODIFIED (2026-06-01) — Histórico: lista na página + modal
+
+### UX principal (`/diagnosticos`)
+- **MODIFIED**: A lista de auditorias é o conteúdo principal da página (full-width), não um drawer lateral
+- **MODIFIED**: Clique em criativo abre `CreativeAuditReportDialog` (resumo em cards + botão Relatório Detalhado)
+- **MODIFIED**: Clique em campanha/conjunto (Performance) abre `PerformanceEntityAuditDialog`
+- **MODIFIED**: Branding sidebar **Histórico** → `/diagnosticos`; item separado **Anúncios** → `/anuncios` (grid de conformidade)
+- **MODIFIED**: `CreativeAuditReportDialog` resumo restaura cards narrativos (problemas, pontos fortes, veredito, plano top 3) além de regras violadas
+- **ADDED**: Componente compartilhado `AuditHistoryList` — usado em `Diagnosticos.tsx` e `AuditHistorySheet`
+
+### MODIFIED (2026-06-03) — Filtro Campanhas/Conjuntos no histórico (Performance)
+
+- Escopo **Campanhas**: diagnósticos de entidade (`audit_level = campaign`) **e** análises de anúncios vinculados à campanha
+- Escopo **Conjuntos**: diagnósticos de entidade (`audit_level = ad_set`) **e** análises de anúncios com `ad_set_id`
+- Filtro secundário **Todas as campanhas** / campanha específica quando escopo = Campanhas (derivado dos audits carregados)
+- Empty state contextual quando o filtro ativo retorna zero itens mas o histórico geral tem dados
+- `useAudits`: join `ad_sets`, filtro explícito `audit_level = creative`, fallback `company_id` alinhado a `useEntityAuditsHistory`
+
+### MODIFIED (2026-06-01) — Filtros protocolo + status no Histórico (Performance)
+
+- Barra de filtros **sempre visível** no módulo Performance (inclui empty state sem histórico), abaixo do header — paridade visual com `/anuncios`
+- Componente `PerformanceHistoryFilters`: escopo, campanha (quando Campanhas), busca por nome, pills de status
+- Pills de status com contagem: **Todos · Aprovados · Reprovados · Pendentes** (`src/lib/auditHistoryFilters.ts`)
+- Batch **Analisar Criativos Ativos** usa automaticamente a política padrão (`is_default`) sem escolha manual na UI
+- Deduplicação backend (`audit-batch`, `audit-creative`) considera `policy_id` no skip recent / cache 6h — **requer deploy** das edge functions após merge
+
+### REMOVED (2026-06-01) — Seletor de protocolo no histórico
+
+- Select de protocolo/política no **header** de Diagnósticos (Branding e Performance)
+- Select de protocolo em `PerformanceHistoryFilters`
+- Filtro de histórico por `policy_id` e toast "Analisando com protocolo: …" no batch
+- Gestão de políticas permanece em `/politicas`
+
+### ADDED (2026-06-03) — Seleção obrigatória de regras antes de analisar
+
+- Toda **análise manual** (Branding ou Performance) exige passagem pelo `SelectRuleDialog` antes de executar
+- Variante **branding**: `creative_rules` via `useCreativeRules()`; envia `rule_ids` / `creative_rule_ids`
+- Variante **performance**: `automation_rules` ativas via `useRules()`; envia `performance_rule_ids`
+- Array vazio na confirmação = todas as regras ativas (comportamento existente do dialog)
+- Pontos cobertos: IA em lote e diagnóstico expresso em **Criativos**; batch em **Diagnósticos**; lote Performance em **Campanhas/Conjuntos**; card `EntityPerformanceAuditCard`; botão principal em **CriativoDetalhe**
+- Automações silenciosas (ex.: pós-sync em Integrações) **fora do escopo**
+
+### MODIFIED (2026-06-03) — Batch jobs com rule ids
+
+- Tabela `batch_audit_jobs`: colunas `creative_rule_ids uuid[]`, `performance_rule_ids uuid[]`
+- `audit-batch` persiste e repassa ids para `audit-creative` e `check-creative-rules` no loop
+- `audit-campaign` e `audit-ad-set` filtram `automation_rules` por `performance_rule_ids` quando informado
+- Hooks `useAudits` e `useEntityAudit` propagam os parâmetros ao chamar edge functions
+
+### ADDED (2026-06-03) — Detecção de logo na verificação de regras
+
+- `check-creative-rules`: conteúdo multimodal rotulado (criativo vs logo de referência por regra) via `_shared/creativeImageForAI.buildLabeledVisionContent`
+- Prompt distingue logo **presente** (mesmo pequeno/discreto) de logo **ausente**; falha de tamanho/posição usa severity `warning`, não mensagem de ausência
+- `audit-creative/prompts.ts`: critérios alinhados no agente visual e Brand Guardian
+- `CreativeAuditReportDialog`: filtra pontos fortes da IA que contradizem falha de logo nas regras
+- Reanalise com `force: true` necessária para invalidar cache de 6h em checks antigos
+
+### REMOVED
+- Painel neural inline full-page como view padrão do histórico (preview + veredito + psicologia + arquitetura visual na página)
+- Auto-seleção do primeiro audit na carga da página
+- Drawer `historySheetPanel` redundante em Diagnósticos
+

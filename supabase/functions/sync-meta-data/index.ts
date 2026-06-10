@@ -61,7 +61,7 @@ async function processPaginated<T>(
     processFn: (data: T[]) => Promise<void>,
     logToDebug?: (msg: string) => void,
     maxPagesOverride?: number,
-): Promise<void> {
+): Promise<{ truncated: boolean }> {
     const pageCap = Math.max(1, maxPagesOverride ?? MAX_PAGES);
     let currentUrl = url;
     let pagesProcessed = 0;
@@ -109,11 +109,28 @@ async function processPaginated<T>(
         pagesProcessed++;
     }
 
-    if (pagesProcessed >= pageCap && currentUrl) {
+    const truncated = pagesProcessed >= pageCap && !!currentUrl;
+    if (truncated) {
         const msg = `WARNING: Pagination cap (${pageCap} pages) reached but more data exists. Some records may be missing.`;
         if (logToDebug) logToDebug(msg);
         console.warn(`[processPaginated] ${msg} URL: ${url.substring(0, 120)}...`);
     }
+    return { truncated };
+}
+
+const CAMPAIGN_AD_INSIGHTS_CHUNK = 30;
+
+/** Campaign-scoped filtering only. Do NOT filter ad.effective_status — ads with
+ *  CAMPAIGN_PAUSED / ADSET_PAUSED still have historical spend in time_range. */
+function buildAdInsightsFiltering(campaignExternalIds: string[]): string | null {
+    if (campaignExternalIds.length === 0) return null;
+    const filters = [{ field: "campaign.id", operator: "IN", value: campaignExternalIds }];
+    return encodeURIComponent(JSON.stringify(filters));
+}
+
+function adInsightsFilteringParam(campaignExternalIds: string[]): string {
+    const encoded = buildAdInsightsFiltering(campaignExternalIds);
+    return encoded ? `&filtering=${encoded}` : "";
 }
 
 // Map Facebook's objective to exactly what our DB allows
@@ -230,6 +247,7 @@ serve(async (req) => {
             let itemsFailed = 0;
             let lastError = null;
             let debugLogs: string[] = [];
+            const metricsWarnings: string[] = [];
 
             const logToDebug = (msg: string) => {
                 debugLogs.push(msg);
@@ -393,7 +411,7 @@ serve(async (req) => {
                         logToDebug(`Found ${cachedImageUrls.size} cached image URLs and ${existingVideoUrls.size} existing video URLs to preserve.`);
 
                         // Added image_hash to get permanent image references
-                        const adsUrl = `${META_API_BASE}/${fbAccountId}/ads?fields=id,name,adset_id,campaign_id,status,creative{object_story_spec,id,image_url,thumbnail_url,image_hash,body,title,object_type,video_id,call_to_action_type}&limit=100&access_token=${encodedToken}`;
+                        const adsUrl = `${META_API_BASE}/${fbAccountId}/ads?fields=id,name,adset_id,campaign_id,status,effective_status,creative{object_story_spec,id,image_url,thumbnail_url,image_hash,body,title,object_type,video_id,call_to_action_type}&limit=100&access_token=${encodedToken}`;
 
                         // Collect video IDs to batch-fetch source URLs after processing ads
                         const videoIdToAdMap = new Map<string, string[]>();
@@ -456,6 +474,10 @@ serve(async (req) => {
                                 const finalImageUrl = cachedImageUrls.get(ad.id) || extractedImageUrl;
                                 // Preserve existing video URLs — they get updated separately in batch video fetch
                                 const finalVideoUrl = existingVideoUrls.get(ad.id) || null;
+
+                                if (ad.effective_status && ad.status && ad.effective_status !== ad.status) {
+                                    logToDebug(`Ad ${ad.id}: status=${ad.status} effective_status=${ad.effective_status}`);
+                                }
 
                                 return {
                                     company_id: integration.company_id,
@@ -764,22 +786,27 @@ serve(async (req) => {
                         if (isTimeUp()) return;
                         try {
                             logToDebug(`Starting Ad-level Daily Insights (creative_metrics + creatives)...`);
-                            // level=ad × time_increment=1 explodes row count (ads × days). Filter to
-                            // ACTIVE/PAUSED only (archived ads rarely matter for reporting) and lift
-                            // the page cap locally so we don't silently drop data on large accounts.
-                            const adInsightsFiltering = encodeURIComponent(JSON.stringify([
-                                { field: "ad.effective_status", operator: "IN", value: ["ACTIVE", "PAUSED"] }
-                            ]));
-                            const adInsightsUrl = `${META_API_BASE}/${fbAccountId}/insights?fields=ad_id,impressions,clicks,inline_link_clicks,spend,actions,reach,frequency,cpc,cpm,ctr&level=ad&time_range=${encodeURIComponent(timeRange)}&time_increment=1&filtering=${adInsightsFiltering}&limit=1000&access_token=${encodedToken}`;
+                            const campaignExternalIds = Array.from(metricsCampaignIdMap.keys());
+                            const campaignChunks: string[][] = [];
+                            if (campaignExternalIds.length === 0) {
+                                campaignChunks.push([]);
+                            } else {
+                                for (let i = 0; i < campaignExternalIds.length; i += CAMPAIGN_AD_INSIGHTS_CHUNK) {
+                                    campaignChunks.push(campaignExternalIds.slice(i, i + CAMPAIGN_AD_INSIGHTS_CHUNK));
+                                }
+                            }
+                            logToDebug(`Ad insights: ${campaignExternalIds.length} campaigns in ${campaignChunks.length} chunk(s).`);
+
                             const adTotals = new Map<string, { impressions: number; clicks: number; inlineLinkClicks: number; spend: number; conversions: number; reach: number }>();
                             let creativeDailySkipped = 0;
                             let creativeDailyWritten = 0;
+                            let adPaginationTruncated = false;
 
-                            await processPaginated<any>(adInsightsUrl, async (insights) => {
+                            const processAdInsightPage = async (insights: any[]) => {
                                 logToDebug(`Received ${insights?.length || 0} ad-level daily insights`);
                                 const dailyRows: any[] = [];
                                 for (const i of insights) {
-                                    const adId = i.ad_id;
+                                    const adId = String(i.ad_id);
                                     const localCreativeId = creativeIdMap.get(adId);
                                     if (!localCreativeId) { creativeDailySkipped++; continue; }
 
@@ -809,8 +836,6 @@ serve(async (req) => {
                                         updated_at: nowIso,
                                     });
 
-                                    // Accumulate rolling totals keyed by Meta ad_id so we can still
-                                    // mirror them onto creatives.* (the lifetime view).
                                     const existing = adTotals.get(adId) || { impressions: 0, clicks: 0, inlineLinkClicks: 0, spend: 0, conversions: 0, reach: 0 };
                                     existing.impressions += impressions;
                                     existing.clicks += clicks;
@@ -833,9 +858,22 @@ serve(async (req) => {
                                         creativeDailyWritten += dailyRows.length;
                                     }
                                 }
-                            }, logToDebug, 200);
+                            };
+
+                            for (const campaignChunk of campaignChunks) {
+                                if (isTimeUp()) break;
+                                const adInsightsUrl = `${META_API_BASE}/${fbAccountId}/insights?fields=ad_id,impressions,clicks,inline_link_clicks,spend,actions,reach,frequency,cpc,cpm,ctr&level=ad&time_range=${encodeURIComponent(timeRange)}&time_increment=1${adInsightsFilteringParam(campaignChunk)}&limit=1000&access_token=${encodedToken}`;
+                                const { truncated } = await processPaginated<any>(adInsightsUrl, processAdInsightPage, logToDebug, 200);
+                                if (truncated) adPaginationTruncated = true;
+                            }
 
                             logToDebug(`creative_metrics: wrote ${creativeDailyWritten} daily rows, ${creativeDailySkipped} skipped (no local mapping).`);
+                            if (creativeDailySkipped > 0) {
+                                metricsWarnings.push(`${creativeDailySkipped} ad insight rows skipped (no local creative mapping)`);
+                            }
+                            if (adPaginationTruncated) {
+                                metricsWarnings.push("Ad insights pagination cap reached — some ads may be missing metrics");
+                            }
 
                             // Pull LIFETIME reach/frequency in a second call (no time_increment).
                             // Summing reach per-day double-counts unique users, so we can't derive
@@ -843,16 +881,24 @@ serve(async (req) => {
                             const lifetimeReach = new Map<string, { reach: number; frequency: number }>();
                             if (!isTimeUp() && adTotals.size > 0) {
                                 try {
-                                    const lifetimeUrl = `${META_API_BASE}/${fbAccountId}/insights?fields=ad_id,reach,frequency&level=ad&time_range=${encodeURIComponent(timeRange)}&filtering=${adInsightsFiltering}&limit=1000&access_token=${encodedToken}`;
-                                    await processPaginated<any>(lifetimeUrl, async (rows) => {
-                                        for (const r of rows) {
-                                            if (!r.ad_id) continue;
-                                            lifetimeReach.set(r.ad_id, {
-                                                reach: parseInt(r.reach) || 0,
-                                                frequency: parseFloat(r.frequency) || 0,
-                                            });
-                                        }
-                                    }, logToDebug);
+                                    let lifetimeTruncated = false;
+                                    for (const campaignChunk of campaignChunks) {
+                                        if (isTimeUp()) break;
+                                        const lifetimeUrl = `${META_API_BASE}/${fbAccountId}/insights?fields=ad_id,reach,frequency&level=ad&time_range=${encodeURIComponent(timeRange)}${adInsightsFilteringParam(campaignChunk)}&limit=1000&access_token=${encodedToken}`;
+                                        const { truncated } = await processPaginated<any>(lifetimeUrl, async (rows) => {
+                                            for (const r of rows) {
+                                                if (!r.ad_id) continue;
+                                                lifetimeReach.set(String(r.ad_id), {
+                                                    reach: parseInt(r.reach) || 0,
+                                                    frequency: parseFloat(r.frequency) || 0,
+                                                });
+                                            }
+                                        }, logToDebug);
+                                        if (truncated) lifetimeTruncated = true;
+                                    }
+                                    if (lifetimeTruncated) {
+                                        metricsWarnings.push("Lifetime reach/frequency pagination cap reached for some ads");
+                                    }
                                     logToDebug(`Lifetime reach/frequency: pulled ${lifetimeReach.size} ads.`);
                                 } catch (e) {
                                     logToDebug(`Lifetime reach/frequency fetch failed: ${e}. Falling back to summed daily reach.`);
@@ -862,6 +908,7 @@ serve(async (req) => {
                             // Mirror aggregated totals onto creatives.* so existing list/detail
                             // views that read lifetime metrics keep working unchanged.
                             let adMetricsUpdated = 0;
+                            let adMetricsMirrorFailed = 0;
                             const adEntries = Array.from(adTotals.entries());
                             const now = new Date().toISOString();
                             logToDebug(`Mirroring ${adEntries.length} aggregated totals onto creatives...`);
@@ -883,15 +930,29 @@ serve(async (req) => {
                                         conversions: totals.conversions,
                                         reach, frequency,
                                         ctr, cpc, updated_at: now
-                                    }).eq("company_id", integration.company_id).eq("external_id", adExternalId);
+                                    }).eq("company_id", integration.company_id).eq("external_id", String(adExternalId));
                                 }));
-                                const succeeded = results.filter(r => r.status === 'fulfilled' && !(r.value as any)?.error).length;
+                                for (const r of results) {
+                                    if (r.status === 'rejected' || (r.status === 'fulfilled' && (r.value as { error?: unknown })?.error)) {
+                                        adMetricsMirrorFailed++;
+                                        itemsFailed++;
+                                    }
+                                }
+                                const succeeded = results.filter(r => r.status === 'fulfilled' && !(r.value as { error?: unknown })?.error).length;
                                 adMetricsUpdated += succeeded;
+                            }
+                            if (adMetricsMirrorFailed > 0) {
+                                metricsWarnings.push(`${adMetricsMirrorFailed} creative metric mirror updates failed`);
                             }
                             // Count unique creatives synced (not daily rows, to keep itemsSynced
                             // comparable to previous sync runs).
                             itemsSynced += adMetricsUpdated;
                             logToDebug(`Mirrored metrics for ${adMetricsUpdated} of ${adEntries.length} creatives.`);
+                            const mappedCreatives = creativeIdMap.size;
+                            if (mappedCreatives > 0 && adTotals.size < mappedCreatives) {
+                                const missing = mappedCreatives - adTotals.size;
+                                metricsWarnings.push(`${missing} creatives had no ad-level insights in the last 90 days`);
+                            }
                         } catch (e) {
                             logToDebug(`Ad-level insights task aborted: ${e}`);
                             lastError = e;
@@ -1209,6 +1270,7 @@ serve(async (req) => {
                     items_failed: itemsFailed,
                     status: itemsFailed > 0 ? "completed_with_errors" : (itemsSynced === 0 ? "completed_no_data" : "success"),
                     error: lastError ? JSON.stringify(lastError) : null,
+                    metrics_warnings: metricsWarnings.length > 0 ? metricsWarnings : undefined,
                     debug_logs: debugLogs
                 });
 
