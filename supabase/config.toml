@@ -1,0 +1,3 @@
+# Public image proxy — loaded via <img src> without Authorization headers
+[functions.image-proxy]
+verify_jwt = false

@@ -1,0 +1,57 @@
+{
+  "title": "Visão Geral",
+  "simpleSubtitle": "Como seus anúncios estão performando",
+  "detailedSubtitle": "Performance Command Center",
+  "viewMode": {
+    "simple": "Simples",
+    "detailed": "Detalhado"
+  },
+  "allAccounts": "Todas as Contas",
+  "account": "Conta {{id}}",
+  "vsPrevious": "vs. período anterior",
+  "loadingFunnel": "Carregando funil...",
+  "kpi": {
+    "totalSpend": "Quanto você investiu",
+    "totalSpendSubtitle": "Total gasto em anúncios no período",
+    "peopleReached": "Pessoas alcançadas",
+    "peopleReachedSubtitle": "Pessoas únicas que viram seus anúncios",
+    "resultsWon": "Resultados conquistados",
+    "resultsWonSubtitle": "Compras ou leads gerados pelos anúncios",
+    "costPerResult": "Custo por resultado",
+    "costPerResultSubtitle": "Quanto custou cada conversão em média",
+    "impressions": "Impressões",
+    "clicks": "Cliques",
+    "avgCTR": "CTR Médio",
+    "avgCPC": "CPC Médio"
+  },
+  "summary": {
+    "title": "Resumo do período",
+    "conversions": "Seus anúncios estão trazendo resultados! Você conquistou {{conversions}} {{conversionLabel}} investindo {{spend}}{{costText}}.",
+    "conversion": "conversão",
+    "conversionsPlural": "conversões",
+    "clicks_no_conv": "Seus anúncios geraram {{clicks}} cliques, mas ainda não houve conversões registradas. Vale revisar a página de destino ou a oferta apresentada.",
+    "spend_drop": "O investimento caiu {{pct}}% em relação ao período anterior. Verifique se suas campanhas estão ativas e com orçamento suficiente.",
+    "no_spend": "Nenhum investimento registrado neste período. Suas campanhas podem estar pausadas ou sem dados sincronizados.",
+    "default": "Você investiu {{spend}} no período com {{conversions}} {{conversionLabel}} registradas. Continue acompanhando para identificar tendências.",
+    "costAvg": " — cada resultado custou em média {{cost}}"
+  },
+  "charts": {
+    "performanceTrend": "Como foi seu desempenho ao longo do tempo",
+    "performanceTrendDesc": "Evolução diária do investimento e resultados no período selecionado.",
+    "spendPerDay": "A linha do gráfico representa o valor investido por dia em seus anúncios.",
+    "performancePeriod": "Performance no Período",
+    "performancePeriodDesc": "Acompanhe a evolução das suas principais métricas.",
+    "conversionFunnel": "Funil de Conversão",
+    "conversionFunnelDesc": "Eficiência em cada etapa.",
+    "metrics": "Métricas",
+    "costs": "Custos"
+  },
+  "topCampaigns": {
+    "title": "Suas melhores campanhas",
+    "subtitle": "As campanhas que trouxeram mais resultados no período.",
+    "results": "Resultados",
+    "result": "resultado",
+    "resultsPlural": "resultados",
+    "noResults": "Sem resultados registrados"
+  }
+}

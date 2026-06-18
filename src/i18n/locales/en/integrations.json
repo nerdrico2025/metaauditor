@@ -1,0 +1,29 @@
+{
+  "title": "Connected Integrations",
+  "subtitle": "Manage your integrations with ad platforms",
+  "addIntegration": "Add Integration",
+  "tokenExpired": "Token expired",
+  "expiresIn": "Expires in {{days}}d",
+  "active": "Active",
+  "inactive": "Inactive",
+  "businessManager": "Business Manager",
+  "limitedInfo": "Limited Information",
+  "limitedInfoDesc": "This integration was created with an older version. Reconnect to view Business Manager and detailed permissions.",
+  "reconnectUpdate": "Reconnect to Update",
+  "currency": "Currency",
+  "timezone": "Timezone",
+  "permissions": "Permissions",
+  "tokenExpirySoon": "Token expires in {{days}} day{{plural}}",
+  "noIntegrations": {
+    "title": "No integrations connected",
+    "subtitle": "Connect your Facebook Business Manager account to start managing your campaigns",
+    "connect": "Connect first integration"
+  },
+  "dialog": {
+    "title": "Add Integration",
+    "subtitle": "Choose a platform to connect",
+    "facebookDesc": "Campaigns, creatives and metrics",
+    "otherPlatforms": "Other platforms",
+    "otherPlatformsDesc": "Coming soon: Google Ads, TikTok Ads"
+  }
+}

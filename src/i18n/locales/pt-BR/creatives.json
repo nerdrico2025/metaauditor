@@ -1,0 +1,9 @@
+{
+  "title": "Criativos",
+  "subtitle": "Gerencie seus criativos",
+  "searchPlaceholder": "Buscar criativo por nome...",
+  "empty": {
+    "title": "Nenhum criativo encontrado",
+    "subtitle": "Tente ajustar seus filtros de busca"
+  }
+}

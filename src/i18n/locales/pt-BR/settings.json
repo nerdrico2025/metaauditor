@@ -1,0 +1,24 @@
+{
+  "title": "Configurações",
+  "tabs": {
+    "profile": "Perfil",
+    "security": "Segurança",
+    "preferences": "Preferências",
+    "integrations": "Integrações"
+  },
+  "preferences": {
+    "title": "Preferências",
+    "subtitle": "Personalize sua experiência no Click Auditor.",
+    "appearance": "Aparência",
+    "darkMode": "Modo Escuro",
+    "darkModeDesc": "Alternar entre tema claro e escuro (Atualmente fixo em Dark)",
+    "notifications": "Notificações",
+    "emailAlerts": "Alertas por Email",
+    "emailAlertsDesc": "Receber resumos semanais e alertas críticos.",
+    "language": "Idioma",
+    "interfaceLanguage": "Idioma da Interface",
+    "selectDefaultLanguage": "Selecione o idioma padrão.",
+    "savePreferences": "Salvar Preferências (simulação)",
+    "saved": "Preferências salvas"
+  }
+}

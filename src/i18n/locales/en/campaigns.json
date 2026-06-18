@@ -1,0 +1,62 @@
+{
+  "title": "Active Campaigns",
+  "trafficManagement": "Traffic Management",
+  "subtitle": "Monitoring and optimization of {{count}} acquisition flows",
+  "filtered": "{{count}} filtered",
+  "newCampaign": "New Campaign",
+  "searchPlaceholder": "Search campaign by name or ID...",
+  "statusFilter": {
+    "all": "All",
+    "active": "Active",
+    "paused": "Paused"
+  },
+  "sort": {
+    "label": "Sort",
+    "sortBy": "Sort by",
+    "recent": "Most Recent",
+    "performance": "Performance",
+    "highestSpend": "Highest Spend",
+    "lowestSpend": "Lowest Spend",
+    "highestImpressions": "Highest Impressions",
+    "mostConversions": "Most Conversions",
+    "bestCTR": "Best CTR",
+    "lowestCPA": "Lowest CPA"
+  },
+  "metrics": {
+    "spend": "Spend",
+    "impressions": "Impr.",
+    "clicks": "Clicks",
+    "conversions": "Conv.",
+    "ctr": "CTR",
+    "cpa": "CPA",
+    "perDay": "/ day"
+  },
+  "status": {
+    "active": "Active",
+    "paused": "Paused"
+  },
+  "insight": "Neural Insight",
+  "insightText": "Budget optimization suggested: Increase by 15% to maximize conversions on weekends.",
+  "aiAnalysisButton": "AI Analysis",
+  "breadcrumb": {
+    "campaigns": "Campaigns",
+    "adSets": "Ad Sets",
+    "creatives": "Creatives",
+    "allCampaigns": "View all campaigns",
+    "clearFilter": "Clear filter",
+    "creativesInAdSet": "{{count}} creatives in this ad set",
+    "creativesInCampaign": "{{count}} creatives in this campaign"
+  },
+  "empty": {
+    "title": "No campaigns found",
+    "subtitle": "Try adjusting your search filters"
+  },
+  "pagination": {
+    "showing": "Showing",
+    "to": "to",
+    "of": "of",
+    "campaigns": "campaigns",
+    "previous": "Previous",
+    "next": "Next"
+  }
+}
